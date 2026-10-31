@@ -1,0 +1,10 @@
+# <github-repository>=<source-directory>=<path in client>
+#
+# Pure moves. Directory names, include roots (<GameLib/...>, <UserInterface/...>),
+# target names and test fixtures are preserved.
+#
+# Order: web stub, then data layer, then the UI/executable.
+
+pkg_cwebbrowser=CWebBrowser=src/CWebBrowser
+pkg_gamelib=GameLib=src/GameLib
+pkg_userinterface=UserInterface=src/UserInterface

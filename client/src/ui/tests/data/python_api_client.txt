@@ -1,0 +1,2192 @@
+# OpenMT2 embedded Python API surface: UserInterface client
+# Regenerate with: OPENMT2_UPDATE_PYTHON_API=1 <test-binary> <this-file>
+module	ServerStateChecker
+  AddChannel	callable
+  Create	callable
+  Initialize	callable
+  Request	callable
+  Update	callable
+module	app
+  ATTACK	int	1
+  Abort	callable
+  BUY	int	9
+  CAMERA_ROTATE	int	11
+  CAMERA_STOP	int	0
+  CAMERA_TO_NEGATIVE	int	-1
+  CAMERA_TO_POSITIVE	int	1
+  CANT_GO	int	4
+  CHAIR	int	7
+  CloseTextFile	callable
+  Create	callable
+  DEGREE_DIRECTION_LEFT	int	2
+  DEGREE_DIRECTION_RIGHT	int	1
+  DEGREE_DIRECTION_SAME	int	0
+  DIK_0	int	11
+  DIK_1	int	2
+  DIK_2	int	3
+  DIK_3	int	4
+  DIK_4	int	5
+  DIK_5	int	6
+  DIK_6	int	7
+  DIK_7	int	8
+  DIK_8	int	9
+  DIK_9	int	10
+  DIK_A	int	30
+  DIK_ADD	int	78
+  DIK_APOSTROPHE	int	40
+  DIK_APPS	int	221
+  DIK_B	int	48
+  DIK_BACK	int	14
+  DIK_BACKSLASH	int	43
+  DIK_C	int	46
+  DIK_CALCULATOR	int	161
+  DIK_CAPITAL	int	58
+  DIK_COMMA	int	51
+  DIK_D	int	32
+  DIK_DECIMAL	int	83
+  DIK_DELETE	int	211
+  DIK_DIVIDE	int	181
+  DIK_DOWN	int	208
+  DIK_E	int	18
+  DIK_END	int	207
+  DIK_EQUALS	int	13
+  DIK_ESC	int	1
+  DIK_ESCAPE	int	1
+  DIK_F	int	33
+  DIK_F1	int	59
+  DIK_F10	int	68
+  DIK_F11	int	87
+  DIK_F12	int	88
+  DIK_F2	int	60
+  DIK_F3	int	61
+  DIK_F4	int	62
+  DIK_F5	int	63
+  DIK_F6	int	64
+  DIK_F7	int	65
+  DIK_F8	int	66
+  DIK_F9	int	67
+  DIK_G	int	34
+  DIK_GRAVE	int	41
+  DIK_H	int	35
+  DIK_HOME	int	199
+  DIK_I	int	23
+  DIK_INSERT	int	210
+  DIK_J	int	36
+  DIK_K	int	37
+  DIK_L	int	38
+  DIK_LALT	int	56
+  DIK_LBRACKET	int	26
+  DIK_LCONTROL	int	29
+  DIK_LEFT	int	203
+  DIK_LSHIFT	int	42
+  DIK_LWIN	int	219
+  DIK_M	int	50
+  DIK_MEDIASTOP	int	164
+  DIK_MINUS	int	12
+  DIK_MULTIPLY	int	55
+  DIK_MUTE	int	160
+  DIK_N	int	49
+  DIK_NEXTTRACK	int	153
+  DIK_NUMLOCK	int	69
+  DIK_NUMPAD0	int	82
+  DIK_NUMPAD1	int	79
+  DIK_NUMPAD2	int	80
+  DIK_NUMPAD3	int	81
+  DIK_NUMPAD4	int	75
+  DIK_NUMPAD5	int	76
+  DIK_NUMPAD6	int	77
+  DIK_NUMPAD7	int	71
+  DIK_NUMPAD8	int	72
+  DIK_NUMPAD9	int	73
+  DIK_NUMPADCOMMA	int	179
+  DIK_NUMPADENTER	int	156
+  DIK_O	int	24
+  DIK_P	int	25
+  DIK_PAUSE	int	197
+  DIK_PERIOD	int	52
+  DIK_PGDN	int	209
+  DIK_PGUP	int	201
+  DIK_PLAYPAUSE	int	162
+  DIK_Q	int	16
+  DIK_R	int	19
+  DIK_RALT	int	184
+  DIK_RBRACKET	int	27
+  DIK_RCONTROL	int	157
+  DIK_RETURN	int	28
+  DIK_RIGHT	int	205
+  DIK_RSHIFT	int	54
+  DIK_RWIN	int	220
+  DIK_S	int	31
+  DIK_SCROLL	int	70
+  DIK_SEMICOLON	int	39
+  DIK_SLASH	int	53
+  DIK_SPACE	int	57
+  DIK_SUBTRACT	int	74
+  DIK_SYSRQ	int	183
+  DIK_T	int	20
+  DIK_TAB	int	15
+  DIK_U	int	22
+  DIK_UP	int	200
+  DIK_V	int	47
+  DIK_VOLUMEDOWN	int	174
+  DIK_VOLUMEUP	int	176
+  DIK_W	int	17
+  DIK_WEBHOME	int	178
+  DIK_X	int	45
+  DIK_Y	int	21
+  DIK_Z	int	44
+  DOOR	int	6
+  ENABLE_COSTUME_SYSTEM	int	1
+  ENABLE_DRAGON_SOUL_SYSTEM	int	1
+  ENABLE_ENERGY_SYSTEM	int	1
+  ENABLE_NEW_EQUIPMENT_SYSTEM	int	1
+  EnablePerformanceTime	callable
+  EnableSpecialCameraMode	callable
+  EnableTestServerFlag	callable
+  Exit	callable
+  ForceSetLocale	callable
+  GetAvailableTextureMemory	callable
+  GetCamera	callable
+  GetCameraPitch	callable
+  GetCameraRotation	callable
+  GetConnectData	callable
+  GetCursor	callable
+  GetCursorPosition	callable
+  GetDefaultCodePage	callable
+  GetDegreeDifference	callable
+  GetFaceCount	callable
+  GetFaceSpeed	callable
+  GetFileList	callable
+  GetGlobalTime	callable
+  GetGlobalTimeStamp	callable
+  GetImageInfo	callable
+  GetInfo	callable
+  GetLoad	callable
+  GetLocaleName	callable
+  GetLocalePath	callable
+  GetLocaleServiceName	callable
+  GetRandom	callable
+  GetRenderFPS	callable
+  GetRenderTime	callable
+  GetRotatingDirection	callable
+  GetTextFileLine	callable
+  GetTextFileLineCount	callable
+  GetTime	callable
+  GetUpdateFPS	callable
+  GetUpdateTime	callable
+  HSIZE	int	12
+  HVSIZE	int	14
+  HideCursor	callable
+  HideWebPage	callable
+  INFO_ACTOR	int	0
+  INFO_EFFECT	int	1
+  INFO_ITEM	int	2
+  INFO_TEXTTAIL	int	3
+  IsCHEONMA	callable
+  IsDevStage	callable
+  IsEnableTestServerFlag	callable
+  IsExistFile	callable
+  IsFileExist	callable
+  IsLiarCursorOn	callable
+  IsLiveStage	callable
+  IsPressed	callable
+  IsShowCursor	callable
+  IsTestStage	callable
+  IsVisibleNotice	callable
+  IsWebPageMode	callable
+  LoadCameraSetting	callable
+  LoadLocaleAddr	callable
+  LoadLocaleData	callable
+  Loop	callable
+  MAGIC	int	8
+  MoveWebPage	callable
+  MoviePitchCamera	callable
+  MovieResetCamera	callable
+  MovieRotateCamera	callable
+  MovieZoomCamera	callable
+  NORMAL	int	0
+  OPENID_TEST	int	0
+  OnLogoClose	callable
+  OnLogoOpen	callable
+  OnLogoRender	callable
+  OnLogoUpdate	callable
+  OpenTextFile	callable
+  PICK	int	5
+  PitchCamera	callable
+  Process	callable
+  RenderGame	callable
+  RotateCamera	callable
+  RunPythonFile	callable
+  SELL	int	10
+  SaveCameraSetting	callable
+  SetArmorSpecularEnable	callable
+  SetCHEONMA	callable
+  SetCamera	callable
+  SetCameraMaxDistance	callable
+  SetCameraSetting	callable
+  SetCameraSpeed	callable
+  SetCenterPosition	callable
+  SetConnectData	callable
+  SetControlFP	callable
+  SetCursor	callable
+  SetDefaultCamera	callable
+  SetDefaultFontName	callable
+  SetFPS	callable
+  SetFrameSkip	callable
+  SetGlobalCenterPosition	callable
+  SetGuildMarkPath	callable
+  SetGuildSymbolPath	callable
+  SetHairColorEnable	callable
+  SetHardwareCursor	callable
+  SetMinFog	callable
+  SetMouseHandler	callable
+  SetRideHorseEnable	callable
+  SetSightRange	callable
+  SetSkillEffectUpgradeEnable	callable
+  SetSoftwareCursor	callable
+  SetSpecularSpeed	callable
+  SetTextTailLivingTime	callable
+  SetTwoHandedWeaponAttSpeedDecreaseValue	callable
+  SetVisibleNotice	callable
+  SetWeaponSpecularEnable	callable
+  ShowCursor	callable
+  ShowWebPage	callable
+  Sleep	callable
+  TALK	int	3
+  TARGET	int	2
+  USE_OPENID	int	0
+  UpdateGame	callable
+  VK_DELETE	int	46
+  VK_DOWN	int	40
+  VK_END	int	35
+  VK_HOME	int	36
+  VK_LEFT	int	37
+  VK_RIGHT	int	39
+  VK_UP	int	38
+  VSIZE	int	13
+  ZoomCamera	callable
+  testGetAccumulationTime	callable
+  testResetAccumulationTime	callable
+  testSetSpecularColor	callable
+module	background
+  BeginEnvironment	callable
+  DISTANCE0	int	0
+  DISTANCE1	int	1
+  DISTANCE2	int	2
+  DISTANCE3	int	3
+  DISTANCE4	int	4
+  DISTANCE_SORT	int	0
+  Destroy	callable
+  DisableGuildArea	callable
+  EnableSnow	callable
+  EnableSoftwareTiling	callable
+  EndEnvironment	callable
+  GetCurrentMapName	callable
+  GetDistanceSetInfo	callable
+  GetFarClip	callable
+  GetHeight	callable
+  GetPickingPoint	callable
+  GetRenderShadowTime	callable
+  GetRenderedGraphicThingInstanceNum	callable
+  GetRenderedSplatNum	callable
+  GetShadowMapColor	callable
+  GlobalPositionToLocalPosition	callable
+  GlobalPositionToMapInfo	callable
+  Initialize	callable
+  IsSoftwareTiling	callable
+  LoadMap	callable
+  PART_CLOUD	int	2
+  PART_OBJECT	int	1
+  PART_SKY	int	5
+  PART_TERRAIN	int	0
+  PART_TREE	int	4
+  PART_WATER	int	3
+  RegisterDungeonMapName	callable
+  RegisterEnvironmentData	callable
+  Render	callable
+  RenderAfterLensFlare	callable
+  RenderBeforeLensFlare	callable
+  RenderCharacterShadowToTexture	callable
+  RenderCloud	callable
+  RenderCollision	callable
+  RenderDungeon	callable
+  RenderEffect	callable
+  RenderPCBlocker	callable
+  RenderSky	callable
+  RenderWater	callable
+  SHADOW_ALL	int	3
+  SHADOW_ALL_HIGH	int	4
+  SHADOW_ALL_MAX	int	5
+  SHADOW_GROUND	int	1
+  SHADOW_GROUND_AND_SOLO	int	2
+  SHADOW_NONE	int	0
+  SKY_RENDER_MODE_DEFAULT	int	0
+  SKY_RENDER_MODE_DIFFUSE	int	1
+  SKY_RENDER_MODE_MODULATE	int	3
+  SKY_RENDER_MODE_MODULATE2X	int	4
+  SKY_RENDER_MODE_MODULATE4X	int	5
+  SKY_RENDER_MODE_TEXTURE	int	2
+  SelectViewDistanceNum	callable
+  SetBGLoading	callable
+  SetBackgroundDirLight	callable
+  SetCharacterDirLight	callable
+  SetEnvironmentData	callable
+  SetRenderSort	callable
+  SetShadowLevel	callable
+  SetSplatLimit	callable
+  SetTransparentTree	callable
+  SetViewDistanceSet	callable
+  SetVisiblePart	callable
+  SetXMasTree	callable
+  TEXTURE_SORT	int	1
+  Update	callable
+  VisibleGuildArea	callable
+  WarpTest	callable
+module	chat
+  AppendChat	callable
+  AppendChatWithDelay	callable
+  AppendWhisper	callable
+  ArrangeShowingChat	callable
+  BOARD_STATE_EDIT	int	1
+  BOARD_STATE_LOG	int	2
+  BOARD_STATE_VIEW	int	0
+  CHAT_SET_CHAT_WINDOW	int	0
+  CHAT_SET_LOG_WINDOW	int	1
+  CHAT_TYPE_COMMAND	int	5
+  CHAT_TYPE_GUILD	int	4
+  CHAT_TYPE_INFO	int	1
+  CHAT_TYPE_NOTICE	int	2
+  CHAT_TYPE_PARTY	int	3
+  CHAT_TYPE_SHOUT	int	6
+  CHAT_TYPE_TALKING	int	0
+  CHAT_TYPE_WHISPER	int	7
+  Clear	callable
+  ClearWhisper	callable
+  Close	callable
+  CreateChatSet	callable
+  CreateWhisper	callable
+  DisableChatMode	callable
+  EnableChatMode	callable
+  GetLineCount	callable
+  GetLineStep	callable
+  GetLinkFromHyperlink	callable
+  GetVisibleLineCount	callable
+  IgnoreCharacter	callable
+  InitWhisper	callable
+  IsIgnoreCharacter	callable
+  Render	callable
+  RenderWhisper	callable
+  SetBoardState	callable
+  SetChatColor	callable
+  SetEndPos	callable
+  SetHeight	callable
+  SetPosition	callable
+  SetStep	callable
+  SetWhisperBoxSize	callable
+  SetWhisperPosition	callable
+  ToggleChatMode	callable
+  Update	callable
+  WHISPER_TYPE_CHAT	int	0
+  WHISPER_TYPE_GM	int	5
+  WHISPER_TYPE_SYSTEM	int	255
+module	chr
+  AFFECT_ATT_SPEED_POTION	int	12
+  AFFECT_BOHO	int	23
+  AFFECT_CHEONGEUN	int	16
+  AFFECT_CHINA_FIREWORK	int	38
+  AFFECT_EUNHYEONG	int	18
+  AFFECT_FALLEN_CHEONGEUN	int	33
+  AFFECT_FISH_MIND	int	13
+  AFFECT_GEOMGYEONG	int	15
+  AFFECT_GICHEON	int	29
+  AFFECT_GONGPO	int	20
+  AFFECT_GWIGEOM	int	19
+  AFFECT_GYEONGGONG	int	17
+  AFFECT_HEUKSIN	int	25
+  AFFECT_HOSIN	int	22
+  AFFECT_JEONGWI	int	14
+  AFFECT_JEUNGRYEOK	int	30
+  AFFECT_JUMAGAP	int	21
+  AFFECT_KWAESOK	int	24
+  AFFECT_MOV_SPEED_POTION	int	11
+  AFFECT_MUYEONG	int	26
+  AFFECT_PABEOP	int	32
+  AFFECT_POISON	int	3
+  AFFECT_SLOW	int	4
+  AFFECT_STUN	int	5
+  AttachEffectByID	callable
+  AttachEffectByName	callable
+  BlendLoopMotion	callable
+  BlendRotation	callable
+  ChangeHair	callable
+  ChangeShape	callable
+  CreateInstance	callable
+  DIR_EAST	int	2
+  DIR_NORTH	int	0
+  DIR_NORTHEAST	int	1
+  DIR_NORTHWEST	int	7
+  DIR_SOUTH	int	4
+  DIR_SOUTHEAST	int	3
+  DIR_SOUTHWEST	int	5
+  DIR_WEST	int	6
+  Deform	callable
+  DeleteInstance	callable
+  DeleteInstanceByFade	callable
+  Destroy	callable
+  Die	callable
+  DismountHorse	callable
+  FaintTest	callable
+  GetBoundBoxOnlyXY	callable
+  GetGuildID	callable
+  GetInstanceType	callable
+  GetName	callable
+  GetNameByVID	callable
+  GetPixelPosition	callable
+  GetProjectPosition	callable
+  GetRace	callable
+  GetRotation	callable
+  GetVirtualNumber	callable
+  HasInstance	callable
+  Hide	callable
+  INSTANCE_TYPE_BUILDING	int	5
+  INSTANCE_TYPE_ENEMY	int	0
+  INSTANCE_TYPE_NPC	int	1
+  INSTANCE_TYPE_OBJECT	int	10
+  INSTANCE_TYPE_PLAYER	int	6
+  IsEnemy	callable
+  IsGameMaster	callable
+  IsNPC	callable
+  IsPartyMember	callable
+  LookAt	callable
+  MOTION_ANGRY	int	345
+  MOTION_ATTRACTIVE	int	346
+  MOTION_BANTER	int	350
+  MOTION_CHANGE_WEAPON	int	4
+  MOTION_CHEERS_1	int	307
+  MOTION_CHEERS_2	int	308
+  MOTION_CHEERUP	int	349
+  MOTION_CLAP	int	306
+  MOTION_COMBO_ATTACK_1	int	14
+  MOTION_COMBO_ATTACK_2	int	15
+  MOTION_COMBO_ATTACK_3	int	16
+  MOTION_COMBO_ATTACK_4	int	17
+  MOTION_COMBO_ATTACK_5	int	18
+  MOTION_COMBO_ATTACK_6	int	19
+  MOTION_COMBO_ATTACK_7	int	20
+  MOTION_COMBO_ATTACK_8	int	21
+  MOTION_CONGRATULATION	int	343
+  MOTION_DAMAGE	int	5
+  MOTION_DAMAGE_BACK	int	8
+  MOTION_DAMAGE_FLYING	int	6
+  MOTION_DAMAGE_FLYING_BACK	int	9
+  MOTION_DANCE_1	int	326
+  MOTION_DANCE_2	int	327
+  MOTION_DANCE_3	int	328
+  MOTION_DANCE_4	int	329
+  MOTION_DANCE_5	int	330
+  MOTION_DANCE_6	int	331
+  MOTION_DEAD	int	11
+  MOTION_DEAD_BACK	int	12
+  MOTION_DIG	int	325
+  MOTION_FISHING_CATCH	int	30
+  MOTION_FISHING_FAIL	int	31
+  MOTION_FISHING_REACT	int	29
+  MOTION_FISHING_STOP	int	28
+  MOTION_FISHING_THROW	int	26
+  MOTION_FISHING_WAIT	int	27
+  MOTION_FORGIVE	int	344
+  MOTION_FRENCH_KISS_WITH_ASSASSIN	int	314
+  MOTION_FRENCH_KISS_WITH_SHAMAN	int	316
+  MOTION_FRENCH_KISS_WITH_SURA	int	315
+  MOTION_FRENCH_KISS_WITH_WARRIOR	int	313
+  MOTION_INTRO_NOT_SELECTED	int	24
+  MOTION_INTRO_SELECTED	int	23
+  MOTION_INTRO_WAIT	int	22
+  MOTION_JOY	int	351
+  MOTION_KISS_WITH_ASSASSIN	int	310
+  MOTION_KISS_WITH_SHAMAN	int	312
+  MOTION_KISS_WITH_SURA	int	311
+  MOTION_KISS_WITH_WARRIOR	int	309
+  MOTION_MODE_BELL	int	7
+  MOTION_MODE_BOW	int	5
+  MOTION_MODE_DUALHAND_SWORD	int	4
+  MOTION_MODE_FAN	int	6
+  MOTION_MODE_FISHING	int	8
+  MOTION_MODE_GENERAL	int	1
+  MOTION_MODE_HORSE	int	9
+  MOTION_MODE_HORSE_BELL	int	15
+  MOTION_MODE_HORSE_BOW	int	13
+  MOTION_MODE_HORSE_DUALHAND_SWORD	int	12
+  MOTION_MODE_HORSE_FAN	int	14
+  MOTION_MODE_HORSE_ONEHAND_SWORD	int	10
+  MOTION_MODE_HORSE_TWOHAND_SWORD	int	11
+  MOTION_MODE_ONEHAND_SWORD	int	2
+  MOTION_MODE_RESERVED	int	0
+  MOTION_MODE_TWOHAND_SWORD	int	3
+  MOTION_MODE_WEDDING_DRESS	int	16
+  MOTION_NONE	int	0
+  MOTION_NORMAL_ATTACK	int	13
+  MOTION_RUN	int	3
+  MOTION_SAD	int	347
+  MOTION_SHY	int	348
+  MOTION_SKILL	int	50
+  MOTION_SLAP_HIT_WITH_ASSASSIN	int	318
+  MOTION_SLAP_HIT_WITH_SHAMAN	int	320
+  MOTION_SLAP_HIT_WITH_SURA	int	319
+  MOTION_SLAP_HIT_WITH_WARRIOR	int	317
+  MOTION_SLAP_HURT_WITH_ASSASSIN	int	322
+  MOTION_SLAP_HURT_WITH_SHAMAN	int	324
+  MOTION_SLAP_HURT_WITH_SURA	int	323
+  MOTION_SLAP_HURT_WITH_WARRIOR	int	321
+  MOTION_SPAWN	int	25
+  MOTION_STAND_UP	int	7
+  MOTION_STAND_UP_BACK	int	10
+  MOTION_STOP	int	32
+  MOTION_WAIT	int	1
+  MOTION_WALK	int	2
+  MountHorse	callable
+  MoveToDestPosition	callable
+  NEW_AFFECT_AUTOLOOT	int	503
+  NEW_AFFECT_AUTO_HP_RECOVERY	int	534
+  NEW_AFFECT_AUTO_SP_RECOVERY	int	535
+  NEW_AFFECT_DRAGON_SOUL_DECK1	int	541
+  NEW_AFFECT_DRAGON_SOUL_DECK2	int	542
+  NEW_AFFECT_DRAGON_SOUL_QUALIFIED	int	540
+  NEW_AFFECT_EXP_BONUS	int	500
+  NEW_AFFECT_EXP_BONUS_EURO_FREE	int	516
+  NEW_AFFECT_EXP_BONUS_EURO_FREE_UNDER_15	int	517
+  NEW_AFFECT_FISH_MIND	int	504
+  NEW_AFFECT_GOLD_BONUS	int	506
+  NEW_AFFECT_ITEM_BONUS	int	501
+  NEW_AFFECT_MALL	int	510
+  NEW_AFFECT_MARRIAGE_FAST	int	505
+  NEW_AFFECT_NO_DEATH_PENALTY	int	511
+  NEW_AFFECT_SAFEBOX	int	502
+  NEW_AFFECT_SKILL_BOOK_BONUS	int	512
+  NEW_AFFECT_SKILL_BOOK_NO_DELAY	int	513
+  PART_HEAD	int	2
+  PART_WEAPON	int	1
+  PART_WEAPON_LEFT	int	3
+  PLAYER_NAME_MAX_LEN	int	12
+  Pick	callable
+  PickAll	callable
+  PushLoopMotion	callable
+  PushOnceMotion	callable
+  RaceToJob	callable
+  RaceToSex	callable
+  Refresh	callable
+  Render	callable
+  RenderCollision	callable
+  Revive	callable
+  Select	callable
+  SelectInstance	callable
+  SetAddRenderMode	callable
+  SetArmor	callable
+  SetAttackSpeed	callable
+  SetBlendRenderMode	callable
+  SetDirection	callable
+  SetHair	callable
+  SetInstanceType	callable
+  SetLoopMotion	callable
+  SetMotionMode	callable
+  SetMoveSpeed	callable
+  SetNameString	callable
+  SetPixelPosition	callable
+  SetRace	callable
+  SetRotation	callable
+  SetRotationAll	callable
+  SetVirtualID	callable
+  SetWeapon	callable
+  Show	callable
+  Unselect	callable
+  Update	callable
+  WeaponTraceSetTexture	callable
+  WeaponTraceUseAlpha	callable
+  WeaponTraceUseTexture	callable
+  testGetPKData	callable
+  testRestoreRenderMode	callable
+  testSetAddRenderMode	callable
+  testSetAddRenderModeRGB	callable
+  testSetComboType	callable
+  testSetModulateRenderMode	callable
+  testSetModulateRenderModeRGB	callable
+  testSetRideMan	callable
+  testSetSpecularRenderMode	callable
+  testSetSpecularRenderMode2	callable
+module	chrmgr
+  AppendShapeSkin	callable
+  CreateRace	callable
+  EFFECT_AFFECT	int	27
+  EFFECT_AUTO_HPUP	int	267
+  EFFECT_AUTO_SPUP	int	268
+  EFFECT_BLOCK	int	19
+  EFFECT_CRITICAL	int	17
+  EFFECT_DAMAGE_CRITICAL	int	258
+  EFFECT_DAMAGE_MISS	int	256
+  EFFECT_DAMAGE_NOT_TARGET	int	252
+  EFFECT_DAMAGE_POISON	int	255
+  EFFECT_DAMAGE_SELFDAMAGE	int	253
+  EFFECT_DAMAGE_SELFDAMAGE2	int	254
+  EFFECT_DAMAGE_TARGET	int	251
+  EFFECT_DAMAGE_TARGETMISS	int	257
+  EFFECT_DODGE	int	20
+  EFFECT_DUST	int	0
+  EFFECT_DXUP_PURPLE	int	16
+  EFFECT_ELECTRIC_ATTACH	int	8
+  EFFECT_ELECTRIC_ATTACK	int	6
+  EFFECT_ELECTRIC_HIT	int	7
+  EFFECT_EMOTICON	int	92
+  EFFECT_EMPIRE	int	223
+  EFFECT_FAIL	int	260
+  EFFECT_FIRECRACKER	int	21
+  EFFECT_FLAME_ATTACH	int	5
+  EFFECT_FLAME_ATTACK	int	3
+  EFFECT_FLAME_HIT	int	4
+  EFFECT_FR_SUCCESS	int	261
+  EFFECT_HALLOWEEN_CANDY_EQUIP	int	270
+  EFFECT_HAPPINESS_RING_EQUIP	int	271
+  EFFECT_HIT	int	2
+  EFFECT_HORSE_DUST	int	228
+  EFFECT_HPUP_RED	int	13
+  EFFECT_LEVELUP	int	11
+  EFFECT_LEVELUP_ON_14_FOR_GERMANY	int	262
+  EFFECT_LEVELUP_UNDER_15_FOR_GERMANY	int	263
+  EFFECT_LOVE_PENDANT_EQUIP	int	272
+  EFFECT_PENETRATE	int	18
+  EFFECT_PERCENT_DAMAGE1	int	264
+  EFFECT_PERCENT_DAMAGE2	int	265
+  EFFECT_PERCENT_DAMAGE3	int	266
+  EFFECT_RAMADAN_RING_EQUIP	int	269
+  EFFECT_REFINED	int	229
+  EFFECT_SELECT	int	221
+  EFFECT_SKILLUP	int	12
+  EFFECT_SPAWN_APPEAR	int	9
+  EFFECT_SPAWN_DISAPPEAR	int	10
+  EFFECT_SPEEDUP_GREEN	int	15
+  EFFECT_SPIN_TOP	int	22
+  EFFECT_SPUP_BLUE	int	14
+  EFFECT_STUN	int	1
+  EFFECT_SUCCESS	int	259
+  EFFECT_TARGET	int	222
+  EFFECT_WEAPON	int	23
+  GetPickedVID	callable
+  GetVIDInfo	callable
+  IsPossibleEmoticon	callable
+  LoadLocalRaceData	callable
+  LoadRaceData	callable
+  NAMECOLOR_EMPIRE_MOB	int	14
+  NAMECOLOR_EMPIRE_NPC	int	15
+  NAMECOLOR_EMPIRE_PC	int	16
+  NAMECOLOR_EXTRA	int	31
+  NAMECOLOR_FUNC	int	21
+  NAMECOLOR_MOB	int	7
+  NAMECOLOR_NPC	int	8
+  NAMECOLOR_PARTY	int	24
+  NAMECOLOR_PC	int	9
+  NAMECOLOR_PK	int	22
+  NAMECOLOR_PVP	int	23
+  NAMECOLOR_WARP	int	25
+  NAMECOLOR_WAYPOINT	int	26
+  RegisterAttachingBoneName	callable
+  RegisterCacheEffect	callable
+  RegisterCacheMotionData	callable
+  RegisterComboAttack	callable
+  RegisterComboAttackNew	callable
+  RegisterEffect	callable
+  RegisterMotionData	callable
+  RegisterMotionMode	callable
+  RegisterNameColor	callable
+  RegisterNormalAttack	callable
+  RegisterPointEffect	callable
+  RegisterRaceName	callable
+  RegisterRaceSrcName	callable
+  RegisterTitleColor	callable
+  RegisterTitleName	callable
+  ReserveComboAttack	callable
+  ReserveComboAttackNew	callable
+  SelectRace	callable
+  SetAffect	callable
+  SetDustGap	callable
+  SetEmoticon	callable
+  SetEmpireNameMode	callable
+  SetHorseDustGap	callable
+  SetMotionRandomWeight	callable
+  SetMovingSpeed	callable
+  SetPathName	callable
+  SetShapeModel	callable
+  ShowPointEffect	callable
+  ToggleDirectionLine	callable
+module	dbg
+  LogBox	callable
+  RegisterExceptionString	callable
+  Trace	callable
+  TraceError	callable
+  Tracen	callable
+module	effect
+  CreateEffect	callable
+  DeleteEffect	callable
+  FLY_CHAIN_LIGHTNING	int	14
+  FLY_EXP	int	1
+  FLY_FIREWORK1	int	7
+  FLY_FIREWORK2	int	8
+  FLY_FIREWORK3	int	9
+  FLY_FIREWORK4	int	10
+  FLY_FIREWORK5	int	11
+  FLY_FIREWORK6	int	12
+  FLY_FIREWORK_XMAS	int	13
+  FLY_HP_BIG	int	3
+  FLY_HP_MEDIUM	int	2
+  FLY_HP_SMALL	int	15
+  FLY_NONE	int	0
+  FLY_SKILL_MUYEONG	int	16
+  FLY_SP_BIG	int	6
+  FLY_SP_MEDIUM	int	5
+  FLY_SP_SMALL	int	4
+  INDEX_FLY_TYPE_AUTO_FIRE	int	2
+  INDEX_FLY_TYPE_FIRE_CRACKER	int	1
+  INDEX_FLY_TYPE_NORMAL	int	0
+  RegisterEffect	callable
+  RegisterIndexedFlyData	callable
+  Render	callable
+  SetPosition	callable
+  Update	callable
+module	event
+  AddEventSetLocalYPosition	callable
+  BOX_VISIBLE_LINE_COUNT	int	5
+  BUTTON_TYPE_CANCEL	int	2
+  BUTTON_TYPE_DONE	int	1
+  BUTTON_TYPE_NEXT	int	0
+  ClearEventSet	callable
+  Destroy	callable
+  EndEventProcess	callable
+  GetEventSetLocalYPosition	callable
+  GetLineCount	callable
+  GetVisibleStartLine	callable
+  InsertText	callable
+  InsertTextInline	callable
+  IsWait	callable
+  QuestButtonClick	callable
+  RegisterEventSet	callable
+  RegisterEventSetFromString	callable
+  RenderEventSet	callable
+  SelectAnswer	callable
+  SetEventHandler	callable
+  SetEventSetWidth	callable
+  SetInterfaceWindow	callable
+  SetLeftTimeString	callable
+  SetRestrictedCount	callable
+  SetVisibleStartLine	callable
+  Skip	callable
+  UpdateEventSet	callable
+module	eventMgr
+  Update	callable
+module	exchange
+  EXCHANGE_ITEM_MAX_NUM	int	12
+  GetAcceptFromSelf	callable
+  GetAcceptFromTarget	callable
+  GetElkFromSelf	callable
+  GetElkFromTarget	callable
+  GetElkMode	callable
+  GetItemAttributeFromSelf	callable
+  GetItemAttributeFromTarget	callable
+  GetItemCountFromSelf	callable
+  GetItemCountFromTarget	callable
+  GetItemMetinSocketFromSelf	callable
+  GetItemMetinSocketFromTarget	callable
+  GetItemVnumFromSelf	callable
+  GetItemVnumFromTarget	callable
+  GetNameFromSelf	callable
+  GetNameFromTarget	callable
+  InitTrading	callable
+  SetElkMode	callable
+  isTrading	callable
+module	fly
+  Render	callable
+  Update	callable
+module	grp
+  ClearDepthBuffer	callable
+  ClearTextBar	callable
+  CreateBigTextBar	callable
+  CreateTextBar	callable
+  Culling	callable
+  DestroyTextBar	callable
+  GenerateColor	callable
+  GetAvailableMemory	callable
+  GetCameraPosition	callable
+  GetCursorPosition3d	callable
+  GetTargetPosition	callable
+  Identity	callable
+  InitScreenEffect	callable
+  PopMatrix	callable
+  PopState	callable
+  PushMatrix	callable
+  PushState	callable
+  RenderBar	callable
+  RenderBar3d	callable
+  RenderBox	callable
+  RenderBox3d	callable
+  RenderCube	callable
+  RenderDownButton	callable
+  RenderGradationBar	callable
+  RenderLine	callable
+  RenderRoundBox	callable
+  RenderTextBar	callable
+  RenderUpButton	callable
+  RestoreViewport	callable
+  Rotate	callable
+  SaveScreenShot	callable
+  SaveScreenShotToPath	callable
+  SetAlpha	callable
+  SetAroundCamera	callable
+  SetClearColor	callable
+  SetColor	callable
+  SetColorRenderState	callable
+  SetCursorPosition	callable
+  SetDiffuseColor	callable
+  SetEyeCamera	callable
+  SetGameRenderState	callable
+  SetGamma	callable
+  SetInterfaceRenderState	callable
+  SetOmniLight	callable
+  SetOrtho2d	callable
+  SetOrtho3d	callable
+  SetPerspective	callable
+  SetPositionCamera	callable
+  SetTextBarClipRect	callable
+  SetViewport	callable
+  TextBarGetTextExtent	callable
+  TextBarSetTextColor	callable
+  TextBarTextOut	callable
+  Translate	callable
+module	grpImage
+  Delete	callable
+  DeleteExpanded	callable
+  Generate	callable
+  GenerateExpanded	callable
+  GenerateFromHandle	callable
+  GetHeight	callable
+  GetWidth	callable
+  Render	callable
+  SetDiffuseColor	callable
+  SetFileName	callable
+  SetOrigin	callable
+  SetPosition	callable
+  SetRenderingRect	callable
+  SetRotation	callable
+  SetScale	callable
+module	grpText
+  Destroy	callable
+  Generate	callable
+  GetSize	callable
+  GetSplitingTextLine	callable
+  GetSplitingTextLineCount	callable
+  GetText	callable
+  HideCursor	callable
+  PixelPositionToCharacterPosition	callable
+  Render	callable
+  SetFontColor	callable
+  SetFontName	callable
+  SetHorizontalAlign	callable
+  SetMax	callable
+  SetOutLineColor	callable
+  SetOutline	callable
+  SetPosition	callable
+  SetSecret	callable
+  SetText	callable
+  SetVerticalAlign	callable
+  ShowCursor	callable
+  Update	callable
+module	guild
+  AUTH_ADD_MEMBER	int	1
+  AUTH_NOTICE	int	4
+  AUTH_REMOVE_MEMBER	int	2
+  AUTH_SKILL	int	8
+  Destroy	callable
+  ENEMY_GUILD_SLOT_MAX_COUNT	int	6
+  GetDragonPowerPoint	callable
+  GetEnemyGuildName	callable
+  GetGradeData	callable
+  GetGradeName	callable
+  GetGuildBoardCommentCount	callable
+  GetGuildBoardCommentData	callable
+  GetGuildExperience	callable
+  GetGuildExperienceSummary	callable
+  GetGuildID	callable
+  GetGuildLevel	callable
+  GetGuildMasterName	callable
+  GetGuildMemberCount	callable
+  GetGuildMemberLevelAverage	callable
+  GetGuildMemberLevelSummary	callable
+  GetGuildMoney	callable
+  GetGuildName	callable
+  GetGuildSkillLevel	callable
+  GetGuildSkillPoint	callable
+  GetMarkImageFilenameByMarkID	callable
+  GetMarkIndexByMarkID	callable
+  GetMemberCount	callable
+  GetMemberData	callable
+  GetSkillIndex	callable
+  GetSkillLevel	callable
+  GetSkillMaxLevelNew	callable
+  GuildIDToMarkID	callable
+  HasGuildLand	callable
+  IsGuildEnable	callable
+  IsMember	callable
+  IsMemberByName	callable
+  MainPlayerHasAuthority	callable
+  MemberIndexToPID	callable
+  SetSkillIndex	callable
+module	ime
+  AddExceptKey	callable
+  ClearExceptKey	callable
+  Delete	callable
+  Disable	callable
+  DisableCaptureInput	callable
+  DisableIME	callable
+  Enable	callable
+  EnableCaptureInput	callable
+  EnableIME	callable
+  EnablePaste	callable
+  GetCandidate	callable
+  GetCandidateCount	callable
+  GetCandidateSelection	callable
+  GetCodePage	callable
+  GetInputMode	callable
+  GetReading	callable
+  GetReadingError	callable
+  GetText	callable
+  MoveEnd	callable
+  MoveHome	callable
+  MoveLeft	callable
+  MoveRight	callable
+  PasteBackspace	callable
+  PasteReturn	callable
+  PasteString	callable
+  PasteTextFromClipBoard	callable
+  SetCursorPosition	callable
+  SetInputMode	callable
+  SetMax	callable
+  SetNumberMode	callable
+  SetStringMode	callable
+  SetText	callable
+  SetUserMax	callable
+module	item
+  ANTIFLAG_ASSASSIN	int	8
+  ANTIFLAG_DROP	int	128
+  ANTIFLAG_EMPIRE_A	int	512
+  ANTIFLAG_EMPIRE_B	int	1024
+  ANTIFLAG_EMPIRE_R	int	2048
+  ANTIFLAG_FEMALE	int	1
+  ANTIFLAG_GET	int	64
+  ANTIFLAG_GIVE	int	8192
+  ANTIFLAG_MALE	int	2
+  ANTIFLAG_MYSHOP	int	65536
+  ANTIFLAG_PKDROP	int	16384
+  ANTIFLAG_SAVE	int	4096
+  ANTIFLAG_SELL	int	256
+  ANTIFLAG_SHAMAN	int	32
+  ANTIFLAG_STACK	int	32768
+  ANTIFLAG_SURA	int	16
+  ANTIFLAG_WARRIOR	int	4
+  APPLY_ANTI_CRITICAL_PCT	int	90
+  APPLY_ANTI_PENETRATE_PCT	int	91
+  APPLY_ATTBONUS_ANIMAL	int	18
+  APPLY_ATTBONUS_ASSASSIN	int	60
+  APPLY_ATTBONUS_DEVIL	int	22
+  APPLY_ATTBONUS_HUMAN	int	17
+  APPLY_ATTBONUS_MILGYO	int	20
+  APPLY_ATTBONUS_MONSTER	int	63
+  APPLY_ATTBONUS_ORC	int	19
+  APPLY_ATTBONUS_SHAMAN	int	62
+  APPLY_ATTBONUS_SURA	int	61
+  APPLY_ATTBONUS_UNDEAD	int	21
+  APPLY_ATTBONUS_WARRIOR	int	59
+  APPLY_ATT_GRADE_BONUS	int	53
+  APPLY_ATT_SPEED	int	7
+  APPLY_BLOCK	int	27
+  APPLY_BOW_DISTANCE	int	52
+  APPLY_CAST_SPEED	int	9
+  APPLY_CON	int	3
+  APPLY_COSTUME_ATTR_BONUS	int	84
+  APPLY_CRITICAL_PCT	int	15
+  APPLY_DAMAGE_SP_RECOVER	int	26
+  APPLY_DEF_GRADE_BONUS	int	54
+  APPLY_DEX	int	6
+  APPLY_DODGE	int	28
+  APPLY_ENERGY	int	82
+  APPLY_EXP_DOUBLE_BONUS	int	43
+  APPLY_GOLD_DOUBLE_BONUS	int	44
+  APPLY_HP_REGEN	int	10
+  APPLY_IMMUNE_FALL	int	50
+  APPLY_IMMUNE_SLOW	int	49
+  APPLY_IMMUNE_STUN	int	48
+  APPLY_INT	int	4
+  APPLY_ITEM_DROP_BONUS	int	45
+  APPLY_KILL_HP_RECOVER	int	47
+  APPLY_KILL_SP_RECOVER	int	42
+  APPLY_MAGIC_ATTBONUS_PER	int	85
+  APPLY_MAGIC_ATT_GRADE	int	55
+  APPLY_MAGIC_DEF_GRADE	int	56
+  APPLY_MALL_ATTBONUS	int	64
+  APPLY_MALL_DEFBONUS	int	65
+  APPLY_MALL_EXPBONUS	int	66
+  APPLY_MALL_GOLDBONUS	int	68
+  APPLY_MALL_ITEMBONUS	int	67
+  APPLY_MANA_BURN_PCT	int	25
+  APPLY_MAX_HP	int	1
+  APPLY_MAX_HP_PCT	int	69
+  APPLY_MAX_SP	int	2
+  APPLY_MAX_SP_PCT	int	70
+  APPLY_MAX_STAMINA	int	58
+  APPLY_MELEE_MAGIC_ATTBONUS_PER	int	86
+  APPLY_MOV_SPEED	int	8
+  APPLY_NONE	int	0
+  APPLY_NORMAL_HIT_DAMAGE_BONUS	int	72
+  APPLY_NORMAL_HIT_DEFEND_BONUS	int	74
+  APPLY_PC_BANG_DROP_BONUS	int	77
+  APPLY_PC_BANG_EXP_BONUS	int	76
+  APPLY_PENETRATE_PCT	int	16
+  APPLY_POISON_PCT	int	12
+  APPLY_POISON_REDUCE	int	41
+  APPLY_POTION_BONUS	int	46
+  APPLY_REFLECT_CURSE	int	40
+  APPLY_REFLECT_MELEE	int	39
+  APPLY_RESIST_ASSASSIN	int	79
+  APPLY_RESIST_BELL	int	32
+  APPLY_RESIST_BOW	int	34
+  APPLY_RESIST_DAGGER	int	31
+  APPLY_RESIST_DARK	int	89
+  APPLY_RESIST_EARTH	int	88
+  APPLY_RESIST_ELEC	int	36
+  APPLY_RESIST_FAN	int	33
+  APPLY_RESIST_FIRE	int	35
+  APPLY_RESIST_ICE	int	87
+  APPLY_RESIST_MAGIC	int	37
+  APPLY_RESIST_SHAMAN	int	81
+  APPLY_RESIST_SURA	int	80
+  APPLY_RESIST_SWORD	int	29
+  APPLY_RESIST_TWOHAND	int	30
+  APPLY_RESIST_WARRIOR	int	78
+  APPLY_RESIST_WIND	int	38
+  APPLY_SKILL	int	51
+  APPLY_SKILL_DAMAGE_BONUS	int	71
+  APPLY_SKILL_DEFEND_BONUS	int	73
+  APPLY_SLOW_PCT	int	14
+  APPLY_SP_REGEN	int	11
+  APPLY_STEAL_HP	int	23
+  APPLY_STEAL_SP	int	24
+  APPLY_STR	int	5
+  APPLY_STUN_PCT	int	13
+  ARMOR_BODY	int	0
+  ARMOR_EAR	int	6
+  ARMOR_FOOTS	int	4
+  ARMOR_HEAD	int	1
+  ARMOR_NECK	int	5
+  ARMOR_SHIELD	int	2
+  ARMOR_WRIST	int	3
+  BELT_INVENTORY_SLOT_COUNT	int	16
+  BELT_INVENTORY_SLOT_END	int	168
+  BELT_INVENTORY_SLOT_START	int	152
+  COSTUME_SLOT_BODY	int	109
+  COSTUME_SLOT_COUNT	int	2
+  COSTUME_SLOT_END	int	111
+  COSTUME_SLOT_HAIR	int	110
+  COSTUME_SLOT_START	int	109
+  COSTUME_TYPE_BODY	int	0
+  COSTUME_TYPE_HAIR	int	1
+  CanAddToQuickSlotItem	callable
+  CreateItem	callable
+  DROPSOUND_ACCESSORY	int	4
+  DROPSOUND_ARMOR	int	1
+  DROPSOUND_BOW	int	3
+  DROPSOUND_DEFAULT	int	0
+  DROPSOUND_WEAPON	int	2
+  DeleteIconInstance	callable
+  DeleteItem	callable
+  EQUIPMENT_ARROW	int	99
+  EQUIPMENT_BELT	int	113
+  EQUIPMENT_BODY	int	90
+  EQUIPMENT_COUNT	int	12
+  EQUIPMENT_EAR	int	96
+  EQUIPMENT_HEAD	int	91
+  EQUIPMENT_NECK	int	95
+  EQUIPMENT_RING1	int	111
+  EQUIPMENT_RING2	int	112
+  EQUIPMENT_SHOES	int	92
+  EQUIPMENT_UNIQUE1	int	97
+  EQUIPMENT_UNIQUE2	int	98
+  EQUIPMENT_WEAPON	int	94
+  EQUIPMENT_WRIST	int	93
+  GetAffect	callable
+  GetIBuyItemPrice	callable
+  GetISellItemPrice	callable
+  GetIconImage	callable
+  GetIconImageFileName	callable
+  GetIconInstance	callable
+  GetItemDescription	callable
+  GetItemName	callable
+  GetItemSize	callable
+  GetItemSubType	callable
+  GetItemSummary	callable
+  GetItemType	callable
+  GetLimit	callable
+  GetSocket	callable
+  GetUseType	callable
+  GetValue	callable
+  ITEM_ANTIFLAG_ASSASSIN	int	8
+  ITEM_ANTIFLAG_DROP	int	128
+  ITEM_ANTIFLAG_EMPIRE_A	int	512
+  ITEM_ANTIFLAG_EMPIRE_B	int	1024
+  ITEM_ANTIFLAG_EMPIRE_R	int	2048
+  ITEM_ANTIFLAG_FEMALE	int	1
+  ITEM_ANTIFLAG_GET	int	64
+  ITEM_ANTIFLAG_GIVE	int	8192
+  ITEM_ANTIFLAG_MALE	int	2
+  ITEM_ANTIFLAG_MYSHOP	int	65536
+  ITEM_ANTIFLAG_PKDROP	int	16384
+  ITEM_ANTIFLAG_SAVE	int	4096
+  ITEM_ANTIFLAG_SELL	int	256
+  ITEM_ANTIFLAG_SHAMAN	int	32
+  ITEM_ANTIFLAG_STACK	int	32768
+  ITEM_ANTIFLAG_SURA	int	16
+  ITEM_ANTIFLAG_WARRIOR	int	4
+  ITEM_APPLY_MAX_NUM	int	3
+  ITEM_FLAG_CONFIRM_WHEN_USE	int	512
+  ITEM_FLAG_RARE	int	32
+  ITEM_FLAG_UNIQUE	int	64
+  ITEM_SOCKET_MAX_NUM	int	3
+  ITEM_TYPE_ARMOR	int	2
+  ITEM_TYPE_AUTOUSE	int	4
+  ITEM_TYPE_BELT	int	34
+  ITEM_TYPE_BLEND	int	27
+  ITEM_TYPE_CAMPFIRE	int	15
+  ITEM_TYPE_CONTAINER	int	11
+  ITEM_TYPE_COSTUME	int	28
+  ITEM_TYPE_DS	int	29
+  ITEM_TYPE_ELK	int	9
+  ITEM_TYPE_FISH	int	12
+  ITEM_TYPE_LOTTERY	int	8
+  ITEM_TYPE_MATERIAL	int	5
+  ITEM_TYPE_METIN	int	10
+  ITEM_TYPE_NONE	int	0
+  ITEM_TYPE_PICK	int	24
+  ITEM_TYPE_POLYMORPH	int	19
+  ITEM_TYPE_QUEST	int	18
+  ITEM_TYPE_RESOURCE	int	14
+  ITEM_TYPE_RING	int	33
+  ITEM_TYPE_ROD	int	13
+  ITEM_TYPE_SKILLBOOK	int	17
+  ITEM_TYPE_SPECIAL	int	6
+  ITEM_TYPE_SPECIAL_DS	int	30
+  ITEM_TYPE_TOOL	int	7
+  ITEM_TYPE_TREASURE_BOX	int	20
+  ITEM_TYPE_TREASURE_KEY	int	21
+  ITEM_TYPE_UNIQUE	int	16
+  ITEM_TYPE_USE	int	3
+  ITEM_TYPE_WEAPON	int	1
+  Is1GoldItem	callable
+  IsAntiFlag	callable
+  IsDetachScroll	callable
+  IsEquipmentVID	callable
+  IsFlag	callable
+  IsKey	callable
+  IsMetin	callable
+  IsRefineScroll	callable
+  IsWearableFlag	callable
+  LIMIT_CON	int	5
+  LIMIT_DEX	int	3
+  LIMIT_INT	int	4
+  LIMIT_LEVEL	int	1
+  LIMIT_MAX_NUM	int	2
+  LIMIT_NONE	int	0
+  LIMIT_PCBANG	int	6
+  LIMIT_REAL_TIME	int	7
+  LIMIT_REAL_TIME_START_FIRST_USE	int	8
+  LIMIT_STR	int	2
+  LIMIT_TIMER_BASED_ON_WEAR	int	9
+  LIMIT_TYPE_MAX_NUM	int	10
+  LoadItemTable	callable
+  MATERIAL_DS_REFINE_BLESSED	int	6
+  MATERIAL_DS_REFINE_HOLLY	int	7
+  MATERIAL_DS_REFINE_NORMAL	int	5
+  METIN_GOLD	int	1
+  METIN_NORMAL	int	0
+  Pick	callable
+  Render	callable
+  SelectItem	callable
+  SetDropSoundFileName	callable
+  SetUseSoundFileName	callable
+  USESOUND_ACCESSORY	int	5
+  USESOUND_ARMOR	int	2
+  USESOUND_BOW	int	4
+  USESOUND_DEFAULT	int	1
+  USESOUND_PORTAL	int	7
+  USESOUND_POTION	int	6
+  USESOUND_WEAPON	int	3
+  USE_ABILITY_UP	int	7
+  USE_AFFECT	int	8
+  USE_BAIT	int	6
+  USE_CLEAR	int	12
+  USE_CREATE_STONE	int	9
+  USE_DETACHMENT	int	14
+  USE_INVISIBILITY	int	13
+  USE_MONEYBAG	int	5
+  USE_MOVE	int	3
+  USE_POTION	int	0
+  USE_POTION_NODELAY	int	11
+  USE_SPECIAL	int	10
+  USE_TALISMAN	int	1
+  USE_TIME_CHARGE_FIX	int	28
+  USE_TIME_CHARGE_PER	int	27
+  USE_TREASURE_BOX	int	4
+  USE_TUNING	int	2
+  Update	callable
+  WEAPON_ARROW	int	6
+  WEAPON_BELL	int	4
+  WEAPON_BOW	int	2
+  WEAPON_DAGGER	int	1
+  WEAPON_FAN	int	5
+  WEAPON_NUM_TYPES	int	7
+  WEAPON_SWORD	int	0
+  WEAPON_TWO_HANDED	int	3
+  WEARABLE_ARROW	int	512
+  WEARABLE_BODY	int	1
+  WEARABLE_EAR	int	64
+  WEARABLE_FOOTS	int	4
+  WEARABLE_HEAD	int	2
+  WEARABLE_NECK	int	32
+  WEARABLE_SHIELD	int	256
+  WEARABLE_UNIQUE	int	128
+  WEARABLE_WEAPON	int	16
+  WEARABLE_WRIST	int	8
+module	math
+  acos	callable
+  asin	callable
+  atan	callable
+  atan2	callable
+  ceil	callable
+  cos	callable
+  degrees	callable
+  e	float	2.718281828459045
+  exp	callable
+  fabs	callable
+  floor	callable
+  fmod	callable
+  hypot	callable
+  log	callable
+  log10	callable
+  modf	callable
+  pi	float	3.141592653589793
+  pow	callable
+  radians	callable
+  sin	callable
+  sqrt	callable
+  tan	callable
+module	messenger
+  Destroy	callable
+  IsFriendByName	callable
+  RefreshGuildMember	callable
+  RemoveFriend	callable
+  SetMessengerHandler	callable
+module	miniMap
+  AddWayPoint	callable
+  Create	callable
+  Destroy	callable
+  GetAtlasInfo	callable
+  GetAtlasSize	callable
+  GetGuildAreaID	callable
+  GetInfo	callable
+  Hide	callable
+  HideAtlas	callable
+  IsAtlas	callable
+  LoadAtlas	callable
+  RegisterAtlasWindow	callable
+  RemoveWayPoint	callable
+  Render	callable
+  RenderAtlas	callable
+  ScaleDown	callable
+  ScaleUp	callable
+  SetCenterPosition	callable
+  SetMiniMapSize	callable
+  SetScale	callable
+  Show	callable
+  ShowAtlas	callable
+  TYPE_EMPIRE	int	8
+  TYPE_MONSTER	int	4
+  TYPE_NPC	int	3
+  TYPE_OPC	int	0
+  TYPE_OPCPVP	int	1
+  TYPE_OPCPVPSELF	int	2
+  TYPE_PARTY	int	7
+  TYPE_WARP	int	5
+  TYPE_WAYPOINT	int	6
+  UnregisterAtlasWindow	callable
+  Update	callable
+  UpdateAtlas	callable
+  isShow	callable
+  isShowAtlas	callable
+module	net
+  ACCOUNT_CHARACTER_SLOT_ADDR	int	10
+  ACCOUNT_CHARACTER_SLOT_CHANGE_NAME_FLAG	int	14
+  ACCOUNT_CHARACTER_SLOT_DEX	int	5
+  ACCOUNT_CHARACTER_SLOT_FORM	int	9
+  ACCOUNT_CHARACTER_SLOT_GUILD_ID	int	12
+  ACCOUNT_CHARACTER_SLOT_GUILD_NAME	int	13
+  ACCOUNT_CHARACTER_SLOT_HAIR	int	15
+  ACCOUNT_CHARACTER_SLOT_HTH	int	6
+  ACCOUNT_CHARACTER_SLOT_ID	int	0
+  ACCOUNT_CHARACTER_SLOT_INT	int	7
+  ACCOUNT_CHARACTER_SLOT_LEVEL	int	3
+  ACCOUNT_CHARACTER_SLOT_NAME	int	1
+  ACCOUNT_CHARACTER_SLOT_PLAYTIME	int	8
+  ACCOUNT_CHARACTER_SLOT_PORT	int	11
+  ACCOUNT_CHARACTER_SLOT_RACE	int	2
+  ACCOUNT_CHARACTER_SLOT_STR	int	4
+  ClearPhaseWindow	callable
+  ConnectTCP	callable
+  ConnectToAccountServer	callable
+  DS_SUB_HEADER_REFINE_FAIL	int	5
+  DS_SUB_HEADER_REFINE_FAIL_INVALID_MATERIAL	int	7
+  DS_SUB_HEADER_REFINE_FAIL_MAX_REFINE	int	6
+  DS_SUB_HEADER_REFINE_FAIL_NOT_ENOUGH_MATERIAL	int	9
+  DS_SUB_HEADER_REFINE_FAIL_NOT_ENOUGH_MONEY	int	8
+  DS_SUB_HEADER_REFINE_FAIL_TOO_MUCH_MATERIAL	int	10
+  DS_SUB_HEADER_REFINE_SUCCEED	int	11
+  DirectEnter	callable
+  Disconnect	callable
+  DisconnectUploader	callable
+  EMPIRE_A	int	1
+  EMPIRE_B	int	2
+  EMPIRE_C	int	3
+  ERROR_CONNECT_MARK_SERVER	int	2
+  ERROR_LOAD_MARK	int	3
+  ERROR_MARK_CHECK_NEED_RECONNECT	int	7
+  ERROR_MARK_HEIGHT	int	5
+  ERROR_MARK_UPLOAD_NEED_RECONNECT	int	6
+  ERROR_MARK_WIDTH	int	4
+  ERROR_NONE	int	0
+  EnableChatInsultFilter	callable
+  ExitApplication	callable
+  ExitGame	callable
+  GetAccountCharacterSlotDataInteger	callable
+  GetAccountCharacterSlotDataString	callable
+  GetBettingGuildWarValue	callable
+  GetEmpireID	callable
+  GetFieldMusicFileName	callable
+  GetFieldMusicVolume	callable
+  GetGuildID	callable
+  GetMainActorEmpire	callable
+  GetMainActorRace	callable
+  GetMainActorSkillGroup	callable
+  GetMainActorVID	callable
+  GetPreservedServerCommand	callable
+  GetServerInfo	callable
+  IsChatInsultIn	callable
+  IsConnect	callable
+  IsInsultIn	callable
+  IsTest	callable
+  LoadInsultList	callable
+  LogOutGame	callable
+  PHASE_WINDOW_CREATE	int	3
+  PHASE_WINDOW_EMPIRE	int	6
+  PHASE_WINDOW_GAME	int	5
+  PHASE_WINDOW_LOAD	int	4
+  PHASE_WINDOW_LOGIN	int	1
+  PHASE_WINDOW_LOGO	int	0
+  PHASE_WINDOW_SELECT	int	2
+  PreserveServerCommand	callable
+  RecvGuildSymbol	callable
+  RegisterEmoticonString	callable
+  RegisterErrorLog	callable
+  SERVER_COMMAND_LOG_OUT	int	0
+  SERVER_COMMAND_QUIT	int	2
+  SERVER_COMMAND_RETURN_TO_SELECT_CHARACTER	int	1
+  SendAnswerMakeGuildPacket	callable
+  SendChangeNamePacket	callable
+  SendCharacterPositionPacket	callable
+  SendChatPacket	callable
+  SendChinaMatrixCardPacket	callable
+  SendCreateCharacterPacket	callable
+  SendDestroyCharacterPacket	callable
+  SendElkDropPacket	callable
+  SendEmoticon	callable
+  SendEnterGamePacket	callable
+  SendExchangeAcceptPacket	callable
+  SendExchangeElkAddPacket	callable
+  SendExchangeExitPacket	callable
+  SendExchangeItemAddPacket	callable
+  SendExchangeItemDelPacket	callable
+  SendExchangeStartPacket	callable
+  SendGiveItemPacket	callable
+  SendGoldDropPacketNew	callable
+  SendGuildAddMemberPacket	callable
+  SendGuildChangeGradeAuthorityPacket	callable
+  SendGuildChangeGradeNamePacket	callable
+  SendGuildChangeMemberGeneralPacket	callable
+  SendGuildChangeMemberGradePacket	callable
+  SendGuildChargeGSPPacket	callable
+  SendGuildDeleteCommentPacket	callable
+  SendGuildDepositMoneyPacket	callable
+  SendGuildInviteAnswerPacket	callable
+  SendGuildOfferPacket	callable
+  SendGuildPostCommentPacket	callable
+  SendGuildRefreshCommentsPacket	callable
+  SendGuildRemoveMemberPacket	callable
+  SendGuildSymbol	callable
+  SendGuildUseSkillPacket	callable
+  SendGuildWithdrawMoneyPacket	callable
+  SendItemDropPacket	callable
+  SendItemDropPacketNew	callable
+  SendItemMovePacket	callable
+  SendItemPickUpPacket	callable
+  SendItemUsePacket	callable
+  SendItemUseToItemPacket	callable
+  SendLoginPacket	callable
+  SendMallCheckoutPacket	callable
+  SendMessengerAddByNamePacket	callable
+  SendMessengerAddByVIDPacket	callable
+  SendMessengerRemovePacket	callable
+  SendNEWCIBNPasspodAnswerPacket	callable
+  SendOnClickPacket	callable
+  SendPartyExitPacket	callable
+  SendPartyInviteAnswerPacket	callable
+  SendPartyInvitePacket	callable
+  SendPartyParameterPacket	callable
+  SendPartyRemovePacket	callable
+  SendPartySetStatePacket	callable
+  SendPartyUseSkillPacket	callable
+  SendQuestConfirmPacket	callable
+  SendQuestInputStringPacket	callable
+  SendRefinePacket	callable
+  SendRequestRefineInfoPacket	callable
+  SendRunupMatrixCardPacket	callable
+  SendSafeboxCheckinPacket	callable
+  SendSafeboxCheckoutPacket	callable
+  SendSafeboxItemMovePacket	callable
+  SendSafeboxSaveMoneyPacket	callable
+  SendSafeboxWithdrawMoneyPacket	callable
+  SendSelectCharacterPacket	callable
+  SendSelectEmpirePacket	callable
+  SendSelectItemPacket	callable
+  SendShopBuyPacket	callable
+  SendShopEndPacket	callable
+  SendShopSellPacket	callable
+  SendShopSellPacketNew	callable
+  SendWhisperPacket	callable
+  SetAccountConnectorHandler	callable
+  SetEmpireLanguageMode	callable
+  SetHandler	callable
+  SetLoginInfo	callable
+  SetMarkServer	callable
+  SetOfflinePhase	callable
+  SetPacketSequenceMode	callable
+  SetPhaseWindow	callable
+  SetServerCommandParserWindow	callable
+  SetServerInfo	callable
+  SetSkillGroupFake	callable
+  SetTCPRecvBufferSize	callable
+  SetTCPSendBufferSize	callable
+  StartGame	callable
+  ToggleGameDebugInfo	callable
+  UploadMark	callable
+  UploadSymbol	callable
+  Warp	callable
+module	nonplayer
+  BOSS	int	4
+  GetEventType	callable
+  GetEventTypeByVID	callable
+  GetGradeByVID	callable
+  GetLevelByVID	callable
+  GetMonsterName	callable
+  KING	int	5
+  KNIGHT	int	2
+  LoadNonPlayerData	callable
+  ON_CLICK_EVENT_BATTLE	int	1
+  ON_CLICK_EVENT_NONE	int	0
+  ON_CLICK_EVENT_SHOP	int	2
+  ON_CLICK_EVENT_TALK	int	3
+  ON_CLICK_EVENT_VEHICLE	int	4
+  PAWN	int	0
+  S_KNIGHT	int	3
+  S_PAWN	int	1
+module	pack
+  Exist	callable
+  Get	callable
+module	player
+  ATTACH_METIN_CANT	int	0
+  ATTACH_METIN_CANT_ATTACH_TO_EQUIPMENT	int	5
+  ATTACH_METIN_NOT_EXIST_GOLD_SOCKET	int	4
+  ATTACH_METIN_NOT_MATCHABLE_ITEM	int	2
+  ATTACH_METIN_NO_MATCHABLE_SOCKET	int	3
+  ATTACH_METIN_OK	int	1
+  ATTACKER_BONUS	int	91
+  ATTRIBUTE_SLOT_MAX_NUM	int	7
+  ATT_BONUS	int	95
+  ATT_MAX	int	30
+  ATT_MIN	int	29
+  ATT_POWER	int	16
+  ATT_SPEED	int	17
+  AUTO_POTION_TYPE_HP	int	0
+  AUTO_POTION_TYPE_SP	int	1
+  ActEmotion	callable
+  AffectIndexToSkillIndex	callable
+  BLOCK_EXCHANGE	int	1
+  BLOCK_FRIEND	int	16
+  BLOCK_GUILD	int	4
+  BLOCK_PARTY	int	2
+  BLOCK_PARTY_REQUEST	int	32
+  BLOCK_WHISPER	int	8
+  BOW_DISTANCE	int	34
+  CASTING_SPEED	int	21
+  CATEGORY_ACTIVE	int	1
+  CATEGORY_PASSIVE	int	2
+  CanAttachMetin	callable
+  CanAttackInstance	callable
+  CanDetach	callable
+  CanRefine	callable
+  CanUnlock	callable
+  ChangeCurrentSkillNumberOnly	callable
+  Clear	callable
+  ClearSkillDict	callable
+  ClearTarget	callable
+  ClickSkillSlot	callable
+  ComboAttack	callable
+  DEF_BONUS	int	96
+  DEF_GRADE	int	20
+  DETACH_METIN_CANT	int	0
+  DETACH_METIN_OK	int	1
+  DRAGON_SOUL_EQUIPMENT_FIRST_SIZE	int	6
+  DRAGON_SOUL_EQUIPMENT_PAGE_COUNT	int	2
+  DRAGON_SOUL_EQUIPMENT_SLOT_START	int	122
+  DRAGON_SOUL_INVENTORY	int	5
+  DRAGON_SOUL_PAGE_COUNT	int	5
+  DRAGON_SOUL_PAGE_SIZE	int	32
+  DRAGON_SOUL_REFINE_CLOSE	int	1
+  DRAGON_SOUL_SLOT_COUNT	int	960
+  DS_SUB_HEADER_DO_IMPROVEMENT	int	3
+  DS_SUB_HEADER_DO_REFINE	int	4
+  DS_SUB_HEADER_DO_UPGRADE	int	2
+  DX	int	14
+  EFFECT_PICK	int	0
+  ELK	int	11
+  EMOTION_ANGRY	int	12
+  EMOTION_ATTRACTIVE	int	13
+  EMOTION_BANTER	int	17
+  EMOTION_CHEERS_1	int	2
+  EMOTION_CHEERS_2	int	3
+  EMOTION_CHEERUP	int	16
+  EMOTION_CLAP	int	1
+  EMOTION_CONGRATULATION	int	10
+  EMOTION_DANCE_1	int	4
+  EMOTION_DANCE_2	int	5
+  EMOTION_DANCE_3	int	6
+  EMOTION_DANCE_4	int	7
+  EMOTION_DANCE_5	int	8
+  EMOTION_DANCE_6	int	9
+  EMOTION_FORGIVE	int	11
+  EMOTION_FRENCH_KISS	int	52
+  EMOTION_JOY	int	18
+  EMOTION_KISS	int	51
+  EMOTION_SAD	int	14
+  EMOTION_SHY	int	15
+  EMOTION_SLAP	int	53
+  EMPIRE_POINT	int	24
+  ENERGY	int	128
+  ENERGY_END_TIME	int	129
+  EQUIPMENT	int	2
+  EQUIPMENT_PAGE_COUNT	int	12
+  EQUIPMENT_SLOT_START	int	90
+  EVADE_RATE	int	18
+  EXP	int	3
+  EndKeyWalkingImmediately	callable
+  EndMouseWalking	callable
+  ExitParty	callable
+  GROUND	int	6
+  GetAlignmentData	callable
+  GetAutoPotionInfo	callable
+  GetCharacterDistance	callable
+  GetEXP	callable
+  GetElk	callable
+  GetEmotionIconImage	callable
+  GetGlobalQuickSlot	callable
+  GetGuildID	callable
+  GetGuildName	callable
+  GetISellItemPrice	callable
+  GetItemAttribute	callable
+  GetItemCount	callable
+  GetItemCountByVnum	callable
+  GetItemFlags	callable
+  GetItemGrade	callable
+  GetItemIndex	callable
+  GetItemLink	callable
+  GetItemMetinSocket	callable
+  GetJob	callable
+  GetLocalQuickSlot	callable
+  GetMainCharacterIndex	callable
+  GetMainCharacterName	callable
+  GetMainCharacterPosition	callable
+  GetMoney	callable
+  GetMouseFunc	callable
+  GetName	callable
+  GetPKMode	callable
+  GetPartyMemberAffects	callable
+  GetPartyMemberHPPercentage	callable
+  GetPartyMemberState	callable
+  GetPlayTime	callable
+  GetQuickPage	callable
+  GetRace	callable
+  GetSkillCoolTime	callable
+  GetSkillCurrentEfficientPercentage	callable
+  GetSkillGrade	callable
+  GetSkillIndex	callable
+  GetSkillLevel	callable
+  GetSkillNextEfficientPercentage	callable
+  GetSkillSlotIndex	callable
+  GetStatus	callable
+  GetTargetVID	callable
+  HP	int	5
+  HP_RECOVERY	int	35
+  HT	int	13
+  HidePlayer	callable
+  INVENTORY	int	1
+  INVENTORY_PAGE_COUNT	int	2
+  INVENTORY_PAGE_SIZE	int	45
+  INVENTORY_SLOT_COUNT	int	168
+  IQ	int	15
+  ITEM_MONEY	int	-1
+  IsActingEmotion	callable
+  IsAvailableBeltInventoryCell	callable
+  IsBeltInventorySlot	callable
+  IsCantFightInstance	callable
+  IsChallengeInstance	callable
+  IsCostumeSlot	callable
+  IsDSEquipmentSlot	callable
+  IsEquipmentSlot	callable
+  IsEquippingBelt	callable
+  IsInSafeArea	callable
+  IsMainCharacterIndex	callable
+  IsMountingHorse	callable
+  IsObserverMode	callable
+  IsOpenPrivateShop	callable
+  IsPVPInstance	callable
+  IsPartyLeader	callable
+  IsPartyLeaderByPID	callable
+  IsPartyMember	callable
+  IsRefineGradeScroll	callable
+  IsRevengeInstance	callable
+  IsSameEmpire	callable
+  IsSkillActive	callable
+  IsSkillCoolTime	callable
+  IsValuableItem	callable
+  LEVEL	int	1
+  LocalQuickSlotIndexToGlobalQuickSlotIndex	callable
+  MAG_ATT	int	22
+  MAG_DEF	int	23
+  MALL	int	4
+  MAX_HP	int	6
+  MAX_MAGIC_WEP	int	203
+  MAX_NUM	int	255
+  MAX_SP	int	8
+  MAX_STAMINA	int	10
+  MBF_ATTACK	int	3
+  MBF_AUTO	int	5
+  MBF_CAMERA	int	2
+  MBF_MOVE	int	1
+  MBF_SKILL	int	4
+  MBF_SMART	int	0
+  MBS_CLICK	int	0
+  MBS_PRESS	int	1
+  MBT_LEFT	int	0
+  MBT_RIGHT	int	1
+  METIN_SOCKET_MAX_NUM	int	3
+  METIN_SOCKET_TYPE_GOLD	int	2
+  METIN_SOCKET_TYPE_NONE	int	0
+  METIN_SOCKET_TYPE_SILVER	int	1
+  MIN_MAGIC_WEP	int	202
+  MOVING_SPEED	int	19
+  MoveItem	callable
+  NEW_EQUIPMENT_SLOT_COUNT	int	3
+  NEW_EQUIPMENT_SLOT_START	int	111
+  NEXT_EXP	int	4
+  OpenCharacterMenu	callable
+  PARTY_EXP_DISTRIBUTION_PARITY	int	1
+  PARTY_EXP_NON_DISTRIBUTION	int	0
+  PARTY_STATE_ATTACKER	int	2
+  PARTY_STATE_BERSERKER	int	6
+  PARTY_STATE_BUFFER	int	4
+  PARTY_STATE_DEFENDER	int	7
+  PARTY_STATE_LEADER	int	1
+  PARTY_STATE_MAX_NUM	int	8
+  PARTY_STATE_NORMAL	int	0
+  PARTY_STATE_SKILL_MASTER	int	5
+  PARTY_STATE_TANKER	int	3
+  PK_MODE_FREE	int	2
+  PK_MODE_GUILD	int	4
+  PK_MODE_MAX_NUM	int	5
+  PK_MODE_PEACE	int	0
+  PK_MODE_PROTECT	int	3
+  PK_MODE_REVENGE	int	1
+  PLAYTIME	int	31
+  POINT_CRITICAL_PCT	int	40
+  POINT_MALL_ATTBONUS	int	114
+  POINT_MALL_DEFBONUS	int	115
+  POINT_MALL_EXPBONUS	int	116
+  POINT_MALL_GOLDBONUS	int	118
+  POINT_MALL_ITEMBONUS	int	117
+  POINT_MAX_HP_PCT	int	119
+  POINT_MAX_SP_PCT	int	120
+  POINT_NORMAL_HIT_DAMAGE_BONUS	int	122
+  POINT_NORMAL_HIT_DEFEND_BONUS	int	124
+  POINT_PC_BANG_DROP_BONUS	int	126
+  POINT_PC_BANG_EXP_BONUS	int	125
+  POINT_PENETRATE_PCT	int	41
+  POINT_SKILL_DAMAGE_BONUS	int	121
+  POINT_SKILL_DEFEND_BONUS	int	123
+  PickCloseItem	callable
+  REFINE_ALREADY_MAX_SOCKET_COUNT	int	2
+  REFINE_CANT	int	0
+  REFINE_CANT_MAKE_SOCKET_ITEM	int	4
+  REFINE_CANT_REFINE_METIN_TO_EQUIPMENT	int	6
+  REFINE_CANT_REFINE_ROD	int	7
+  REFINE_NEED_MORE_GOOD_SCROLL	int	3
+  REFINE_NOT_NEXT_GRADE_ITEM	int	5
+  REFINE_OK	int	1
+  RESERVED_WINDOW	int	0
+  RegisterCacheEffect	callable
+  RegisterEffect	callable
+  RegisterEmotionIcon	callable
+  RemovePartyMember	callable
+  RemoveQuickSlotByValue	callable
+  Render	callable
+  RequestAddLocalQuickSlot	callable
+  RequestAddToEmptyLocalQuickSlot	callable
+  RequestDeleteGlobalQuickSlot	callable
+  RequestMoveGlobalQuickSlotToLocalQuickSlot	callable
+  RequestUseLocalQuickSlot	callable
+  ResetCameraRotation	callable
+  SAFEBOX	int	3
+  SKILL_ACTIVE	int	28
+  SKILL_GRADE_GRAND_MASTER	int	2
+  SKILL_GRADE_MASTER	int	1
+  SKILL_GRADE_NORMAL	int	0
+  SKILL_GRADE_PERFECT_MASTER	int	3
+  SKILL_HORSE	int	113
+  SKILL_INDEX_COMBO	int	122
+  SKILL_INDEX_FISHING	int	123
+  SKILL_INDEX_LANGUAGE1	int	126
+  SKILL_INDEX_LANGUAGE2	int	127
+  SKILL_INDEX_LANGUAGE3	int	128
+  SKILL_INDEX_MAKING	int	125
+  SKILL_INDEX_MINING	int	124
+  SKILL_INDEX_POLYMORPH	int	129
+  SKILL_INDEX_RIDING	int	130
+  SKILL_INDEX_SUMMON	int	131
+  SKILL_INDEX_TONGSOL	int	121
+  SKILL_PASSIVE	int	27
+  SKILL_SLOT_COUNT	int	255
+  SKILL_SUPPORT	int	27
+  SLOT_TYPE_DRAGON_SOUL_INVENTORY	int	11
+  SLOT_TYPE_EMOTION	int	3
+  SLOT_TYPE_EXCHANGE_OWNER	int	5
+  SLOT_TYPE_EXCHANGE_TARGET	int	6
+  SLOT_TYPE_INVENTORY	int	1
+  SLOT_TYPE_MALL	int	10
+  SLOT_TYPE_NONE	int	0
+  SLOT_TYPE_PRIVATE_SHOP	int	9
+  SLOT_TYPE_QUICK_SLOT	int	7
+  SLOT_TYPE_SAFEBOX	int	8
+  SLOT_TYPE_SHOP	int	4
+  SLOT_TYPE_SKILL	int	2
+  SP	int	7
+  SP_RECOVERY	int	36
+  ST	int	12
+  STAMINA	int	9
+  STAT	int	26
+  SendClickItemPacket	callable
+  SendDragonSoulRefine	callable
+  SetAttackKeyState	callable
+  SetAutoCameraRotationSpeed	callable
+  SetAutoPotionInfo	callable
+  SetGameWindow	callable
+  SetItemAttribute	callable
+  SetItemCount	callable
+  SetItemData	callable
+  SetItemMetinSocket	callable
+  SetMainCharacterIndex	callable
+  SetMouseFunc	callable
+  SetMouseMiddleButtonState	callable
+  SetMouseState	callable
+  SetPlayTime	callable
+  SetQuickCameraMode	callable
+  SetQuickPage	callable
+  SetSingleDIKKeyState	callable
+  SetSkill	callable
+  SetStatus	callable
+  SetTarget	callable
+  SetWeaponAttackBonusFlag	callable
+  ShowPlayer	callable
+  SlotTypeToInvenType	callable
+  StartMouseWalking	callable
+  ToggleCoolTime	callable
+  ToggleLevelLimit	callable
+  Update	callable
+  UseGuildSkill	callable
+  VOICE	int	2
+  isItem	callable
+module	profiler
+  Pop	callable
+  Push	callable
+module	quest
+  Clear	callable
+  GetQuestCount	callable
+  GetQuestData	callable
+  GetQuestIndex	callable
+  GetQuestLastTime	callable
+  QUEST_MAX_NUM	int	5
+module	safebox
+  GetCurrentSafeboxSize	callable
+  GetItemAttribute	callable
+  GetItemCount	callable
+  GetItemFlags	callable
+  GetItemID	callable
+  GetItemMetinSocket	callable
+  GetMallItemAttribute	callable
+  GetMallItemCount	callable
+  GetMallItemID	callable
+  GetMallItemMetinSocket	callable
+  GetMallSize	callable
+  GetMoney	callable
+  SAFEBOX_PAGE_SIZE	int	45
+  SAFEBOX_SLOT_X_COUNT	int	5
+  SAFEBOX_SLOT_Y_COUNT	int	9
+module	shop
+  AddPrivateShopItemStock	callable
+  BuildPrivateShop	callable
+  ClearPrivateShopStock	callable
+  Close	callable
+  DelPrivateShopItemStock	callable
+  GetItemAttribute	callable
+  GetItemCount	callable
+  GetItemID	callable
+  GetItemMetinSocket	callable
+  GetItemPrice	callable
+  GetPrivateShopItemPrice	callable
+  GetTabCoinType	callable
+  GetTabCount	callable
+  GetTabName	callable
+  IsMainPlayerPrivateShop	callable
+  IsOpen	callable
+  IsPrivateShop	callable
+  Open	callable
+  SHOP_COIN_TYPE_GOLD	int	0
+  SHOP_COIN_TYPE_SECONDARY_COIN	int	1
+  SHOP_SLOT_COUNT	int	40
+module	skill
+  CanLevelUpSkill	callable
+  CanUseSkill	callable
+  CheckRequirementSueccess	callable
+  ClearSkillData	callable
+  DeleteIconInstance	callable
+  GetDuration	callable
+  GetGradeData	callable
+  GetIconImage	callable
+  GetIconImageNew	callable
+  GetIconInstance	callable
+  GetIconInstanceNew	callable
+  GetIconName	callable
+  GetNeedCharacterLevel	callable
+  GetNewAffectData	callable
+  GetNewAffectDataCount	callable
+  GetSkillAffectDescription	callable
+  GetSkillAffectDescriptionCount	callable
+  GetSkillConditionDescription	callable
+  GetSkillConditionDescriptionCount	callable
+  GetSkillContinuationSP	callable
+  GetSkillCoolTime	callable
+  GetSkillDescription	callable
+  GetSkillLevelLimit	callable
+  GetSkillLevelUpPoint	callable
+  GetSkillMaxLevel	callable
+  GetSkillName	callable
+  GetSkillNeedSP	callable
+  GetSkillRequireStatCount	callable
+  GetSkillRequireStatData	callable
+  GetSkillRequirementData	callable
+  GetSkillType	callable
+  IsLevelUpSkill	callable
+  IsSkillRequirement	callable
+  IsStandingSkill	callable
+  IsToggleSkill	callable
+  IsUseHPSkill	callable
+  LoadSkillData	callable
+  RegisterSkill	callable
+  SKILL_EFFECT_COUNT	int	4
+  SKILL_GRADEGAP	int	25
+  SKILL_GRADE_COUNT	int	3
+  SKILL_GRADE_STEP_COUNT	int	20
+  SKILL_TYPE_ACTIVE	int	1
+  SKILL_TYPE_GUILD	int	3
+  SKILL_TYPE_HORSE	int	4
+  SKILL_TYPE_MAX_NUM	int	5
+  SKILL_TYPE_NONE	int	0
+  SKILL_TYPE_SUPPORT	int	2
+  SetPathName	callable
+  TEST	callable
+module	snd
+  FadeInMusic	callable
+  FadeLimitOutMusic	callable
+  FadeOutAllMusic	callable
+  FadeOutMusic	callable
+  PlayMusic	callable
+  PlaySound	callable
+  PlaySound3D	callable
+  SetAmbienceSoundScale	callable
+  SetMusicVolume	callable
+  SetMusicVolumef	callable
+  SetSoundScale	callable
+  SetSoundVolume	callable
+  SetSoundVolumef	callable
+  StopAllSound	callable
+module	systemSetting
+  ApplyConfig	callable
+  DestroyInterfaceHandler	callable
+  GetConfig	callable
+  GetCurrentResolution	callable
+  GetFrequency	callable
+  GetFrequencyCount	callable
+  GetHeight	callable
+  GetMusicVolume	callable
+  GetResolution	callable
+  GetResolutionCount	callable
+  GetSaveID	callable
+  GetShadowLevel	callable
+  GetSoundVolume	callable
+  GetWidth	callable
+  GetWindowStatus	callable
+  IsAlwaysShowName	callable
+  IsShowDamage	callable
+  IsShowSalesText	callable
+  IsSoftwareCursor	callable
+  IsViewChat	callable
+  ReserveResource	callable
+  SaveConfig	callable
+  SaveWindowStatus	callable
+  SetAlwaysShowNameFlag	callable
+  SetConfig	callable
+  SetInterfaceHandler	callable
+  SetMusicVolume	callable
+  SetSaveID	callable
+  SetShadowLevel	callable
+  SetShowDamageFlag	callable
+  SetShowSalesTextFlag	callable
+  SetSoundVolumef	callable
+  SetViewChatFlag	callable
+  WINDOW_ABILITY	int	2
+  WINDOW_CHAT	int	9
+  WINDOW_COMMAND	int	5
+  WINDOW_GAUGE	int	7
+  WINDOW_INVENTORY	int	1
+  WINDOW_JOURNAL	int	4
+  WINDOW_MINIMAP	int	8
+  WINDOW_QUICK	int	6
+  WINDOW_SOCIETY	int	3
+  WINDOW_STATUS	int	0
+  isInterfaceConfig	callable
+  isSaveID	callable
+module	textTail
+  ArrangeTextTail	callable
+  AttachTitle	callable
+  Clear	callable
+  EnablePKTitle	callable
+  GetPosition	callable
+  HideAllTextTail	callable
+  IsChat	callable
+  Pick	callable
+  RegisterCharacterTextTail	callable
+  RegisterChatTail	callable
+  RegisterInfoTail	callable
+  Render	callable
+  SelectItemName	callable
+  ShowAllTextTail	callable
+  ShowCharacterTextTail	callable
+  ShowItemTextTail	callable
+  UpdateAllTextTail	callable
+  UpdateShowingTextTail	callable
+module	time
+  clock	callable
+  localtime	callable
+  sleep	callable
+  strftime	callable
+  time	callable
+module	wndMgr
+  ActivateSlot	callable
+  AddFlag	callable
+  AppendImage	callable
+  AppendRequirementSignImage	callable
+  AppendSlot	callable
+  AppendSlotButton	callable
+  ArrangeSlot	callable
+  AttachIcon	callable
+  ClearAllSlot	callable
+  ClearSelected	callable
+  ClearSlot	callable
+  DeactivateSlot	callable
+  DeattachIcon	callable
+  Destroy	callable
+  Disable	callable
+  DisableCoverButton	callable
+  DisableSlot	callable
+  Down	callable
+  Enable	callable
+  EnableCoverButton	callable
+  EnableSlot	callable
+  Flash	callable
+  GetAspect	callable
+  GetChildCount	callable
+  GetCursorPosition	callable
+  GetDownVisualFileName	callable
+  GetHeight	callable
+  GetHyperlink	callable
+  GetMouseLocalPosition	callable
+  GetMousePosition	callable
+  GetName	callable
+  GetOverVisualFileName	callable
+  GetScreenHeight	callable
+  GetScreenWidth	callable
+  GetSelectedSlotCount	callable
+  GetSelectedSlotNumber	callable
+  GetSlotCount	callable
+  GetText	callable
+  GetTextSize	callable
+  GetUpVisualFileName	callable
+  GetWidth	callable
+  GetWindowGlobalPosition	callable
+  GetWindowHeight	callable
+  GetWindowLocalPosition	callable
+  GetWindowRect	callable
+  GetWindowWidth	callable
+  HORIZONTAL_ALIGN_CENTER	int	1
+  HORIZONTAL_ALIGN_LEFT	int	0
+  HORIZONTAL_ALIGN_RIGHT	int	2
+  HasSlot	callable
+  Hide	callable
+  HideAllSlotButton	callable
+  HideCursor	callable
+  HideRequirementSign	callable
+  HideSlotBaseImage	callable
+  IsDisableCoverButton	callable
+  IsDown	callable
+  IsDragging	callable
+  IsFocus	callable
+  IsIn	callable
+  IsPickedWindow	callable
+  IsRTL	callable
+  IsSelectedSlot	callable
+  IsShow	callable
+  KillFocus	callable
+  LoadImage	callable
+  Lock	callable
+  LockSlot	callable
+  MarkBox_Load	callable
+  MarkBox_SetDiffuseColor	callable
+  MarkBox_SetImage	callable
+  MarkBox_SetImageFilename	callable
+  MarkBox_SetIndex	callable
+  MarkBox_SetScale	callable
+  OnceIgnoreMouseLeftButtonUpEvent	callable
+  RENDERING_MODE_MODULATE	int	3
+  RefreshSlot	callable
+  Register	callable
+  RegisterAniImageBox	callable
+  RegisterBar	callable
+  RegisterBar3D	callable
+  RegisterBox	callable
+  RegisterButton	callable
+  RegisterDragButton	callable
+  RegisterExpandedImageBox	callable
+  RegisterGridSlotWindow	callable
+  RegisterImageBox	callable
+  RegisterLine	callable
+  RegisterMarkBox	callable
+  RegisterNumberLine	callable
+  RegisterRadioButton	callable
+  RegisterSlotWindow	callable
+  RegisterTextLine	callable
+  RegisterToggleButton	callable
+  SLOT_STYLE_NONE	int	0
+  SLOT_STYLE_PICK_UP	int	1
+  SLOT_STYLE_SELECT	int	2
+  SelectSlot	callable
+  SetAlwaysRenderCoverButton	callable
+  SetAttachingFlag	callable
+  SetColor	callable
+  SetCoverButton	callable
+  SetDelay	callable
+  SetDiffuseColor	callable
+  SetDisableVisual	callable
+  SetDownVisual	callable
+  SetFeather	callable
+  SetFocus	callable
+  SetFontColor	callable
+  SetFontName	callable
+  SetHorizontalAlign	callable
+  SetLimitBias	callable
+  SetLimitWidth	callable
+  SetMax	callable
+  SetMouseHandler	callable
+  SetMultiLine	callable
+  SetName	callable
+  SetNumber	callable
+  SetNumberHorizontalAlignCenter	callable
+  SetNumberHorizontalAlignRight	callable
+  SetOrigin	callable
+  SetOutline	callable
+  SetOutlineFlag	callable
+  SetOverVisual	callable
+  SetParent	callable
+  SetPath	callable
+  SetPickAlways	callable
+  SetRenderingMode	callable
+  SetRenderingRect	callable
+  SetRestrictMovementArea	callable
+  SetRotation	callable
+  SetScale	callable
+  SetScreenSize	callable
+  SetSecret	callable
+  SetSlot	callable
+  SetSlotBaseImage	callable
+  SetSlotCoolTime	callable
+  SetSlotCount	callable
+  SetSlotCountNew	callable
+  SetSlotStyle	callable
+  SetSlotType	callable
+  SetText	callable
+  SetToggleSlot	callable
+  SetTop	callable
+  SetUp	callable
+  SetUpVisual	callable
+  SetUsableItem	callable
+  SetUseMode	callable
+  SetVerticalAlign	callable
+  SetWindowHorizontalAlign	callable
+  SetWindowPosition	callable
+  SetWindowSize	callable
+  SetWindowVerticalAlign	callable
+  Show	callable
+  ShowCursor	callable
+  ShowOverInWindowName	callable
+  ShowRequirementSign	callable
+  ShowSlotBaseImage	callable
+  ShowSlotButton	callable
+  TEXT_HORIZONTAL_ALIGN_CENTER	int	2
+  TEXT_HORIZONTAL_ALIGN_LEFT	int	1
+  TEXT_HORIZONTAL_ALIGN_RIGHT	int	3
+  TEXT_VERTICAL_ALIGN_BOTTOM	int	48
+  TEXT_VERTICAL_ALIGN_CENTER	int	32
+  TEXT_VERTICAL_ALIGN_TOP	int	16
+  Unlock	callable
+  UnlockSlot	callable
+  UpdateRect	callable
+  VERTICAL_ALIGN_BOTTOM	int	2
+  VERTICAL_ALIGN_CENTER	int	1
+  VERTICAL_ALIGN_TOP	int	0

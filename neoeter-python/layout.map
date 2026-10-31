@@ -1,0 +1,9 @@
+# <github-repository>=<source-directory>=<path in neoeter-python>
+#
+# Pure moves. Directory names, include roots (<ScriptLib/...>, <EterPythonLib/...>),
+# target names and test fixtures are preserved.
+#
+# Order: the host first, then the bindings that use it.
+
+pkg_scriptlib=ScriptLib=src/ScriptLib
+pkg_eterpythonlib=EterPythonLib=src/EterPythonLib

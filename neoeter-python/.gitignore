@@ -1,0 +1,22 @@
+# Build output
+build/
+dist/
+bin/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE and editor
+.vscode/
+.clangd/
+.cache/
+compile_commands.json
+CMakeUserPresets.json
+
+# OS
+.DS_Store
+Thumbs.db
+*~

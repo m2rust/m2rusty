@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "neoeter": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793461636,
+        "narHash": "sha256-QDCPozTGqMePgJ6xFNONmr5FE3uiHbjvaT1sAdwBLX4=",
+        "owner": "open-mt2",
+        "repo": "neoeter",
+        "rev": "c952aa9a978a4f88b5719f038f1abdb066d8372d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "open-mt2",
+        "repo": "neoeter",
+        "type": "github"
+      }
+    },
+    "neoeter-python": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793458145,
+        "narHash": "sha256-4/jXjRHNxbgqGuQXX/L6P5o6ZzJ8/Dvmri0joLRDgi8=",
+        "owner": "open-mt2",
+        "repo": "neoeter-python",
+        "rev": "4c95f2e73e94c58167db112ef4b50c2e846d5eb0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "open-mt2",
+        "repo": "neoeter-python",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "neoeter": "neoeter",
+        "neoeter-python": "neoeter-python"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

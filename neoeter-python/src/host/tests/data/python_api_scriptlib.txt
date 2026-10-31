@@ -1,0 +1,37 @@
+# OpenMT2 embedded Python API surface: ScriptLib
+# Regenerate with: OPENMT2_UPDATE_PYTHON_API=1 <test-binary> <this-file>
+module	dbg
+  LogBox	callable
+  RegisterExceptionString	callable
+  Trace	callable
+  TraceError	callable
+  Tracen	callable
+module	math
+  acos	callable
+  asin	callable
+  atan	callable
+  atan2	callable
+  ceil	callable
+  cos	callable
+  degrees	callable
+  e	float	2.718281828459045
+  exp	callable
+  fabs	callable
+  floor	callable
+  fmod	callable
+  hypot	callable
+  log	callable
+  log10	callable
+  modf	callable
+  pi	float	3.141592653589793
+  pow	callable
+  radians	callable
+  sin	callable
+  sqrt	callable
+  tan	callable
+module	time
+  clock	callable
+  localtime	callable
+  sleep	callable
+  strftime	callable
+  time	callable
