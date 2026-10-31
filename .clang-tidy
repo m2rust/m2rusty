@@ -1,0 +1,22 @@
+# Bug-finding checks only; style and modernisation are left out so the
+# legacy sources don't drown in noise. Run against build/compile_commands.json.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-reserved-identifier,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.*,
+  performance-*,
+  -performance-enum-size,
+  misc-redundant-expression,
+  misc-unused-using-decls,
+  modernize-use-nullptr,
+  modernize-use-override
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '(client|neoeter|neoeter-python)/(include|src)/'
+ExcludeHeaderFilterRegex: 'python2\.7/'
+FormatStyle: file

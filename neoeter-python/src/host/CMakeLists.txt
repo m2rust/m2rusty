@@ -3,7 +3,7 @@ project(neoeter_python_host LANGUAGES C CXX)
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(SCRIPTLIB_STANDALONE ON)
-    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD 26)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
     option(BUILD_TESTING "Build neoeter_python_host tests" ON)

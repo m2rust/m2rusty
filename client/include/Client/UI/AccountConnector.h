@@ -1,4 +1,4 @@
-#pragma 
+#pragma once
 
 #include <Neoeter/Render/NetStream.h>
 #include <Neoeter/Render/FuncObject.h>

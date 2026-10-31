@@ -10,14 +10,12 @@
     url = "https://github.com/NixOS/nixpkgs/archive/ac62194c3917d5f474c1a844b6fd6da2db95077d.tar.gz";
     sha256 = "0v6bd1xk8a2aal83karlvc853x44dg1n4nk08jg3dajqyy0s98np";
   }) { inherit system; config.permittedInsecurePackages = [ "python-2.7.18.8" ]; },
-  # Sources of the engine repositories, handed to FetchContent instead of
-  # cloning them from GitHub. Default to sibling checkouts.
-  neoeter ? ../neoeter,
-  neoeter-python ? ../neoeter-python,
   # Release build with _DISTRIBUTE: packs are read only as the ZIP archives
   # listed in pack/Index. Set to false for a development build, which reads
   # pack/Index.dev (FOLDER packs) when present.
   distribute ? true,
+  # Unity (jumbo) build: fewer, larger translation units.
+  unity ? true,
 }:
 
 let
@@ -26,26 +24,15 @@ let
 
   # Only what CMake reads, so .git, docs, nix files and local build trees
   # never change the derivation.
+  projects = [ "neoeter" "neoeter-python" "client" ];
   cmakeEntries = [ "CMakeLists.txt" "cmake" "include" "src" ];
 
-  cmakeSource = root: fs.toSource {
-    inherit root;
-    fileset = fs.unions (map (p: fs.maybeMissing (root + "/${p}")) cmakeEntries);
+  src = fs.toSource {
+    root = ./.;
+    fileset = fs.unions ([ ./CMakeLists.txt ] ++ lib.concatMap
+      (project: map (p: fs.maybeMissing (./. + "/${project}/${p}")) cmakeEntries)
+      projects);
   };
-
-  # Store paths (flake inputs, fetchFromGitHub, ...) can't be filesets.
-  storeSource = src: builtins.path {
-    name = "source";
-    path = src;
-    filter = path: _type:
-      lib.elem
-        (lib.head (lib.splitString "/" (lib.removePrefix "${toString src}/" path)))
-        cmakeEntries;
-  };
-
-  repoSource = src: if lib.isPath src then cmakeSource src else storeSource src;
-
-  src = cmakeSource ./.;
 
   # nixpkgs marks miniaudio Linux-only; on macOS drop the Linux audio
   # backends and enable CoreAudio. The extra node dylibs don't link against
@@ -118,10 +105,7 @@ pkgs.stdenv.mkDerivation {
     "-DBUILD_TESTING=OFF"
     "-DBUILD_TESTS=OFF"
     "-DNEOETER_BUILD_TESTS=OFF"
-    "-DCLIENT_STANDALONE=ON"
-    "-DFETCHCONTENT_FULLY_DISCONNECTED=ON"
-    "-DFETCHCONTENT_SOURCE_DIR_NEOETER=${repoSource neoeter}"
-    "-DFETCHCONTENT_SOURCE_DIR_NEOETER-PYTHON=${repoSource neoeter-python}"
+    (lib.cmakeBool "M2_UNITY_BUILD" unity)
   ];
 
   # Legacy code passes non-literal format strings (fprintf(f, buf)).

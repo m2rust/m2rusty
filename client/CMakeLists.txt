@@ -4,7 +4,7 @@ project(Client VERSION 0.1.0 LANGUAGES C CXX)
 # Game layer: GameLib + UserInterface + CWebBrowser. One header root, one
 # directory per package. Depends on neoeter and neoeter-python.
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
