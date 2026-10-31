@@ -10,12 +10,12 @@ namespace
 
 struct ObbCase
 {
-    CBaseCollisionInstance * instance = nullptr;
+    CBaseCollisionInstance *instance = nullptr;
     D3DXMATRIX world;
     D3DXVECTOR3 half;
 };
 
-ObbCase makeObb(float yawRadians, const D3DXVECTOR3 & centre, const D3DXVECTOR3 & halfExtents)
+ObbCase makeObb(float yawRadians, const D3DXVECTOR3 &centre, const D3DXVECTOR3 &halfExtents)
 {
     CStaticCollisionData data = {};
     data.dwType = COLLISION_TYPE_OBB;
@@ -38,8 +38,7 @@ ObbCase makeObb(float yawRadians, const D3DXVECTOR3 & centre, const D3DXVECTOR3 
     return out;
 }
 
-bool collides(CBaseCollisionInstance * instance, const D3DXVECTOR3 & worldPosition,
-              float radius)
+bool collides(CBaseCollisionInstance *instance, const D3DXVECTOR3 &worldPosition, float radius)
 {
     CDynamicSphereInstance sphere = {};
     sphere.v3Position = worldPosition;
@@ -48,8 +47,8 @@ bool collides(CBaseCollisionInstance * instance, const D3DXVECTOR3 & worldPositi
     return instance->CollisionDynamicSphere(sphere);
 }
 
-bool collidesMoving(CBaseCollisionInstance * instance, const D3DXVECTOR3 & current,
-                    const D3DXVECTOR3 & previous, float radius)
+bool collidesMoving(CBaseCollisionInstance *instance, const D3DXVECTOR3 &current, const D3DXVECTOR3 &previous,
+                    float radius)
 {
     CDynamicSphereInstance sphere = {};
     sphere.v3Position = current;
@@ -58,7 +57,7 @@ bool collidesMoving(CBaseCollisionInstance * instance, const D3DXVECTOR3 & curre
     return instance->MovementCollisionDynamicSphere(sphere);
 }
 
-D3DXVECTOR3 toWorld(const ObbCase & obb, const D3DXVECTOR3 & local)
+D3DXVECTOR3 toWorld(const ObbCase &obb, const D3DXVECTOR3 &local)
 {
     D3DXVECTOR3 world;
     D3DXVec3TransformCoord(&world, &local, &obb.world);
@@ -95,10 +94,9 @@ void test_rotated_obb()
     TEST_SECTION("OBB (45 degree yaw)");
 
     // A long, thin box turned 45 degrees. The local point (1.5, 0.4) is inside
-    // (|x| <= 2, |y| <= 0.5); after the transform it lands close to the rotated
-    // long axis.
-    ObbCase obb = makeObb(D3DX_PI / 4.0f, D3DXVECTOR3(5.0f, 5.0f, 0.0f),
-                          D3DXVECTOR3(2.0f, 0.5f, 0.5f));
+    // (|x| <= 2, |y| <= 0.5); after the transform it lands close to the
+    // rotated long axis.
+    ObbCase obb = makeObb(D3DX_PI / 4.0f, D3DXVECTOR3(5.0f, 5.0f, 0.0f), D3DXVECTOR3(2.0f, 0.5f, 0.5f));
 
     const D3DXVECTOR3 insideLocal(1.5f, 0.4f, 0.0f);
     TEST_ASSERT(collides(obb.instance, toWorld(obb, insideLocal), 0.001f));

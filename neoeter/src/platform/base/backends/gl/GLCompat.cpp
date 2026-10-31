@@ -17,8 +17,10 @@ PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers = nullptr;
 PFNGLRENDERBUFFERSTORAGEPROC glRenderbufferStorage = nullptr;
 PFNGLCLIPCONTROLPROC glClipControl = nullptr;
 
-bool Platform_LoadGLFunctions(void* (*getProcAddress)(const char*)) {
-    if (!getProcAddress) return false;
+bool Platform_LoadGLFunctions(void *(*getProcAddress)(const char *))
+{
+    if (!getProcAddress)
+        return false;
 
     glActiveTexture = (PFNGLACTIVETEXTUREPROC)getProcAddress("glActiveTexture");
     glClientActiveTexture = (PFNGLCLIENTACTIVETEXTUREPROC)getProcAddress("glClientActiveTexture");
@@ -35,10 +37,9 @@ bool Platform_LoadGLFunctions(void* (*getProcAddress)(const char*)) {
     glRenderbufferStorage = (PFNGLRENDERBUFFERSTORAGEPROC)getProcAddress("glRenderbufferStorage");
     glClipControl = (PFNGLCLIPCONTROLPROC)getProcAddress("glClipControl");
 
-    return glActiveTexture && glClientActiveTexture && glCompressedTexImage2D &&
-           glBindFramebuffer && glGenFramebuffers && glDeleteFramebuffers &&
-           glCheckFramebufferStatus && glFramebufferTexture2D && glFramebufferRenderbuffer &&
-           glBindRenderbuffer && glGenRenderbuffers && glDeleteRenderbuffers &&
+    return glActiveTexture && glClientActiveTexture && glCompressedTexImage2D && glBindFramebuffer &&
+           glGenFramebuffers && glDeleteFramebuffers && glCheckFramebufferStatus && glFramebufferTexture2D &&
+           glFramebufferRenderbuffer && glBindRenderbuffer && glGenRenderbuffers && glDeleteRenderbuffers &&
            glRenderbufferStorage && glClipControl;
 }
 

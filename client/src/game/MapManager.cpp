@@ -13,87 +13,84 @@
 
 bool CMapManager::IsMapOutdoor()
 {
-	if (m_pkMap)
-		return true;
+    if (m_pkMap)
+        return true;
 
-	return false;
+    return false;
 }
 
-CMapOutdoor& CMapManager::GetMapOutdoorRef()
+CMapOutdoor &CMapManager::GetMapOutdoorRef()
 {
-	assert(NULL!=m_pkMap);
-	return *m_pkMap;
+    assert(NULL != m_pkMap);
+    return *m_pkMap;
 }
-
 
 CMapManager::CMapManager() : mc_pcurEnvironmentData(NULL)
 {
-	m_pkMap = NULL;
-	m_isSoftwareTilingEnableReserved=false;
+    m_pkMap = NULL;
+    m_isSoftwareTilingEnableReserved = false;
 
-//	Initialize();
+    //	Initialize();
 }
 
 CMapManager::~CMapManager()
 {
-	Destroy();
+    Destroy();
 }
 
 bool CMapManager::IsSoftwareTilingEnable()
 {
-	return CTerrainPatch::SOFTWARE_TRANSFORM_PATCH_ENABLE;
+    return CTerrainPatch::SOFTWARE_TRANSFORM_PATCH_ENABLE;
 }
 
 void CMapManager::ReserveSoftwareTilingEnable(bool isEnable)
 {
-	m_isSoftwareTilingEnableReserved=isEnable;
+    m_isSoftwareTilingEnableReserved = isEnable;
 }
-
 
 void CMapManager::Initialize()
 {
-	mc_pcurEnvironmentData = NULL;
-	__LoadMapInfoVector();
+    mc_pcurEnvironmentData = NULL;
+    __LoadMapInfoVector();
 }
 
 void CMapManager::Create()
 {
-	assert(NULL==m_pkMap && "CMapManager::Create");
-	if (m_pkMap)
-	{
-		Clear();
-		return;
-	}
+    assert(NULL == m_pkMap && "CMapManager::Create");
+    if (m_pkMap)
+    {
+        Clear();
+        return;
+    }
 
-	CTerrainPatch::SOFTWARE_TRANSFORM_PATCH_ENABLE=m_isSoftwareTilingEnableReserved;
+    CTerrainPatch::SOFTWARE_TRANSFORM_PATCH_ENABLE = m_isSoftwareTilingEnableReserved;
 
-	m_pkMap = (CMapOutdoor*)AllocMap();
+    m_pkMap = (CMapOutdoor *)AllocMap();
 
-	assert(NULL!=m_pkMap && "CMapManager::Create MAP is NULL");
-		
+    assert(NULL != m_pkMap && "CMapManager::Create MAP is NULL");
 }
 
 void CMapManager::Destroy()
 {
-	stl_wipe_second(m_EnvironmentDataMap);
+    stl_wipe_second(m_EnvironmentDataMap);
 
-	if (m_pkMap)
-	{
-		m_pkMap->Clear();
-		delete m_pkMap;
-		m_pkMap = NULL;
-	}
+    if (m_pkMap)
+    {
+        m_pkMap->Clear();
+        delete m_pkMap;
+        m_pkMap = NULL;
+    }
 }
 
 void CMapManager::Clear()
 {
-	if (m_pkMap)
-		m_pkMap->Clear();
+    if (m_pkMap)
+        m_pkMap->Clear();
 }
 
-CMapBase * CMapManager::AllocMap()
+CMapBase *CMapManager::AllocMap()
 {
-	return new CMapOutdoor;
+    return new CMapOutdoor;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -101,117 +98,117 @@ CMapBase * CMapManager::AllocMap()
 //////////////////////////////////////////////////////////////////////////
 void CMapManager::LoadProperty()
 {
-	CPropertyLoader PropertyLoader;
-	PropertyLoader.SetPropertyManager(&m_PropertyManager);
-	PropertyLoader.Create("*.*", "Property");
+    CPropertyLoader PropertyLoader;
+    PropertyLoader.SetPropertyManager(&m_PropertyManager);
+    PropertyLoader.Create("*.*", "Property");
 }
 
-bool CMapManager::LoadMap(const std::string & c_rstrMapName, float x, float y, float z)
+bool CMapManager::LoadMap(const std::string &c_rstrMapName, float x, float y, float z)
 {
-	CMapOutdoor& rkMap = GetMapOutdoorRef();
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
 
-	rkMap.Leave();
-	rkMap.SetName(c_rstrMapName);
-	rkMap.LoadProperty();
+    rkMap.Leave();
+    rkMap.SetName(c_rstrMapName);
+    rkMap.LoadProperty();
 
-	if ( CMapBase::MAPTYPE_INDOOR == rkMap.GetType())
-	{
-		TraceError("CMapManager::LoadMap() Indoor Map Load Failed");
-		return false;
-	}
-	else if (CMapBase::MAPTYPE_OUTDOOR == rkMap.GetType())
-	{
-		if (!rkMap.Load(x, y, z))
-		{
-			TraceError("CMapManager::LoadMap() Outdoor Map Load Failed");
-			return false;
-		}
+    if (CMapBase::MAPTYPE_INDOOR == rkMap.GetType())
+    {
+        TraceError("CMapManager::LoadMap() Indoor Map Load Failed");
+        return false;
+    }
+    else if (CMapBase::MAPTYPE_OUTDOOR == rkMap.GetType())
+    {
+        if (!rkMap.Load(x, y, z))
+        {
+            TraceError("CMapManager::LoadMap() Outdoor Map Load Failed");
+            return false;
+        }
 
-		RegisterEnvironmentData(0, rkMap.GetEnvironmentDataName().c_str());
-		
-		SetEnvironmentData(0);
-	}
-	else
-	{
-		TraceError("CMapManager::LoadMap() Invalid Map Type");
-		return false;
-	}
+        RegisterEnvironmentData(0, rkMap.GetEnvironmentDataName().c_str());
 
-	rkMap.Enter();
-	return true;
+        SetEnvironmentData(0);
+    }
+    else
+    {
+        TraceError("CMapManager::LoadMap() Invalid Map Type");
+        return false;
+    }
+
+    rkMap.Enter();
+    return true;
 }
 
 bool CMapManager::IsMapReady()
 {
-	if (!m_pkMap)
-		return false;
+    if (!m_pkMap)
+        return false;
 
-	return m_pkMap->IsReady();
+    return m_pkMap->IsReady();
 }
 
 bool CMapManager::UnloadMap(const std::string c_strMapName)
 {
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	if (c_strMapName != rkMap.GetName() && "" != rkMap.GetName())
-	{
-		LogBoxf("%s: Unload Map Failed", c_strMapName.c_str());
-		return false;
-	}
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    if (c_strMapName != rkMap.GetName() && "" != rkMap.GetName())
+    {
+        LogBoxf("%s: Unload Map Failed", c_strMapName.c_str());
+        return false;
+    }
 
-	Clear();
-	return true;
+    Clear();
+    return true;
 }
 
 bool CMapManager::UpdateMap(float fx, float fy, float fz)
 {
-	if (!m_pkMap)
-		return false;
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.Update(fx, -fy, fz);
+    if (!m_pkMap)
+        return false;
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.Update(fx, -fy, fz);
 }
 
 void CMapManager::UpdateAroundAmbience(float fx, float fy, float fz)
 {
-	if (!m_pkMap)
-		return;
+    if (!m_pkMap)
+        return;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	rkMap.UpdateAroundAmbience(fx, -fy, fz);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    rkMap.UpdateAroundAmbience(fx, -fy, fz);
 }
 
 float CMapManager::GetHeight(float fx, float fy)
 {
-	if (!m_pkMap)
-	{
-		TraceError("CMapManager::GetHeight(%f, %f) - Access without a map created", fx, fy);
-		return 0.0f;
-	}
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetHeight(fx, fy);
+    if (!m_pkMap)
+    {
+        TraceError("CMapManager::GetHeight(%f, %f) - Access without a map created", fx, fy);
+        return 0.0f;
+    }
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetHeight(fx, fy);
 }
 
 float CMapManager::GetTerrainHeight(float fx, float fy)
 {
-	if (!m_pkMap)
-	{
-		TraceError("CMapManager::GetTerrainHeight(%f, %f) - Access without a map created", fx, fy);
-		return 0.0f;
-	}
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetTerrainHeight(fx, fy);
+    if (!m_pkMap)
+    {
+        TraceError("CMapManager::GetTerrainHeight(%f, %f) - Access without a map created", fx, fy);
+        return 0.0f;
+    }
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetTerrainHeight(fx, fy);
 }
 
-bool CMapManager::GetWaterHeight(int iX, int iY, long * plWaterHeight)
+bool CMapManager::GetWaterHeight(int iX, int iY, long *plWaterHeight)
 {
-	if (!m_pkMap)
-	{
-		TraceError("CMapManager::GetTerrainHeight(%f, %f) - Access without a map created", iX, iY);
-		return false;
-	}
+    if (!m_pkMap)
+    {
+        TraceError("CMapManager::GetTerrainHeight(%f, %f) - Access without a map created", iX, iY);
+        return false;
+    }
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetWaterHeight(iX, iY, plWaterHeight);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetWaterHeight(iX, iY, plWaterHeight);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -219,420 +216,418 @@ bool CMapManager::GetWaterHeight(int iX, int iY, long * plWaterHeight)
 //////////////////////////////////////////////////////////////////////////
 void CMapManager::BeginEnvironment()
 {
-	if (!m_pkMap)
-		return;
+    if (!m_pkMap)
+        return;
 
-	if (!mc_pcurEnvironmentData)
-		return;
+    if (!mc_pcurEnvironmentData)
+        return;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
 
-	// Light always on
- 	STATEMANAGER.SaveRenderState(D3DRS_LIGHTING, TRUE);
+    // Light always on
+    STATEMANAGER.SaveRenderState(D3DRS_LIGHTING, TRUE);
 
-	// Fog
- 	STATEMANAGER.SaveRenderState(D3DRS_FOGENABLE, mc_pcurEnvironmentData->bFogEnable);
+    // Fog
+    STATEMANAGER.SaveRenderState(D3DRS_FOGENABLE, mc_pcurEnvironmentData->bFogEnable);
 
-	// Material
-	STATEMANAGER.SetMaterial(&mc_pcurEnvironmentData->Material);
+    // Material
+    STATEMANAGER.SetMaterial(&mc_pcurEnvironmentData->Material);
 
-	// Directional Light
-	if (mc_pcurEnvironmentData->bDirLightsEnable[ENV_DIRLIGHT_BACKGROUND])
-	{
-		ms_lpd3dDevice->LightEnable(0, TRUE);
+    // Directional Light
+    if (mc_pcurEnvironmentData->bDirLightsEnable[ENV_DIRLIGHT_BACKGROUND])
+    {
+        ms_lpd3dDevice->LightEnable(0, TRUE);
 
-		rkMap.ApplyLight((DWORD)(uintptr_t)mc_pcurEnvironmentData, mc_pcurEnvironmentData->DirLights[ENV_DIRLIGHT_BACKGROUND]);		
-	}
-	else
-		ms_lpd3dDevice->LightEnable(0, FALSE);
+        rkMap.ApplyLight((DWORD)(uintptr_t)mc_pcurEnvironmentData,
+                         mc_pcurEnvironmentData->DirLights[ENV_DIRLIGHT_BACKGROUND]);
+    }
+    else
+        ms_lpd3dDevice->LightEnable(0, FALSE);
 
-	if (mc_pcurEnvironmentData->bFogEnable)
-	{
-		DWORD dwFogColor = mc_pcurEnvironmentData->FogColor;
-		STATEMANAGER.SetRenderState(D3DRS_FOGCOLOR, dwFogColor);
+    if (mc_pcurEnvironmentData->bFogEnable)
+    {
+        DWORD dwFogColor = mc_pcurEnvironmentData->FogColor;
+        STATEMANAGER.SetRenderState(D3DRS_FOGCOLOR, dwFogColor);
 
-		if (mc_pcurEnvironmentData->bDensityFog)
-		{
-			float fDensity = 0.00015f;
-			STATEMANAGER.SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_EXP);					// pixel fog
-			STATEMANAGER.SetRenderState(D3DRS_FOGDENSITY, *((DWORD *) &fDensity));			// vertex fog
-		}
-		else
-		{
-			CSpeedTreeForest& rkForest = CSpeedTreeForest::Instance();
-			rkForest.SetFog(
-				mc_pcurEnvironmentData->GetFogNearDistance(), 
-				mc_pcurEnvironmentData->GetFogFarDistance()
-			);
+        if (mc_pcurEnvironmentData->bDensityFog)
+        {
+            float fDensity = 0.00015f;
+            STATEMANAGER.SetRenderState(D3DRS_FOGVERTEXMODE,
+                                        D3DFOG_EXP); // pixel fog
+            STATEMANAGER.SetRenderState(D3DRS_FOGDENSITY,
+                                        *((DWORD *)&fDensity)); // vertex fog
+        }
+        else
+        {
+            CSpeedTreeForest &rkForest = CSpeedTreeForest::Instance();
+            rkForest.SetFog(mc_pcurEnvironmentData->GetFogNearDistance(), mc_pcurEnvironmentData->GetFogFarDistance());
 
-			float fFogNear=mc_pcurEnvironmentData->GetFogNearDistance();
-			float fFogFar=mc_pcurEnvironmentData->GetFogFarDistance();
-			STATEMANAGER.SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_LINEAR);								// vertex fox
-			STATEMANAGER.SetRenderState(D3DRS_RANGEFOGENABLE, TRUE);											// vertex fox
-			STATEMANAGER.SetRenderState(D3DRS_FOGSTART, *((DWORD *) &fFogNear));	// USED BY D3DFOG_LINEAR
-			STATEMANAGER.SetRenderState(D3DRS_FOGEND, *((DWORD *) &fFogFar));		// USED BY D3DFOG_LINEAR
-		}
-	}
+            float fFogNear = mc_pcurEnvironmentData->GetFogNearDistance();
+            float fFogFar = mc_pcurEnvironmentData->GetFogFarDistance();
+            STATEMANAGER.SetRenderState(D3DRS_FOGVERTEXMODE,
+                                        D3DFOG_LINEAR); // vertex fox
+            STATEMANAGER.SetRenderState(D3DRS_RANGEFOGENABLE,
+                                        TRUE);                                  // vertex fox
+            STATEMANAGER.SetRenderState(D3DRS_FOGSTART, *((DWORD *)&fFogNear)); // USED BY D3DFOG_LINEAR
+            STATEMANAGER.SetRenderState(D3DRS_FOGEND, *((DWORD *)&fFogFar));    // USED BY D3DFOG_LINEAR
+        }
+    }
 
-	rkMap.OnBeginEnvironment();
+    rkMap.OnBeginEnvironment();
 }
 
 void CMapManager::EndEnvironment()
 {
-	if (!mc_pcurEnvironmentData)
-		return;
+    if (!mc_pcurEnvironmentData)
+        return;
 
-	STATEMANAGER.RestoreRenderState(D3DRS_LIGHTING);
-	STATEMANAGER.RestoreRenderState(D3DRS_FOGENABLE);
+    STATEMANAGER.RestoreRenderState(D3DRS_LIGHTING);
+    STATEMANAGER.RestoreRenderState(D3DRS_FOGENABLE);
 }
 
 void CMapManager::SetEnvironmentData(int nEnvDataIndex)
 {
-	const TEnvironmentData * c_pEnvironmenData;
-	
-	if (GetEnvironmentData(nEnvDataIndex, &c_pEnvironmenData))
-		SetEnvironmentDataPtr(c_pEnvironmenData);
+    const TEnvironmentData *c_pEnvironmenData;
+
+    if (GetEnvironmentData(nEnvDataIndex, &c_pEnvironmenData))
+        SetEnvironmentDataPtr(c_pEnvironmenData);
 }
 
-void CMapManager::SetEnvironmentDataPtr(const TEnvironmentData * c_pEnvironmentData)
+void CMapManager::SetEnvironmentDataPtr(const TEnvironmentData *c_pEnvironmentData)
 {
-	if (!m_pkMap)
-		return;
-	
-	if (!c_pEnvironmentData)
-	{
-		assert(!"null environment data");
-		TraceError("null environment data");
-		return;
-	}
+    if (!m_pkMap)
+        return;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
+    if (!c_pEnvironmentData)
+    {
+        assert(!"null environment data");
+        TraceError("null environment data");
+        return;
+    }
 
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
 
-	mc_pcurEnvironmentData = c_pEnvironmentData;
+    mc_pcurEnvironmentData = c_pEnvironmentData;
 
-	
-	rkMap.SetEnvironmentDataPtr(mc_pcurEnvironmentData);
+    rkMap.SetEnvironmentDataPtr(mc_pcurEnvironmentData);
 }
 
-void CMapManager::ResetEnvironmentDataPtr(const TEnvironmentData * c_pEnvironmentData)
+void CMapManager::ResetEnvironmentDataPtr(const TEnvironmentData *c_pEnvironmentData)
 {
-	if (!m_pkMap)
-		return;
+    if (!m_pkMap)
+        return;
 
-	if (!c_pEnvironmentData)
-	{
-		assert(!"null environment data");
-		TraceError("null environment data");
-		return;
-	}
+    if (!c_pEnvironmentData)
+    {
+        assert(!"null environment data");
+        TraceError("null environment data");
+        return;
+    }
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
 
-	mc_pcurEnvironmentData = c_pEnvironmentData;
-	rkMap.ResetEnvironmentDataPtr(mc_pcurEnvironmentData);
+    mc_pcurEnvironmentData = c_pEnvironmentData;
+    rkMap.ResetEnvironmentDataPtr(mc_pcurEnvironmentData);
 }
 
-void CMapManager::BlendEnvironmentData(const TEnvironmentData * c_pEnvironmentData, int iTransitionTime)
+void CMapManager::BlendEnvironmentData(const TEnvironmentData *c_pEnvironmentData, int iTransitionTime)
 {
 }
 
-bool CMapManager::RegisterEnvironmentData(DWORD dwIndex, const char * c_szFileName)
+bool CMapManager::RegisterEnvironmentData(DWORD dwIndex, const char *c_szFileName)
 {
-	TEnvironmentData * pEnvironmentData = AllocEnvironmentData();
+    TEnvironmentData *pEnvironmentData = AllocEnvironmentData();
 
-	if (!LoadEnvironmentData(c_szFileName, pEnvironmentData))
-	{
-		DeleteEnvironmentData(pEnvironmentData);
-		return false;
-	}
+    if (!LoadEnvironmentData(c_szFileName, pEnvironmentData))
+    {
+        DeleteEnvironmentData(pEnvironmentData);
+        return false;
+    }
 
-	TEnvironmentDataMap::iterator f=m_EnvironmentDataMap.find(dwIndex);
-	if (m_EnvironmentDataMap.end()==f)
-	{
-		m_EnvironmentDataMap.insert(TEnvironmentDataMap::value_type(dwIndex, pEnvironmentData));
-	}
-	else
-	{
-		delete f->second;
-		f->second=pEnvironmentData;
-	}
-	return true;
+    TEnvironmentDataMap::iterator f = m_EnvironmentDataMap.find(dwIndex);
+    if (m_EnvironmentDataMap.end() == f)
+    {
+        m_EnvironmentDataMap.insert(TEnvironmentDataMap::value_type(dwIndex, pEnvironmentData));
+    }
+    else
+    {
+        delete f->second;
+        f->second = pEnvironmentData;
+    }
+    return true;
 }
 
-void CMapManager::GetCurrentEnvironmentData(const TEnvironmentData ** c_ppEnvironmentData)
+void CMapManager::GetCurrentEnvironmentData(const TEnvironmentData **c_ppEnvironmentData)
 {
-	*c_ppEnvironmentData = mc_pcurEnvironmentData;
+    *c_ppEnvironmentData = mc_pcurEnvironmentData;
 }
 
-bool CMapManager::GetEnvironmentData(DWORD dwIndex, const TEnvironmentData ** c_ppEnvironmentData)
+bool CMapManager::GetEnvironmentData(DWORD dwIndex, const TEnvironmentData **c_ppEnvironmentData)
 {
-	TEnvironmentDataMap::iterator itor = m_EnvironmentDataMap.find(dwIndex);
+    TEnvironmentDataMap::iterator itor = m_EnvironmentDataMap.find(dwIndex);
 
-	if (m_EnvironmentDataMap.end() == itor)
-	{
-		*c_ppEnvironmentData = NULL;
-		return false;
-	}
+    if (m_EnvironmentDataMap.end() == itor)
+    {
+        *c_ppEnvironmentData = NULL;
+        return false;
+    }
 
-	*c_ppEnvironmentData = itor->second;
-	return true;
+    *c_ppEnvironmentData = itor->second;
+    return true;
 }
 
 void CMapManager::RefreshPortal()
 {
-	if (!IsMapReady())
-		return;
+    if (!IsMapReady())
+        return;
 
-	CMapOutdoor & rMap = GetMapOutdoorRef();
-	for (int i = 0; i < AROUND_AREA_NUM; ++i)
-	{
-		CArea * pArea;
-		if (!rMap.GetAreaPointer(i, &pArea))
-			continue;
+    CMapOutdoor &rMap = GetMapOutdoorRef();
+    for (int i = 0; i < AROUND_AREA_NUM; ++i)
+    {
+        CArea *pArea;
+        if (!rMap.GetAreaPointer(i, &pArea))
+            continue;
 
-		pArea->RefreshPortal();
-	}
+        pArea->RefreshPortal();
+    }
 }
 
 void CMapManager::ClearPortal()
 {
-	if (!IsMapReady())
-		return;
+    if (!IsMapReady())
+        return;
 
-	CMapOutdoor & rMap = GetMapOutdoorRef();
-	for (int i = 0; i < AROUND_AREA_NUM; ++i)
-	{
-		CArea * pArea;
-		if (!rMap.GetAreaPointer(i, &pArea))
-			continue;
+    CMapOutdoor &rMap = GetMapOutdoorRef();
+    for (int i = 0; i < AROUND_AREA_NUM; ++i)
+    {
+        CArea *pArea;
+        if (!rMap.GetAreaPointer(i, &pArea))
+            continue;
 
-		pArea->ClearPortal();
-	}
+        pArea->ClearPortal();
+    }
 }
 
 void CMapManager::AddShowingPortalID(int iID)
 {
-	if (!IsMapReady())
-		return;
+    if (!IsMapReady())
+        return;
 
-	CMapOutdoor & rMap = GetMapOutdoorRef();
-	for (int i = 0; i < AROUND_AREA_NUM; ++i)
-	{
-		CArea * pArea;
-		if (!rMap.GetAreaPointer(i, &pArea))
-			continue;
+    CMapOutdoor &rMap = GetMapOutdoorRef();
+    for (int i = 0; i < AROUND_AREA_NUM; ++i)
+    {
+        CArea *pArea;
+        if (!rMap.GetAreaPointer(i, &pArea))
+            continue;
 
-		pArea->AddShowingPortalID(iID);
-	}
+        pArea->AddShowingPortalID(iID);
+    }
 }
 
-TEnvironmentData * CMapManager::AllocEnvironmentData()
+TEnvironmentData *CMapManager::AllocEnvironmentData()
 {
-	TEnvironmentData * pEnvironmentData = new TEnvironmentData;
-	Environment_Init(*pEnvironmentData);
-	return pEnvironmentData;
+    TEnvironmentData *pEnvironmentData = new TEnvironmentData;
+    Environment_Init(*pEnvironmentData);
+    return pEnvironmentData;
 }
 
-void CMapManager::DeleteEnvironmentData(TEnvironmentData * pEnvironmentData)
+void CMapManager::DeleteEnvironmentData(TEnvironmentData *pEnvironmentData)
 {
-	delete pEnvironmentData;
-	pEnvironmentData = NULL;
+    delete pEnvironmentData;
+    pEnvironmentData = NULL;
 }
 
-BOOL CMapManager::LoadEnvironmentData(const char * c_szFileName, TEnvironmentData * pEnvironmentData)
+BOOL CMapManager::LoadEnvironmentData(const char *c_szFileName, TEnvironmentData *pEnvironmentData)
 {
-	if (!pEnvironmentData)
-		return FALSE;
+    if (!pEnvironmentData)
+        return FALSE;
 
-	return (BOOL)Environment_Load(*pEnvironmentData, c_szFileName);
+    return (BOOL)Environment_Load(*pEnvironmentData, c_szFileName);
 }
 
 DWORD CMapManager::GetShadowMapColor(float fx, float fy)
 {
-	if (!IsMapReady())
-		return 0xFFFFFFFF;
+    if (!IsMapReady())
+        return 0xFFFFFFFF;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetShadowMapColor(fx, fy);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetShadowMapColor(fx, fy);
 }
 
-std::vector<int> & CMapManager::GetRenderedSplatNum(int * piPatch, int * piSplat, float * pfSplatRatio)
+std::vector<int> &CMapManager::GetRenderedSplatNum(int *piPatch, int *piSplat, float *pfSplatRatio)
 {
-	if (!m_pkMap)
-	{
-		static std::vector<int> s_emptyVector;
-		*piPatch = 0;
-		*piSplat = 0;
-		return s_emptyVector;
-	}
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetRenderedSplatNum(piPatch, piSplat, pfSplatRatio);
+    if (!m_pkMap)
+    {
+        static std::vector<int> s_emptyVector;
+        *piPatch = 0;
+        *piSplat = 0;
+        return s_emptyVector;
+    }
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetRenderedSplatNum(piPatch, piSplat, pfSplatRatio);
 }
 
-CArea::TCRCWithNumberVector & CMapManager::GetRenderedGraphicThingInstanceNum(DWORD * pdwGraphicThingInstanceNum, DWORD * pdwCRCNum)
+CArea::TCRCWithNumberVector &CMapManager::GetRenderedGraphicThingInstanceNum(DWORD *pdwGraphicThingInstanceNum,
+                                                                             DWORD *pdwCRCNum)
 {
-	if (!m_pkMap)
-	{
-		static CArea::TCRCWithNumberVector s_emptyVector;
-		*pdwGraphicThingInstanceNum = 0;
-		*pdwCRCNum = 0;
-		return s_emptyVector;
-	}
+    if (!m_pkMap)
+    {
+        static CArea::TCRCWithNumberVector s_emptyVector;
+        *pdwGraphicThingInstanceNum = 0;
+        *pdwCRCNum = 0;
+        return s_emptyVector;
+    }
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetRenderedGraphicThingInstanceNum(pdwGraphicThingInstanceNum, pdwCRCNum);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetRenderedGraphicThingInstanceNum(pdwGraphicThingInstanceNum, pdwCRCNum);
 }
 
-bool CMapManager::GetNormal(int ix, int iy, D3DXVECTOR3 * pv3Normal)
+bool CMapManager::GetNormal(int ix, int iy, D3DXVECTOR3 *pv3Normal)
 {
-	if (!IsMapReady())
-		return false;
+    if (!IsMapReady())
+        return false;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetNormal(ix, iy, pv3Normal);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetNormal(ix, iy, pv3Normal);
 }
 
-bool CMapManager::isPhysicalCollision(const D3DXVECTOR3 & c_rvCheckPosition)
+bool CMapManager::isPhysicalCollision(const D3DXVECTOR3 &c_rvCheckPosition)
 {
-	if (!IsMapReady())
-		return false;
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.isAttrOn(c_rvCheckPosition.x, -c_rvCheckPosition.y, CTerrainImpl::ATTRIBUTE_BLOCK);
+    if (!IsMapReady())
+        return false;
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.isAttrOn(c_rvCheckPosition.x, -c_rvCheckPosition.y, CTerrainImpl::ATTRIBUTE_BLOCK);
 }
 
 bool CMapManager::isAttrOn(float fX, float fY, BYTE byAttr)
 {
-	if (!IsMapReady())
-		return false;
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.isAttrOn(fX, fY, byAttr);
+    if (!IsMapReady())
+        return false;
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.isAttrOn(fX, fY, byAttr);
 }
 
-bool CMapManager::GetAttr(float fX, float fY, BYTE * pbyAttr)
+bool CMapManager::GetAttr(float fX, float fY, BYTE *pbyAttr)
 {
-	if (!IsMapReady())
-		return false;
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetAttr(fX, fY, pbyAttr);
+    if (!IsMapReady())
+        return false;
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetAttr(fX, fY, pbyAttr);
 }
 
 bool CMapManager::isAttrOn(int iX, int iY, BYTE byAttr)
 {
-	if (!IsMapReady())
-		return false;
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.isAttrOn(iX, iY, byAttr);
+    if (!IsMapReady())
+        return false;
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.isAttrOn(iX, iY, byAttr);
 }
 
-bool CMapManager::GetAttr(int iX, int iY, BYTE * pbyAttr)
+bool CMapManager::GetAttr(int iX, int iY, BYTE *pbyAttr)
 {
-	if (!IsMapReady())
-		return false;
-	
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetAttr(iX, iY, pbyAttr);
+    if (!IsMapReady())
+        return false;
+
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetAttr(iX, iY, pbyAttr);
 }
 
 // 2004.10.14.myevan.TEMP_CAreaLoaderThread
 /*
 bool CMapManager::BGLoadingEnable()
 {
-	if (!IsMapReady())
-		return false;
-	return ((CMapOutdoor*)m_pMap)->BGLoadingEnable();
+    if (!IsMapReady())
+        return false;
+    return ((CMapOutdoor*)m_pMap)->BGLoadingEnable();
 }
 
 void CMapManager::BGLoadingEnable(bool bBGLoadingEnable)
 {
-	if (!IsMapReady())
-		return;
-	((CMapOutdoor*)m_pMap)->BGLoadingEnable(bBGLoadingEnable);
+    if (!IsMapReady())
+        return;
+    ((CMapOutdoor*)m_pMap)->BGLoadingEnable(bBGLoadingEnable);
 }
 */
 
 void CMapManager::SetTerrainRenderSort(CMapOutdoor::ETerrainRenderSort eTerrainRenderSort)
 {
-	if (!IsMapReady())
-		return;
+    if (!IsMapReady())
+        return;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	rkMap.SetTerrainRenderSort(eTerrainRenderSort);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    rkMap.SetTerrainRenderSort(eTerrainRenderSort);
 }
 
 void CMapManager::SetTransparentTree(bool bTransparenTree)
 {
-	if (!IsMapReady())
-		return;
+    if (!IsMapReady())
+        return;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	rkMap.SetTransparentTree(bTransparenTree);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    rkMap.SetTransparentTree(bTransparenTree);
 }
 
 CMapOutdoor::ETerrainRenderSort CMapManager::GetTerrainRenderSort()
 {
-	if (!IsMapReady())
-		return CMapOutdoor::DISTANCE_SORT;
+    if (!IsMapReady())
+        return CMapOutdoor::DISTANCE_SORT;
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	return rkMap.GetTerrainRenderSort();
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    return rkMap.GetTerrainRenderSort();
 }
 
-void CMapManager::GetBaseXY(DWORD * pdwBaseX, DWORD * pdwBaseY)
+void CMapManager::GetBaseXY(DWORD *pdwBaseX, DWORD *pdwBaseY)
 {
-	if (!IsMapReady())
-	{
-		*pdwBaseX = 0;
-		*pdwBaseY = 0;
-	}
+    if (!IsMapReady())
+    {
+        *pdwBaseX = 0;
+        *pdwBaseY = 0;
+    }
 
-	CMapOutdoor& rkMap=GetMapOutdoorRef();
-	rkMap.GetBaseXY(pdwBaseX, pdwBaseY);
+    CMapOutdoor &rkMap = GetMapOutdoorRef();
+    rkMap.GetBaseXY(pdwBaseX, pdwBaseY);
 }
 
 void CMapManager::__LoadMapInfoVector()
 {
-	CEterPackManager::TPackDataPtr data;
-	CMemoryTextFileLoader textFileLoader;
+    CEterPackManager::TPackDataPtr data;
+    CMemoryTextFileLoader textFileLoader;
 
-	if (!CEterPackManager::Instance().Get(m_stAtlasInfoFileName, data))
-		if (!CEterPackManager::Instance().Get("AtlasInfo.txt", data))
-			return;
+    if (!CEterPackManager::Instance().Get(m_stAtlasInfoFileName, data))
+        if (!CEterPackManager::Instance().Get("AtlasInfo.txt", data))
+            return;
 
-	textFileLoader.Bind(data->size(), data->data());
+    textFileLoader.Bind(data->size(), data->data());
 
-	char szMapName[256];
-	int x, y;
-	int width, height;
-	for (UINT uLineIndex=0; uLineIndex<textFileLoader.GetLineCount(); ++uLineIndex)
-	{
-		const std::string& c_rstLine=textFileLoader.GetLineString(uLineIndex);
-		sscanf(c_rstLine.c_str(), "%s %d %d %d %d", 
-			szMapName, 
-			&x, &y, &width, &height);
+    char szMapName[256];
+    int x, y;
+    int width, height;
+    for (UINT uLineIndex = 0; uLineIndex < textFileLoader.GetLineCount(); ++uLineIndex)
+    {
+        const std::string &c_rstLine = textFileLoader.GetLineString(uLineIndex);
+        sscanf(c_rstLine.c_str(), "%s %d %d %d %d", szMapName, &x, &y, &width, &height);
 
-		if ('\0'==szMapName[0])
-			continue;
+        if ('\0' == szMapName[0])
+            continue;
 
-		TMapInfo kMapInfo;
-		kMapInfo.m_strName = szMapName;
-		kMapInfo.m_dwBaseX = x;
-		kMapInfo.m_dwBaseY = y;
+        TMapInfo kMapInfo;
+        kMapInfo.m_strName = szMapName;
+        kMapInfo.m_dwBaseX = x;
+        kMapInfo.m_dwBaseY = y;
 
-		kMapInfo.m_dwSizeX = width;
-		kMapInfo.m_dwSizeY = height;
+        kMapInfo.m_dwSizeX = width;
+        kMapInfo.m_dwSizeY = height;
 
-		kMapInfo.m_dwEndX = kMapInfo.m_dwBaseX + kMapInfo.m_dwSizeX * CTerrainImpl::TERRAIN_XSIZE;
-		kMapInfo.m_dwEndY = kMapInfo.m_dwBaseY + kMapInfo.m_dwSizeY * CTerrainImpl::TERRAIN_YSIZE;
+        kMapInfo.m_dwEndX = kMapInfo.m_dwBaseX + kMapInfo.m_dwSizeX * CTerrainImpl::TERRAIN_XSIZE;
+        kMapInfo.m_dwEndY = kMapInfo.m_dwBaseY + kMapInfo.m_dwSizeY * CTerrainImpl::TERRAIN_YSIZE;
 
-		m_kVct_kMapInfo.push_back(kMapInfo);
-	}
+        m_kVct_kMapInfo.push_back(kMapInfo);
+    }
 
-	return;
+    return;
 }
-

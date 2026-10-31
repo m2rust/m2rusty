@@ -8,90 +8,101 @@ class CEmitterProperty;
 
 class CParticleInstance
 {
-	friend class CParticleSystemData;
-	friend class CParticleSystemInstance;
+    friend class CParticleSystemData;
+    friend class CParticleSystemInstance;
 
-	friend class NEffectUpdateDecorator::CBaseDecorator;
-	friend class NEffectUpdateDecorator::CAirResistanceDecorator;
-	friend class NEffectUpdateDecorator::CGravityDecorator;
-	friend class NEffectUpdateDecorator::CRotationDecorator;
+    friend class NEffectUpdateDecorator::CBaseDecorator;
+    friend class NEffectUpdateDecorator::CAirResistanceDecorator;
+    friend class NEffectUpdateDecorator::CGravityDecorator;
+    friend class NEffectUpdateDecorator::CRotationDecorator;
 
-	public:
-		CParticleInstance();
-		~CParticleInstance();
+  public:
+    CParticleInstance();
+    ~CParticleInstance();
 
-		float GetRadiusApproximation();
+    float GetRadiusApproximation();
 
-		// Read-only state accessors (used by deterministic effect tests and
-		// debug tooling; the simulation still owns the data).
-		const D3DXVECTOR3& GetPosition() const { return m_v3Position; }
-		const D3DXVECTOR3& GetVelocity() const { return m_v3Velocity; }
-		float GetLifeTime() const { return m_fLastLifeTime; }
-		
-		BOOL Update(float fElapsedTime, float fAngle);
-		//virtual void Transform(const D3DXMATRIX * c_matLocal, const float c_fZRotation)=0;
-		//virtual void Transform(const D3DXMATRIX * c_matLocal = NULL)=0;
+    // Read-only state accessors (used by deterministic effect tests and
+    // debug tooling; the simulation still owns the data).
+    const D3DXVECTOR3 &GetPosition() const
+    {
+        return m_v3Position;
+    }
+    const D3DXVECTOR3 &GetVelocity() const
+    {
+        return m_v3Velocity;
+    }
+    float GetLifeTime() const
+    {
+        return m_fLastLifeTime;
+    }
 
-		//virtual TPTVertex * GetParticleMeshPointer() = 0;
+    BOOL Update(float fElapsedTime, float fAngle);
+    // virtual void Transform(const D3DXMATRIX * c_matLocal, const float
+    // c_fZRotation)=0; virtual void Transform(const D3DXMATRIX * c_matLocal =
+    // NULL)=0;
 
-		//__forceinline float GetLifePercentage()
-		//{
-		//	return m_fLifePercentage;
-			//return (m_fLifeTime - m_fLastLifeTime) / m_fLifeTime;
-		//}
+    // virtual TPTVertex * GetParticleMeshPointer() = 0;
 
-		//virtual void DeleteThis() = 0;
+    //__forceinline float GetLifePercentage()
+    //{
+    //	return m_fLifePercentage;
+    // return (m_fLifeTime - m_fLastLifeTime) / m_fLifeTime;
+    //}
 
-	protected:
-		//float				m_fLifePercentage;
-		D3DXVECTOR3			m_v3StartPosition;
+    // virtual void DeleteThis() = 0;
 
-		D3DXVECTOR3			m_v3Position;
-		D3DXVECTOR3			m_v3LastPosition;
-		D3DXVECTOR3			m_v3Velocity;
+  protected:
+    // float				m_fLifePercentage;
+    D3DXVECTOR3 m_v3StartPosition;
 
-		D3DXVECTOR2			m_v2HalfSize;
-		D3DXVECTOR2			m_v2Scale;
+    D3DXVECTOR3 m_v3Position;
+    D3DXVECTOR3 m_v3LastPosition;
+    D3DXVECTOR3 m_v3Velocity;
 
-		float				m_fRotation;
+    D3DXVECTOR2 m_v2HalfSize;
+    D3DXVECTOR2 m_v2Scale;
+
+    float m_fRotation;
 #ifdef WORLD_EDITOR
-		D3DXCOLOR			m_Color;
+    D3DXCOLOR m_Color;
 #else
-		DWORDCOLOR			m_dcColor;
+    DWORDCOLOR m_dcColor;
 #endif
 
-		BYTE				m_byTextureAnimationType;
-		float				m_fLastFrameTime;
-		BYTE				m_byFrameIndex;
+    BYTE m_byTextureAnimationType;
+    float m_fLastFrameTime;
+    BYTE m_byFrameIndex;
 
-		float				m_fLifeTime;
-		float				m_fLastLifeTime;
+    float m_fLifeTime;
+    float m_fLastLifeTime;
 
-		CParticleProperty *	m_pParticleProperty;
-		CEmitterProperty *	m_pEmitterProperty;
+    CParticleProperty *m_pParticleProperty;
+    CEmitterProperty *m_pEmitterProperty;
 
-		float m_fAirResistance;
-		float m_fRotationSpeed;
-		float m_fGravity;
+    float m_fAirResistance;
+    float m_fRotationSpeed;
+    float m_fGravity;
 
-		NEffectUpdateDecorator::CBaseDecorator * m_pDecorator;	
-	public:
-		static CParticleInstance* New();
-		static void DestroySystem();
+    NEffectUpdateDecorator::CBaseDecorator *m_pDecorator;
 
-		void Transform(const D3DXMATRIX * c_matLocal=NULL);
-		void Transform(const D3DXMATRIX * c_matLocal, const float c_fZRotation);
+  public:
+    static CParticleInstance *New();
+    static void DestroySystem();
 
-		TPTVertex * GetParticleMeshPointer();
-		
-		void DeleteThis();
+    void Transform(const D3DXMATRIX *c_matLocal = NULL);
+    void Transform(const D3DXMATRIX *c_matLocal, const float c_fZRotation);
 
-		void Destroy();
+    TPTVertex *GetParticleMeshPointer();
 
-	protected:
-		void __Initialize();
-		TPTVertex			m_ParticleMesh[4];
-	public:
-		static CDynamicPool<CParticleInstance> ms_kPool;
-		
+    void DeleteThis();
+
+    void Destroy();
+
+  protected:
+    void __Initialize();
+    TPTVertex m_ParticleMesh[4];
+
+  public:
+    static CDynamicPool<CParticleInstance> ms_kPool;
 };

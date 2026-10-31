@@ -7,33 +7,32 @@
 
 class CLightInstance : public CEffectElementBaseInstance
 {
-	public:
-		friend class CLightData;
+  public:
+    friend class CLightData;
 
-		CLightInstance();
-		virtual ~CLightInstance();
+    CLightInstance();
+    virtual ~CLightInstance();
 
-	protected:
-		
-		void OnSetDataPointer(CEffectElementBase * pElement);
+  protected:
+    void OnSetDataPointer(CEffectElementBase *pElement);
 
-		void OnInitialize();
-		void OnDestroy();
+    void OnInitialize();
+    void OnDestroy();
 
-		bool OnUpdate(float fElapsedTime);
-		void OnRender();
-		
-		DWORD			m_LightID;
-		CLightData *	m_pData;
-		DWORD			m_dwRangeIndex;
+    bool OnUpdate(float fElapsedTime);
+    void OnRender();
 
-		DWORD			m_iLoopCount;
-		
-	public:
-		static void DestroySystem();
+    DWORD m_LightID;
+    CLightData *m_pData;
+    DWORD m_dwRangeIndex;
 
-		static CLightInstance* New();
-		static void Delete(CLightInstance* pkData);
+    DWORD m_iLoopCount;
 
-		static CDynamicPool<CLightInstance>		ms_kPool;	
+  public:
+    static void DestroySystem();
+
+    static CLightInstance *New();
+    static void Delete(CLightInstance *pkData);
+
+    static CDynamicPool<CLightInstance> ms_kPool;
 };

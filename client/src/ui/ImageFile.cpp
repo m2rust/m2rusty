@@ -6,51 +6,51 @@
 
 #include <Neoeter/Platform/Base/ImageLoaderCompat.h>
 
-static bool ReadFileBytes(const char* path, std::vector<uint8_t>& out)
+static bool ReadFileBytes(const char *path, std::vector<uint8_t> &out)
 {
-	out.clear();
+    out.clear();
 
-	FILE* file = fopen(path, "rb");
-	if (!file)
-		return false;
+    FILE *file = fopen(path, "rb");
+    if (!file)
+        return false;
 
-	fseek(file, 0, SEEK_END);
-	long size = ftell(file);
-	fseek(file, 0, SEEK_SET);
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
 
-	if (size <= 0)
-	{
-		fclose(file);
-		return false;
-	}
+    if (size <= 0)
+    {
+        fclose(file);
+        return false;
+    }
 
-	out.resize((size_t)size);
-	size_t read = fread(out.data(), 1, out.size(), file);
-	fclose(file);
+    out.resize((size_t)size);
+    size_t read = fread(out.data(), 1, out.size(), file);
+    fclose(file);
 
-	if (read != out.size())
-	{
-		out.clear();
-		return false;
-	}
+    if (read != out.size())
+    {
+        out.clear();
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
-bool GetImageFileInfo(const char* path, uint32_t* width, uint32_t* height, uint32_t* format)
+bool GetImageFileInfo(const char *path, uint32_t *width, uint32_t *height, uint32_t *format)
 {
-	std::vector<uint8_t> bytes;
-	if (!path || !ReadFileBytes(path, bytes))
-		return false;
+    std::vector<uint8_t> bytes;
+    if (!path || !ReadFileBytes(path, bytes))
+        return false;
 
-	return Platform_GetImageInfo(bytes.data(), bytes.size(), width, height, format);
+    return Platform_GetImageInfo(bytes.data(), bytes.size(), width, height, format);
 }
 
-bool LoadImageFileBGRA(const char* path, uint32_t* width, uint32_t* height, std::vector<uint8_t>& pixels)
+bool LoadImageFileBGRA(const char *path, uint32_t *width, uint32_t *height, std::vector<uint8_t> &pixels)
 {
-	std::vector<uint8_t> bytes;
-	if (!path || !ReadFileBytes(path, bytes))
-		return false;
+    std::vector<uint8_t> bytes;
+    if (!path || !ReadFileBytes(path, bytes))
+        return false;
 
-	return Platform_DecodeImage(bytes.data(), bytes.size(), width, height, pixels);
+    return Platform_DecodeImage(bytes.data(), bytes.size(), width, height, pixels);
 }

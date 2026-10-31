@@ -15,39 +15,53 @@ namespace TreeCacheFixture
 
 class Writer
 {
-public:
-    template <typename T>
-    void Raw(const T & value)
+  public:
+    template <typename T> void Raw(const T &value)
     {
-        const unsigned char * bytes = reinterpret_cast<const unsigned char *>(&value);
+        const unsigned char *bytes = reinterpret_cast<const unsigned char *>(&value);
         m_data.insert(m_data.end(), bytes, bytes + sizeof(T));
     }
 
-    void U32(uint32_t value) { Raw(value); }
-    void I32(int32_t value) { Raw(value); }
-    void U16(uint16_t value) { Raw(value); }
-    void U8(uint8_t value) { Raw(value); }
-    void F32(float value) { Raw(value); }
+    void U32(uint32_t value)
+    {
+        Raw(value);
+    }
+    void I32(int32_t value)
+    {
+        Raw(value);
+    }
+    void U16(uint16_t value)
+    {
+        Raw(value);
+    }
+    void U8(uint8_t value)
+    {
+        Raw(value);
+    }
+    void F32(float value)
+    {
+        Raw(value);
+    }
 
-    void Bytes(const std::string & value)
+    void Bytes(const std::string &value)
     {
         U32(static_cast<uint32_t>(value.size()));
         m_data.insert(m_data.end(), value.begin(), value.end());
     }
 
-    const std::vector<unsigned char> & Data() const { return m_data; }
+    const std::vector<unsigned char> &Data() const
+    {
+        return m_data;
+    }
 
-private:
+  private:
     std::vector<unsigned char> m_data;
 };
 
-inline void WriteIndexedPart(Writer & w, uint32_t vertexCount, uint32_t stripCount,
-                             uint16_t lod, float alphaTest,
-                             const std::vector<uint16_t> & indices,
-                             const std::vector<float> & coords,
-                             const std::vector<uint32_t> & colors,
-                             const std::vector<float> & texCoords0,
-                             const std::vector<float> & texCoords1)
+inline void WriteIndexedPart(Writer &w, uint32_t vertexCount, uint32_t stripCount, uint16_t lod, float alphaTest,
+                             const std::vector<uint16_t> &indices, const std::vector<float> &coords,
+                             const std::vector<uint32_t> &colors, const std::vector<float> &texCoords0,
+                             const std::vector<float> &texCoords1)
 {
     w.U32(vertexCount);
     w.U32(stripCount);
@@ -68,8 +82,7 @@ inline void WriteIndexedPart(Writer & w, uint32_t vertexCount, uint32_t stripCou
         w.F32(0.0f); // normals
 }
 
-inline void WriteLeafSet(Writer & w, bool active, int32_t lod, float alphaTest,
-                         uint32_t leafCount)
+inline void WriteLeafSet(Writer &w, bool active, int32_t lod, float alphaTest, uint32_t leafCount)
 {
     w.U8(active ? 1 : 0);
     w.I32(lod);
@@ -90,7 +103,7 @@ inline void WriteLeafSet(Writer & w, bool active, int32_t lod, float alphaTest,
     }
 }
 
-inline void WriteBillboard(Writer & w, bool active, float alphaTest)
+inline void WriteBillboard(Writer &w, bool active, float alphaTest)
 {
     w.U8(active ? 1 : 0);
     w.F32(alphaTest);
@@ -121,10 +134,7 @@ inline std::vector<unsigned char> MakeBranchesOnly(uint32_t hash, float height)
 
     const std::vector<uint16_t> indices = {0, 1, 2, 3};
     const std::vector<float> coords = {
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        1.0f, 1.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
     };
     const std::vector<uint32_t> colors(4, 0xFFFFFFFFu);
     const std::vector<float> tex0 = {0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
@@ -144,8 +154,8 @@ inline std::vector<unsigned char> MakeBranchesOnly(uint32_t hash, float height)
     return w.Data();
 }
 
-// Well-formed header followed by a leaf count that promises far more data than
-// the file contains. A reader must reject this before allocating.
+// Well-formed header followed by a leaf count that promises far more data
+// than the file contains. A reader must reject this before allocating.
 inline std::vector<unsigned char> MakeHugeLeafCount(uint32_t hash)
 {
     Writer w;

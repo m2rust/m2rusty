@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef _MSC_VER
-#pragma warning(disable:4702)
+#pragma warning(disable : 4702)
 #endif
 
 #include <Platform/Platform.h>

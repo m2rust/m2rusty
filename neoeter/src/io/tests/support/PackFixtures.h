@@ -15,26 +15,23 @@ struct ZipFixtureEntry
     std::vector<char> data;
 };
 
-inline bool WriteZipFixture(const std::string & path,
-                            const std::vector<ZipFixtureEntry> & entries)
+inline bool WriteZipFixture(const std::string &path, const std::vector<ZipFixtureEntry> &entries)
 {
     int err = 0;
-    zip_t * za = zip_open(path.c_str(), ZIP_CREATE | ZIP_TRUNCATE, &err);
+    zip_t *za = zip_open(path.c_str(), ZIP_CREATE | ZIP_TRUNCATE, &err);
     if (!za)
         return false;
 
-    for (const ZipFixtureEntry & entry : entries)
+    for (const ZipFixtureEntry &entry : entries)
     {
-        zip_source_t * source = zip_source_buffer(za, entry.data.data(),
-                                                  entry.data.size(), 0);
+        zip_source_t *source = zip_source_buffer(za, entry.data.data(), entry.data.size(), 0);
         if (!source)
         {
             zip_discard(za);
             return false;
         }
 
-        if (zip_file_add(za, entry.name.c_str(), source,
-                         ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8) < 0)
+        if (zip_file_add(za, entry.name.c_str(), source, ZIP_FL_OVERWRITE | ZIP_FL_ENC_UTF_8) < 0)
         {
             zip_source_free(source);
             zip_discard(za);

@@ -6,27 +6,27 @@
 
 class CSoundManagerStream : public CSoundBase
 {
-	public:
-		enum
-		{
-			MUSIC_INSTANCE_MAX_NUM = 3,
-		};
+  public:
+    enum
+    {
+        MUSIC_INSTANCE_MAX_NUM = 3,
+    };
 
-	public:
-		CSoundManagerStream();
-		virtual ~CSoundManagerStream();
+  public:
+    CSoundManagerStream();
+    virtual ~CSoundManagerStream();
 
-		bool					Initialize();
-		void					Destroy();
+    bool Initialize();
+    void Destroy();
 
-		bool					SetInstance(DWORD dwIndex, const char* filename);
-		CSoundInstanceStream *	GetInstance(DWORD dwIndex);
+    bool SetInstance(DWORD dwIndex, const char *filename);
+    CSoundInstanceStream *GetInstance(DWORD dwIndex);
 
-	protected:
-		bool					CheckInstanceIndex(DWORD dwIndex);
+  protected:
+    bool CheckInstanceIndex(DWORD dwIndex);
 
-	protected:
-		CSoundInstanceStream	m_Instances[MUSIC_INSTANCE_MAX_NUM];
+  protected:
+    CSoundInstanceStream m_Instances[MUSIC_INSTANCE_MAX_NUM];
 };
 
 #endif

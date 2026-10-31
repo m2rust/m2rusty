@@ -12,16 +12,14 @@
 namespace
 {
 
-template <typename T>
-std::vector<unsigned char> Encode(const T & packet)
+template <typename T> std::vector<unsigned char> Encode(const T &packet)
 {
     std::vector<unsigned char> bytes(sizeof(T));
     std::memcpy(bytes.data(), &packet, sizeof(T));
     return bytes;
 }
 
-template <typename T>
-bool Decode(const std::vector<unsigned char> & bytes, T & packet)
+template <typename T> bool Decode(const std::vector<unsigned char> &bytes, T &packet)
 {
     if (bytes.size() < sizeof(T))
         return false;
@@ -87,8 +85,7 @@ void test_round_trip()
     const std::vector<unsigned char> bytes = Encode(move);
     TEST_ASSERT(bytes.size() == sizeof(TPacketGCMove));
     TEST_ASSERT(bytes[0] == HEADER_GC_CHARACTER_MOVE);
-    TEST_ASSERT(bytes[4] == 0xEF && bytes[5] == 0xBE && bytes[6] == 0xAD &&
-                bytes[7] == 0xDE); // little-endian VID
+    TEST_ASSERT(bytes[4] == 0xEF && bytes[5] == 0xBE && bytes[6] == 0xAD && bytes[7] == 0xDE); // little-endian VID
 
     TPacketGCMove decoded = {};
     TEST_ASSERT(Decode(bytes, decoded));
@@ -134,10 +131,8 @@ void test_header_map()
     CNetworkPacketHeaderMap::TPacketType type;
     TEST_ASSERT(!map.Get(HEADER_GC_PHASE, &type));
 
-    map.Set(HEADER_GC_PHASE,
-            CNetworkPacketHeaderMap::TPacketType(sizeof(TPacketGCPhase), false));
-    map.Set(HEADER_GC_CHAT,
-            CNetworkPacketHeaderMap::TPacketType(sizeof(TPacketGCChat), true));
+    map.Set(HEADER_GC_PHASE, CNetworkPacketHeaderMap::TPacketType(sizeof(TPacketGCPhase), false));
+    map.Set(HEADER_GC_CHAT, CNetworkPacketHeaderMap::TPacketType(sizeof(TPacketGCChat), true));
 
     TEST_ASSERT(map.Get(HEADER_GC_PHASE, &type));
     TEST_ASSERT(type.iPacketSize == static_cast<int>(sizeof(TPacketGCPhase)));

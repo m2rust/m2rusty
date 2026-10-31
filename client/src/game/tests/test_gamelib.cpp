@@ -14,7 +14,8 @@ namespace
 
 void test_game_math_and_util()
 {
-    // Rotation from position (Metin2 uses (0, -1, 0) as standard 0-degree vector)
+    // Rotation from position (Metin2 uses (0, -1, 0) as standard 0-degree
+    // vector)
     float degSouth = GetDegreeFromPosition(0.0f, -10.0f);
     assert(std::fabs(degSouth - 0.0f) < 1.0f || std::fabs(degSouth - 360.0f) < 1.0f);
 
@@ -45,15 +46,15 @@ void test_item_manager()
 
     CItemManager itemMgr;
 
-    CItemData* pItem1 = itemMgr.MakeItemData(1001);
+    CItemData *pItem1 = itemMgr.MakeItemData(1001);
     assert(pItem1 != nullptr);
 
-    CItemData* pFound = nullptr;
+    CItemData *pFound = nullptr;
     BOOL foundOk = itemMgr.GetItemDataPointer(1001, &pFound);
     assert(foundOk && pFound == pItem1);
 
     // Make another item
-    CItemData* pItem2 = itemMgr.MakeItemData(2002);
+    CItemData *pItem2 = itemMgr.MakeItemData(2002);
     assert(pItem2 != nullptr);
     assert(pItem2 != pItem1);
 
@@ -63,7 +64,7 @@ void test_item_manager()
     assert(itemMgr.GetSelectedItemDataPointer() == pItem2);
 
     // Non-existent item
-    CItemData* pMissing = nullptr;
+    CItemData *pMissing = nullptr;
     assert(!itemMgr.GetItemDataPointer(99999, &pMissing));
 
     std::printf("[PASS] test_item_manager\n");
@@ -79,7 +80,7 @@ void test_race_manager()
     raceMgr.CreateRace(1);
     raceMgr.CreateRace(2);
 
-    CRaceData* pRaceData1 = nullptr;
+    CRaceData *pRaceData1 = nullptr;
     BOOL ok = raceMgr.GetRaceDataPointer(1, &pRaceData1);
     assert(ok && pRaceData1 != nullptr);
 
@@ -104,7 +105,7 @@ void test_actor_instance_basics()
     CActorInstance actor;
 
     actor.SetPosition(100.0f, 200.0f, 50.0f);
-    const D3DXVECTOR3& pos = actor.GetPosition();
+    const D3DXVECTOR3 &pos = actor.GetPosition();
     assert(std::fabs(pos.x - 100.0f) < 1e-4f);
     assert(std::fabs(pos.y - 200.0f) < 1e-4f);
     assert(std::fabs(pos.z - 50.0f) < 1e-4f);

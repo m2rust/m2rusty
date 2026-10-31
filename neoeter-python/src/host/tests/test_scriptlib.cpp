@@ -9,17 +9,18 @@
 #include <cstring>
 #include <string>
 
-namespace {
+namespace
+{
 
 class TestExceptionSender : public IPythonExceptionSender
 {
-public:
+  public:
     std::string lastException;
     void Send() override
     {
         lastException = m_strExceptionString;
     }
-    const std::string& GetException() const
+    const std::string &GetException() const
     {
         return m_strExceptionString;
     }
@@ -27,7 +28,7 @@ public:
 
 void test_python_launcher_and_execution()
 {
-    CPythonLauncher& launcher = CPythonLauncher::Instance();
+    CPythonLauncher &launcher = CPythonLauncher::Instance();
 
     // 1. Basic line execution
     bool lineOk = launcher.RunLine("val_int = 12345");
@@ -39,48 +40,44 @@ void test_python_launcher_and_execution()
     lineOk = launcher.RunLine("val_sum = 100 + 250");
     assert(lineOk);
 
-    PyObject* mainMod = PyImport_AddModule("__main__");
+    PyObject *mainMod = PyImport_AddModule("__main__");
     assert(mainMod != nullptr);
-    PyObject* dict = PyModule_GetDict(mainMod);
+    PyObject *dict = PyModule_GetDict(mainMod);
     assert(dict != nullptr);
 
-    PyObject* pyInt = PyDict_GetItemString(dict, "val_int");
+    PyObject *pyInt = PyDict_GetItemString(dict, "val_int");
     assert(pyInt != nullptr);
     assert(PyInt_AsLong(pyInt) == 12345);
 
-    PyObject* pyStr = PyDict_GetItemString(dict, "val_str");
+    PyObject *pyStr = PyDict_GetItemString(dict, "val_str");
     assert(pyStr != nullptr);
     assert(std::strcmp(PyString_AsString(pyStr), "metin2_open") == 0);
 
-    PyObject* pySum = PyDict_GetItemString(dict, "val_sum");
+    PyObject *pySum = PyDict_GetItemString(dict, "val_sum");
     assert(pySum != nullptr);
     assert(PyInt_AsLong(pySum) == 350);
 
     // 2. Check builtins TRUE and FALSE via script execution
-    bool boolOk = launcher.RunLine(
-        "test_true = TRUE\n"
-        "test_false = FALSE\n"
-    );
+    bool boolOk = launcher.RunLine("test_true = TRUE\n"
+                                   "test_false = FALSE\n");
     assert(boolOk);
-    PyObject* pyTrue = PyDict_GetItemString(dict, "test_true");
+    PyObject *pyTrue = PyDict_GetItemString(dict, "test_true");
     assert(pyTrue != nullptr);
     assert(PyInt_AsLong(pyTrue) == 1);
 
-    PyObject* pyFalse = PyDict_GetItemString(dict, "test_false");
+    PyObject *pyFalse = PyDict_GetItemString(dict, "test_false");
     assert(pyFalse != nullptr);
     assert(PyInt_AsLong(pyFalse) == 0);
 
     // 3. Multiline code block
-    bool scriptOk = launcher.RunLine(
-        "def compute_fib(n):\n"
-        "    if n <= 1:\n"
-        "        return n\n"
-        "    return compute_fib(n-1) + compute_fib(n-2)\n"
-        "fib_result = compute_fib(7)\n"
-    );
+    bool scriptOk = launcher.RunLine("def compute_fib(n):\n"
+                                     "    if n <= 1:\n"
+                                     "        return n\n"
+                                     "    return compute_fib(n-1) + compute_fib(n-2)\n"
+                                     "fib_result = compute_fib(7)\n");
     assert(scriptOk);
 
-    PyObject* pyFib = PyDict_GetItemString(dict, "fib_result");
+    PyObject *pyFib = PyDict_GetItemString(dict, "fib_result");
     assert(pyFib != nullptr);
     assert(PyInt_AsLong(pyFib) == 13);
 
@@ -90,14 +87,14 @@ void test_python_launcher_and_execution()
 void test_python_utils()
 {
     // 1. Tuple parsing
-    PyObject* args = Py_BuildValue("(isflb)", 77, "client_test", 3.14159f, 987654321L, 1);
+    PyObject *args = Py_BuildValue("(isflb)", 77, "client_test", 3.14159f, 987654321L, 1);
     assert(args != nullptr);
 
     int intVal = 0;
     assert(PyTuple_GetInteger(args, 0, &intVal));
     assert(intVal == 77);
 
-    char* strVal = nullptr;
+    char *strVal = nullptr;
     assert(PyTuple_GetString(args, 1, &strVal));
     assert(std::strcmp(strVal, "client_test") == 0);
 
@@ -116,19 +113,17 @@ void test_python_utils()
     Py_DECREF(args);
 
     // 2. Class member function invocation
-    CPythonLauncher::Instance().RunLine(
-        "class Calculator:\n"
-        "    def multiply(self, a, b):\n"
-        "        return a * b\n"
-        "calc_inst = Calculator()\n"
-    );
+    CPythonLauncher::Instance().RunLine("class Calculator:\n"
+                                        "    def multiply(self, a, b):\n"
+                                        "        return a * b\n"
+                                        "calc_inst = Calculator()\n");
 
-    PyObject* mainMod = PyImport_AddModule("__main__");
-    PyObject* dict = PyModule_GetDict(mainMod);
-    PyObject* calcInst = PyDict_GetItemString(dict, "calc_inst");
+    PyObject *mainMod = PyImport_AddModule("__main__");
+    PyObject *dict = PyModule_GetDict(mainMod);
+    PyObject *calcInst = PyDict_GetItemString(dict, "calc_inst");
     assert(calcInst != nullptr);
 
-    PyObject* callArgs = Py_BuildValue("(ii)", 6, 7);
+    PyObject *callArgs = Py_BuildValue("(ii)", 6, 7);
     long resultVal = 0;
     bool callOk = PyCallClassMemberFunc(calcInst, "multiply", callArgs, &resultVal);
     assert(callOk);
@@ -144,12 +139,10 @@ void test_debug_module()
 
     initdbg();
 
-    CPythonLauncher::Instance().RunLine(
-        "import dbg\n"
-        "dbg.Trace('Test debug message from Python')\n"
-        "dbg.Tracen('Test tracen message')\n"
-        "dbg.RegisterExceptionString('CriticalScriptError: Test')\n"
-    );
+    CPythonLauncher::Instance().RunLine("import dbg\n"
+                                        "dbg.Trace('Test debug message from Python')\n"
+                                        "dbg.Tracen('Test tracen message')\n"
+                                        "dbg.RegisterExceptionString('CriticalScriptError: Test')\n");
 
     assert(sender.GetException() == "CriticalScriptError: Test");
 
@@ -178,17 +171,15 @@ void test_python_resource()
 
 void test_embedded_modules()
 {
-    CPythonLauncher& launcher = CPythonLauncher::Instance();
-    bool ok = launcher.RunLine(
-        "import math\n"
-        "assert math.pi > 3.14\n"
-        "assert math.sin(0) == 0.0\n"
-        "assert math.cos(0) == 1.0\n"
-        "assert math.ceil(2.3) == 3.0\n"
-        "import time\n"
-        "t = time.time()\n"
-        "assert t > 0\n"
-    );
+    CPythonLauncher &launcher = CPythonLauncher::Instance();
+    bool ok = launcher.RunLine("import math\n"
+                               "assert math.pi > 3.14\n"
+                               "assert math.sin(0) == 0.0\n"
+                               "assert math.cos(0) == 1.0\n"
+                               "assert math.ceil(2.3) == 3.0\n"
+                               "import time\n"
+                               "t = time.time()\n"
+                               "assert t > 0\n");
     assert(ok);
     std::printf("[PASS] test_embedded_modules\n");
 }

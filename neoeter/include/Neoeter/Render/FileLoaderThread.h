@@ -7,55 +7,61 @@
 #include "Thread.h"
 #include "Mutex.h"
 
-class CFileLoaderThread 
+class CFileLoaderThread
 {
-	public:
-		typedef struct SData
-		{
-			std::string	fileName;
-			std::shared_ptr<std::vector<char>> data;
-		} TData;
+  public:
+    typedef struct SData
+    {
+        std::string fileName;
+        std::shared_ptr<std::vector<char>> data;
+    } TData;
 
-	public:
-		CFileLoaderThread();
-		~CFileLoaderThread();
+  public:
+    CFileLoaderThread();
+    ~CFileLoaderThread();
 
-		int Create(void * arg);
-	
-	public:
-		void	Request(const std::string& c_rstFileName);
-		bool	Fetch(TData& data);
-		void	Shutdown();
+    int Create(void *arg);
 
-	protected:
-		static UINT CALLBACK	EntryPoint(void * pThis);
-		UINT					Run(void * arg);
+  public:
+    void Request(const std::string &c_rstFileName);
+    bool Fetch(TData &data);
+    void Shutdown();
 
-		void *					Arg() const		{ return m_pArg; }
-		void					Arg(void * arg) { m_pArg = arg; }
-		
-		HANDLE					m_hThread;
+  protected:
+    static UINT CALLBACK EntryPoint(void *pThis);
+    UINT Run(void *arg);
 
-	private:
-		void *					m_pArg;
-		unsigned				m_uThreadID;
+    void *Arg() const
+    {
+        return m_pArg;
+    }
+    void Arg(void *arg)
+    {
+        m_pArg = arg;
+    }
 
-	protected:
-		UINT					Setup();
-		UINT					Execute(void * pvArg);
-		void					Destroy();
-		void					Process();
+    HANDLE m_hThread;
 
-	private:
-		std::deque<TData>		m_pRequestDeque;
-		Mutex					m_RequestMutex;
+  private:
+    void *m_pArg;
+    unsigned m_uThreadID;
 
-		std::deque<TData>		m_pCompleteDeque;
-		Mutex					m_CompleteMutex;
+  protected:
+    UINT Setup();
+    UINT Execute(void *pvArg);
+    void Destroy();
+    void Process();
 
-		HANDLE					m_hSemaphore;
-		int						m_iRestSemCount;
-		bool					m_bShutdowned;
+  private:
+    std::deque<TData> m_pRequestDeque;
+    Mutex m_RequestMutex;
+
+    std::deque<TData> m_pCompleteDeque;
+    Mutex m_CompleteMutex;
+
+    HANDLE m_hSemaphore;
+    int m_iRestSemCount;
+    bool m_bShutdowned;
 };
 
 #endif

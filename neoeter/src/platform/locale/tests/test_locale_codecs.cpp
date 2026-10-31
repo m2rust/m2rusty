@@ -10,16 +10,16 @@ namespace
 {
 
 // Round-trip a byte string through wide characters and back.
-void roundtrip(UINT codePage, const char * input, int inputLength, const char * label)
+void roundtrip(UINT codePage, const char *input, int inputLength, const char *label)
 {
     wchar_t wide[256] = {};
-    int wideLength = MultiByteToWideChar(codePage, 0, input, inputLength, wide,
-                                         static_cast<int>(sizeof(wide) / sizeof(wide[0])));
+    int wideLength =
+        MultiByteToWideChar(codePage, 0, input, inputLength, wide, static_cast<int>(sizeof(wide) / sizeof(wide[0])));
     TEST_ASSERT(wideLength > 0);
 
     char back[256] = {};
-    int backLength = WideCharToMultiByte(codePage, 0, wide, wideLength, back,
-                                         static_cast<int>(sizeof(back)), nullptr, nullptr);
+    int backLength =
+        WideCharToMultiByte(codePage, 0, wide, wideLength, back, static_cast<int>(sizeof(back)), nullptr, nullptr);
     TEST_ASSERT(backLength > 0);
 
     // With a negative length the conversion includes the terminator, and so
@@ -50,7 +50,7 @@ int main()
     roundtrip(CP_UTF8, "abcdef", 3, "explicit length, no terminator");
 
     // Size query (cchWideChar == 0) must report what the real call returns.
-    const char * sample = "Metin2";
+    const char *sample = "Metin2";
     int needed = MultiByteToWideChar(CP_UTF8, 0, sample, -1, nullptr, 0);
     wchar_t wide[32] = {};
     int written = MultiByteToWideChar(CP_UTF8, 0, sample, -1, wide, 32);

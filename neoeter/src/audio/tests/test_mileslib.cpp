@@ -17,7 +17,8 @@
 #include <vector>
 #include <unistd.h>
 
-namespace {
+namespace
+{
 
 void test_nsound_type_and_serialization()
 {
@@ -37,7 +38,7 @@ void test_nsound_type_and_serialization()
     assert(instVec[1].dwFrame == 29 || instVec[1].dwFrame == 30);
     assert(instVec[1].strSoundFileName == "sound/pc/warrior/swing2.wav");
 
-    const char* tmpPath = "/tmp/test_mileslib_soundinfo.mss";
+    const char *tmpPath = "/tmp/test_mileslib_soundinfo.mss";
     bool saved = NSound::SaveSoundInformationPiece(tmpPath, dataVec);
     assert(saved);
     unlink(tmpPath);
@@ -47,7 +48,7 @@ void test_nsound_type_and_serialization()
 
 void test_3d_spatialization_configuration()
 {
-    ma_engine* engine = MilesCompatInternal::GetEngine();
+    ma_engine *engine = MilesCompatInternal::GetEngine();
     assert(engine != nullptr);
 
     // Listener updates must reach the miniaudio engine, otherwise positional
@@ -81,12 +82,8 @@ void test_3d_spatialization_configuration()
     const ma_uint32 dataSize = frameCount * 2;
     std::vector<unsigned char> wav(44 + dataSize, 0);
 
-    auto put32 = [&wav](size_t offset, uint32_t value) {
-        std::memcpy(wav.data() + offset, &value, sizeof(value));
-    };
-    auto put16 = [&wav](size_t offset, uint16_t value) {
-        std::memcpy(wav.data() + offset, &value, sizeof(value));
-    };
+    auto put32 = [&wav](size_t offset, uint32_t value) { std::memcpy(wav.data() + offset, &value, sizeof(value)); };
+    auto put16 = [&wav](size_t offset, uint16_t value) { std::memcpy(wav.data() + offset, &value, sizeof(value)); };
 
     std::memcpy(wav.data() + 0, "RIFF", 4);
     put32(4, 36 + dataSize);
@@ -123,9 +120,9 @@ void test_3d_spatialization_configuration()
 void test_sound_manager_lifecycle_and_playback()
 {
     // Create a dummy WAV file on disk for 2D/3D sample loading
-    const char* wavPath = "/tmp/test_mileslib_sample.wav";
+    const char *wavPath = "/tmp/test_mileslib_sample.wav";
     {
-        FILE* fp = std::fopen(wavPath, "wb");
+        FILE *fp = std::fopen(wavPath, "wb");
         assert(fp != nullptr);
         const char dummyWav[64] = {'R', 'I', 'F', 'F', 36, 0, 0, 0, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' '};
         std::fwrite(dummyWav, 1, sizeof(dummyWav), fp);

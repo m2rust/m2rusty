@@ -5,18 +5,18 @@
 
 void CPythonNetworkStream::OffLinePhase()
 {
-	TPacketHeader header;
+    TPacketHeader header;
 
-	if (!CheckPacket(&header))
-		return;
+    if (!CheckPacket(&header))
+        return;
 
-	switch (header)
-	{
-		case HEADER_GC_PHASE:
-			if (RecvPhasePacket())
-				return;
-			break;
-	}
+    switch (header)
+    {
+    case HEADER_GC_PHASE:
+        if (RecvPhasePacket())
+            return;
+        break;
+    }
 
-	RecvErrorPacket(header);
+    RecvErrorPacket(header);
 }

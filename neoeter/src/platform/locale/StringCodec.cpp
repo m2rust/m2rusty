@@ -6,54 +6,48 @@
 #include <iconv.h>
 #include <cerrno>
 
-static const char* GetIconvEncoding(UINT codePage)
+static const char *GetIconvEncoding(UINT codePage)
 {
     switch (codePage)
     {
-        case 0:         // CP_ACP
-        case 65001:     // CP_UTF8
-            return "UTF-8";
-        case 949:       // Korean EUC-KR / CP949
-            return "CP949";
-        case 932:       // Japanese Shift-JIS
-            return "CP932";
-        case 936:       // Simplified Chinese
-            return "CP936";
-        case 950:       // Traditional Chinese
-            return "CP950";
-        case 1250:      // Central / East Europe
-            return "CP1250";
-        case 1251:      // Cyrillic
-            return "CP1251";
-        case 1252:      // Latin-1 / Western Europe
-            return "CP1252";
-        case 1253:      // Greek
-            return "CP1253";
-        case 1254:      // Turkish
-            return "CP1254";
-        case 1255:      // Hebrew
-            return "CP1255";
-        case 1256:      // Arabic
-            return "CP1256";
-        case 1257:      // Baltic
-            return "CP1257";
-        case 1258:      // Vietnamese
-            return "CP1258";
-        case 874:       // Thai
-            return "CP874";
-        default:
-            return "UTF-8";
+    case 0:     // CP_ACP
+    case 65001: // CP_UTF8
+        return "UTF-8";
+    case 949: // Korean EUC-KR / CP949
+        return "CP949";
+    case 932: // Japanese Shift-JIS
+        return "CP932";
+    case 936: // Simplified Chinese
+        return "CP936";
+    case 950: // Traditional Chinese
+        return "CP950";
+    case 1250: // Central / East Europe
+        return "CP1250";
+    case 1251: // Cyrillic
+        return "CP1251";
+    case 1252: // Latin-1 / Western Europe
+        return "CP1252";
+    case 1253: // Greek
+        return "CP1253";
+    case 1254: // Turkish
+        return "CP1254";
+    case 1255: // Hebrew
+        return "CP1255";
+    case 1256: // Arabic
+        return "CP1256";
+    case 1257: // Baltic
+        return "CP1257";
+    case 1258: // Vietnamese
+        return "CP1258";
+    case 874: // Thai
+        return "CP874";
+    default:
+        return "UTF-8";
     }
 }
 
-int MultiByteToWideChar(
-    UINT CodePage,
-    DWORD dwFlags,
-    LPCSTR lpMultiByteStr,
-    int cbMultiByte,
-    LPWSTR lpWideCharStr,
-    int cchWideChar
-)
+int MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr,
+                        int cchWideChar)
 {
     (void)dwFlags;
     if (!lpMultiByteStr)
@@ -68,7 +62,7 @@ int MultiByteToWideChar(
         return 0;
     }
 
-    const char* enc = GetIconvEncoding(CodePage);
+    const char *enc = GetIconvEncoding(CodePage);
     iconv_t cd = iconv_open("WCHAR_T", enc);
     if (cd == (iconv_t)-1)
     {
@@ -77,7 +71,7 @@ int MultiByteToWideChar(
             return 0;
     }
 
-    char* inBuf = const_cast<char*>(lpMultiByteStr);
+    char *inBuf = const_cast<char *>(lpMultiByteStr);
     size_t inBytesLeft = static_cast<size_t>(cbMultiByte);
 
     if (cchWideChar == 0)
@@ -87,7 +81,7 @@ int MultiByteToWideChar(
 
         while (inBytesLeft > 0)
         {
-            char* outBuf = reinterpret_cast<char*>(tmpBuf);
+            char *outBuf = reinterpret_cast<char *>(tmpBuf);
             size_t outBytesLeft = sizeof(tmpBuf);
 
             size_t res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
@@ -112,7 +106,7 @@ int MultiByteToWideChar(
     }
     else
     {
-        char* outBuf = reinterpret_cast<char*>(lpWideCharStr);
+        char *outBuf = reinterpret_cast<char *>(lpWideCharStr);
         size_t outBytesLeft = static_cast<size_t>(cchWideChar) * sizeof(wchar_t);
         size_t initialOutBytes = outBytesLeft;
 
@@ -139,16 +133,8 @@ int MultiByteToWideChar(
     }
 }
 
-int WideCharToMultiByte(
-    UINT CodePage,
-    DWORD dwFlags,
-    LPCWSTR lpWideCharStr,
-    int cchWideChar,
-    LPSTR lpMultiByteStr,
-    int cbMultiByte,
-    LPCSTR lpDefaultChar,
-    LPBOOL lpUsedDefaultChar
-)
+int WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr,
+                        int cbMultiByte, LPCSTR lpDefaultChar, LPBOOL lpUsedDefaultChar)
 {
     (void)dwFlags;
     (void)lpDefaultChar;
@@ -167,7 +153,7 @@ int WideCharToMultiByte(
         return 0;
     }
 
-    const char* enc = GetIconvEncoding(CodePage);
+    const char *enc = GetIconvEncoding(CodePage);
     iconv_t cd = iconv_open(enc, "WCHAR_T");
     if (cd == (iconv_t)-1)
     {
@@ -176,7 +162,7 @@ int WideCharToMultiByte(
             return 0;
     }
 
-    char* inBuf = reinterpret_cast<char*>(const_cast<wchar_t*>(lpWideCharStr));
+    char *inBuf = reinterpret_cast<char *>(const_cast<wchar_t *>(lpWideCharStr));
     size_t inBytesLeft = static_cast<size_t>(cchWideChar) * sizeof(wchar_t);
 
     if (cbMultiByte == 0)
@@ -186,7 +172,7 @@ int WideCharToMultiByte(
 
         while (inBytesLeft >= sizeof(wchar_t))
         {
-            char* outBuf = tmpBuf;
+            char *outBuf = tmpBuf;
             size_t outBytesLeft = sizeof(tmpBuf);
 
             size_t res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
@@ -211,7 +197,7 @@ int WideCharToMultiByte(
     }
     else
     {
-        char* outBuf = lpMultiByteStr;
+        char *outBuf = lpMultiByteStr;
         size_t outBytesLeft = static_cast<size_t>(cbMultiByte);
         size_t initialOutBytes = outBytesLeft;
 
@@ -239,42 +225,29 @@ int WideCharToMultiByte(
 }
 #endif
 
-int Ymir_WideCharToMultiByte(
-  UINT CodePage, 
-  DWORD dwFlags, 
-  LPCWSTR lpWideCharStr, 
-  int cchWideChar, 
-  LPSTR lpMultiByteStr, 
-  int cbMultiByte, 
-  LPCSTR lpDefaultChar, 
-  LPBOOL lpUsedDefaultChar 
-)
+int Ymir_WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr,
+                             int cbMultiByte, LPCSTR lpDefaultChar, LPBOOL lpUsedDefaultChar)
 {
-	if (CodePage == CP_1258)
-	{
-		return EL_String_Encode_Vietnamese(lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte);
-	}
-	else
-	{
-		return WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte, lpDefaultChar, lpUsedDefaultChar);
-	}
+    if (CodePage == CP_1258)
+    {
+        return EL_String_Encode_Vietnamese(lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte);
+    }
+    else
+    {
+        return WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte,
+                                   lpDefaultChar, lpUsedDefaultChar);
+    }
 }
 
-int Ymir_MultiByteToWideChar(
-  UINT CodePage, 
-  DWORD dwFlags, 
-  LPCSTR lpMultiByteStr, 
-  int cbMultiByte, 
-  LPWSTR lpWideCharStr, 
-  int cchWideChar 
-)
+int Ymir_MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr,
+                             int cchWideChar)
 {
-	if (CodePage == CP_1258)
-	{
-		return EL_String_Decode_Vietnamese(lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
-	}
-	else
-	{
-		return MultiByteToWideChar(CodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
-	}
+    if (CodePage == CP_1258)
+    {
+        return EL_String_Decode_Vietnamese(lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
+    }
+    else
+    {
+        return MultiByteToWideChar(CodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
+    }
 }

@@ -9,7 +9,7 @@
 
 namespace fs = std::filesystem;
 
-void Folder::ListFiles(const std::string& directory, const std::string& relativePath)
+void Folder::ListFiles(const std::string &directory, const std::string &relativePath)
 {
     std::error_code ec;
     if (!fs::exists(directory, ec) || !fs::is_directory(directory, ec))
@@ -17,7 +17,7 @@ void Folder::ListFiles(const std::string& directory, const std::string& relative
         throw std::runtime_error("Failed to open directory: " + directory);
     }
 
-    for (const auto& entry : fs::directory_iterator(directory, ec))
+    for (const auto &entry : fs::directory_iterator(directory, ec))
     {
         if (ec)
             break;
@@ -48,7 +48,7 @@ void Folder::ListFiles(const std::string& directory, const std::string& relative
     }
 }
 
-Folder::Folder(const std::string& folderPath)
+Folder::Folder(const std::string &folderPath)
 {
     this->folderPath = folderPath;
     ListFiles(folderPath, "");
@@ -61,13 +61,13 @@ std::vector<std::string> Folder::listFiles()
     return result;
 }
 
-bool Folder::fileExists(const std::string& fileName)
+bool Folder::fileExists(const std::string &fileName)
 {
     std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
     return fileList.find(normalized) != fileList.end();
 }
 
-bool Folder::getFile(const std::string& fileName, std::shared_ptr<std::vector<char>>& fileData)
+bool Folder::getFile(const std::string &fileName, std::shared_ptr<std::vector<char>> &fileData)
 {
     std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
 
@@ -93,9 +93,7 @@ bool Folder::getFile(const std::string& fileName, std::shared_ptr<std::vector<ch
         return false;
 
     // Read the file's contents
-    fileData = std::make_shared<std::vector<char>>(
-        std::istreambuf_iterator<char>(file),
-        std::istreambuf_iterator<char>()
-    );
+    fileData =
+        std::make_shared<std::vector<char>>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
     return true;
 }

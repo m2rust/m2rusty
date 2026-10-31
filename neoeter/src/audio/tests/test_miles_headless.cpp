@@ -21,17 +21,15 @@
 #include <cstring>
 #include <vector>
 
-namespace {
+namespace
+{
 
-std::vector<unsigned char> make_mono_wav(unsigned sampleRate,
-                                         unsigned frameCount)
+std::vector<unsigned char> make_mono_wav(unsigned sampleRate, unsigned frameCount)
 {
     const unsigned dataSize = frameCount * 2;
     std::vector<unsigned char> wav(44 + dataSize, 0);
 
-    auto put32 = [&wav](size_t offset, unsigned value) {
-        std::memcpy(wav.data() + offset, &value, sizeof(value));
-    };
+    auto put32 = [&wav](size_t offset, unsigned value) { std::memcpy(wav.data() + offset, &value, sizeof(value)); };
     auto put16 = [&wav](size_t offset, unsigned short value) {
         std::memcpy(wav.data() + offset, &value, sizeof(value));
     };
@@ -59,13 +57,13 @@ void test_engine_uses_null_backend()
     // The environment contract: tests must opt into the null backend.
     assert(MilesCompatInternal::UseNullAudioBackend());
 
-    ma_engine* engine = MilesCompatInternal::GetEngine();
+    ma_engine *engine = MilesCompatInternal::GetEngine();
     assert(engine != nullptr);
 
-    ma_device* device = ma_engine_get_device(engine);
+    ma_device *device = ma_engine_get_device(engine);
     assert(device != nullptr);
 
-    ma_context* context = ma_device_get_context(device);
+    ma_context *context = ma_device_get_context(device);
     assert(context != nullptr);
 
     // OPENMT2_AUDIO_BACKEND=null from the test environment, or the explicit
@@ -80,7 +78,7 @@ void test_engine_uses_null_backend()
 
 void test_3d_sample_lifecycle_without_device()
 {
-    ma_engine* engine = MilesCompatInternal::GetEngine();
+    ma_engine *engine = MilesCompatInternal::GetEngine();
     assert(engine != nullptr);
 
     H3DPOBJECT listener = AIL_open_3D_listener(0);

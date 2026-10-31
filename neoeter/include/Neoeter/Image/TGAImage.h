@@ -5,32 +5,33 @@
 
 class CTGAImage : public CImage
 {
-	public:
-		enum ETGAImageFlags
-		{
-			FLAG_RLE_COMPRESS = (1 << 0)
-		};
-			
-		CTGAImage();
-		CTGAImage(CImage &image);
-		virtual ~CTGAImage();
+  public:
+    enum ETGAImageFlags
+    {
+        FLAG_RLE_COMPRESS = (1 << 0)
+    };
 
-		virtual void	Create(int width, int height);
-		virtual bool	LoadFromMemory(int iSize, const BYTE * c_pbMem);
-		virtual bool	SaveToDiskFile(const char* c_szFileName);
+    CTGAImage();
+    CTGAImage(CImage &image);
+    virtual ~CTGAImage();
 
-		void			SetCompressed(bool isCompress = true);
-		void			SetAlphaChannel(bool isExist = true);
+    virtual void Create(int width, int height);
+    virtual bool LoadFromMemory(int iSize, const BYTE *c_pbMem);
+    virtual bool SaveToDiskFile(const char *c_szFileName);
 
-		TGA_HEADER &	GetHeader();
-	protected:
-		int			GetRawPixelCount(const DWORD * data);
-		int			GetRLEPixelCount(const DWORD * data);
+    void SetCompressed(bool isCompress = true);
+    void SetAlphaChannel(bool isExist = true);
 
-	protected:
-		TGA_HEADER	m_Header;
-		DWORD		m_dwFlag;
-		DWORD *		m_pdwEndPtr;
+    TGA_HEADER &GetHeader();
+
+  protected:
+    int GetRawPixelCount(const DWORD *data);
+    int GetRLEPixelCount(const DWORD *data);
+
+  protected:
+    TGA_HEADER m_Header;
+    DWORD m_dwFlag;
+    DWORD *m_pdwEndPtr;
 };
 
 #endif

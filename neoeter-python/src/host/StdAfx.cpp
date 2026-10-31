@@ -4,7 +4,7 @@
 
 #include <Neoeter/Python/Host/StdAfx.h>
 
-void SetExceptionSender(IPythonExceptionSender * pkExceptionSender)
+void SetExceptionSender(IPythonExceptionSender *pkExceptionSender)
 {
-	g_pkExceptionSender = pkExceptionSender;
+    g_pkExceptionSender = pkExceptionSender;
 }

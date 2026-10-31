@@ -7,24 +7,24 @@
 
 enum EResourceTypes
 {
-	RES_TYPE_UNKNOWN,
+    RES_TYPE_UNKNOWN,
 };
 
 class CPythonResource : public CSingleton<CPythonResource>
 {
-	public:
-		typedef void (*TDestroyHandler)();
+  public:
+    typedef void (*TDestroyHandler)();
 
-		CPythonResource();
-		virtual ~CPythonResource();
-		
-		void Destroy();
+    CPythonResource();
+    virtual ~CPythonResource();
 
-		void DumpFileList(const char * c_szFileName);
+    void Destroy();
 
-		static void RegisterDestroyHandler(TDestroyHandler pfnHandler);
+    void DumpFileList(const char *c_szFileName);
 
-	protected:
-		CResourceManager m_resManager;
-		static std::vector<TDestroyHandler> ms_destroyHandlers;
+    static void RegisterDestroyHandler(TDestroyHandler pfnHandler);
+
+  protected:
+    CResourceManager m_resManager;
+    static std::vector<TDestroyHandler> ms_destroyHandlers;
 };

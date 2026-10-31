@@ -4,24 +4,24 @@
 
 class CNetDatagramSender
 {
-	public:
-		CNetDatagramSender();
-		virtual ~CNetDatagramSender();
+  public:
+    CNetDatagramSender();
+    virtual ~CNetDatagramSender();
 
-		BOOL isSocket();
+    BOOL isSocket();
 
-		BOOL SetSocket(const char * c_szIP, WORD wPortIndex);
-		BOOL SetSocket(DWORD dwAddress, WORD wPortIndex);
-		BOOL Send(const void * pBuffer, int iSize);
+    BOOL SetSocket(const char *c_szIP, WORD wPortIndex);
+    BOOL SetSocket(DWORD dwAddress, WORD wPortIndex);
+    BOOL Send(const void *pBuffer, int iSize);
 
-	protected:
-		BOOL m_isSocket;
+  protected:
+    BOOL m_isSocket;
 
-		WORD m_dwAddress;
-		WORD m_wPortIndex;
+    WORD m_dwAddress;
+    WORD m_wPortIndex;
 
-		SOCKET m_Socket;
-		SOCKADDR_IN m_SockAddr;
+    SOCKET m_Socket;
+    SOCKADDR_IN m_SockAddr;
 };
 
 #endif

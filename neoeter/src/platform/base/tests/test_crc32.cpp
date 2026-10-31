@@ -8,9 +8,9 @@ int main()
 {
     TEST_SECTION("CRC32");
 
-    const char* str1 = "TestStringForCRC32";
-    const char* str2 = "TestStringForCRC32";
-    const char* str3 = "DifferentString";
+    const char *str1 = "TestStringForCRC32";
+    const char *str2 = "TestStringForCRC32";
+    const char *str3 = "DifferentString";
 
     DWORD crc1 = GetCRC32(str1, strlen(str1));
     DWORD crc2 = GetCRC32(str2, strlen(str2));
@@ -29,8 +29,8 @@ int main()
     TEST_PASS("GetCaseCRC32 folds ASCII case");
 
     // Differentiation between cases
-    const char* upper = "METIN2";
-    const char* lower = "metin2";
+    const char *upper = "METIN2";
+    const char *lower = "metin2";
     DWORD crcUpper = GetCRC32(upper, strlen(upper));
     DWORD crcLower = GetCRC32(lower, strlen(lower));
     TEST_ASSERT(crcUpper != crcLower);

@@ -7,9 +7,9 @@
 
 // T1.7 — renderer seam contract.
 //
-// The façade must describe state in value snapshots that carry no GL types, and
-// a draw without vertex data must stay a no-op (it must not reach the backend,
-// so this test needs no GPU or GL context).
+// The façade must describe state in value snapshots that carry no GL types,
+// and a draw without vertex data must stay a no-op (it must not reach the
+// backend, so this test needs no GPU or GL context).
 
 int main()
 {
@@ -79,8 +79,8 @@ int main()
     TEST_ASSERT(device.DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1) == S_OK);
     TEST_ASSERT(device.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 0, 0, 1) == S_OK);
     TEST_ASSERT(device.DrawPrimitiveUP(D3DPT_TRIANGLELIST, 1, nullptr, 0) == S_OK);
-    TEST_ASSERT(device.DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST, 0, 0, 1, nullptr,
-                                              D3DFMT_INDEX16, nullptr, 0) == S_OK);
+    TEST_ASSERT(device.DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST, 0, 0, 1, nullptr, D3DFMT_INDEX16, nullptr, 0) ==
+                S_OK);
     TEST_PASS("draws without vertex data return S_OK");
 
     TEST_SECTION("textures keep their D3D9 description");

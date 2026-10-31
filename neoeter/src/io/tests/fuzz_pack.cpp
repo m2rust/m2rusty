@@ -31,7 +31,7 @@ extern "C" int LLVMFuzzerInitialize(int *, char ***)
     return 0;
 }
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     if (size > (2u << 20))
         return 0;
@@ -40,8 +40,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t * data, size_t size)
         std::ofstream out(g_zipPath, std::ios::binary | std::ios::trunc);
         if (!out)
             return 0;
-        out.write(reinterpret_cast<const char *>(data),
-                  static_cast<std::streamsize>(size));
+        out.write(reinterpret_cast<const char *>(data), static_cast<std::streamsize>(size));
     }
 
     try

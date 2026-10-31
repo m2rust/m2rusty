@@ -3,39 +3,39 @@
 
 CNetworkDevice::CNetworkDevice()
 {
-	Initialize();
+    Initialize();
 }
 
 CNetworkDevice::~CNetworkDevice()
 {
-	Destroy();	
+    Destroy();
 }
 
 void CNetworkDevice::Initialize()
 {
-	m_isWSA=false;
+    m_isWSA = false;
 }
 
 void CNetworkDevice::Destroy()
 {
-	if (m_isWSA)
-	{
-		WSACleanup();
-		m_isWSA=false;
-	}
+    if (m_isWSA)
+    {
+        WSACleanup();
+        m_isWSA = false;
+    }
 }
 
 bool CNetworkDevice::Create()
 {
-	Destroy();
+    Destroy();
 
-	Initialize();
+    Initialize();
 
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(1, 1), &wsaData)!=0)
-		return false;
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
+        return false;
 
-	m_isWSA=true;
-	
-	return true;
+    m_isWSA = true;
+
+    return true;
 }

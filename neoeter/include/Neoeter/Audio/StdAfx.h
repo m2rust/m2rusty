@@ -11,7 +11,7 @@
 #include "Platform/Platform.h"
 #endif
 
-//#include <crtdbg.h>
+// #include <crtdbg.h>
 
 #include <Neoeter/Platform/Base/CRC32.h>
 #include <Neoeter/Platform/Base/Stl.h>
@@ -19,6 +19,7 @@
 #include <Neoeter/Platform/Base/Debug.h>
 
 //{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
+// Microsoft Visual C++ will insert additional declarations immediately before
+// the previous line.
 
 #endif

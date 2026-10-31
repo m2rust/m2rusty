@@ -4,178 +4,181 @@
 #include <Client/UI/InstanceBase.h>
 #include <Client/UI/PythonCharacterManager.h>
 
-bool CPythonNonPlayer::LoadNonPlayerData(const char * c_szFileName)
+bool CPythonNonPlayer::LoadNonPlayerData(const char *c_szFileName)
 {
-	static DWORD s_adwMobProtoKey[4] =
-	{   
-		4813894,
-		18955,
-		552631,
-		6822045
-	};
+    static DWORD s_adwMobProtoKey[4] = {4813894, 18955, 552631, 6822045};
 
-	Tracef("CPythonNonPlayer::LoadNonPlayerData: %s, sizeof(TMobTable)=%u\n", c_szFileName, sizeof(TMobTable));
+    Tracef("CPythonNonPlayer::LoadNonPlayerData: %s, sizeof(TMobTable)=%u\n", c_szFileName, sizeof(TMobTable));
 
-	std::stringstream data;
-	if (!CEterPackManager::Instance().Get(c_szFileName, data))
-		return false;
+    std::stringstream data;
+    if (!CEterPackManager::Instance().Get(c_szFileName, data))
+        return false;
 
-	DWORD dwFourCC, dwElements, dwDataSize;
+    DWORD dwFourCC, dwElements, dwDataSize;
 
-	data.read((char*)&dwFourCC, sizeof(DWORD));
-	if (!data)
-		return false;
+    data.read((char *)&dwFourCC, sizeof(DWORD));
+    if (!data)
+        return false;
 
-	if (dwFourCC != MAKEFOURCC('M', 'M', 'P', 'T'))
-	{
-		TraceError("CPythonNonPlayer::LoadNonPlayerData: invalid Mob proto type %s", c_szFileName);
-		return false;
-	}
+    if (dwFourCC != MAKEFOURCC('M', 'M', 'P', 'T'))
+    {
+        TraceError("CPythonNonPlayer::LoadNonPlayerData: invalid Mob proto type %s", c_szFileName);
+        return false;
+    }
 
-	data.read((char*)&dwElements, sizeof(DWORD));
-	if (!data)
-		return false;
+    data.read((char *)&dwElements, sizeof(DWORD));
+    if (!data)
+        return false;
 
-	data.read((char*)&dwDataSize, sizeof(DWORD));
-	if (!data)
-		return false;
+    data.read((char *)&dwDataSize, sizeof(DWORD));
+    if (!data)
+        return false;
 
-	auto pbData = std::make_shared<std::vector<BYTE>>(dwDataSize);
+    auto pbData = std::make_shared<std::vector<BYTE>>(dwDataSize);
 
-	data.read((char*)pbData->data(), pbData->size());
-	if (!data)
-		return false;
+    data.read((char *)pbData->data(), pbData->size());
+    if (!data)
+        return false;
 
-	/////
+    /////
 
-	CLZObject zObj;
+    CLZObject zObj;
 
-	if (!CLZO::Instance().Decompress(zObj, pbData->data(), s_adwMobProtoKey))
-		return false;
+    if (!CLZO::Instance().Decompress(zObj, pbData->data(), s_adwMobProtoKey))
+        return false;
 
-	if ((zObj.GetSize() % sizeof(TMobTable)) != 0)
-	{
-		TraceError("CPythonNonPlayer::LoadNonPlayerData: invalid size %u check data format.", zObj.GetSize());
-		return false;
-	}
+    if ((zObj.GetSize() % sizeof(TMobTable)) != 0)
+    {
+        TraceError("CPythonNonPlayer::LoadNonPlayerData: invalid size %u check "
+                   "data format.",
+                   zObj.GetSize());
+        return false;
+    }
 
-	TMobTable * pTable = (TMobTable *) zObj.GetBuffer();
+    TMobTable *pTable = (TMobTable *)zObj.GetBuffer();
     for (DWORD i = 0; i < dwElements; ++i, ++pTable)
-	{
-		TMobTable * pNonPlayerData = new TMobTable;
+    {
+        TMobTable *pNonPlayerData = new TMobTable;
 
-		memcpy(pNonPlayerData, pTable, sizeof(TMobTable));
+        memcpy(pNonPlayerData, pTable, sizeof(TMobTable));
 
-		//TraceError("%d : %s type[%d] color[%d]", pNonPlayerData->dwVnum, pNonPlayerData->szLocaleName, pNonPlayerData->bType, pNonPlayerData->dwMonsterColor);
-		m_NonPlayerDataMap.insert(TNonPlayerDataMap::value_type(pNonPlayerData->dwVnum, pNonPlayerData));
-	}
+        // TraceError("%d : %s type[%d] color[%d]", pNonPlayerData->dwVnum,
+        // pNonPlayerData->szLocaleName, pNonPlayerData->bType,
+        // pNonPlayerData->dwMonsterColor);
+        m_NonPlayerDataMap.insert(TNonPlayerDataMap::value_type(pNonPlayerData->dwVnum, pNonPlayerData));
+    }
 
-	return true;
+    return true;
 }
 
-bool CPythonNonPlayer::GetName(DWORD dwVnum, const char ** c_pszName)
+bool CPythonNonPlayer::GetName(DWORD dwVnum, const char **c_pszName)
 {
-	const TMobTable * p = GetTable(dwVnum);
+    const TMobTable *p = GetTable(dwVnum);
 
-	if (!p)
-		return false;
+    if (!p)
+        return false;
 
-	*c_pszName = p->szLocaleName;
+    *c_pszName = p->szLocaleName;
 
-	return true;
+    return true;
 }
 
-bool CPythonNonPlayer::GetInstanceType(DWORD dwVnum, BYTE* pbType)
+bool CPythonNonPlayer::GetInstanceType(DWORD dwVnum, BYTE *pbType)
 {
-	const TMobTable * p = GetTable(dwVnum);
+    const TMobTable *p = GetTable(dwVnum);
 
-	// dwVnum를 찾을 수 없으면 플레이어 캐릭터로 간주 한다. 문제성 코드 -_- [cronan]
-	if (!p)
-		return false;
+    // dwVnum를 찾을 수 없으면 플레이어 캐릭터로 간주 한다. 문제성 코드 -_-
+    // [cronan]
+    if (!p)
+        return false;
 
-	*pbType=p->bType;
-	
-	return true;
+    *pbType = p->bType;
+
+    return true;
 }
 
-const CPythonNonPlayer::TMobTable * CPythonNonPlayer::GetTable(DWORD dwVnum)
+const CPythonNonPlayer::TMobTable *CPythonNonPlayer::GetTable(DWORD dwVnum)
 {
-	TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.find(dwVnum);
+    TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.find(dwVnum);
 
-	if (itor == m_NonPlayerDataMap.end())
-		return NULL;
+    if (itor == m_NonPlayerDataMap.end())
+        return NULL;
 
-	return itor->second;
+    return itor->second;
 }
 
 BYTE CPythonNonPlayer::GetEventType(DWORD dwVnum)
 {
-	const TMobTable * p = GetTable(dwVnum);
+    const TMobTable *p = GetTable(dwVnum);
 
-	if (!p)
-	{
-		//Tracef("CPythonNonPlayer::GetEventType - Failed to find virtual number\n");
-		return ON_CLICK_EVENT_NONE;
-	}
+    if (!p)
+    {
+        // Tracef("CPythonNonPlayer::GetEventType - Failed to find virtual
+        // number\n");
+        return ON_CLICK_EVENT_NONE;
+    }
 
-	return p->bOnClickType;
+    return p->bOnClickType;
 }
 
 BYTE CPythonNonPlayer::GetEventTypeByVID(DWORD dwVID)
 {
-	CInstanceBase * pInstance = CPythonCharacterManager::Instance().GetInstancePtr(dwVID);
+    CInstanceBase *pInstance = CPythonCharacterManager::Instance().GetInstancePtr(dwVID);
 
-	if (NULL == pInstance)
-	{
-		//Tracef("CPythonNonPlayer::GetEventTypeByVID - There is no Virtual Number\n");
-		return ON_CLICK_EVENT_NONE;
-	}
+    if (NULL == pInstance)
+    {
+        // Tracef("CPythonNonPlayer::GetEventTypeByVID - There is no Virtual
+        // Number\n");
+        return ON_CLICK_EVENT_NONE;
+    }
 
-	WORD dwVnum = pInstance->GetVirtualNumber();
-	return GetEventType(dwVnum);
+    WORD dwVnum = pInstance->GetVirtualNumber();
+    return GetEventType(dwVnum);
 }
 
-const char*	CPythonNonPlayer::GetMonsterName(DWORD dwVnum)
-{	
-	const CPythonNonPlayer::TMobTable * c_pTable = GetTable(dwVnum);
-	if (!c_pTable)
-	{
-		static const char* sc_szEmpty="";
-		return sc_szEmpty;
-	}
+const char *CPythonNonPlayer::GetMonsterName(DWORD dwVnum)
+{
+    const CPythonNonPlayer::TMobTable *c_pTable = GetTable(dwVnum);
+    if (!c_pTable)
+    {
+        static const char *sc_szEmpty = "";
+        return sc_szEmpty;
+    }
 
-	return c_pTable->szLocaleName;
+    return c_pTable->szLocaleName;
 }
 
 DWORD CPythonNonPlayer::GetMonsterColor(DWORD dwVnum)
 {
-	const CPythonNonPlayer::TMobTable * c_pTable = GetTable(dwVnum);
-	if (!c_pTable)
-		return 0;
+    const CPythonNonPlayer::TMobTable *c_pTable = GetTable(dwVnum);
+    if (!c_pTable)
+        return 0;
 
-	return c_pTable->dwMonsterColor;
+    return c_pTable->dwMonsterColor;
 }
 
-void CPythonNonPlayer::GetMatchableMobList(int iLevel, int iInterval, TMobTableList * pMobTableList)
+void CPythonNonPlayer::GetMatchableMobList(int iLevel, int iInterval, TMobTableList *pMobTableList)
 {
-/*
-	pMobTableList->clear();
+    /*
+        pMobTableList->clear();
 
-	TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.begin();
-	for (; itor != m_NonPlayerDataMap.end(); ++itor)
-	{
-		TMobTable * pMobTable = itor->second;
+        TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.begin();
+        for (; itor != m_NonPlayerDataMap.end(); ++itor)
+        {
+            TMobTable * pMobTable = itor->second;
 
-		int iLowerLevelLimit = iLevel-iInterval;
-		int iUpperLevelLimit = iLevel+iInterval;
+            int iLowerLevelLimit = iLevel-iInterval;
+            int iUpperLevelLimit = iLevel+iInterval;
 
-		if ((pMobTable->abLevelRange[0] >= iLowerLevelLimit && pMobTable->abLevelRange[0] <= iUpperLevelLimit) ||
-			(pMobTable->abLevelRange[1] >= iLowerLevelLimit && pMobTable->abLevelRange[1] <= iUpperLevelLimit))
-		{
-			pMobTableList->push_back(pMobTable);
-		}
-	}
-*/
+            if ((pMobTable->abLevelRange[0] >= iLowerLevelLimit &&
+       pMobTable->abLevelRange[0] <= iUpperLevelLimit) ||
+                (pMobTable->abLevelRange[1] >= iLowerLevelLimit &&
+       pMobTable->abLevelRange[1] <= iUpperLevelLimit))
+            {
+                pMobTableList->push_back(pMobTable);
+            }
+        }
+    */
 }
 
 void CPythonNonPlayer::Clear()
@@ -184,19 +187,19 @@ void CPythonNonPlayer::Clear()
 
 void CPythonNonPlayer::Destroy()
 {
-	for (TNonPlayerDataMap::iterator itor=m_NonPlayerDataMap.begin(); itor!=m_NonPlayerDataMap.end(); ++itor)
-	{
-		delete itor->second;
-	}
-	m_NonPlayerDataMap.clear();
+    for (TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.begin(); itor != m_NonPlayerDataMap.end(); ++itor)
+    {
+        delete itor->second;
+    }
+    m_NonPlayerDataMap.clear();
 }
 
 CPythonNonPlayer::CPythonNonPlayer()
 {
-	Clear();
+    Clear();
 }
 
 CPythonNonPlayer::~CPythonNonPlayer(void)
 {
-	Destroy();
+    Destroy();
 }

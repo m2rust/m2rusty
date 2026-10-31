@@ -13,7 +13,8 @@
 #include <fstream>
 #include <vector>
 
-namespace {
+namespace
+{
 
 void test_float_conversion_macros()
 {
@@ -97,18 +98,18 @@ void test_terrain_constants_and_types()
 
 class TestTerrain : public CTerrainImpl
 {
-public:
-    using CTerrainImpl::LoadHeightMap;
+  public:
+    using CTerrainImpl::GetHeightMapValue;
     using CTerrainImpl::LoadAttrMap;
-    using CTerrainImpl::RAW_LoadTileMap;
+    using CTerrainImpl::LoadHeightMap;
     using CTerrainImpl::LoadWaterMapFile;
-    using CTerrainImpl::m_awRawHeightMap;
-    using CTerrainImpl::m_awShadowMap;
     using CTerrainImpl::m_abyAttrMap;
     using CTerrainImpl::m_abyWaterMap;
+    using CTerrainImpl::m_awRawHeightMap;
+    using CTerrainImpl::m_awShadowMap;
     using CTerrainImpl::m_byNumWater;
     using CTerrainImpl::m_lWaterHeight;
-    using CTerrainImpl::GetHeightMapValue;
+    using CTerrainImpl::RAW_LoadTileMap;
 };
 
 void test_terrain_impl_lifecycle_and_shadowmap()
@@ -140,14 +141,15 @@ void test_terrain_impl_file_loaders()
     TestTerrain terrain;
 
     // 1. Test HeightMap loading via VFS
-    const char* heightmapPath = "/tmp/test_heightmap.raw";
+    const char *heightmapPath = "/tmp/test_heightmap.raw";
     std::vector<WORD> mockHeight(CTerrainImpl::HEIGHTMAP_RAW_XSIZE * CTerrainImpl::HEIGHTMAP_RAW_YSIZE, 420);
-    // Set distinctive value at grid (5, 5) -> raw index (6 * HEIGHTMAP_RAW_XSIZE + 6)
+    // Set distinctive value at grid (5, 5) -> raw index (6 *
+    // HEIGHTMAP_RAW_XSIZE + 6)
     mockHeight[6 * CTerrainImpl::HEIGHTMAP_RAW_XSIZE + 6] = 1337;
 
     {
         std::ofstream out(heightmapPath, std::ios::binary);
-        out.write(reinterpret_cast<const char*>(mockHeight.data()), mockHeight.size() * sizeof(WORD));
+        out.write(reinterpret_cast<const char *>(mockHeight.data()), mockHeight.size() * sizeof(WORD));
     }
 
     bool hLoaded = terrain.LoadHeightMap(heightmapPath);
@@ -156,7 +158,7 @@ void test_terrain_impl_file_loaders()
     assert(terrain.GetHeightMapValue(0, 0) == 420);
 
     // 2. Test AttrMap loading via VFS
-    const char* attrmapPath = "/tmp/test_attrmap.raw";
+    const char *attrmapPath = "/tmp/test_attrmap.raw";
 #pragma pack(push, 1)
     struct MockAttrHeader
     {
@@ -166,13 +168,14 @@ void test_terrain_impl_file_loaders()
     } attrHeader;
 #pragma pack(pop)
 
-    std::vector<BYTE> mockAttr(CTerrainImpl::ATTRMAP_XSIZE * CTerrainImpl::ATTRMAP_YSIZE, CTerrainImpl::ATTRIBUTE_BLOCK);
+    std::vector<BYTE> mockAttr(CTerrainImpl::ATTRMAP_XSIZE * CTerrainImpl::ATTRMAP_YSIZE,
+                               CTerrainImpl::ATTRIBUTE_BLOCK);
     mockAttr[10] = CTerrainImpl::ATTRIBUTE_WATER;
 
     {
         std::ofstream out(attrmapPath, std::ios::binary);
-        out.write(reinterpret_cast<const char*>(&attrHeader), sizeof(attrHeader));
-        out.write(reinterpret_cast<const char*>(mockAttr.data()), mockAttr.size());
+        out.write(reinterpret_cast<const char *>(&attrHeader), sizeof(attrHeader));
+        out.write(reinterpret_cast<const char *>(mockAttr.data()), mockAttr.size());
     }
 
     bool aLoaded = terrain.LoadAttrMap(attrmapPath);
@@ -181,7 +184,7 @@ void test_terrain_impl_file_loaders()
     assert(terrain.m_abyAttrMap[10] == CTerrainImpl::ATTRIBUTE_WATER);
 
     // 3. Test WaterMap loading via VFS
-    const char* watermapPath = "/tmp/test_watermap.raw";
+    const char *watermapPath = "/tmp/test_watermap.raw";
 #pragma pack(push, 1)
     struct MockWaterHeader
     {
@@ -194,13 +197,13 @@ void test_terrain_impl_file_loaders()
 
     std::vector<BYTE> mockWaterGrid(CTerrainImpl::WATERMAP_XSIZE * CTerrainImpl::WATERMAP_YSIZE, 0);
     mockWaterGrid[25] = 1;
-    int32_t mockHeights[2] = { 500, 1200 };  // on-disk type is LONG (32-bit), not long
+    int32_t mockHeights[2] = {500, 1200}; // on-disk type is LONG (32-bit), not long
 
     {
         std::ofstream out(watermapPath, std::ios::binary);
-        out.write(reinterpret_cast<const char*>(&waterHeader), sizeof(waterHeader));
-        out.write(reinterpret_cast<const char*>(mockWaterGrid.data()), mockWaterGrid.size());
-        out.write(reinterpret_cast<const char*>(mockHeights), sizeof(mockHeights));
+        out.write(reinterpret_cast<const char *>(&waterHeader), sizeof(waterHeader));
+        out.write(reinterpret_cast<const char *>(mockWaterGrid.data()), mockWaterGrid.size());
+        out.write(reinterpret_cast<const char *>(mockHeights), sizeof(mockHeights));
     }
 
     bool wLoaded = terrain.LoadWaterMapFile(watermapPath);
@@ -224,21 +227,12 @@ void test_textureset_lifecycle()
     textureSet.Create();
     assert(textureSet.GetTextureCount() == 1); // Eraser texture
 
-    bool added = textureSet.AddTexture(
-        "d:/ymir work/terrain/grass.dds",
-        2.0f,
-        3.0f,
-        0.5f,
-        0.25f,
-        true,
-        100,
-        5000,
-        1.0f
-    );
+    bool added =
+        textureSet.AddTexture("d:/ymir work/terrain/grass.dds", 2.0f, 3.0f, 0.5f, 0.25f, true, 100, 5000, 1.0f);
     assert(added);
     assert(textureSet.GetTextureCount() == 2);
 
-    TTerrainTexture& tex = textureSet.GetTexture(1);
+    TTerrainTexture &tex = textureSet.GetTexture(1);
     assert(tex.stFilename == "d:/ymir work/terrain/grass.dds");
     assert(std::fabs(tex.UScale - 2.0f) < 1e-4f);
     assert(std::fabs(tex.VScale - 3.0f) < 1e-4f);
@@ -255,15 +249,12 @@ void test_textureset_lifecycle()
     assert(std::fabs(tex.m_matTransform._42 - (-0.25f)) < 1e-4f);
 
     // Duplicate rejection
-    bool dupAdded = textureSet.AddTexture(
-        "d:/ymir work/terrain/grass.dds",
-        1.0f, 1.0f, 0.0f, 0.0f, true, 0, 0, 1.0f
-    );
+    bool dupAdded = textureSet.AddTexture("d:/ymir work/terrain/grass.dds", 1.0f, 1.0f, 0.0f, 0.0f, true, 0, 0, 1.0f);
     assert(!dupAdded);
     assert(textureSet.GetTextureCount() == 2);
 
     // Save test
-    const char* savePath = "/tmp/test_textureset.txt";
+    const char *savePath = "/tmp/test_textureset.txt";
     bool saved = textureSet.Save(savePath);
     assert(saved);
 
@@ -272,7 +263,7 @@ void test_textureset_lifecycle()
     bool loaded = loadedSet.Load(savePath, 1.0f);
     assert(loaded);
     assert(loadedSet.GetTextureCount() == 2);
-    TTerrainTexture& loadedTex = loadedSet.GetTexture(1);
+    TTerrainTexture &loadedTex = loadedSet.GetTexture(1);
     assert(loadedTex.stFilename == "d:/ymir work/terrain/grass.dds");
     assert(std::fabs(loadedTex.UScale - 2.0f) < 1e-4f);
     assert(std::fabs(loadedTex.VScale - 3.0f) < 1e-4f);

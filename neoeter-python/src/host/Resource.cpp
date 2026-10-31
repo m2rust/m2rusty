@@ -14,85 +14,85 @@
 
 std::vector<CPythonResource::TDestroyHandler> CPythonResource::ms_destroyHandlers;
 
-CResource * NewImage(const char* c_szFileName)
+CResource *NewImage(const char *c_szFileName)
 {
-	return new CGraphicImage(c_szFileName);
+    return new CGraphicImage(c_szFileName);
 }
 
-CResource * NewSubImage(const char* c_szFileName)
+CResource *NewSubImage(const char *c_szFileName)
 {
-	return new CGraphicSubImage(c_szFileName);
+    return new CGraphicSubImage(c_szFileName);
 }
 
-CResource * NewText(const char* c_szFileName)
+CResource *NewText(const char *c_szFileName)
 {
-	return new CGraphicText(c_szFileName);
+    return new CGraphicText(c_szFileName);
 }
 
-CResource * NewThing(const char* c_szFileName)
+CResource *NewThing(const char *c_szFileName)
 {
-	return new CGraphicThing(c_szFileName);
+    return new CGraphicThing(c_szFileName);
 }
 
-CResource * NewEffectMesh(const char* c_szFileName)
+CResource *NewEffectMesh(const char *c_szFileName)
 {
-	return new CEffectMesh(c_szFileName);
+    return new CEffectMesh(c_szFileName);
 }
 
-CResource * NewAttributeData(const char* c_szFileName)
+CResource *NewAttributeData(const char *c_szFileName)
 {
-	return new CAttributeData(c_szFileName);
+    return new CAttributeData(c_szFileName);
 }
 
 void CPythonResource::RegisterDestroyHandler(TDestroyHandler pfnHandler)
 {
-	if (pfnHandler)
-		ms_destroyHandlers.push_back(pfnHandler);
+    if (pfnHandler)
+        ms_destroyHandlers.push_back(pfnHandler);
 }
 
-void CPythonResource::DumpFileList(const char * c_szFileName)
+void CPythonResource::DumpFileList(const char *c_szFileName)
 {
-	m_resManager.DumpFileListToTextFile(c_szFileName);
+    m_resManager.DumpFileListToTextFile(c_szFileName);
 }
 
 void CPythonResource::Destroy()
 {
-	for (size_t i = 0; i < ms_destroyHandlers.size(); ++i)
-	{
-		if (ms_destroyHandlers[i])
-			ms_destroyHandlers[i]();
-	}
+    for (size_t i = 0; i < ms_destroyHandlers.size(); ++i)
+    {
+        if (ms_destroyHandlers[i])
+            ms_destroyHandlers[i]();
+    }
 
-	CGraphicExpandedImageInstance::DestroySystem();
-	CGraphicImageInstance::DestroySystem();	
-	CGraphicMarkInstance::DestroySystem();
-	CGraphicThingInstance::DestroySystem();
-	CGrannyModelInstance::DestroySystem();
-	CGraphicTextInstance::DestroySystem();
-	CEffectInstance::DestroySystem();
-	
-	m_resManager.DestroyDeletingList();
+    CGraphicExpandedImageInstance::DestroySystem();
+    CGraphicImageInstance::DestroySystem();
+    CGraphicMarkInstance::DestroySystem();
+    CGraphicThingInstance::DestroySystem();
+    CGrannyModelInstance::DestroySystem();
+    CGraphicTextInstance::DestroySystem();
+    CEffectInstance::DestroySystem();
 
-	CEffectData::DestroySystem();
-	CEffectMesh::SEffectMeshData::DestroySystem();
+    m_resManager.DestroyDeletingList();
 
-	m_resManager.Destroy();	
+    CEffectData::DestroySystem();
+    CEffectMesh::SEffectMeshData::DestroySystem();
+
+    m_resManager.Destroy();
 }
 
 CPythonResource::CPythonResource()
 {
-	m_resManager.RegisterResourceNewFunctionPointer("sub", NewSubImage);
-	m_resManager.RegisterResourceNewFunctionPointer("dds", NewImage);
-	m_resManager.RegisterResourceNewFunctionPointer("jpg", NewImage);
-	m_resManager.RegisterResourceNewFunctionPointer("tga", NewImage);
-	m_resManager.RegisterResourceNewFunctionPointer("bmp", NewImage);
-	m_resManager.RegisterResourceNewFunctionPointer("fnt", NewText);
-	m_resManager.RegisterResourceNewFunctionPointer("gr2", NewThing);
-	m_resManager.RegisterResourceNewFunctionPointer("mde", NewEffectMesh);
-	m_resManager.RegisterResourceNewFunctionPointer("mdatr", NewAttributeData);
+    m_resManager.RegisterResourceNewFunctionPointer("sub", NewSubImage);
+    m_resManager.RegisterResourceNewFunctionPointer("dds", NewImage);
+    m_resManager.RegisterResourceNewFunctionPointer("jpg", NewImage);
+    m_resManager.RegisterResourceNewFunctionPointer("tga", NewImage);
+    m_resManager.RegisterResourceNewFunctionPointer("bmp", NewImage);
+    m_resManager.RegisterResourceNewFunctionPointer("fnt", NewText);
+    m_resManager.RegisterResourceNewFunctionPointer("gr2", NewThing);
+    m_resManager.RegisterResourceNewFunctionPointer("mde", NewEffectMesh);
+    m_resManager.RegisterResourceNewFunctionPointer("mdatr", NewAttributeData);
 }
 
 CPythonResource::~CPythonResource()
 {
-	Destroy();
+    Destroy();
 }

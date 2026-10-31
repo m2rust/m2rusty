@@ -45,10 +45,10 @@ void test_insult_checker()
     checker.AppendInsult("badword");
     checker.AppendInsult("spam");
 
-    const char* text1 = "this is badword here";
+    const char *text1 = "this is badword here";
     assert(checker.IsInsultIn(text1, (UINT)std::strlen(text1)));
 
-    const char* text2 = "clean sentence here";
+    const char *text2 = "clean sentence here";
     assert(!checker.IsInsultIn(text2, (UINT)std::strlen(text2)));
 
     char filterBuf[64];
@@ -78,7 +78,7 @@ void test_python_system_config()
     config.bDecompressDDS = false;
 
     system.SetConfig(&config);
-    const CPythonSystem::TConfig* pConfig = system.GetConfig();
+    const CPythonSystem::TConfig *pConfig = system.GetConfig();
     assert(pConfig != nullptr);
     assert(pConfig->bWindowed == true);
     assert(pConfig->width == 1024);
@@ -96,13 +96,15 @@ void test_show_cursor_counter()
     // used to hang the logo-close path before the login window could open.
     int guard = 0;
     int count = 0;
-    do {
+    do
+    {
         count = ShowCursor(FALSE);
     } while (count >= 0 && ++guard < 16);
     assert(count < 0);
 
     guard = 0;
-    do {
+    do
+    {
         count = ShowCursor(TRUE);
     } while (count < 0 && ++guard < 16);
     assert(count >= 0);
@@ -117,8 +119,12 @@ void test_show_cursor_counter()
 void test_packet_structure_alignment()
 {
     static_assert(sizeof(LONG) == 4, "LONG must be 4 bytes");
-    static_assert(sizeof(TItemData) == 4 + 1 + 4 + 4 + 4 * ITEM_SOCKET_SLOT_MAX_NUM + sizeof(TPlayerItemAttribute) * ITEM_ATTRIBUTE_SLOT_MAX_NUM, "TItemData size check");
-    static_assert(sizeof(TShopItemData) == 4 + 4 + 1 + 1 + 4 * ITEM_SOCKET_SLOT_MAX_NUM + sizeof(TPlayerItemAttribute) * ITEM_ATTRIBUTE_SLOT_MAX_NUM, "TShopItemData size check");
+    static_assert(sizeof(TItemData) == 4 + 1 + 4 + 4 + 4 * ITEM_SOCKET_SLOT_MAX_NUM +
+                                           sizeof(TPlayerItemAttribute) * ITEM_ATTRIBUTE_SLOT_MAX_NUM,
+                  "TItemData size check");
+    static_assert(sizeof(TShopItemData) == 4 + 4 + 1 + 1 + 4 * ITEM_SOCKET_SLOT_MAX_NUM +
+                                               sizeof(TPlayerItemAttribute) * ITEM_ATTRIBUTE_SLOT_MAX_NUM,
+                  "TShopItemData size check");
 
     // Verify packet header structures and alignment consistency
     assert(sizeof(TPacketHeader) == 1);

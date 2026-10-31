@@ -4,19 +4,19 @@
 
 class CMSApplication : public CMSWindow
 {
-	public:
-		CMSApplication();		
-		virtual ~CMSApplication();
+  public:
+    CMSApplication();
+    virtual ~CMSApplication();
 
-		void Initialize(HINSTANCE hInstance);
+    void Initialize(HINSTANCE hInstance);
 
-		void MessageLoop();
+    void MessageLoop();
 
-		bool IsMessage();
-		bool MessageProcess();
+    bool IsMessage();
+    bool MessageProcess();
 
-	protected:
-		void ClearWindowClass();
+  protected:
+    void ClearWindowClass();
 
-		LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam);
 };

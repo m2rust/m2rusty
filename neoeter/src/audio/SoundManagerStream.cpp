@@ -6,59 +6,59 @@ CSoundManagerStream::CSoundManagerStream()
 }
 
 CSoundManagerStream::~CSoundManagerStream()
-{	
+{
 }
 
 bool CSoundManagerStream::Initialize()
 {
-	CSoundBase::Initialize();
-	
-	if (ms_DIGDriver)
-		return true;
+    CSoundBase::Initialize();
 
-	ms_DIGDriver = AIL_open_digital_driver(44100, 16, 2, 0);
+    if (ms_DIGDriver)
+        return true;
 
-	for (int i = 0; i < MUSIC_INSTANCE_MAX_NUM; ++i)
-		m_Instances[i].Initialize();
+    ms_DIGDriver = AIL_open_digital_driver(44100, 16, 2, 0);
 
-	return true;
+    for (int i = 0; i < MUSIC_INSTANCE_MAX_NUM; ++i)
+        m_Instances[i].Initialize();
+
+    return true;
 }
 
 void CSoundManagerStream::Destroy()
-{	
-	for (int i=0; i<MUSIC_INSTANCE_MAX_NUM; ++i)
-		m_Instances[i].Stop();
+{
+    for (int i = 0; i < MUSIC_INSTANCE_MAX_NUM; ++i)
+        m_Instances[i].Stop();
 
-	CSoundBase::Destroy();
+    CSoundBase::Destroy();
 }
 
-bool CSoundManagerStream::SetInstance(DWORD dwIndex, const char* filename)
+bool CSoundManagerStream::SetInstance(DWORD dwIndex, const char *filename)
 {
-	if (!CheckInstanceIndex(dwIndex))
-		return false;
+    if (!CheckInstanceIndex(dwIndex))
+        return false;
 
-	HSTREAM hStream = AIL_open_stream(ms_DIGDriver, filename, 0);
+    HSTREAM hStream = AIL_open_stream(ms_DIGDriver, filename, 0);
 
-	if (NULL == hStream)
-		return false;
+    if (NULL == hStream)
+        return false;
 
-	m_Instances[dwIndex].SetStream(hStream);
+    m_Instances[dwIndex].SetStream(hStream);
 
-	return true;
+    return true;
 }
 
-CSoundInstanceStream * CSoundManagerStream::GetInstance(DWORD dwIndex)
+CSoundInstanceStream *CSoundManagerStream::GetInstance(DWORD dwIndex)
 {
-	if (!CheckInstanceIndex(dwIndex))
-		return NULL;
+    if (!CheckInstanceIndex(dwIndex))
+        return NULL;
 
-	return &m_Instances[dwIndex];
+    return &m_Instances[dwIndex];
 }
 
 bool CSoundManagerStream::CheckInstanceIndex(DWORD dwIndex)
 {
-	if (dwIndex >= DWORD(MUSIC_INSTANCE_MAX_NUM))
-		return false;
+    if (dwIndex >= DWORD(MUSIC_INSTANCE_MAX_NUM))
+        return false;
 
-	return true;
+    return true;
 }

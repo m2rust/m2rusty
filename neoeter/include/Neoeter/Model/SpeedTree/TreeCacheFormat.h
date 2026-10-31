@@ -4,8 +4,8 @@
 //
 // A cache file is named "<fnv1a32-of-the-spt-bytes>.tree" (8 lowercase hex
 // digits) and stores the geometry produced by the original SpeedTreeRT SDK for
-// one .spt asset. The authoritative writer is tools/speedtree_baker; the reader
-// is CSpeedTreeRT::LoadBakedGeometry.
+// one .spt asset. The authoritative writer is tools/speedtree_baker; the
+// reader is CSpeedTreeRT::LoadBakedGeometry.
 //
 // Layout (little-endian):
 //   u32 magic
@@ -47,8 +47,8 @@
 namespace TreeCache
 {
 constexpr uint32_t kMagic = 0x4D543254u; // 'MT2T' in little-endian
-// Layout identifier, not a serialized field in v1. Bump it (and the magic, or
-// add a version field) if the record order below ever changes.
+// Layout identifier, not a serialized field in v1. Bump it (and the magic,
+// or add a version field) if the record order below ever changes.
 constexpr uint32_t kVersion = 1;
 constexpr uint32_t kAllParts = 15u;
 constexpr uint32_t kInvalidColor = 0xFFFFFFFFu;
@@ -63,7 +63,7 @@ enum PartMask : uint32_t
     kPartBillboards = 1u << 3
 };
 
-inline uint32_t Fnv1a32(const unsigned char* pData, size_t nSize)
+inline uint32_t Fnv1a32(const unsigned char *pData, size_t nSize)
 {
     uint32_t nHash = 2166136261u;
     for (size_t i = 0; i < nSize; ++i)

@@ -3,7 +3,8 @@
     File: oodle1.c
     Oodle1 compression/decompression functions
 
-    Oodle1 compression code is derived from https://github.com/Arbos/nwn2mdk/blob/master/nwn2mdk-lib/gr2_decompress.cpp
+    Oodle1 compression code is derived from
+   https://github.com/Arbos/nwn2mdk/blob/master/nwn2mdk-lib/gr2_decompress.cpp
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +15,8 @@
 #include <string.h>
 #include <stdint.h>
 
-typedef struct {
+typedef struct
+{
     unsigned decoded_value_max : 9;
     unsigned backref_value_max : 23;
     unsigned decoded_count : 9;
@@ -23,25 +25,27 @@ typedef struct {
     uint8_t sizes_count[4];
 } TParameter;
 
-typedef struct {
+typedef struct
+{
     uint32_t numer;
     uint32_t denom;
     uint32_t next_denom;
-    uint8_t* stream;
-    const uint8_t* stream_end;
+    uint8_t *stream;
+    const uint8_t *stream_end;
     int error;
 } TDecoder;
 
-typedef struct {
+typedef struct
+{
     uint16_t count_cap;
 
-    uint16_t* ranges;
+    uint16_t *ranges;
     size_t rangesLength;
 
-    uint16_t* values;
+    uint16_t *values;
     size_t valuesLength;
 
-    uint16_t* weights;
+    uint16_t *weights;
     size_t weightsLength;
 
     uint16_t weight_total;
@@ -52,7 +56,8 @@ typedef struct {
     uint16_t thresh_weight_rebuild;
 } TWeighWindow;
 
-typedef struct {
+typedef struct
+{
     uint32_t decoded_size;
     uint32_t backref_size;
 
@@ -64,18 +69,19 @@ typedef struct {
 
     TWeighWindow lowbit_window;
     TWeighWindow highbit_window;
-    TWeighWindow* midbit_windows;
+    TWeighWindow *midbit_windows;
 
-    TWeighWindow* decoded_windows;
-    TWeighWindow* size_windows;
+    TWeighWindow *decoded_windows;
+    TWeighWindow *size_windows;
 } TDictionary;
 
-typedef struct {
+typedef struct
+{
     size_t index;
     uint16_t value;
 } IndexValuePair;
 
-static void Decoder_Init(TDecoder *decoder, uint8_t* stream, const uint8_t* stream_end);
+static void Decoder_Init(TDecoder *decoder, uint8_t *stream, const uint8_t *stream_end);
 static uint16_t Decode(TDecoder *decoder, uint16_t max);
 static uint16_t Commit(TDecoder *decoder, uint16_t max, uint16_t val, uint16_t err);
 static uint16_t Decode_Commit(TDecoder *decoder, uint16_t max);
@@ -87,7 +93,8 @@ static void WeightWindow_Rebuild_Ranges(TWeighWindow *weighWindow);
 static IndexValuePair WeightWindow_Try_Decode(TWeighWindow *weighWindow, TDecoder *decoder);
 
 static void Dictionary_Init(TDictionary *dictionary, TParameter *parameter);
-static uint32_t Dictionary_Decompress_Block(TDictionary *dictionary, TDecoder *decoder, uint8_t *decompressedData, uint8_t *decompressedEnd);
+static uint32_t Dictionary_Decompress_Block(TDictionary *dictionary, TDecoder *decoder, uint8_t *decompressedData,
+                                            uint8_t *decompressedEnd);
 static void Dictionary_Free(TDictionary *dictionary);
 
 #include <memory.h>
@@ -106,14 +113,16 @@ static void Dictionary_Free(TDictionary *dictionary);
 #define max(x, y) ((x) > (y)) ? (x) : (y)
 #endif
 
-void Decoder_Init(TDecoder *decoder, uint8_t* stream, const uint8_t* stream_end) {
+void Decoder_Init(TDecoder *decoder, uint8_t *stream, const uint8_t *stream_end)
+{
     decoder->denom = 0x80;
     decoder->next_denom = 0;
     decoder->stream = stream;
     decoder->stream_end = stream_end;
     decoder->error = 0;
 
-    if (!stream || !stream_end || stream >= stream_end) {
+    if (!stream || !stream_end || stream >= stream_end)
+    {
         decoder->numer = 0;
         decoder->error = 1;
         return;
@@ -121,13 +130,15 @@ void Decoder_Init(TDecoder *decoder, uint8_t* stream, const uint8_t* stream_end)
     decoder->numer = stream[0] >> 1;
 }
 
-uint16_t Decode(TDecoder *decoder, uint16_t max) {
+uint16_t Decode(TDecoder *decoder, uint16_t max)
+{
     if (decoder->error)
         return 0;
 
-    for(; decoder->denom <= 0x800000; decoder->denom <<= 8) {
-        if (!decoder->stream || !decoder->stream_end ||
-            decoder->stream_end - decoder->stream < 2) {
+    for (; decoder->denom <= 0x800000; decoder->denom <<= 8)
+    {
+        if (!decoder->stream || !decoder->stream_end || decoder->stream_end - decoder->stream < 2)
+        {
             decoder->error = 1;
             return 0;
         }
@@ -137,42 +148,50 @@ uint16_t Decode(TDecoder *decoder, uint16_t max) {
         decoder->stream++;
     }
 
-    if (max == 0) {
+    if (max == 0)
+    {
         decoder->error = 1;
         return 0;
     }
     decoder->next_denom = decoder->denom / max;
-    if (decoder->next_denom == 0) {
+    if (decoder->next_denom == 0)
+    {
         decoder->error = 1;
         return 0;
     }
     return min(decoder->numer / decoder->next_denom, max - 1);
 }
 
-uint16_t Commit(TDecoder *decoder, uint16_t max, uint16_t val, uint16_t err) {
+uint16_t Commit(TDecoder *decoder, uint16_t max, uint16_t val, uint16_t err)
+{
     decoder->numer -= decoder->next_denom * val;
 
-    if(val + err < max) {
+    if (val + err < max)
+    {
         decoder->denom = decoder->next_denom * err;
-    } else {
+    }
+    else
+    {
         decoder->denom -= decoder->next_denom * val;
     }
 
     return val;
 }
 
-uint16_t Decode_Commit(TDecoder *decoder, uint16_t max) {
+uint16_t Decode_Commit(TDecoder *decoder, uint16_t max)
+{
     return Commit(decoder, max, Decode(decoder, max), 1);
 }
 
-void WeighWindow_Free(TWeighWindow* weighWindow)
+void WeighWindow_Free(TWeighWindow *weighWindow)
 {
     free(weighWindow->ranges);
     free(weighWindow->weights);
     free(weighWindow->values);
 }
 
-void WeighWindow_Init(TWeighWindow *weighWindow, uint32_t maxValue, uint16_t countCap) {
+void WeighWindow_Init(TWeighWindow *weighWindow, uint32_t maxValue, uint16_t countCap)
+{
     weighWindow->weight_total = 4;
     weighWindow->count_cap = countCap + 1;
 
@@ -199,44 +218,54 @@ void WeighWindow_Init(TWeighWindow *weighWindow, uint32_t maxValue, uint16_t cou
         weighWindow->thresh_increase_cap = 128;
 }
 
-void WeightWindow_Rebuild_Ranges(TWeighWindow *weighWindow) {
-    //printf("REBUILD RANGES: %i ", weighWindow->weightsLength);
-    if(weighWindow->rangesLength != weighWindow->weightsLength + 1) {
+void WeightWindow_Rebuild_Ranges(TWeighWindow *weighWindow)
+{
+    // printf("REBUILD RANGES: %i ", weighWindow->weightsLength);
+    if (weighWindow->rangesLength != weighWindow->weightsLength + 1)
+    {
         uint16_t *oldBuffer = weighWindow->ranges;
-        //size_t oldLength = weighWindow->rangesLength;
+        // size_t oldLength = weighWindow->rangesLength;
         weighWindow->ranges = malloc(sizeof(uint16_t) * (weighWindow->weightsLength + 1));
         weighWindow->rangesLength = weighWindow->weightsLength + 1;
 
-        //memcpy_s(weighWindow->ranges, weighWindow->rangesLength * sizeof(uint16_t), oldBuffer, oldLength * sizeof(uint16_t));
+        // memcpy_s(weighWindow->ranges, weighWindow->rangesLength *
+        // sizeof(uint16_t), oldBuffer, oldLength * sizeof(uint16_t));
         free(oldBuffer);
     }
 
     uint16_t range_weight = 8 * 0x4000 / weighWindow->weight_total;
-    //printf("%i ", range_weight);
+    // printf("%i ", range_weight);
     uint16_t range_start = 0;
-    for(size_t i = 0; i < weighWindow->weightsLength; i++) {
+    for (size_t i = 0; i < weighWindow->weightsLength; i++)
+    {
         weighWindow->ranges[i] = range_start;
-        //printf("%i ", range_start);
+        // printf("%i ", range_start);
         range_start += (weighWindow->weights[i] * range_weight) / 8;
     }
     weighWindow->ranges[weighWindow->rangesLength - 1] = 0x4000;
 
-    if (weighWindow->thresh_increase > weighWindow->thresh_increase_cap / 2) {
+    if (weighWindow->thresh_increase > weighWindow->thresh_increase_cap / 2)
+    {
         weighWindow->thresh_range_rebuild = weighWindow->weight_total + weighWindow->thresh_increase_cap;
     }
-    else {
+    else
+    {
         weighWindow->thresh_increase *= 2;
         weighWindow->thresh_range_rebuild = weighWindow->weight_total + weighWindow->thresh_increase;
     }
-    //printf("%i %i\n", weighWindow->thresh_range_rebuild, weighWindow->thresh_range_rebuild);
+    // printf("%i %i\n", weighWindow->thresh_range_rebuild,
+    // weighWindow->thresh_range_rebuild);
 }
 
-size_t max_element(const uint16_t* arr, size_t length, size_t offset) {
+size_t max_element(const uint16_t *arr, size_t length, size_t offset)
+{
     uint16_t max = 0;
     size_t index = offset;
 
-    for(size_t i = offset; i < length; i++) {
-        if(arr[i] > max) {
+    for (size_t i = offset; i < length; i++)
+    {
+        if (arr[i] > max)
+        {
             max = arr[i];
             index = i;
         }
@@ -245,36 +274,41 @@ size_t max_element(const uint16_t* arr, size_t length, size_t offset) {
     return index;
 }
 
-void WeightWindow_Rebuild_Weights(TWeighWindow *weighWindow) {
-    //printf("REBUILD WEIGHTS: ");
+void WeightWindow_Rebuild_Weights(TWeighWindow *weighWindow)
+{
+    // printf("REBUILD WEIGHTS: ");
 
     uint16_t weight_total = 0;
-    for(size_t i = 0; i < weighWindow->weightsLength; i++) {
+    for (size_t i = 0; i < weighWindow->weightsLength; i++)
+    {
         weighWindow->weights[i] /= 2;
-        //printf("%i ", weighWindow->weights[i]);
+        // printf("%i ", weighWindow->weights[i]);
 
         weight_total += weighWindow->weights[i];
     }
 
     weighWindow->weight_total = weight_total;
-    //printf("%i ", weighWindow->weight_total);
+    // printf("%i ", weighWindow->weight_total);
 
-    for (uint32_t i = 1; i < weighWindow->weightsLength; i++) {
-        while (i < weighWindow->weightsLength && weighWindow->weights[i] == 0) {
+    for (uint32_t i = 1; i < weighWindow->weightsLength; i++)
+    {
+        while (i < weighWindow->weightsLength && weighWindow->weights[i] == 0)
+        {
             weighWindow->weights[i] = weighWindow->weights[weighWindow->weightsLength - 1];
             weighWindow->values[i] = weighWindow->values[weighWindow->valuesLength - 1];
 
             weighWindow->weightsLength--;
             weighWindow->valuesLength--;
-            //printf("!");
+            // printf("!");
         }
     }
 
     size_t it = max_element(weighWindow->weights, weighWindow->weightsLength, 1);
-    //printf(" %i ", weighWindow->weights[it]);
-    if (it < weighWindow->weightsLength) {
+    // printf(" %i ", weighWindow->weights[it]);
+    if (it < weighWindow->weightsLength)
+    {
         size_t i = it;
-        //printf("%i ", i);
+        // printf("%i ", i);
 
         uint16_t tmp = weighWindow->weights[i];
         weighWindow->weights[i] = weighWindow->weights[weighWindow->weightsLength - 1];
@@ -285,68 +319,83 @@ void WeightWindow_Rebuild_Weights(TWeighWindow *weighWindow) {
         weighWindow->values[weighWindow->valuesLength - 1] = tmp;
     }
 
-    if ((weighWindow->weightsLength < weighWindow->count_cap) && (weighWindow->weights[0] == 0)) {
+    if ((weighWindow->weightsLength < weighWindow->count_cap) && (weighWindow->weights[0] == 0))
+    {
         weighWindow->weights[0] = 1;
         weighWindow->weight_total++;
-        //printf("$");
+        // printf("$");
     }
-    //printf("\n");
+    // printf("\n");
 }
 
-IndexValuePair WeightWindow_Try_Decode(TWeighWindow *weighWindow, TDecoder *decoder) {
-    //printf("%i %i %i %i\n", weighWindow->weight_total, weighWindow->thresh_range_rebuild, weighWindow->thresh_range_rebuild, weighWindow->thresh_weight_rebuild);
-    if (weighWindow->weight_total >= weighWindow->thresh_range_rebuild) {
+IndexValuePair WeightWindow_Try_Decode(TWeighWindow *weighWindow, TDecoder *decoder)
+{
+    // printf("%i %i %i %i\n", weighWindow->weight_total,
+    // weighWindow->thresh_range_rebuild, weighWindow->thresh_range_rebuild,
+    // weighWindow->thresh_weight_rebuild);
+    if (weighWindow->weight_total >= weighWindow->thresh_range_rebuild)
+    {
         if (weighWindow->thresh_range_rebuild >= weighWindow->thresh_weight_rebuild)
             WeightWindow_Rebuild_Weights(weighWindow);
         WeightWindow_Rebuild_Ranges(weighWindow);
     }
 
     uint16_t value = Decode(decoder, 0x4000);
-    size_t rangeit = weighWindow->rangesLength - 1;// std::upper_bound(std::begin(this->ranges), std::end(this->ranges), value) - 1;
-    for(size_t i = 0; i < weighWindow->rangesLength; i++) {
-        if(weighWindow->ranges[i] > value) {
+    size_t rangeit = weighWindow->rangesLength - 1; // std::upper_bound(std::begin(this->ranges),
+                                                    // std::end(this->ranges), value) - 1;
+    for (size_t i = 0; i < weighWindow->rangesLength; i++)
+    {
+        if (weighWindow->ranges[i] > value)
+        {
             rangeit = i;
             break;
         }
     }
     if (rangeit > 0)
         rangeit--;
-    //printf("%i %i %i ", value, weighWindow->ranges[rangeit], weighWindow->ranges[rangeit + 1]);
+    // printf("%i %i %i ", value, weighWindow->ranges[rangeit],
+    // weighWindow->ranges[rangeit + 1]);
 
-    Commit(decoder, 0x4000, weighWindow->ranges[rangeit], weighWindow->ranges[rangeit + 1] - weighWindow->ranges[rangeit]);
+    Commit(decoder, 0x4000, weighWindow->ranges[rangeit],
+           weighWindow->ranges[rangeit + 1] - weighWindow->ranges[rangeit]);
 
     size_t index = rangeit;
-    //printf("%i ", index);
+    // printf("%i ", index);
     weighWindow->weights[index]++;
     weighWindow->weight_total++;
-    //printf("%i %i ", weighWindow->weights[index], weighWindow->weight_total);
+    // printf("%i %i ", weighWindow->weights[index], weighWindow->weight_total);
 
-    if (index > 0) {
-        //printf("\n");
+    if (index > 0)
+    {
+        // printf("\n");
         IndexValuePair ret;
         ret.index = 0xFFFF;
         ret.value = weighWindow->values[index];
         return ret;
     }
 
-    if ((weighWindow->weightsLength >= weighWindow->rangesLength)
-        && (Decode_Commit(decoder, 2) == 1)) {
-        //printf("*%i %i ", weighWindow->rangesLength, weighWindow->weightsLength);
-        size_t index = weighWindow->rangesLength + Decode_Commit(decoder, weighWindow->weightsLength - weighWindow->rangesLength + 1) - 1;
+    if ((weighWindow->weightsLength >= weighWindow->rangesLength) && (Decode_Commit(decoder, 2) == 1))
+    {
+        // printf("*%i %i ", weighWindow->rangesLength,
+        // weighWindow->weightsLength);
+        size_t index = weighWindow->rangesLength +
+                       Decode_Commit(decoder, weighWindow->weightsLength - weighWindow->rangesLength + 1) - 1;
         if (index >= weighWindow->weightsLength)
             index = weighWindow->weightsLength - 1;
-        if (index >= weighWindow->weightsLength || index >= weighWindow->valuesLength) {
+        if (index >= weighWindow->weightsLength || index >= weighWindow->valuesLength)
+        {
             decoder->error = 1;
             IndexValuePair ret;
             ret.index = 0xFFFF;
             ret.value = 0;
             return ret;
         }
-        //printf("%i ", index);
+        // printf("%i ", index);
 
         weighWindow->weights[index] += 2;
         weighWindow->weight_total += 2;
-        //printf("%i %i!\n", weighWindow->weights[index], weighWindow->weight_total);
+        // printf("%i %i!\n", weighWindow->weights[index],
+        // weighWindow->weight_total);
 
         IndexValuePair ret;
         ret.index = 0xFFFF;
@@ -355,7 +404,7 @@ IndexValuePair WeightWindow_Try_Decode(TWeighWindow *weighWindow, TDecoder *deco
     }
 
     size_t oldLength = weighWindow->valuesLength;
-    uint16_t* oldBuffer = weighWindow->values;
+    uint16_t *oldBuffer = weighWindow->values;
     weighWindow->valuesLength++;
     weighWindow->values = malloc(weighWindow->valuesLength * sizeof(uint16_t));
     memcpy(weighWindow->values, oldBuffer, oldLength * sizeof(uint16_t));
@@ -371,39 +420,45 @@ IndexValuePair WeightWindow_Try_Decode(TWeighWindow *weighWindow, TDecoder *deco
     weighWindow->weights[weighWindow->weightsLength - 1] = 2;
 
     weighWindow->weight_total += 2;
-    //printf("%i ", weighWindow->weight_total);
+    // printf("%i ", weighWindow->weight_total);
 
-    if (weighWindow->weightsLength == weighWindow->count_cap) {
+    if (weighWindow->weightsLength == weighWindow->count_cap)
+    {
         weighWindow->weight_total -= weighWindow->weights[0];
         weighWindow->weights[0] = 0;
 
-        //printf("$%i %i ", weighWindow->weight_total, weighWindow->weights[0]);
+        // printf("$%i %i ", weighWindow->weight_total, weighWindow->weights[0]);
     }
 
     IndexValuePair ret;
     ret.index = weighWindow->valuesLength - 1;
     ret.value = 0;
-    //printf("\n");
+    // printf("\n");
     return ret;
 }
 
-void Dictionary_Free(TDictionary* dictionary) {
+void Dictionary_Free(TDictionary *dictionary)
+{
     size_t i = 0;
     size_t index = 0;
 
     WeighWindow_Free(&dictionary->lowbit_window);
     WeighWindow_Free(&dictionary->highbit_window);
 
-    for (; i < dictionary->highbit_value_max; ++i) {
+    for (; i < dictionary->highbit_value_max; ++i)
+    {
         WeighWindow_Free(&dictionary->midbit_windows[i]);
     }
 
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < 4; ++i)
+    {
         WeighWindow_Free(&dictionary->decoded_windows[i]);
     }
 
-    for (i = 0; i < 4; ++i) {
-        for (size_t j = 0; j < 16; ++j) {
+    for (i = 0; i < 4; ++i)
+    {
+        for (size_t j = 0; j < 16; ++j)
+        {
             WeighWindow_Free(&dictionary->size_windows[index++]);
         }
     }
@@ -418,7 +473,8 @@ void Dictionary_Free(TDictionary* dictionary) {
     dictionary->midbit_windows = NULL;
 }
 
-void Dictionary_Init(TDictionary *dictionary, TParameter *parameter) {
+void Dictionary_Init(TDictionary *dictionary, TParameter *parameter)
+{
     dictionary->decoded_size = 0;
     dictionary->backref_size = 0;
 
@@ -432,69 +488,87 @@ void Dictionary_Init(TDictionary *dictionary, TParameter *parameter) {
     WeighWindow_Init(&dictionary->highbit_window, dictionary->highbit_value_max - 1, parameter->highbit_count + 1);
 
     dictionary->midbit_windows = malloc(sizeof(TWeighWindow) * dictionary->highbit_value_max);
-    for (size_t i = 0; i < dictionary->highbit_value_max; ++i) {
-        WeighWindow_Init(&dictionary->midbit_windows[i], dictionary->midbit_value_max - 1, dictionary->midbit_value_max);
+    for (size_t i = 0; i < dictionary->highbit_value_max; ++i)
+    {
+        WeighWindow_Init(&dictionary->midbit_windows[i], dictionary->midbit_value_max - 1,
+                         dictionary->midbit_value_max);
     }
 
     dictionary->decoded_windows = malloc(sizeof(TWeighWindow) * 4);
-    for (size_t i = 0; i < 4; ++i) {
+    for (size_t i = 0; i < 4; ++i)
+    {
         WeighWindow_Init(&dictionary->decoded_windows[i], dictionary->decoded_value_max - 1, parameter->decoded_count);
     }
 
     size_t index = 0;
     dictionary->size_windows = malloc(sizeof(TWeighWindow) * (4 * 16 + 1));
-    for (size_t i = 0; i < 4; ++i) {
-        for (size_t j = 0; j < 16; ++j) {
+    for (size_t i = 0; i < 4; ++i)
+    {
+        for (size_t j = 0; j < 16; ++j)
+        {
             WeighWindow_Init(&dictionary->size_windows[index++], 64, parameter->sizes_count[3 - i]);
         }
     }
     WeighWindow_Init(&dictionary->size_windows[index++], 64, parameter->sizes_count[0]);
 }
 
-uint32_t Dictionary_Decompress_Block(TDictionary *dictionary, TDecoder *decoder, uint8_t *decompressedData, uint8_t *decompressedEnd) {
-    //printf("%i %i %i %i\n", dictionary->backref_size, dictionary->backref_value_max, dictionary->decoded_size, dictionary->lowbit_value_max);
+uint32_t Dictionary_Decompress_Block(TDictionary *dictionary, TDecoder *decoder, uint8_t *decompressedData,
+                                     uint8_t *decompressedEnd)
+{
+    // printf("%i %i %i %i\n", dictionary->backref_size,
+    // dictionary->backref_value_max, dictionary->decoded_size,
+    // dictionary->lowbit_value_max);
 
     if (decoder->error)
         return 0;
 
     IndexValuePair d1 = WeightWindow_Try_Decode(&dictionary->size_windows[dictionary->backref_size], decoder);
 
-    if (d1.index != 0xFFFF) {
+    if (d1.index != 0xFFFF)
+    {
         d1.value = (dictionary->size_windows[dictionary->backref_size].values[d1.index] = Decode_Commit(decoder, 65));
     }
-    //printf("d1 %i\n", d1.value);
+    // printf("d1 %i\n", d1.value);
     dictionary->backref_size = d1.value;
 
     if (decoder->error)
         return 0;
 
-    if (dictionary->backref_size > 0) {
-        static uint32_t const sizes[] = { 128u, 192u, 256u, 512u };
+    if (dictionary->backref_size > 0)
+    {
+        static uint32_t const sizes[] = {128u, 192u, 256u, 512u};
 
         if (dictionary->backref_size > 64u)
             return 0;
 
-        uint32_t backref_size = dictionary->backref_size < 61u ? dictionary->backref_size + 1 : sizes[dictionary->backref_size - 61u];
+        uint32_t backref_size =
+            dictionary->backref_size < 61u ? dictionary->backref_size + 1 : sizes[dictionary->backref_size - 61u];
         uint32_t backref_range = min(dictionary->backref_value_max, dictionary->decoded_size);
         if (backref_range == 0)
             return 0;
 
         IndexValuePair d3 = WeightWindow_Try_Decode(&dictionary->lowbit_window, decoder);
-        if (d3.index != 0xFFFF) {
-            d3.value = (dictionary->lowbit_window.values[d3.index] = Decode_Commit(decoder, dictionary->lowbit_value_max));
+        if (d3.index != 0xFFFF)
+        {
+            d3.value =
+                (dictionary->lowbit_window.values[d3.index] = Decode_Commit(decoder, dictionary->lowbit_value_max));
         }
 
         IndexValuePair d4 = WeightWindow_Try_Decode(&dictionary->highbit_window, decoder);
-        if (d4.index != 0xFFFF) {
-            d4.value = (dictionary->highbit_window.values[d4.index] = Decode_Commit(decoder, backref_range / 1024u + 1));
+        if (d4.index != 0xFFFF)
+        {
+            d4.value =
+                (dictionary->highbit_window.values[d4.index] = Decode_Commit(decoder, backref_range / 1024u + 1));
         }
 
         if (decoder->error || d4.value >= dictionary->highbit_value_max)
             return 0;
 
         IndexValuePair d5 = WeightWindow_Try_Decode(&dictionary->midbit_windows[d4.value], decoder);
-        if (d5.index != 0xFFFF) {
-            d5.value = (dictionary->midbit_windows[d4.value].values[d5.index] = Decode_Commit(decoder, min(backref_range / 4 + 1, 256)));
+        if (d5.index != 0xFFFF)
+        {
+            d5.value = (dictionary->midbit_windows[d4.value].values[d5.index] =
+                            Decode_Commit(decoder, min(backref_range / 4 + 1, 256)));
         }
 
         if (decoder->error)
@@ -511,21 +585,25 @@ uint32_t Dictionary_Decompress_Block(TDictionary *dictionary, TDecoder *decoder,
 
         size_t repeat = backref_size / backref_offset;
         size_t remain = backref_size % backref_offset;
-        for (size_t i = 0; i < repeat; ++i) {
+        for (size_t i = 0; i < repeat; ++i)
+        {
             memcpy(decompressedData + i * backref_offset, decompressedData - backref_offset, backref_offset);
         }
         memcpy(decompressedData + repeat * backref_offset, decompressedData - backref_offset, remain);
 
-        //printf("d3 %i\n", d3.value);
-        //printf("d4 %i\n", d4.value);
-        //printf("d5 %i\n\n", d5.value);
+        // printf("d3 %i\n", d3.value);
+        // printf("d4 %i\n", d4.value);
+        // printf("d5 %i\n\n", d5.value);
         return backref_size;
     }
-    else {
+    else
+    {
         uintptr_t i = (uintptr_t)decompressedData % 4;
         IndexValuePair d2 = WeightWindow_Try_Decode(&dictionary->decoded_windows[i], decoder);
-        if (d2.index != 0xFFFF) {
-            d2.value = (dictionary->decoded_windows[i].values[d2.index] = Decode_Commit(decoder, dictionary->decoded_value_max));
+        if (d2.index != 0xFFFF)
+        {
+            d2.value = (dictionary->decoded_windows[i].values[d2.index] =
+                            Decode_Commit(decoder, dictionary->decoded_value_max));
         }
 
         if (decoder->error || decompressedData >= decompressedEnd)
@@ -534,15 +612,13 @@ uint32_t Dictionary_Decompress_Block(TDictionary *dictionary, TDecoder *decoder,
         decompressedData[0] = d2.value & 0xff;
         dictionary->decoded_size++;
 
-        //printf("d2 %i\n\n", d2.value);
+        // printf("d2 %i\n\n", d2.value);
         return 1;
     }
 }
 
-int gr2_decompress(
-    uint32_t compressed_size, const uint8_t* compressed_buffer,
-    uint32_t step1, uint32_t step2,
-    uint32_t decompressed_size, uint8_t* decompressed_buffer)
+int gr2_decompress(uint32_t compressed_size, const uint8_t *compressed_buffer, uint32_t step1, uint32_t step2,
+                   uint32_t decompressed_size, uint8_t *decompressed_buffer)
 {
     if (compressed_size == 0 || decompressed_size == 0 || !compressed_buffer || !decompressed_buffer)
         return 0;
@@ -555,23 +631,25 @@ int gr2_decompress(
     memcpy(params, compressed_buffer, sizeof(params));
 
     TDecoder dec;
-    Decoder_Init(&dec, (uint8_t*)compressed_buffer + sizeof(params),
-                 compressed_buffer + compressed_size);
+    Decoder_Init(&dec, (uint8_t *)compressed_buffer + sizeof(params), compressed_buffer + compressed_size);
 
-    uint32_t steps[] = { step1, step2, decompressed_size };
-    uint8_t* dptr = decompressed_buffer;
-    uint8_t* const end = decompressed_buffer + decompressed_size;
+    uint32_t steps[] = {step1, step2, decompressed_size};
+    uint8_t *dptr = decompressed_buffer;
+    uint8_t *const end = decompressed_buffer + decompressed_size;
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 3; ++i)
+    {
         if (dptr >= decompressed_buffer + steps[i])
             continue;
 
         TDictionary dic;
         Dictionary_Init(&dic, &params[i]);
 
-        while (dptr < decompressed_buffer + steps[i]) {
+        while (dptr < decompressed_buffer + steps[i])
+        {
             uint32_t written = Dictionary_Decompress_Block(&dic, &dec, dptr, end);
-            if (written == 0 || dec.error) {
+            if (written == 0 || dec.error)
+            {
                 Dictionary_Free(&dic);
                 return 0;
             }

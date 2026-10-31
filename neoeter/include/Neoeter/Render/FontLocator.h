@@ -7,5 +7,5 @@
 // Order: the name as a path, $OPENMT2_FONT, fontconfig (family, then
 // sans-serif), then a few well-known FHS paths. Results are cached per name.
 // Returns an empty string when nothing usable is found.
-std::string FontLocator_FindFontFile(const char* fontName);
+std::string FontLocator_FindFontFile(const char *fontName);
 #endif

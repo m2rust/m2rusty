@@ -8,104 +8,135 @@ class CFlyTrace;
 class IFlyEventHandler;
 class CActorInstance;
 
-class CFlyingInstance 
-{	
-public:
-	// 2004. 3. 26. myevan. 적절한 네이밍이 필요. 게임에서 사용하지 않는다면 툴에서 툴 전용으로 상속받아 만들도록 하자
-	void Clear(); // Destroy와 같다
-	void SetDataPointer(CFlyingData * pData, const D3DXVECTOR3 & v3StartPosition);
-	void SetFlyTarget(const CFlyTarget & cr_Target); // Shot at Target	
-	
-public:
-	friend class CSceneFly;
+class CFlyingInstance
+{
+  public:
+    // 2004. 3. 26. myevan. 적절한 네이밍이 필요. 게임에서 사용하지 않는다면
+    // 툴에서 툴 전용으로 상속받아 만들도록 하자
+    void Clear(); // Destroy와 같다
+    void SetDataPointer(CFlyingData *pData, const D3DXVECTOR3 &v3StartPosition);
+    void SetFlyTarget(const CFlyTarget &cr_Target); // Shot at Target
 
-	struct TAttachEffectInstance
-	{
-		int iAttachIndex;
-		DWORD dwEffectInstanceIndex;
+  public:
+    friend class CSceneFly;
 
-		CFlyTrace * pFlyTrace; 
-	};
-	
-	CFlyingInstance();
-	virtual ~CFlyingInstance();
+    struct TAttachEffectInstance
+    {
+        int iAttachIndex;
+        DWORD dwEffectInstanceIndex;
 
-	void Destroy();
-	void Create(CFlyingData* pData, const D3DXVECTOR3& c_rv3StartPos, const CFlyTarget & c_rkTarget, bool canAttack);		
+        CFlyTrace *pFlyTrace;
+    };
 
-	bool Update();
-	void Render();
+    CFlyingInstance();
+    virtual ~CFlyingInstance();
 
-	bool IsAlive() { return m_bAlive; }
+    void Destroy();
+    void Create(CFlyingData *pData, const D3DXVECTOR3 &c_rv3StartPos, const CFlyTarget &c_rkTarget, bool canAttack);
 
-	const D3DXVECTOR3 & GetPosition() { return m_v3Position; }
+    bool Update();
+    void Render();
 
-	void AdjustDirectionForHoming(const D3DXVECTOR3 & v3TargetPosition);
+    bool IsAlive()
+    {
+        return m_bAlive;
+    }
 
-	typedef std::vector<TAttachEffectInstance> TAttachEffectInstanceVector;
+    const D3DXVECTOR3 &GetPosition()
+    {
+        return m_v3Position;
+    }
 
-	void BuildAttachInstance();
-	void UpdateAttachInstance();
-	void RenderAttachInstance();
-	void ClearAttachInstance();	
+    void AdjustDirectionForHoming(const D3DXVECTOR3 &v3TargetPosition);
 
-	void SetEventHandler(IFlyEventHandler * pHandler) { m_pHandler = pHandler; }
-	void ClearEventHandler() { m_pHandler = 0; }
+    typedef std::vector<TAttachEffectInstance> TAttachEffectInstanceVector;
 
-	void SetPierceCount(int iCount) { m_iPierceCount = iCount; }
-	void SetOwner(IActorInstance * pOwner) { m_pOwner = pOwner; }
-	void SetSkillIndex(DWORD dwIndex) { m_dwSkillIndex = dwIndex; }
+    void BuildAttachInstance();
+    void UpdateAttachInstance();
+    void RenderAttachInstance();
+    void ClearAttachInstance();
 
-	// FIXME : 툴에서 사용하고 있습니다. 임시로 위로.. - [levites]
-	void __Explode(bool bBomb=true);
-	void __Bomb();
+    void SetEventHandler(IFlyEventHandler *pHandler)
+    {
+        m_pHandler = pHandler;
+    }
+    void ClearEventHandler()
+    {
+        m_pHandler = 0;
+    }
 
-	DWORD ID;
+    void SetPierceCount(int iCount)
+    {
+        m_iPierceCount = iCount;
+    }
+    void SetOwner(IActorInstance *pOwner)
+    {
+        m_pOwner = pOwner;
+    }
+    void SetSkillIndex(DWORD dwIndex)
+    {
+        m_dwSkillIndex = dwIndex;
+    }
 
-protected:
-	void __Initialize();
+    // FIXME : 툴에서 사용하고 있습니다. 임시로 위로.. - [levites]
+    void __Explode(bool bBomb = true);
+    void __Bomb();
 
-	void __SetDataPointer(CFlyingData * pData, const D3DXVECTOR3 & v3StartPosition);
-	void __SetTargetDirection(const CFlyTarget& c_rkTarget);
-	void __SetTargetNormalizedDirection(const D3DXVECTOR3 & v3NormalizedDirection ); // 시작 타겟 방향 설정
+    DWORD ID;
 
-protected:
-	
-	CFlyingData * m_pData;
-	D3DXQUATERNION m_qRot;
+  protected:
+    void __Initialize();
 
-	float m_fStartTime;
+    void __SetDataPointer(CFlyingData *pData, const D3DXVECTOR3 &v3StartPosition);
+    void __SetTargetDirection(const CFlyTarget &c_rkTarget);
+    void __SetTargetNormalizedDirection(const D3DXVECTOR3 &v3NormalizedDirection); // 시작 타겟 방향 설정
 
-	bool m_bAlive;
-	bool m_canAttack;
+  protected:
+    CFlyingData *m_pData;
+    D3DXQUATERNION m_qRot;
 
-	int m_iPierceCount;
-	DWORD m_dwSkillIndex;
+    float m_fStartTime;
 
-	D3DXVECTOR3 m_v3Position;
-	D3DXVECTOR3 m_v3Velocity;
-	D3DXVECTOR3 m_v3LocalVelocity;
-	D3DXVECTOR3 m_v3Accel;
+    bool m_bAlive;
+    bool m_canAttack;
 
-	float m_fRemainRange;
+    int m_iPierceCount;
+    DWORD m_dwSkillIndex;
 
-	CFlyTarget m_FlyTarget;
+    D3DXVECTOR3 m_v3Position;
+    D3DXVECTOR3 m_v3Velocity;
+    D3DXVECTOR3 m_v3LocalVelocity;
+    D3DXVECTOR3 m_v3Accel;
 
-	D3DXQUATERNION m_qAttachRotation;
-	TAttachEffectInstanceVector m_vecAttachEffectInstance;
+    float m_fRemainRange;
 
-	IFlyEventHandler * m_pHandler;
+    CFlyTarget m_FlyTarget;
 
-	IActorInstance * m_pOwner;
+    D3DXQUATERNION m_qAttachRotation;
+    TAttachEffectInstanceVector m_vecAttachEffectInstance;
 
-	BOOL m_bTargetHitted;
-	std::set<IActorInstance *> m_HittedObjectSet;
+    IFlyEventHandler *m_pHandler;
 
-public:
-	static CFlyingInstance *  New() { return ms_kPool.Alloc(); }
-	static void Delete(CFlyingInstance * pInstance) { pInstance->Destroy(); ms_kPool.Free(pInstance); }
+    IActorInstance *m_pOwner;
 
-	static void DestroySystem() { ms_kPool.Destroy(); }
+    BOOL m_bTargetHitted;
+    std::set<IActorInstance *> m_HittedObjectSet;
 
-	static CDynamicPool<CFlyingInstance> ms_kPool;
+  public:
+    static CFlyingInstance *New()
+    {
+        return ms_kPool.Alloc();
+    }
+    static void Delete(CFlyingInstance *pInstance)
+    {
+        pInstance->Destroy();
+        ms_kPool.Free(pInstance);
+    }
+
+    static void DestroySystem()
+    {
+        ms_kPool.Destroy();
+    }
+
+    static CDynamicPool<CFlyingInstance> ms_kPool;
 };

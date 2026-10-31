@@ -1,6 +1,6 @@
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN	
+#define WIN32_LEAN_AND_MEAN
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -8,17 +8,17 @@
 #define _WIN32_DCOM
 
 #ifdef _MSC_VER
-#pragma warning(disable:4710)	// not inlined
-#pragma warning(disable:4786)	// character 255 넘어가는거 끄기
-#pragma warning(disable:4244)	// type conversion possible lose of data
+#pragma warning(disable : 4710) // not inlined
+#pragma warning(disable : 4786) // character 255 넘어가는거 끄기
+#pragma warning(disable : 4244) // type conversion possible lose of data
 
-#pragma warning(disable:4018)
-#pragma warning(disable:4245)
-#pragma warning(disable:4512)
-#pragma warning(disable:4201)
+#pragma warning(disable : 4018)
+#pragma warning(disable : 4245)
+#pragma warning(disable : 4512)
+#pragma warning(disable : 4201)
 
 #if _MSC_VER >= 1400
-#pragma warning(disable:4201 4512 4238 4239)
+#pragma warning(disable : 4201 4512 4238 4239)
 #endif
 #endif
 
@@ -28,9 +28,9 @@
 // USE_PLATFORM_D3D_COMPAT; the platform libraries are linked by CMake.
 #include "Platform/DirectXMathCompat.h"
 
-#pragma warning ( disable : 4201 )
+#pragma warning(disable : 4201)
 #include <mmsystem.h>
-#pragma warning ( default : 4201 )
+#pragma warning(default : 4201)
 #include <process.h>
 #include <direct.h>
 #include <malloc.h>
@@ -51,7 +51,6 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 #include <Neoeter/Platform/Base/Debug.h>
 #include <Neoeter/Platform/Locale/CodePageId.h>
-
 
 /*
 #include "Pool.h"

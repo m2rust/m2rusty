@@ -3,20 +3,20 @@
 
 Mutex::Mutex()
 {
-	InitializeCriticalSection(&lock);
+    InitializeCriticalSection(&lock);
 }
 
 Mutex::~Mutex()
 {
-	DeleteCriticalSection(&lock);
+    DeleteCriticalSection(&lock);
 }
 
 void Mutex::Lock()
 {
-	EnterCriticalSection(&lock);
+    EnterCriticalSection(&lock);
 }
 
 void Mutex::Unlock()
 {
-	LeaveCriticalSection(&lock);
+    LeaveCriticalSection(&lock);
 }

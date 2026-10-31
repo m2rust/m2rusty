@@ -11,11 +11,14 @@
 
 #include <vector>
 
-namespace eterbase {
-namespace gl {
+namespace eterbase
+{
+namespace gl
+{
 
-class GLRenderBackend final : public IRenderBackend {
-public:
+class GLRenderBackend final : public IRenderBackend
+{
+  public:
     GLRenderBackend() = default;
     ~GLRenderBackend() override;
 
@@ -25,9 +28,8 @@ public:
     RenderHandle CreateDepthStencil(uint32_t width, uint32_t height) override;
     void Destroy(RenderHandle handle) override;
 
-    void UploadTextureLevel(RenderHandle texture, uint32_t level, uint32_t format,
-                            uint32_t width, uint32_t height, const void* data,
-                            size_t size) override;
+    void UploadTextureLevel(RenderHandle texture, uint32_t level, uint32_t format, uint32_t width, uint32_t height,
+                            const void *data, size_t size) override;
     void FinalizeTexture(RenderHandle texture, uint32_t maxLevel) override;
 
     void BindDefaultRenderTarget() override;
@@ -40,23 +42,27 @@ public:
     void Present() override;
 
     void BindStageTexture(uint32_t stage, RenderHandle texture) override;
-    void ApplyState(const RenderState& state) override;
-    void Draw(const DrawCall& call) override;
+    void ApplyState(const RenderState &state) override;
+    void Draw(const DrawCall &call) override;
 
-    bool Readback(uint32_t x, uint32_t y, uint32_t width, uint32_t height,
-                  uint32_t* outArgb) override;
+    bool Readback(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t *outArgb) override;
 
-private:
-    enum class ResourceKind : uint32_t { Texture = 1, DepthStencil = 2 };
+  private:
+    enum class ResourceKind : uint32_t
+    {
+        Texture = 1,
+        DepthStencil = 2
+    };
 
-    struct ResourceSlot {
+    struct ResourceSlot
+    {
         uint32_t glName = 0;
         uint32_t generation = 0;
         ResourceKind kind = ResourceKind::Texture;
         bool used = false;
     };
 
-    ResourceSlot* Lookup(RenderHandle handle, ResourceKind kind);
+    ResourceSlot *Lookup(RenderHandle handle, ResourceKind kind);
     void EnsureFramebuffer();
     void EnsureCaps() const;
 

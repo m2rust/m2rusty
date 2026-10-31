@@ -25,8 +25,7 @@ int main()
     assert(compResult == true);
     assert(compObj.GetSize() > 0);
     assert(compObj.GetSize() < rawSize);
-    printf("  [PASS] Compressed 16384 bytes to %u bytes (ratio: %.1f%%)\n",
-           compObj.GetSize(),
+    printf("  [PASS] Compressed 16384 bytes to %u bytes (ratio: %.1f%%)\n", compObj.GetSize(),
            (static_cast<float>(compObj.GetSize()) / rawSize) * 100.0f);
 
     CLZObject decompObj;
@@ -37,7 +36,7 @@ int main()
     printf("  [PASS] Decompressed data matches original data byte-for-byte.\n");
 
     // 2. Encrypted LZO compression & decompression
-    DWORD teaKey[4] = { 0xDEADBEEF, 0xCAFEBABE, 0x01234567, 0x89ABCDEF };
+    DWORD teaKey[4] = {0xDEADBEEF, 0xCAFEBABE, 0x01234567, 0x89ABCDEF};
     CLZObject encCompObj;
     bool encCompResult = lzo.CompressEncryptedMemory(encCompObj, rawData.data(), rawSize, teaKey);
     assert(encCompResult == true);

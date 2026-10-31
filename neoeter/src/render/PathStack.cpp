@@ -3,57 +3,56 @@
 
 CPathStack::CPathStack()
 {
-	SetBase();
+    SetBase();
 }
 
 CPathStack::~CPathStack()
 {
-	MoveBase();	
+    MoveBase();
 }
 
-void CPathStack::GetCurrentPathName(std::string* pstCurPathName)
+void CPathStack::GetCurrentPathName(std::string *pstCurPathName)
 {
-	assert(pstCurPathName!=NULL);
+    assert(pstCurPathName != NULL);
 
-	char szPathName[MAX_PATH+1];
-	_getcwd(szPathName, MAX_PATH);
+    char szPathName[MAX_PATH + 1];
+    _getcwd(szPathName, MAX_PATH);
 
-	*pstCurPathName = szPathName;
+    *pstCurPathName = szPathName;
 }
 
 void CPathStack::Push()
-{	
-	char szPathName[MAX_PATH+1];
-	_getcwd(szPathName, MAX_PATH);
+{
+    char szPathName[MAX_PATH + 1];
+    _getcwd(szPathName, MAX_PATH);
 
-	m_stPathNameDeque.push_front(szPathName);
+    m_stPathNameDeque.push_front(szPathName);
 }
 
 bool CPathStack::Pop()
 {
-	if (m_stPathNameDeque.empty()) 
-	{
-		assert(!"CPathStack::Pop Empty Stack");
-		return false;
-	}
+    if (m_stPathNameDeque.empty())
+    {
+        assert(!"CPathStack::Pop Empty Stack");
+        return false;
+    }
 
-	_chdir(m_stPathNameDeque.front().c_str());
-	m_stPathNameDeque.pop_front();
-	return true;
+    _chdir(m_stPathNameDeque.front().c_str());
+    m_stPathNameDeque.pop_front();
+    return true;
 }
-
 
 void CPathStack::MoveBase()
 {
-	_chdir(m_stBasePathName.c_str());
+    _chdir(m_stBasePathName.c_str());
 }
 
 void CPathStack::SetBase()
 {
-	GetCurrentPathName(&m_stBasePathName);	
+    GetCurrentPathName(&m_stBasePathName);
 }
 
-void CPathStack::Move(const char* c_szPathName)
+void CPathStack::Move(const char *c_szPathName)
 {
-	_chdir(c_szPathName);
+    _chdir(c_szPathName);
 }

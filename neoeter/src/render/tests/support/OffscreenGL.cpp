@@ -37,30 +37,46 @@ struct OffscreenGL::Impl
 namespace
 {
 
-const char* EglErrorString(EGLint error)
+const char *EglErrorString(EGLint error)
 {
     switch (error)
     {
-        case EGL_SUCCESS: return "EGL_SUCCESS";
-        case EGL_NOT_INITIALIZED: return "EGL_NOT_INITIALIZED";
-        case EGL_BAD_ACCESS: return "EGL_BAD_ACCESS";
-        case EGL_BAD_ALLOC: return "EGL_BAD_ALLOC";
-        case EGL_BAD_ATTRIBUTE: return "EGL_BAD_ATTRIBUTE";
-        case EGL_BAD_CONFIG: return "EGL_BAD_CONFIG";
-        case EGL_BAD_CONTEXT: return "EGL_BAD_CONTEXT";
-        case EGL_BAD_CURRENT_SURFACE: return "EGL_BAD_CURRENT_SURFACE";
-        case EGL_BAD_DISPLAY: return "EGL_BAD_DISPLAY";
-        case EGL_BAD_MATCH: return "EGL_BAD_MATCH";
-        case EGL_BAD_NATIVE_PIXMAP: return "EGL_BAD_NATIVE_PIXMAP";
-        case EGL_BAD_NATIVE_WINDOW: return "EGL_BAD_NATIVE_WINDOW";
-        case EGL_BAD_PARAMETER: return "EGL_BAD_PARAMETER";
-        case EGL_BAD_SURFACE: return "EGL_BAD_SURFACE";
-        case EGL_CONTEXT_LOST: return "EGL_CONTEXT_LOST";
-        default: return "unknown EGL error";
+    case EGL_SUCCESS:
+        return "EGL_SUCCESS";
+    case EGL_NOT_INITIALIZED:
+        return "EGL_NOT_INITIALIZED";
+    case EGL_BAD_ACCESS:
+        return "EGL_BAD_ACCESS";
+    case EGL_BAD_ALLOC:
+        return "EGL_BAD_ALLOC";
+    case EGL_BAD_ATTRIBUTE:
+        return "EGL_BAD_ATTRIBUTE";
+    case EGL_BAD_CONFIG:
+        return "EGL_BAD_CONFIG";
+    case EGL_BAD_CONTEXT:
+        return "EGL_BAD_CONTEXT";
+    case EGL_BAD_CURRENT_SURFACE:
+        return "EGL_BAD_CURRENT_SURFACE";
+    case EGL_BAD_DISPLAY:
+        return "EGL_BAD_DISPLAY";
+    case EGL_BAD_MATCH:
+        return "EGL_BAD_MATCH";
+    case EGL_BAD_NATIVE_PIXMAP:
+        return "EGL_BAD_NATIVE_PIXMAP";
+    case EGL_BAD_NATIVE_WINDOW:
+        return "EGL_BAD_NATIVE_WINDOW";
+    case EGL_BAD_PARAMETER:
+        return "EGL_BAD_PARAMETER";
+    case EGL_BAD_SURFACE:
+        return "EGL_BAD_SURFACE";
+    case EGL_CONTEXT_LOST:
+        return "EGL_CONTEXT_LOST";
+    default:
+        return "unknown EGL error";
     }
 }
 
-void Fail(std::string* error, const char* what)
+void Fail(std::string *error, const char *what)
 {
     if (!error)
         return;
@@ -76,7 +92,7 @@ OffscreenGL::~OffscreenGL()
     Destroy();
 }
 
-bool OffscreenGL::Create(int width, int height, std::string* error)
+bool OffscreenGL::Create(int width, int height, std::string *error)
 {
     Destroy();
     if (width <= 0 || height <= 0)
@@ -88,13 +104,12 @@ bool OffscreenGL::Create(int width, int height, std::string* error)
 
     m_impl = new Impl();
 
-    auto getPlatformDisplay = reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(
-        eglGetProcAddress("eglGetPlatformDisplayEXT"));
+    auto getPlatformDisplay =
+        reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(eglGetProcAddress("eglGetPlatformDisplayEXT"));
 
     if (getPlatformDisplay)
     {
-        m_impl->display = getPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA,
-                                             EGL_DEFAULT_DISPLAY, nullptr);
+        m_impl->display = getPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr);
     }
     else
     {
@@ -127,20 +142,26 @@ bool OffscreenGL::Create(int width, int height, std::string* error)
     }
 
     const EGLint configAttributes[] = {
-        EGL_SURFACE_TYPE, 0, // surfaceless: rendering goes to an FBO
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        EGL_RED_SIZE, 8,
-        EGL_GREEN_SIZE, 8,
-        EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
-        EGL_DEPTH_SIZE, 24,
+        EGL_SURFACE_TYPE,
+        0, // surfaceless: rendering goes to an FBO
+        EGL_RENDERABLE_TYPE,
+        EGL_OPENGL_BIT,
+        EGL_RED_SIZE,
+        8,
+        EGL_GREEN_SIZE,
+        8,
+        EGL_BLUE_SIZE,
+        8,
+        EGL_ALPHA_SIZE,
+        8,
+        EGL_DEPTH_SIZE,
+        24,
         EGL_NONE,
     };
 
     EGLConfig config = nullptr;
     EGLint configCount = 0;
-    if (!eglChooseConfig(m_impl->display, configAttributes, &config, 1, &configCount) ||
-        configCount < 1)
+    if (!eglChooseConfig(m_impl->display, configAttributes, &config, 1, &configCount) || configCount < 1)
     {
         Fail(error, "eglChooseConfig found no OpenGL configuration");
         Destroy();
@@ -150,9 +171,7 @@ bool OffscreenGL::Create(int width, int height, std::string* error)
     // Match CMSWindow (MSWindow.cpp): the renderer is a GL 2.1 compatibility
     // pipeline, not a core profile.
     const EGLint contextAttributes[] = {
-        EGL_CONTEXT_MAJOR_VERSION, 2,
-        EGL_CONTEXT_MINOR_VERSION, 1,
-        EGL_NONE,
+        EGL_CONTEXT_MAJOR_VERSION, 2, EGL_CONTEXT_MINOR_VERSION, 1, EGL_NONE,
     };
 
     m_impl->context = eglCreateContext(m_impl->display, config, EGL_NO_CONTEXT, contextAttributes);
@@ -170,10 +189,10 @@ bool OffscreenGL::Create(int width, int height, std::string* error)
         return false;
     }
 
-    const GLubyte* version = glGetString(GL_VERSION);
-    const GLubyte* renderer = glGetString(GL_RENDERER);
-    m_renderer = std::string(renderer ? reinterpret_cast<const char*>(renderer) : "unknown") +
-                 " / GL " + (version ? reinterpret_cast<const char*>(version) : "unknown");
+    const GLubyte *version = glGetString(GL_VERSION);
+    const GLubyte *renderer = glGetString(GL_RENDERER);
+    m_renderer = std::string(renderer ? reinterpret_cast<const char *>(renderer) : "unknown") + " / GL " +
+                 (version ? reinterpret_cast<const char *>(version) : "unknown");
 
     glGenFramebuffers(1, &m_impl->framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, m_impl->framebuffer);
@@ -184,14 +203,12 @@ bool OffscreenGL::Create(int width, int height, std::string* error)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           m_impl->colorTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_impl->colorTexture, 0);
 
     glGenRenderbuffers(1, &m_impl->depthRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, m_impl->depthRenderbuffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-                              m_impl->depthRenderbuffer);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_impl->depthRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
     const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -200,8 +217,7 @@ bool OffscreenGL::Create(int width, int height, std::string* error)
         if (error)
         {
             char message[96];
-            std::snprintf(message, sizeof(message),
-                          "offscreen framebuffer incomplete (0x%04x)", status);
+            std::snprintf(message, sizeof(message), "offscreen framebuffer incomplete (0x%04x)", status);
             *error = message;
         }
         Destroy();
@@ -246,7 +262,7 @@ void OffscreenGL::Destroy()
     m_renderer.clear();
 }
 
-bool OffscreenGL::Capture(Image* image, std::string* error)
+bool OffscreenGL::Capture(Image *image, std::string *error)
 {
     if (!m_impl || !image)
     {
@@ -280,7 +296,7 @@ bool OffscreenGL::Capture(Image* image, std::string* error)
     const std::size_t rowBytes = static_cast<std::size_t>(m_width) * 4;
     for (int y = 0; y < m_height; ++y)
     {
-        const std::uint8_t* source = bottomUp.data() + static_cast<std::size_t>(m_height - 1 - y) * rowBytes;
+        const std::uint8_t *source = bottomUp.data() + static_cast<std::size_t>(m_height - 1 - y) * rowBytes;
         std::memcpy(image->rgba.data() + static_cast<std::size_t>(y) * rowBytes, source, rowBytes);
     }
     return image->Valid();

@@ -1,0 +1,4 @@
+# Vendored third-party code; keep it byte-identical to upstream.
+neoeter-python/include/python2.7/*
+neoeter/include/Platform/stb_image.h
+neoeter/include/Platform/stb_image_write.h

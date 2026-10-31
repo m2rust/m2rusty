@@ -2,12 +2,12 @@
 
 class CPythonExceptionSender : public IPythonExceptionSender
 {
-	public:
-		CPythonExceptionSender();
-		virtual ~CPythonExceptionSender();
+  public:
+    CPythonExceptionSender();
+    virtual ~CPythonExceptionSender();
 
-		void Send();
+    void Send();
 
-	protected:
-		std::set<DWORD> m_kSet_dwSendedExceptionCRC;
+  protected:
+    std::set<DWORD> m_kSet_dwSendedExceptionCRC;
 };

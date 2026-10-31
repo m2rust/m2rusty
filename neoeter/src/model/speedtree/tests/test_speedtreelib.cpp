@@ -13,13 +13,14 @@
 #include <cstring>
 #include <vector>
 
-namespace {
+namespace
+{
 
 void test_speedtreert_compat()
 {
     CSpeedTreeRT rt;
     rt.SetTreePosition(10.0f, 20.0f, 30.0f);
-    const float* pos = rt.GetTreePosition();
+    const float *pos = rt.GetTreePosition();
     assert(pos != nullptr);
     assert(pos[0] == 10.0f && pos[1] == 20.0f && pos[2] == 30.0f);
 
@@ -46,12 +47,12 @@ void test_speedtreert_compat()
     assert(colDims[0] > 0.0f && colDims[1] > 0.0f);
 
     // Materials
-    const float* mat = rt.GetBranchMaterial();
+    const float *mat = rt.GetBranchMaterial();
     assert(mat != nullptr);
     assert(mat[0] == 1.0f); // Diffuse R
 
     // Instancing
-    CSpeedTreeRT* inst = rt.MakeInstance();
+    CSpeedTreeRT *inst = rt.MakeInstance();
     assert(inst != nullptr);
     assert(inst->InstanceOf() == &rt);
     delete inst;
@@ -64,13 +65,18 @@ void test_speedtree_wrapper_and_spt_loading()
     CSpeedTreeWrapper wrapper;
 
     // Create a synthetic SPT buffer with mock tags and texture filenames
-    std::string mockSpt = "__IdvSpt_02_\x00\x00\x00\x1b" "D:\\Tree\\BeechBark.tga\x00\x00" "CompositeMapB1\x00\x00" "CompositeShadowMapB1.tga\x00\x00" "BeechLeaves_RT_1.tga";
+    std::string mockSpt = "__IdvSpt_02_\x00\x00\x00\x1b"
+                          "D:\\Tree\\BeechBark.tga\x00\x00"
+                          "CompositeMapB1\x00\x00"
+                          "CompositeShadowMapB1.tga\x00\x00"
+                          "BeechLeaves_RT_1.tga";
     mockSpt += std::string("\x00\x00\x00\x00\x00\x00\x00\x00", 8);
 
-    bool loadOk = wrapper.LoadTree("test_tree.spt", reinterpret_cast<const BYTE*>(mockSpt.data()), static_cast<unsigned int>(mockSpt.size()));
+    bool loadOk = wrapper.LoadTree("test_tree.spt", reinterpret_cast<const BYTE *>(mockSpt.data()),
+                                   static_cast<unsigned int>(mockSpt.size()));
     assert(loadOk);
 
-    const float* bbox = wrapper.GetBoundingBox();
+    const float *bbox = wrapper.GetBoundingBox();
     assert(bbox != nullptr);
 
     wrapper.SetPosition(50.0f, 100.0f, 20.0f);
@@ -83,12 +89,12 @@ void test_speedtree_wrapper_and_spt_loading()
     assert(v3Center.x == 50.0f && v3Center.y == 100.0f);
 
     // Test wrapper instancing
-    CSpeedTreeWrapper* pInst = wrapper.MakeInstance();
+    CSpeedTreeWrapper *pInst = wrapper.MakeInstance();
     assert(pInst != nullptr);
     assert(pInst->InstanceOf() == &wrapper);
 
     unsigned int instCount = 0;
-    CSpeedTreeWrapper** ppInstances = wrapper.GetInstances(instCount);
+    CSpeedTreeWrapper **ppInstances = wrapper.GetInstances(instCount);
     assert(instCount == 1);
     assert(ppInstances[0] == pInst);
 
@@ -99,14 +105,13 @@ void test_speedtree_wrapper_and_spt_loading()
     std::printf("[PASS] test_speedtree_wrapper_and_spt_loading\n");
 }
 
-
-// Build a minimal IdvSpt parameter block: texture strings + the size property
-// (id 2001 followed by a float) that the loader reads.
+// Build a minimal IdvSpt parameter block: texture strings + the size
+// property (id 2001 followed by a float) that the loader reads.
 static std::vector<unsigned char> MakeSyntheticSpt(float fSize)
 {
     std::vector<unsigned char> buf;
-    auto append = [&buf](const void* p, size_t n) {
-        const unsigned char* b = static_cast<const unsigned char*>(p);
+    auto append = [&buf](const void *p, size_t n) {
+        const unsigned char *b = static_cast<const unsigned char *>(p);
         buf.insert(buf.end(), b, b + n);
     };
 
@@ -163,9 +168,11 @@ void test_speedtree_generated_geometry()
     for (unsigned short i = 0; i < g.m_sBranches.m_pStripLengths[0]; ++i)
         assert(g.m_sBranches.m_pStrips[0][i] < g.m_sBranches.m_usVertexCount);
 
-    // Concave silhouette: the trunk starts at the origin and the crown is above it.
+    // Concave silhouette: the trunk starts at the origin and the crown is
+    // above it.
     float fMinZ = 1e9f, fMaxZ = -1e9f;
-    for (unsigned int i = 0; i < g.m_sBranches.m_usVertexCount; ++i) {
+    for (unsigned int i = 0; i < g.m_sBranches.m_usVertexCount; ++i)
+    {
         fMinZ = std::min(fMinZ, g.m_sBranches.m_pCoords[i * 3 + 2]);
         fMaxZ = std::max(fMaxZ, g.m_sBranches.m_pCoords[i * 3 + 2]);
     }
@@ -184,14 +191,16 @@ void test_speedtree_generated_geometry()
     assert(rt.GetLeafTriangleCount() == g.m_sLeaves0.m_usLeafCount * 2);
 
     bool bAnyCornerOffset = false;
-    for (unsigned short l = 0; l < g.m_sLeaves0.m_usLeafCount; ++l) {
+    for (unsigned short l = 0; l < g.m_sLeaves0.m_usLeafCount; ++l)
+    {
         assert(g.m_sLeaves0.m_pLeafMapCoords[l] != nullptr);
         assert(g.m_sLeaves0.m_pLeafMapTexCoords[l] != nullptr);
-        for (int c = 0; c < 4; ++c) {
-            const float* uv = g.m_sLeaves0.m_pLeafMapTexCoords[l] + c * 2;
+        for (int c = 0; c < 4; ++c)
+        {
+            const float *uv = g.m_sLeaves0.m_pLeafMapTexCoords[l] + c * 2;
             assert(uv[0] >= 0.0f && uv[0] <= 1.0f);
             assert(uv[1] >= 0.0f && uv[1] <= 1.0f);
-            const float* off = g.m_sLeaves0.m_pLeafMapCoords[l] + c * 4;
+            const float *off = g.m_sLeaves0.m_pLeafMapCoords[l] + c * 4;
             if (std::fabs(off[0]) + std::fabs(off[1]) + std::fabs(off[2]) > 1e-3f)
                 bAnyCornerOffset = true;
         }
@@ -210,8 +219,7 @@ void test_speedtree_generated_geometry()
     const float dir[3] = {0.0f, 1.0f, 0.0f};
     CSpeedTreeRT::SetCamera(camA, dir);
     rt.GetGeometry(g, SpeedTree_LeafGeometry);
-    float savedCorner[3] = {g.m_sLeaves0.m_pLeafMapCoords[0][0],
-                            g.m_sLeaves0.m_pLeafMapCoords[0][1],
+    float savedCorner[3] = {g.m_sLeaves0.m_pLeafMapCoords[0][0], g.m_sLeaves0.m_pLeafMapCoords[0][1],
                             g.m_sLeaves0.m_pLeafMapCoords[0][2]};
     const unsigned short savedCount = g.m_sLeaves0.m_usLeafCount;
 
@@ -223,7 +231,7 @@ void test_speedtree_generated_geometry()
     assert(std::fabs(dx) + std::fabs(dy) > 1e-3f);
 
     // Instances must produce the same topology (shared vertex buffers).
-    CSpeedTreeRT* pInstance = rt.MakeInstance();
+    CSpeedTreeRT *pInstance = rt.MakeInstance();
     assert(pInstance != nullptr);
     pInstance->SetTreePosition(100.0f, 50.0f, 0.0f);
     CSpeedTreeRT::SGeometry gi;

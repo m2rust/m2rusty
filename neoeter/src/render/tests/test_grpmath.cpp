@@ -16,15 +16,14 @@ bool near(float a, float b, float eps = kEpsilon)
     return std::fabs(a - b) <= eps;
 }
 
-bool near(const D3DXVECTOR3 & a, const D3DXVECTOR3 & b, float eps = kEpsilon)
+bool near(const D3DXVECTOR3 &a, const D3DXVECTOR3 &b, float eps = kEpsilon)
 {
     return near(a.x, b.x, eps) && near(a.y, b.y, eps) && near(a.z, b.z, eps);
 }
 
-bool near(const D3DXQUATERNION & a, const D3DXQUATERNION & b, float eps = kEpsilon)
+bool near(const D3DXQUATERNION &a, const D3DXQUATERNION &b, float eps = kEpsilon)
 {
-    return near(a.x, b.x, eps) && near(a.y, b.y, eps) && near(a.z, b.z, eps) &&
-           near(a.w, b.w, eps);
+    return near(a.x, b.x, eps) && near(a.y, b.y, eps) && near(a.z, b.z, eps) && near(a.w, b.w, eps);
 }
 
 void test_cross_product_2d()

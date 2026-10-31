@@ -10,8 +10,8 @@ int main()
 {
     printf("[TEST] Starting FileBase & MappedFile tests...\n");
 
-    const char* testPath = "/tmp/mt2_test_filebase.dat";
-    const char* sampleData = "Metin2 Linux Porting - File I/O Verification Data Block";
+    const char *testPath = "/tmp/mt2_test_filebase.dat";
+    const char *sampleData = "Metin2 Linux Porting - File I/O Verification Data Block";
     const int sampleLen = static_cast<int>(strlen(sampleData));
 
     // 1. Write file with CFileBase
@@ -44,7 +44,7 @@ int main()
     // 3. Map file into memory using CMappedFile
     {
         CMappedFile mapped;
-        const void* pMappedData = nullptr;
+        const void *pMappedData = nullptr;
         BOOL mapCreated = mapped.Create(testPath, &pMappedData, 0, 0);
         assert(mapCreated == TRUE);
         assert(pMappedData != nullptr);

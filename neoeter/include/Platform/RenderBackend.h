@@ -19,9 +19,10 @@
 #include <cstdint>
 
 // Capability queries replace #ifdef feature tests (R5). A backend reports what
-// this particular device/driver supports; the façade and the game above it must
-// ask instead of assuming.
-struct RenderCaps {
+// this particular device/driver supports; the façade and the game above it
+// must ask instead of assuming.
+struct RenderCaps
+{
     uint32_t maxTextureSize;
     bool dxt1;
     bool dxt5;
@@ -33,23 +34,32 @@ struct RenderCaps {
 // Opaque backend-owned resource name. Vulkan handles are not integers, so the
 // façade never inspects `id`; `generation` lets the backend detect a stale
 // handle after a slot is recycled.
-struct RenderHandle {
+struct RenderHandle
+{
     uint32_t id;
     uint32_t generation;
 
-    bool IsValid() const { return id != 0; }
+    bool IsValid() const
+    {
+        return id != 0;
+    }
 };
 
 // Number of texture stages the D3D9 fixed-function emulation models. The GL
 // backend only *applies* the first two (matching the pre-seam renderer); the
 // remaining slots are carried so a synthesising backend can key on them.
-enum : uint32_t { kRenderMaxTextureStages = 8 };
+enum : uint32_t
+{
+    kRenderMaxTextureStages = 8
+};
 
 // A full fixed-function snapshot. It is a value type on purpose: the backend
-// must be able to derive its pipeline state from the snapshot alone (R3), and a
-// Vulkan backend will hash it into its PSO cache.
-struct RenderState {
-    struct TextureStage {
+// must be able to derive its pipeline state from the snapshot alone (R3), and
+// a Vulkan backend will hash it into its PSO cache.
+struct RenderState
+{
+    struct TextureStage
+    {
         uint32_t colorOp;
         uint32_t colorArg0;
         uint32_t colorArg1;
@@ -59,11 +69,12 @@ struct RenderState {
         uint32_t alphaArg1;
         uint32_t alphaArg2;
         uint32_t resultArg;
-        uint32_t texCoordIndex;       // D3DTSS_TEXCOORDINDEX (low word) | TCI mode (high word)
-        uint32_t texTransformFlags;   // D3DTSS_TEXTURETRANSFORMFLAGS
+        uint32_t texCoordIndex;     // D3DTSS_TEXCOORDINDEX (low word) | TCI mode (high word)
+        uint32_t texTransformFlags; // D3DTSS_TEXTURETRANSFORMFLAGS
     };
 
-    struct SamplerStage {
+    struct SamplerStage
+    {
         uint32_t addressU;
         uint32_t addressV;
         uint32_t minFilter;
@@ -119,17 +130,18 @@ struct RenderState {
 // One draw with the state it must execute against (R4). Buffers stay CPU-side
 // today: the client locks them immediately, so the seam passes resolved
 // pointers plus the ranges a backend would need for a real vertex buffer.
-struct DrawCall {
+struct DrawCall
+{
     RenderState state;
 
-    uint32_t primitiveType;   // D3DPRIMITIVETYPE
-    const void* vertexData;   // stream 0, already offset by base vertex
+    uint32_t primitiveType; // D3DPRIMITIVETYPE
+    const void *vertexData; // stream 0, already offset by base vertex
     uint32_t stride;
     uint32_t fvf;
 
-    uint32_t startVertex;     // first vertex for non-indexed draws
-    uint32_t vertexCount;     // resolved vertex count
-    const void* indexData;    // null for non-indexed draws
+    uint32_t startVertex;  // first vertex for non-indexed draws
+    uint32_t vertexCount;  // resolved vertex count
+    const void *indexData; // null for non-indexed draws
     uint32_t indexCount;
     bool index32;
 
@@ -143,8 +155,9 @@ struct DrawCall {
     float primaryColor[4];
 };
 
-class IRenderBackend {
-public:
+class IRenderBackend
+{
+  public:
     virtual ~IRenderBackend() = default;
 
     // Capabilities (R5).
@@ -157,9 +170,8 @@ public:
 
     // Uploads one mip level. `format` is a D3DFORMAT value; the backend owns the
     // format translation (DXT1/3/5, 16-bit expansion, BGRA).
-    virtual void UploadTextureLevel(RenderHandle texture, uint32_t level,
-                                    uint32_t format, uint32_t width, uint32_t height,
-                                    const void* data, size_t size) = 0;
+    virtual void UploadTextureLevel(RenderHandle texture, uint32_t level, uint32_t format, uint32_t width,
+                                    uint32_t height, const void *data, size_t size) = 0;
     // Applies the mip/filter defaults a texture has before any sampler state.
     virtual void FinalizeTexture(RenderHandle texture, uint32_t maxLevel) = 0;
 
@@ -179,15 +191,14 @@ public:
 
     // Applies a full snapshot. The GL backend is immediate and issues the
     // corresponding GL state now; a compiled backend records the key instead.
-    virtual void ApplyState(const RenderState& state) = 0;
+    virtual void ApplyState(const RenderState &state) = 0;
 
-    virtual void Draw(const DrawCall& call) = 0;
+    virtual void Draw(const DrawCall &call) = 0;
 
     // The only readback entry point (R7): screenshots and conformance.
-    virtual bool Readback(uint32_t x, uint32_t y, uint32_t width, uint32_t height,
-                          uint32_t* outArgb) = 0;
+    virtual bool Readback(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t *outArgb) = 0;
 };
 
 // Process-wide backend, selected at configure time (R8). Created on first use
 // so headless tests that never draw do not need a GL context.
-IRenderBackend& Platform_GetRenderBackend();
+IRenderBackend &Platform_GetRenderBackend();

@@ -5,22 +5,22 @@
 
 class CPathStack
 {
-	public:
-		CPathStack();
-		virtual ~CPathStack();
+  public:
+    CPathStack();
+    virtual ~CPathStack();
 
-		void SetBase();
+    void SetBase();
 
-		void MoveBase();
+    void MoveBase();
 
-		void Push();
+    void Push();
 
-		bool Pop();
+    bool Pop();
 
-		void Move(const char* c_szPathName);
-		void GetCurrentPathName(std::string* pstCurPathName);
+    void Move(const char *c_szPathName);
+    void GetCurrentPathName(std::string *pstCurPathName);
 
-	protected:
-		std::string				m_stBasePathName;
-		std::deque<std::string>	m_stPathNameDeque;
+  protected:
+    std::string m_stBasePathName;
+    std::deque<std::string> m_stPathNameDeque;
 };

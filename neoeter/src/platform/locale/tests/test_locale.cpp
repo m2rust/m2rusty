@@ -12,7 +12,7 @@ int main()
     printf("[TEST] Starting EterLocale smoke tests...\n");
 
     // 1. UTF-8 <-> WideChar transcoding round-trip
-    const char* originalUtf8 = "Metin2 Linux Port - Locale & UTF-8 Test!";
+    const char *originalUtf8 = "Metin2 Linux Port - Locale & UTF-8 Test!";
     wchar_t wbuf[128] = {0};
 
     int wlen = MultiByteToWideChar(CP_UTF8, 0, originalUtf8, -1, wbuf, 128);
@@ -26,7 +26,7 @@ int main()
     printf("  [PASS] WideCharToMultiByte round-trip matches original string.\n");
 
     // 2. CP1252 Latin transcoding
-    const char* latinText = "Cafe / Naive / Resume";
+    const char *latinText = "Cafe / Naive / Resume";
     wchar_t wbufLatin[128] = {0};
     int wlenLatin = MultiByteToWideChar(CP_1252, 0, latinText, -1, wbufLatin, 128);
     assert(wlenLatin > 0);

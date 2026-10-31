@@ -2,16 +2,16 @@
 
 class CNetworkDevice
 {
-	public:
-		CNetworkDevice();
-		virtual ~CNetworkDevice();
+  public:
+    CNetworkDevice();
+    virtual ~CNetworkDevice();
 
-		void Destroy();
-		bool Create();
+    void Destroy();
+    bool Create();
 
-	protected:
-		void Initialize();
+  protected:
+    void Initialize();
 
-	protected:
-		bool m_isWSA;
+  protected:
+    bool m_isWSA;
 };

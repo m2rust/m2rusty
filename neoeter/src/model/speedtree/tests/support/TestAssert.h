@@ -23,22 +23,24 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define TEST_ASSERT(cond)                                                      \
-    do {                                                                       \
-        if (!(cond)) {                                                         \
-            std::fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__,      \
-                         #cond);                                               \
-            std::abort();                                                      \
-        }                                                                      \
+#define TEST_ASSERT(cond)                                                                                              \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(cond))                                                                                                   \
+        {                                                                                                              \
+            std::fprintf(stderr, "[FAIL] %s:%d: %s\n", __FILE__, __LINE__, #cond);                                     \
+            std::abort();                                                                                              \
+        }                                                                                                              \
     } while (0)
 
-#define TEST_ASSERT_MSG(cond, msg)                                             \
-    do {                                                                       \
-        if (!(cond)) {                                                         \
-            std::fprintf(stderr, "[FAIL] %s:%d: %s (%s)\n", __FILE__,           \
-                         __LINE__, #cond, (msg));                              \
-            std::abort();                                                      \
-        }                                                                      \
+#define TEST_ASSERT_MSG(cond, msg)                                                                                     \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(cond))                                                                                                   \
+        {                                                                                                              \
+            std::fprintf(stderr, "[FAIL] %s:%d: %s (%s)\n", __FILE__, __LINE__, #cond, (msg));                         \
+            std::abort();                                                                                              \
+        }                                                                                                              \
     } while (0)
 
 #define TEST_SECTION(name) std::printf("[TEST] %s\n", (name))

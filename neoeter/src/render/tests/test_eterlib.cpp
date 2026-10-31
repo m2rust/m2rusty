@@ -17,7 +17,8 @@
 #include <cstring>
 #include <string>
 
-namespace {
+namespace
+{
 
 struct PooledSample : public CPooledObject<PooledSample>
 {
@@ -28,14 +29,14 @@ void test_pool_and_64bit_new()
 {
     CDynamicPool<int> intPool;
     intPool.SetName("TestIntPool");
-    int* p = intPool.Alloc();
+    int *p = intPool.Alloc();
     assert(p != nullptr);
     *p = 1337;
     assert(*p == 1337);
     intPool.Free(p);
     intPool.Destroy();
 
-    PooledSample* obj = new PooledSample();
+    PooledSample *obj = new PooledSample();
     assert(obj != nullptr);
     assert(obj->value == 42);
     delete obj;
@@ -46,11 +47,14 @@ void test_pool_and_64bit_new()
 
 class TestWorkerThread : public CThread
 {
-public:
-    UINT Setup() override { return 1; }
-    UINT Execute(void* arg) override
+  public:
+    UINT Setup() override
     {
-        int* counter = static_cast<int*>(arg);
+        return 1;
+    }
+    UINT Execute(void *arg) override
+    {
+        int *counter = static_cast<int *>(arg);
         *counter = 999;
         return 0;
     }
@@ -115,9 +119,11 @@ void test_text_tag_and_ime()
     std::wstring stripped = GetTextTagOutputString(tagged.c_str(), static_cast<int>(tagged.size()));
     assert(stripped == L"Hello World");
 
-    class TestIME : public CIME {
-    public:
-        void DeleteFirstChar() {
+    class TestIME : public CIME
+    {
+      public:
+        void DeleteFirstChar()
+        {
             SetCurPos(0);
             DelCurPos();
         }
@@ -164,7 +170,7 @@ void test_empty_image_instance_texture_reference()
     CGraphicImageInstance image;
     assert(image.IsEmpty());
 
-    const CGraphicTexture& texture = image.GetTextureReference();
+    const CGraphicTexture &texture = image.GetTextureReference();
     assert(texture.GetD3DTexture() == nullptr);
     assert(texture.GetWidth() == 0 || texture.GetWidth() >= 0);
 

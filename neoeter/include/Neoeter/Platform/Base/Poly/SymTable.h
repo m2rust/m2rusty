@@ -3,15 +3,15 @@
 
 #include <string>
 
-class CSymTable  
+class CSymTable
 {
-    public:
-	CSymTable(int aTok, std::string aStr);
-	virtual ~CSymTable();
+  public:
+    CSymTable(int aTok, std::string aStr);
+    virtual ~CSymTable();
 
-	double		dVal;
-	int		token;
-	std::string	strlex;
+    double dVal;
+    int token;
+    std::string strlex;
 };
 
-#endif 
+#endif

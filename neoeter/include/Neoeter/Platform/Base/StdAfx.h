@@ -6,16 +6,16 @@
 
 #if (defined(_WIN32) || defined(_WIN64)) && !defined(USE_PLATFORM_COMPAT)
 #define WIN32_LEAN_AND_MEAN
-#pragma warning(disable:4710)	// not inlined
-#pragma warning(disable:4786)	// character 255 넘어가는거 끄기
-#pragma warning(disable:4244)	// type conversion possible lose of data
+#pragma warning(disable : 4710) // not inlined
+#pragma warning(disable : 4786) // character 255 넘어가는거 끄기
+#pragma warning(disable : 4244) // type conversion possible lose of data
 
 #include <windows.h>
 #include <assert.h>
 #include <stdio.h>
-#pragma warning ( disable : 4201 )
+#pragma warning(disable : 4201)
 #include <mmsystem.h>
-#pragma warning ( default : 4201 )
+#pragma warning(default : 4201)
 #include <imagehlp.h>
 #include <time.h>
 #else

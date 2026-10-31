@@ -4,10 +4,11 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-	#define TEA_KEY_LENGTH 16
+#define TEA_KEY_LENGTH 16
 
     int tea_encrypt(uint32_t *dest, const uint32_t *src, const uint32_t *key, int size);
     int tea_decrypt(uint32_t *dest, const uint32_t *src, const uint32_t *key, int size);

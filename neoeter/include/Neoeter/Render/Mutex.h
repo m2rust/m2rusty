@@ -3,16 +3,16 @@
 
 class Mutex
 {
-	public:
-		Mutex();	
-		~Mutex();
-		
-		void Lock();
-		void Unlock();
-		bool Trylock();
+  public:
+    Mutex();
+    ~Mutex();
 
-	private:
-		CRITICAL_SECTION lock;		
+    void Lock();
+    void Unlock();
+    bool Trylock();
+
+  private:
+    CRITICAL_SECTION lock;
 };
 
 #endif

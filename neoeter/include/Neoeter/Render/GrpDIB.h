@@ -1,35 +1,35 @@
 #pragma once
 
-class CGraphicDib 
+class CGraphicDib
 {
-	public:
-		CGraphicDib();
-		virtual ~CGraphicDib();
+  public:
+    CGraphicDib();
+    virtual ~CGraphicDib();
 
-		void Destroy();	
-		bool Create(HDC hDC, int width, int height);
+    void Destroy();
+    bool Create(HDC hDC, int width, int height);
 
-		void SetBkMode(int iBkMode);
-		void TextOut(int ix, int iy, const char * c_szText);
-		void Put(HDC hDC, int x, int y);
+    void SetBkMode(int iBkMode);
+    void TextOut(int ix, int iy, const char *c_szText);
+    void Put(HDC hDC, int x, int y);
 
-		int GetWidth();
-		int GetHeight();
+    int GetWidth();
+    int GetHeight();
 
-		void* GetPointer();
+    void *GetPointer();
 
-		HDC GetDCHandle();
-		
-	protected:
-		void Initialize();
+    HDC GetDCHandle();
 
-	protected:		
-		HDC			m_hDC;
-		HBITMAP		m_hBmp;
-		BITMAPINFO	m_bmi;
+  protected:
+    void Initialize();
 
-		int			m_width;
-		int			m_height;
+  protected:
+    HDC m_hDC;
+    HBITMAP m_hBmp;
+    BITMAPINFO m_bmi;
 
-		void *		m_pvBuf;
+    int m_width;
+    int m_height;
+
+    void *m_pvBuf;
 };

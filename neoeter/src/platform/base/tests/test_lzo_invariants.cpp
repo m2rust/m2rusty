@@ -8,7 +8,7 @@
 namespace
 {
 
-void roundtrip(CLZO & lzo, const std::vector<char> & data, const char * label)
+void roundtrip(CLZO &lzo, const std::vector<char> &data, const char *label)
 {
     CLZObject compressed;
     TEST_ASSERT(lzo.CompressMemory(compressed, data.data(), data.size()));

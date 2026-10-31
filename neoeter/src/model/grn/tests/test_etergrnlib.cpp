@@ -15,7 +15,8 @@
 #include <cstdio>
 #include <cstring>
 
-namespace {
+namespace
+{
 
 void test_granny_skeleton_and_world_pose_math()
 {
@@ -51,21 +52,21 @@ void test_granny_skeleton_and_world_pose_math()
     assert(foundBone);
     assert(foundIdx == 1);
 
-    granny_local_pose* localPose = GrannyNewLocalPose(2);
-    granny_world_pose* worldPose = GrannyNewWorldPose(2);
+    granny_local_pose *localPose = GrannyNewLocalPose(2);
+    granny_world_pose *worldPose = GrannyNewWorldPose(2);
 
     localPose->Transforms[0] = bones[0].LocalTransform;
     localPose->Transforms[1] = bones[1].LocalTransform;
 
     GrannyBuildWorldPose(&skel, 0, 2, localPose, nullptr, worldPose);
 
-    const float* rootMat = GrannyGetWorldPose4x4(worldPose, 0);
+    const float *rootMat = GrannyGetWorldPose4x4(worldPose, 0);
     assert(rootMat != nullptr);
     assert(std::fabs(rootMat[12] - 10.0f) < 1e-4f);
     assert(std::fabs(rootMat[13] - 20.0f) < 1e-4f);
     assert(std::fabs(rootMat[14] - 30.0f) < 1e-4f);
 
-    const float* handMat = GrannyGetWorldPose4x4(worldPose, 1);
+    const float *handMat = GrannyGetWorldPose4x4(worldPose, 1);
     assert(handMat != nullptr);
     assert(std::fabs(handMat[12] - 15.0f) < 1e-4f);
     assert(std::fabs(handMat[13] - 17.0f) < 1e-4f);
@@ -100,10 +101,8 @@ void test_granny_vertex_deformer_skinning()
 
     granny_int32x boneMap[1] = {0};
 
-    granny_mesh_deformer* deformer = GrannyNewMeshDeformer(
-        GrannyPWNT3432VertexType,
-        GrannyPNT332VertexType,
-        GrannyDeformPositionNormal);
+    granny_mesh_deformer *deformer =
+        GrannyNewMeshDeformer(GrannyPWNT3432VertexType, GrannyPNT332VertexType, GrannyDeformPositionNormal);
     assert(deformer != nullptr);
     assert(deformer->HasBoneWeights);
 
@@ -127,10 +126,7 @@ void test_granny_vertex_deformer_skinning()
 void test_motion_and_thing_loading()
 {
     // Test CGrannyMotion text track and duration
-    granny_text_track_entry entries[2] = {
-        {0.15f, "sound_swing1"},
-        {0.45f, "Attack_Hit"}
-    };
+    granny_text_track_entry entries[2] = {{0.15f, "sound_swing1"}, {0.45f, "Attack_Hit"}};
     granny_text_track textTrack = {"Events", 2, entries};
     granny_track_group trackGroup;
     std::memset(&trackGroup, 0, sizeof(trackGroup));
@@ -138,7 +134,7 @@ void test_motion_and_thing_loading()
     trackGroup.TextTrackCount = 1;
     trackGroup.TextTracks = &textTrack;
 
-    granny_track_group* trackGroups[1] = {&trackGroup};
+    granny_track_group *trackGroups[1] = {&trackGroup};
 
     granny_animation anim;
     std::memset(&anim, 0, sizeof(anim));
@@ -162,7 +158,8 @@ void test_motion_and_thing_loading()
     assert(hitCount == 1);
     assert(std::fabs(hitTimes[0] - 0.45f) < 1e-4f);
 
-    // Test loading a synthetic model + animation into CGraphicThing via OpenGrannyMemoryEnvelope
+    // Test loading a synthetic model + animation into CGraphicThing via
+    // OpenGrannyMemoryEnvelope
     granny_bone rootBone;
     std::memset(&rootBone, 0, sizeof(rootBone));
     rootBone.Name = "Bip01";
@@ -173,16 +170,14 @@ void test_motion_and_thing_loading()
 
     granny_skeleton skel = {"TestSkel", 1, &rootBone};
 
-    granny_pnt332_vertex triVerts[3] = {
-        {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-        {{10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-        {{0.0f, 10.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
-    };
+    granny_pnt332_vertex triVerts[3] = {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+                                        {{10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+                                        {{0.0f, 10.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}};
     granny_vertex_data vtxData;
     std::memset(&vtxData, 0, sizeof(vtxData));
     vtxData.VertexType = GrannyPNT332VertexType;
     vtxData.VertexCount = 3;
-    vtxData.Vertices = reinterpret_cast<granny_uint8*>(triVerts);
+    vtxData.Vertices = reinterpret_cast<granny_uint8 *>(triVerts);
 
     granny_uint16 triIndices[3] = {0, 1, 2};
     granny_tri_material_group triGroup = {0, 0, 1};
@@ -211,8 +206,8 @@ void test_motion_and_thing_loading()
     model.MeshBindingCount = 1;
     model.MeshBindings = &meshBinding;
 
-    granny_model* models[1] = {&model};
-    granny_animation* anims[1] = {&anim};
+    granny_model *models[1] = {&model};
+    granny_animation *anims[1] = {&anim};
 
     granny_file_info fileInfo;
     std::memset(&fileInfo, 0, sizeof(fileInfo));
@@ -248,9 +243,14 @@ void test_motion_and_thing_loading()
 
     class TestGraphicThing : public CGraphicThing
     {
-    public:
-        explicit TestGraphicThing(const char* name) : CGraphicThing(name) {}
-        bool LoadMemory(int size, const void* buf) { return OnLoad(size, buf); }
+      public:
+        explicit TestGraphicThing(const char *name) : CGraphicThing(name)
+        {
+        }
+        bool LoadMemory(int size, const void *buf)
+        {
+            return OnLoad(size, buf);
+        }
     };
 
     TestGraphicThing thing("item/weapon/sword_001.gr2");
@@ -263,7 +263,7 @@ void test_motion_and_thing_loading()
     assert(thing.GetMotionPointer(0) != nullptr);
 
     // Test CGrannyModelInstance & bone queries
-    CGrannyModelInstance* modelInst = CGrannyModelInstance::New();
+    CGrannyModelInstance *modelInst = CGrannyModelInstance::New();
     assert(modelInst != nullptr);
     modelInst->SetMainModelPointer(thing.GetModelPointer(0), nullptr);
 
@@ -298,25 +298,35 @@ void test_native_gr2_parsing_and_model_loading()
 
     class TestGraphicThing : public CGraphicThing
     {
-    public:
-        explicit TestGraphicThing(const char* name) : CGraphicThing(name) {}
-        bool LoadMemory(int size, const void* buf) { return OnLoad(size, buf); }
+      public:
+        explicit TestGraphicThing(const char *name) : CGraphicThing(name)
+        {
+        }
+        bool LoadMemory(int size, const void *buf)
+        {
+            return OnLoad(size, buf);
+        }
     };
 
-    auto try_read_file = [](const std::vector<std::string>& candidates) -> std::vector<uint8_t> {
-        for (const auto& path : candidates) {
-            FILE* fp = std::fopen(path.c_str(), "rb");
-            if (!fp) continue;
+    auto try_read_file = [](const std::vector<std::string> &candidates) -> std::vector<uint8_t> {
+        for (const auto &path : candidates)
+        {
+            FILE *fp = std::fopen(path.c_str(), "rb");
+            if (!fp)
+                continue;
             std::fseek(fp, 0, SEEK_END);
             long sz = std::ftell(fp);
             std::fseek(fp, 0, SEEK_SET);
-            if (sz > 0) {
+            if (sz > 0)
+            {
                 std::vector<uint8_t> data(sz);
                 size_t readBytes = std::fread(data.data(), 1, sz, fp);
                 std::fclose(fp);
                 if (readBytes == static_cast<size_t>(sz))
                     return data;
-            } else {
+            }
+            else
+            {
                 std::fclose(fp);
             }
         }
@@ -324,25 +334,25 @@ void test_native_gr2_parsing_and_model_loading()
     };
 
     // Test 1: Rigid mesh (general_obj_fence03.gr2)
-    std::vector<uint8_t> fenceData = try_read_file({
-        "bin/pack/Zone/ymir work/zone/b/obj/general_obj_fence03.gr2",
-        "../bin/pack/Zone/ymir work/zone/b/obj/general_obj_fence03.gr2",
-        "../../bin/pack/Zone/ymir work/zone/b/obj/general_obj_fence03.gr2"
-    });
+    std::vector<uint8_t> fenceData =
+        try_read_file({"bin/pack/Zone/ymir work/zone/b/obj/general_obj_fence03.gr2",
+                       "../bin/pack/Zone/ymir work/zone/b/obj/general_obj_fence03.gr2",
+                       "../../bin/pack/Zone/ymir work/zone/b/obj/general_obj_fence03.gr2"});
 
-    if (!fenceData.empty()) {
+    if (!fenceData.empty())
+    {
         TestGraphicThing thingFence("general_obj_fence03.gr2");
         bool loaded = thingFence.LoadMemory(fenceData.size(), fenceData.data());
         assert(loaded);
         assert(thingFence.GetModelCount() >= 1);
-        CGrannyModel* model = thingFence.GetModelPointer(0);
+        CGrannyModel *model = thingFence.GetModelPointer(0);
         assert(model != nullptr);
         assert(model->GetMeshCount() >= 1);
         assert(model->GetRigidVertexCount() > 0);
         assert(model->GetRigidVertexCount() == 59);
         assert(model->GetMeshCount() == 1);
 
-        CGrannyModelInstance* inst = CGrannyModelInstance::New();
+        CGrannyModelInstance *inst = CGrannyModelInstance::New();
         assert(inst != nullptr);
         inst->SetMainModelPointer(model, nullptr);
 
@@ -356,29 +366,29 @@ void test_native_gr2_parsing_and_model_loading()
 
         CGrannyModelInstance::Delete(inst);
         thingFence.DestroyDeviceObjects();
-        std::printf("[PASS] test_native_gr2_parsing_and_model_loading: rigid mesh verified\n");
+        std::printf("[PASS] test_native_gr2_parsing_and_model_loading: rigid "
+                    "mesh verified\n");
     }
 
     // Test 2: Deformable skinned character mesh (warrior_novice.gr2)
-    std::vector<uint8_t> warriorData = try_read_file({
-        "bin/pack/PC/ymir work/pc/warrior/warrior_novice.gr2",
-        "../bin/pack/PC/ymir work/pc/warrior/warrior_novice.gr2",
-        "../../bin/pack/PC/ymir work/pc/warrior/warrior_novice.gr2"
-    });
+    std::vector<uint8_t> warriorData = try_read_file({"bin/pack/PC/ymir work/pc/warrior/warrior_novice.gr2",
+                                                      "../bin/pack/PC/ymir work/pc/warrior/warrior_novice.gr2",
+                                                      "../../bin/pack/PC/ymir work/pc/warrior/warrior_novice.gr2"});
 
-    if (!warriorData.empty()) {
+    if (!warriorData.empty())
+    {
         TestGraphicThing thingWarrior("warrior_novice.gr2");
         bool loaded = thingWarrior.LoadMemory(warriorData.size(), warriorData.data());
         assert(loaded);
         assert(thingWarrior.GetModelCount() >= 1);
-        CGrannyModel* model = thingWarrior.GetModelPointer(0);
+        CGrannyModel *model = thingWarrior.GetModelPointer(0);
         assert(model != nullptr);
         assert(model->GetMeshCount() >= 1);
         assert(model->GetDeformVertexCount() > 0);
         assert(model->GetDeformVertexCount() == 2207);
         assert(model->GetMeshCount() == 3);
 
-        CGrannyModelInstance* inst = CGrannyModelInstance::New();
+        CGrannyModelInstance *inst = CGrannyModelInstance::New();
         assert(inst != nullptr);
         inst->SetMainModelPointer(model, nullptr);
 
@@ -397,13 +407,14 @@ void test_native_gr2_parsing_and_model_loading()
 
         CGrannyModelInstance::Delete(inst);
         thingWarrior.DestroyDeviceObjects();
-        std::printf("[PASS] test_native_gr2_parsing_and_model_loading: deformable skinned character verified\n");
+        std::printf("[PASS] test_native_gr2_parsing_and_model_loading: "
+                    "deformable skinned character verified\n");
     }
 
     CGrannyModelInstance::DestroySystem();
 }
 
-void init_test_transform(granny_transform& transform, float x, float y, float z)
+void init_test_transform(granny_transform &transform, float x, float y, float z)
 {
     std::memset(&transform, 0, sizeof(transform));
     transform.Flags = GrannyHasPosition | GrannyHasOrientation | GrannyHasScaleShear;
@@ -416,7 +427,7 @@ void init_test_transform(granny_transform& transform, float x, float y, float z)
     transform.ScaleShear[2][2] = 1.0f;
 }
 
-granny_curve make_constant_curve(granny_real32* controls, granny_int32 controlCount)
+granny_curve make_constant_curve(granny_real32 *controls, granny_int32 controlCount)
 {
     granny_curve curve;
     std::memset(&curve, 0, sizeof(curve));
@@ -471,17 +482,15 @@ void test_animation_track_group_selection_and_blending()
     granny_curve rootPositionCurve = make_constant_curve(rootPosition, 3);
     granny_curve armRotationCurve = make_constant_curve(armRotation, 4);
 
-    granny_transform_track bipedTracks[2] = {
-        {"Bip01", rootPositionCurve, emptyCurve, emptyCurve},
-        {"Bip01 Arm", emptyCurve, armRotationCurve, emptyCurve}
-    };
+    granny_transform_track bipedTracks[2] = {{"Bip01", rootPositionCurve, emptyCurve, emptyCurve},
+                                             {"Bip01 Arm", emptyCurve, armRotationCurve, emptyCurve}};
     granny_track_group bipedGroup;
     std::memset(&bipedGroup, 0, sizeof(bipedGroup));
     bipedGroup.Name = "Bip01";
     bipedGroup.TransformTrackCount = 2;
     bipedGroup.TransformTracks = bipedTracks;
 
-    granny_track_group* trackGroups[2] = {&helperGroup, &bipedGroup};
+    granny_track_group *trackGroups[2] = {&helperGroup, &bipedGroup};
     granny_animation animation;
     std::memset(&animation, 0, sizeof(animation));
     animation.Name = "wait";
@@ -494,15 +503,15 @@ void test_animation_track_group_selection_and_blending()
     model.Name = "TestNpc";
     model.Skeleton = &skeleton;
 
-    granny_model_instance* instance = GrannyInstantiateModel(&model);
+    granny_model_instance *instance = GrannyInstantiateModel(&model);
     assert(instance != nullptr);
 
-    granny_control* control = GrannyPlayControlledAnimation(0.0f, &animation, instance);
+    granny_control *control = GrannyPlayControlledAnimation(0.0f, &animation, instance);
     assert(control != nullptr);
     GrannySetControlLoopCount(control, 0);
     GrannySetModelClock(instance, 0.5f);
 
-    granny_local_pose* pose = GrannyNewLocalPose(2);
+    granny_local_pose *pose = GrannyNewLocalPose(2);
     GrannySampleModelAnimations(instance, 0, 2, pose);
 
     // The biped group must be selected instead of the first (helper) group.
@@ -535,8 +544,8 @@ void test_animation_track_group_selection_and_blending()
     groupB.TransformTrackCount = 1;
     groupB.TransformTracks = &trackB;
 
-    granny_track_group* groupsA[1] = {&groupA};
-    granny_track_group* groupsB[1] = {&groupB};
+    granny_track_group *groupsA[1] = {&groupA};
+    granny_track_group *groupsB[1] = {&groupB};
 
     granny_animation animA;
     std::memset(&animA, 0, sizeof(animA));
@@ -555,7 +564,7 @@ void test_animation_track_group_selection_and_blending()
     instance = GrannyInstantiateModel(&model);
     assert(instance != nullptr);
 
-    granny_control* controlA = GrannyPlayControlledAnimation(0.0f, &animA, instance);
+    granny_control *controlA = GrannyPlayControlledAnimation(0.0f, &animA, instance);
     assert(controlA != nullptr);
     GrannySetControlLoopCount(controlA, 0);
 
@@ -563,7 +572,7 @@ void test_animation_track_group_selection_and_blending()
     GrannySetControlEaseOutCurve(controlA, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f);
     GrannyCompleteControlAt(controlA, 1.0f);
 
-    granny_control* controlB = GrannyPlayControlledAnimation(0.0f, &animB, instance);
+    granny_control *controlB = GrannyPlayControlledAnimation(0.0f, &animB, instance);
     assert(controlB != nullptr);
     GrannySetControlLoopCount(controlB, 0);
     GrannySetControlEaseIn(controlB, true);
@@ -602,7 +611,7 @@ void test_root_motion_is_not_accumulated_during_transitions()
     group.Name = "Bip01";
     group.LoopTranslation[0] = -100.0f;
 
-    granny_track_group* groups[1] = {&group};
+    granny_track_group *groups[1] = {&group};
 
     granny_animation animation;
     std::memset(&animation, 0, sizeof(animation));
@@ -616,17 +625,17 @@ void test_root_motion_is_not_accumulated_during_transitions()
     model.Name = "TestPlayer";
     model.Skeleton = &skeleton;
 
-    granny_model_instance* instance = GrannyInstantiateModel(&model);
+    granny_model_instance *instance = GrannyInstantiateModel(&model);
     assert(instance != nullptr);
 
-    granny_control* controlA = GrannyPlayControlledAnimation(0.0f, &animation, instance);
+    granny_control *controlA = GrannyPlayControlledAnimation(0.0f, &animation, instance);
     assert(controlA != nullptr);
     GrannySetControlLoopCount(controlA, 0);
     GrannySetControlEaseOut(controlA, true);
     GrannySetControlEaseOutCurve(controlA, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f);
     GrannyCompleteControlAt(controlA, 1.0f);
 
-    granny_control* controlB = GrannyPlayControlledAnimation(0.0f, &animation, instance);
+    granny_control *controlB = GrannyPlayControlledAnimation(0.0f, &animation, instance);
     assert(controlB != nullptr);
     GrannySetControlLoopCount(controlB, 0);
     GrannySetControlEaseIn(controlB, true);
@@ -634,12 +643,8 @@ void test_root_motion_is_not_accumulated_during_transitions()
 
     GrannySetModelClock(instance, 0.5f);
 
-    granny_real32 matrix[16] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
+    granny_real32 matrix[16] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                                0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     GrannyUpdateModelMatrix(instance, 1.0f, matrix, matrix);
 
@@ -655,7 +660,7 @@ void test_root_motion_is_not_accumulated_during_transitions()
     std::memset(&idleGroup, 0, sizeof(idleGroup));
     idleGroup.Name = "Bip01";
 
-    granny_track_group* idleGroups[1] = {&idleGroup};
+    granny_track_group *idleGroups[1] = {&idleGroup};
 
     granny_animation idleAnimation;
     std::memset(&idleAnimation, 0, sizeof(idleAnimation));
@@ -667,11 +672,11 @@ void test_root_motion_is_not_accumulated_during_transitions()
     instance = GrannyInstantiateModel(&model);
     assert(instance != nullptr);
 
-    granny_control* idleControl = GrannyPlayControlledAnimation(0.0f, &idleAnimation, instance);
+    granny_control *idleControl = GrannyPlayControlledAnimation(0.0f, &idleAnimation, instance);
     assert(idleControl != nullptr);
     GrannySetControlLoopCount(idleControl, 0);
 
-    granny_control* startControl = GrannyPlayControlledAnimation(0.0f, &animation, instance);
+    granny_control *startControl = GrannyPlayControlledAnimation(0.0f, &animation, instance);
     assert(startControl != nullptr);
     GrannySetControlLoopCount(startControl, 0);
     GrannySetControlEaseIn(startControl, true);
@@ -679,12 +684,8 @@ void test_root_motion_is_not_accumulated_during_transitions()
 
     GrannySetModelClock(instance, 0.0f);
 
-    granny_real32 startMatrix[16] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
+    granny_real32 startMatrix[16] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                                     0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     GrannyUpdateModelMatrix(instance, 1.0f, startMatrix, startMatrix);
     assert(std::fabs(startMatrix[13] + 100.0f) < 1e-3f);
@@ -696,7 +697,7 @@ void test_root_motion_is_not_accumulated_during_transitions()
     instance = GrannyInstantiateModel(&model);
     assert(instance != nullptr);
 
-    granny_control* runControl = GrannyPlayControlledAnimation(0.0f, &animation, instance);
+    granny_control *runControl = GrannyPlayControlledAnimation(0.0f, &animation, instance);
     assert(runControl != nullptr);
     GrannySetControlLoopCount(runControl, 0);
 
@@ -704,7 +705,7 @@ void test_root_motion_is_not_accumulated_during_transitions()
     GrannySetControlEaseOutCurve(runControl, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f);
     GrannyCompleteControlAt(runControl, 1.0f);
 
-    granny_control* stopControl = GrannyPlayControlledAnimation(0.0f, &idleAnimation, instance);
+    granny_control *stopControl = GrannyPlayControlledAnimation(0.0f, &idleAnimation, instance);
     assert(stopControl != nullptr);
     GrannySetControlLoopCount(stopControl, 0);
     GrannySetControlEaseIn(stopControl, true);
@@ -712,12 +713,8 @@ void test_root_motion_is_not_accumulated_during_transitions()
 
     GrannySetModelClock(instance, 0.5f);
 
-    granny_real32 stopMatrix[16] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
+    granny_real32 stopMatrix[16] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                                    0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     GrannyUpdateModelMatrix(instance, 1.0f, stopMatrix, stopMatrix);
     assert(std::fabs(stopMatrix[13] + 50.0f) < 1e-3f);
@@ -754,9 +751,14 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
 
     class TestGraphicThing : public CGraphicThing
     {
-    public:
-        explicit TestGraphicThing(const char* name) : CGraphicThing(name) {}
-        bool LoadMemory(int size, const void* buf) { return OnLoad(size, buf); }
+      public:
+        explicit TestGraphicThing(const char *name) : CGraphicThing(name)
+        {
+        }
+        bool LoadMemory(int size, const void *buf)
+        {
+            return OnLoad(size, buf);
+        }
     };
 
     granny_bone rootBone;
@@ -768,16 +770,14 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
 
     granny_skeleton skeleton = {"TestSkel", 1, &rootBone};
 
-    granny_pnt332_vertex triVerts[3] = {
-        {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-        {{10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-        {{0.0f, 10.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
-    };
+    granny_pnt332_vertex triVerts[3] = {{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+                                        {{10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+                                        {{0.0f, 10.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}};
     granny_vertex_data vtxData;
     std::memset(&vtxData, 0, sizeof(vtxData));
     vtxData.VertexType = GrannyPNT332VertexType;
     vtxData.VertexCount = 3;
-    vtxData.Vertices = reinterpret_cast<granny_uint8*>(triVerts);
+    vtxData.Vertices = reinterpret_cast<granny_uint8 *>(triVerts);
 
     granny_uint16 triIndices[3] = {0, 1, 2};
     granny_tri_material_group triGroup = {0, 0, 1};
@@ -818,7 +818,7 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
     attackGroup.Name = "Bip01";
     attackGroup.TransformTrackCount = 1;
     attackGroup.TransformTracks = &attackTrack;
-    granny_track_group* attackGroups[1] = {&attackGroup};
+    granny_track_group *attackGroups[1] = {&attackGroup};
 
     granny_animation attackAnimation;
     std::memset(&attackAnimation, 0, sizeof(attackAnimation));
@@ -835,7 +835,7 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
     waitGroup.Name = "Bip01";
     waitGroup.TransformTrackCount = 1;
     waitGroup.TransformTracks = &waitTrack;
-    granny_track_group* waitGroups[1] = {&waitGroup};
+    granny_track_group *waitGroups[1] = {&waitGroup};
 
     granny_animation waitAnimation;
     std::memset(&waitAnimation, 0, sizeof(waitAnimation));
@@ -844,8 +844,8 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
     waitAnimation.TrackGroupCount = 1;
     waitAnimation.TrackGroups = waitGroups;
 
-    granny_model* models[1] = {&model};
-    granny_animation* animations[1] = {&attackAnimation};
+    granny_model *models[1] = {&model};
+    granny_animation *animations[1] = {&attackAnimation};
 
     granny_file_info fileInfo;
     std::memset(&fileInfo, 0, sizeof(fileInfo));
@@ -864,7 +864,7 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
     CGrannyMotion waitMotion;
     assert(waitMotion.BindGrannyAnimation(&waitAnimation));
 
-    CGrannyModelInstance* instance = CGrannyModelInstance::New();
+    CGrannyModelInstance *instance = CGrannyModelInstance::New();
     assert(instance != nullptr);
     instance->SetMainModelPointer(thing.GetModelPointer(0), nullptr);
 
@@ -882,7 +882,7 @@ void test_finished_one_shot_motion_keeps_final_pose_during_blend()
     D3DXMatrixIdentity(&worldMatrix);
     instance->DeformNoSkin(&worldMatrix);
 
-    const float* rootMatrix = instance->GetBoneMatrixPointer(0);
+    const float *rootMatrix = instance->GetBoneMatrixPointer(0);
     assert(rootMatrix != nullptr);
     // The finishing attack pose must be held while it fades out.  Falling back
     // to the rest pose here is the one-frame T-pose at the end of an attack.

@@ -13,55 +13,58 @@
 //      Web:   http://www.idvinc.com
 //
 //  This software is supplied under the terms of a license agreement or
-//  nondisclosure agreement with Interactive Data Visualization and may not 
-//  be copied or disclosed except in accordance with the terms of that 
+//  nondisclosure agreement with Interactive Data Visualization and may not
+//  be copied or disclosed except in accordance with the terms of that
 //  agreement.
 //
 //      Release version 1.0
 
-
-///////////////////////////////////////////////////////////////////////  
+///////////////////////////////////////////////////////////////////////
 //	Preprocessor
 #include <vector>
 #include <string>
 
-///////////////////////////////////////////////////////////////////////  
+///////////////////////////////////////////////////////////////////////
 //	SPoint
 struct SPoint
 {
-		float&      operator[](int i) { return m_afData[i]; }     
-		float       m_afData[3];
+    float &operator[](int i)
+    {
+        return m_afData[i];
+    }
+    float m_afData[3];
 };
 
-
-///////////////////////////////////////////////////////////////////////  
+///////////////////////////////////////////////////////////////////////
 //	SBoundaryShape
 struct SBoundaryShape
 {
-		std::vector< std::vector<SPoint> >	m_vContours;
-		float								m_afMin[3];
-		float								m_afMax[3];
+    std::vector<std::vector<SPoint>> m_vContours;
+    float m_afMin[3];
+    float m_afMax[3];
 };
 
-
-///////////////////////////////////////////////////////////////////////  
+///////////////////////////////////////////////////////////////////////
 //	CBoundaryShapeManager
 class CBoundaryShapeManager
 {
-public:
-		CBoundaryShapeManager( );
-		virtual ~CBoundaryShapeManager( );
+  public:
+    CBoundaryShapeManager();
+    virtual ~CBoundaryShapeManager();
 
-		bool						LoadBsfFile(const char* pFilename);
+    bool LoadBsfFile(const char *pFilename);
 
-		bool						PointInside(float fX, float fY);
-		bool						RandomPoint(float& fX, float& fY);
+    bool PointInside(float fX, float fY);
+    bool RandomPoint(float &fX, float &fY);
 
-		std::string					GetCurrentError( )	{ return m_strCurrentError; }
+    std::string GetCurrentError()
+    {
+        return m_strCurrentError;
+    }
 
-private:
-		bool						PointInShape(SBoundaryShape& sShape, float fX, float fY);
+  private:
+    bool PointInShape(SBoundaryShape &sShape, float fX, float fY);
 
-		std::vector<SBoundaryShape>	m_vBoundaries;
-		std::string					m_strCurrentError;
+    std::vector<SBoundaryShape> m_vBoundaries;
+    std::string m_strCurrentError;
 };

@@ -5,55 +5,55 @@
 
 void CGraphicTexture::DestroyDeviceObjects()
 {
-	safe_release(m_lpd3dTexture);
+    safe_release(m_lpd3dTexture);
 }
 
 void CGraphicTexture::Destroy()
 {
-	DestroyDeviceObjects();
+    DestroyDeviceObjects();
 
-	Initialize();
+    Initialize();
 }
 
 void CGraphicTexture::Initialize()
 {
-	m_lpd3dTexture = NULL;
-	m_width = 0;
-	m_height = 0;
-	m_bEmpty = true;
+    m_lpd3dTexture = NULL;
+    m_width = 0;
+    m_height = 0;
+    m_bEmpty = true;
 }
 
 bool CGraphicTexture::IsEmpty() const
 {
-	return m_bEmpty;
+    return m_bEmpty;
 }
 
 void CGraphicTexture::SetTextureStage(int stage) const
 {
-	assert(ms_lpd3dDevice != NULL);
-	STATEMANAGER.SetTexture(stage, m_lpd3dTexture);	
+    assert(ms_lpd3dDevice != NULL);
+    STATEMANAGER.SetTexture(stage, m_lpd3dTexture);
 }
 
 LPDIRECT3DTEXTURE9 CGraphicTexture::GetD3DTexture() const
 {
-	return m_lpd3dTexture;
+    return m_lpd3dTexture;
 }
 
 int CGraphicTexture::GetWidth() const
 {
-	return m_width;
+    return m_width;
 }
 
 int CGraphicTexture::GetHeight() const
 {
-	return m_height;
+    return m_height;
 }
 
 CGraphicTexture::CGraphicTexture()
 {
-	Initialize();
+    Initialize();
 }
 
-CGraphicTexture::~CGraphicTexture()	
+CGraphicTexture::~CGraphicTexture()
 {
 }

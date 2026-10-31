@@ -8,9 +8,9 @@
 
 bool CResource::ms_bDeleteImmediately = false;
 
-CResource::CResource(const char* c_szFileName) : me_state(STATE_EMPTY)
+CResource::CResource(const char *c_szFileName) : me_state(STATE_EMPTY)
 {
-	SetFileName(c_szFileName);
+    SetFileName(c_szFileName);
 }
 
 CResource::~CResource()
@@ -19,159 +19,160 @@ CResource::~CResource()
 
 void CResource::SetDeleteImmediately(bool isSet)
 {
-	ms_bDeleteImmediately = isSet;
+    ms_bDeleteImmediately = isSet;
 }
 
 void CResource::OnConstruct()
 {
-	Load();
+    Load();
 }
 
 void CResource::OnSelfDestruct()
-{	
-	if (ms_bDeleteImmediately)
-		Clear();
-	else
-		CResourceManager::Instance().ReserveDeletingResource(this);
+{
+    if (ms_bDeleteImmediately)
+        Clear();
+    else
+        CResourceManager::Instance().ReserveDeletingResource(this);
 }
 
 void CResource::Load()
 {
-	if (me_state != STATE_EMPTY)
-		return;
+    if (me_state != STATE_EMPTY)
+        return;
 
-	const char * c_szFileName = GetFileName();
+    const char *c_szFileName = GetFileName();
 
-	DWORD dwStart = ELTimer_GetMSec();
-	CEterPackManager::TPackDataPtr fileData;
+    DWORD dwStart = ELTimer_GetMSec();
+    CEterPackManager::TPackDataPtr fileData;
 
-	//Tracenf("Load %s", c_szFileName);
+    // Tracenf("Load %s", c_szFileName);
 
-	if (CEterPackManager::Instance().Get(c_szFileName, fileData))
-	{
-		m_dwLoadCostMiliiSecond = ELTimer_GetMSec() - dwStart;
-		//Tracef("CResource::Load %s (%d bytes) in %d ms\n", c_szFileName, file.Size(), m_dwLoadCostMiliiSecond);
+    if (CEterPackManager::Instance().Get(c_szFileName, fileData))
+    {
+        m_dwLoadCostMiliiSecond = ELTimer_GetMSec() - dwStart;
+        // Tracef("CResource::Load %s (%d bytes) in %d ms\n", c_szFileName,
+        // file.Size(), m_dwLoadCostMiliiSecond);
 
-		if (OnLoad(fileData->size(), fileData->data()))
-		{
-			me_state = STATE_EXIST;
-		}
-		else
-		{
-			Tracef("CResource::Load Error %s\n", c_szFileName);
-			me_state = STATE_ERROR;
-			return;
-		}
-	}
-	else
-	{
-		if (OnLoad(0, NULL))
-			me_state = STATE_EXIST;
-		else
-		{
-			Tracef("CResource::Load file not exist %s\n", c_szFileName);
-			me_state = STATE_ERROR;
-		}
-	}
+        if (OnLoad(fileData->size(), fileData->data()))
+        {
+            me_state = STATE_EXIST;
+        }
+        else
+        {
+            Tracef("CResource::Load Error %s\n", c_szFileName);
+            me_state = STATE_ERROR;
+            return;
+        }
+    }
+    else
+    {
+        if (OnLoad(0, NULL))
+            me_state = STATE_EXIST;
+        else
+        {
+            Tracef("CResource::Load file not exist %s\n", c_szFileName);
+            me_state = STATE_ERROR;
+        }
+    }
 }
 
 void CResource::Reload()
 {
-	Clear();
-	Tracef("CResource::Reload %s\n", GetFileName());
+    Clear();
+    Tracef("CResource::Reload %s\n", GetFileName());
 
-	CEterPackManager::TPackDataPtr fileData;
+    CEterPackManager::TPackDataPtr fileData;
 
-	if (CEterPackManager::Instance().Get(GetFileName(), fileData))
-	{
-		if (OnLoad(fileData->size(), fileData->data()))
-		{
-			me_state = STATE_EXIST;
-		}
-		else
-		{
-			me_state = STATE_ERROR;
-			return;
-		}
-	}
-	else
-	{
-		if (OnLoad(0, NULL))
-			me_state = STATE_EXIST;
-		else
-		{
-			me_state = STATE_ERROR;
-		}
-	}
+    if (CEterPackManager::Instance().Get(GetFileName(), fileData))
+    {
+        if (OnLoad(fileData->size(), fileData->data()))
+        {
+            me_state = STATE_EXIST;
+        }
+        else
+        {
+            me_state = STATE_ERROR;
+            return;
+        }
+    }
+    else
+    {
+        if (OnLoad(0, NULL))
+            me_state = STATE_EXIST;
+        else
+        {
+            me_state = STATE_ERROR;
+        }
+    }
 }
 
-CResource::TType CResource::StringToType(const char* c_szType)
+CResource::TType CResource::StringToType(const char *c_szType)
 {
-	return GetCRC32(c_szType, strlen(c_szType));
+    return GetCRC32(c_szType, strlen(c_szType));
 }
 
-int CResource::ConvertPathName(const char * c_szPathName, char * pszRetPathName, int retLen)
+int CResource::ConvertPathName(const char *c_szPathName, char *pszRetPathName, int retLen)
 {
-	const char * pc;
-	int len = 0;
+    const char *pc;
+    int len = 0;
 
-	for (pc = c_szPathName; *pc && len < retLen; ++pc, ++len)
-	{
-		if (*pc == '/')
-			*(pszRetPathName++) = '\\';
-		else
-			*(pszRetPathName++) = (char) korean_tolower(*pc);
-	}
+    for (pc = c_szPathName; *pc && len < retLen; ++pc, ++len)
+    {
+        if (*pc == '/')
+            *(pszRetPathName++) = '\\';
+        else
+            *(pszRetPathName++) = (char)korean_tolower(*pc);
+    }
 
-	*pszRetPathName = '\0';
-	return len;
+    *pszRetPathName = '\0';
+    return len;
 }
 
-void CResource::SetFileName(const char* c_szFileName)
+void CResource::SetFileName(const char *c_szFileName)
 {
-	// 2004. 2. 1. myevan. 쓰레드가 사용되는 상황에서 static 변수는 사용하지 않는것이 좋다.
-	// 2004. 2. 1. myevan. 파일 이름 처리를 std::string 사용
-	m_stFileName=c_szFileName;
+    // 2004. 2. 1. myevan. 쓰레드가 사용되는 상황에서 static 변수는 사용하지
+    // 않는것이 좋다. 2004. 2. 1. myevan. 파일 이름 처리를 std::string 사용
+    m_stFileName = c_szFileName;
 }
 
 void CResource::Clear()
 {
-	OnClear();
-	me_state = STATE_EMPTY;
+    OnClear();
+    me_state = STATE_EMPTY;
 }
 
 bool CResource::IsType(TType type)
 {
-	return OnIsType(type);
+    return OnIsType(type);
 }
 
 CResource::TType CResource::Type()
 {
-	static TType s_type = StringToType("CResource");
-	return s_type;
+    static TType s_type = StringToType("CResource");
+    return s_type;
 }
 
 bool CResource::OnIsType(TType type)
 {
-	if (CResource::Type() == type)
-		return true;
-	
-	return false;
+    if (CResource::Type() == type)
+        return true;
+
+    return false;
 }
 
 bool CResource::IsData() const
 {
-	return me_state != STATE_EMPTY;
+    return me_state != STATE_EMPTY;
 }
 
 bool CResource::IsEmpty() const
 {
-	return OnIsEmpty();
+    return OnIsEmpty();
 }
 
 bool CResource::CreateDeviceObjects()
 {
-	return true;
+    return true;
 }
 
 void CResource::DestroyDeviceObjects()

@@ -5,37 +5,37 @@
 #include "EffectElementBase.h"
 #include "EmitterProperty.h"
 #include "ParticleProperty.h"
-//#include "ParticleInstance.h"
+// #include "ParticleInstance.h"
 
 class CParticleInstance;
 
 class CParticleSystemData : public CEffectElementBase
 {
-	public:	
-		virtual ~CParticleSystemData();	
-		CParticleSystemData();
+  public:
+    virtual ~CParticleSystemData();
+    CParticleSystemData();
 
-		CEmitterProperty * GetEmitterPropertyPointer();
-		CParticleProperty * GetParticlePropertyPointer();
+    CEmitterProperty *GetEmitterPropertyPointer();
+    CParticleProperty *GetParticlePropertyPointer();
 
-		void ChangeTexture(const char * c_szFileName);
+    void ChangeTexture(const char *c_szFileName);
 
-		void BuildDecorator(CParticleInstance * pInstance);
-	protected:		
-		BOOL OnLoadScript(CTextFileLoader & rTextFileLoader);
+    void BuildDecorator(CParticleInstance *pInstance);
 
-		void OnClear();
-		bool OnIsData();
+  protected:
+    BOOL OnLoadScript(CTextFileLoader &rTextFileLoader);
 
+    void OnClear();
+    bool OnIsData();
 
-		CEmitterProperty m_EmitterProperty;
-		CParticleProperty m_ParticleProperty;
+    CEmitterProperty m_EmitterProperty;
+    CParticleProperty m_ParticleProperty;
 
-	public:
-		static void DestroySystem();
+  public:
+    static void DestroySystem();
 
-		static CParticleSystemData* New();
-		static void Delete(CParticleSystemData* pkData);
+    static CParticleSystemData *New();
+    static void Delete(CParticleSystemData *pkData);
 
-		static CDynamicPool<CParticleSystemData>		ms_kPool;
+    static CDynamicPool<CParticleSystemData> ms_kPool;
 };

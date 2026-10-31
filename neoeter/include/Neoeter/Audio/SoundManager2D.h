@@ -6,22 +6,22 @@
 
 class CSoundManager2D : public CSoundBase
 {
-	public:
-		enum
-		{
-			INSTANCE_MAX_COUNT = 4
-		};
+  public:
+    enum
+    {
+        INSTANCE_MAX_COUNT = 4
+    };
 
-		CSoundManager2D();
-		virtual ~CSoundManager2D();
+    CSoundManager2D();
+    virtual ~CSoundManager2D();
 
-		bool				Initialize();
-		void				Destroy();
+    bool Initialize();
+    void Destroy();
 
-		ISoundInstance *	GetInstance(const char* filename);
+    ISoundInstance *GetInstance(const char *filename);
 
-	protected:
-		CSoundInstance2D	ms_Instances[INSTANCE_MAX_COUNT];
+  protected:
+    CSoundInstance2D ms_Instances[INSTANCE_MAX_COUNT];
 };
 
 #endif

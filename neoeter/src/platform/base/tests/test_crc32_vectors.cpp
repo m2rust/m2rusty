@@ -27,8 +27,8 @@ int main()
     TEST_PASS("GetCaseCRC32 folds ASCII case");
 
     // Non-ASCII bytes must not be folded (locale independence).
-    const char upper_eacute[] = { static_cast<char>(0xC9), 0 };
-    const char lower_eacute[] = { static_cast<char>(0xE9), 0 };
+    const char upper_eacute[] = {static_cast<char>(0xC9), 0};
+    const char lower_eacute[] = {static_cast<char>(0xE9), 0};
     TEST_ASSERT(GetCaseCRC32(upper_eacute, 1) != GetCaseCRC32(lower_eacute, 1));
     TEST_PASS("non-ASCII bytes are not folded");
 

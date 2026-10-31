@@ -5,11 +5,12 @@
 #include <fstream>
 #include <stdexcept>
 
-ZIP::ZIP(const std::string& archivePath)
+ZIP::ZIP(const std::string &archivePath)
 {
     int err = 0;
 
-    if ((zipFile = zip_open(archivePath.c_str(), 0, &err)) == nullptr) {
+    if ((zipFile = zip_open(archivePath.c_str(), 0, &err)) == nullptr)
+    {
         zip_error_t error;
 
         zip_error_init_with_code(&error, err);
@@ -33,17 +34,19 @@ ZIP::ZIP(const std::string& archivePath)
         std::string fileName(fileData.name);
 
         // Skip directory entries
-        if (fileName.empty() || fileName.back() == '/' || fileName.back() == '\\') {
+        if (fileName.empty() || fileName.back() == '/' || fileName.back() == '\\')
+        {
             continue;
         }
 
         fileName = CEterPackManager::Instance().ConvertFileName(fileName);
 
-        if (fileName.rfind("ymir work/", 0) == 0) {
+        if (fileName.rfind("ymir work/", 0) == 0)
+        {
             fileName = "d:/" + fileName;
         }
 
-        fileList.insert({ fileName, fileData.index });
+        fileList.insert({fileName, fileData.index});
     }
 }
 
@@ -59,12 +62,12 @@ ZIP::~ZIP()
 std::vector<std::string> ZIP::listFiles()
 {
     std::vector<std::string> result;
-    for (auto const& file : fileList)
+    for (auto const &file : fileList)
         result.push_back(file.first);
     return result;
 }
 
-bool ZIP::fileExists(const std::string& fileName)
+bool ZIP::fileExists(const std::string &fileName)
 {
     std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
     auto it = fileList.find(normalized);
@@ -74,7 +77,7 @@ bool ZIP::fileExists(const std::string& fileName)
     return true;
 }
 
-bool ZIP::getFile(const std::string& fileName, std::shared_ptr<std::vector<char>>& fileData)
+bool ZIP::getFile(const std::string &fileName, std::shared_ptr<std::vector<char>> &fileData)
 {
     std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
     auto it = fileList.find(normalized);

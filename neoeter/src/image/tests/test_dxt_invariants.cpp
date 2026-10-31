@@ -10,10 +10,8 @@ namespace
 
 constexpr DWORD kFourCC(char a, char b, char c, char d)
 {
-    return static_cast<DWORD>(static_cast<BYTE>(a)) |
-           (static_cast<DWORD>(static_cast<BYTE>(b)) << 8) |
-           (static_cast<DWORD>(static_cast<BYTE>(c)) << 16) |
-           (static_cast<DWORD>(static_cast<BYTE>(d)) << 24);
+    return static_cast<DWORD>(static_cast<BYTE>(a)) | (static_cast<DWORD>(static_cast<BYTE>(b)) << 8) |
+           (static_cast<DWORD>(static_cast<BYTE>(c)) << 16) | (static_cast<DWORD>(static_cast<BYTE>(d)) << 24);
 }
 
 constexpr DWORD kDdsdCaps = 0x00000001u;
@@ -24,34 +22,33 @@ constexpr DWORD kDdsdMipMapCount = 0x00020000u;
 constexpr DWORD kDdsdLinearSize = 0x00080000u;
 constexpr DWORD kDdpfFourCC = 0x00000004u;
 
-void put32(std::vector<BYTE> & buf, size_t offset, DWORD value)
+void put32(std::vector<BYTE> &buf, size_t offset, DWORD value)
 {
     std::memcpy(&buf[offset], &value, sizeof(value));
 }
 
-void put16(std::vector<BYTE> & buf, size_t offset, WORD value)
+void put16(std::vector<BYTE> &buf, size_t offset, WORD value)
 {
     std::memcpy(&buf[offset], &value, sizeof(value));
 }
 
 // Builds a syntactically valid DDS container around the supplied compressed
 // payload. Only the fields CDXTCImage actually reads are populated.
-std::vector<BYTE> makeDds(DWORD fourCc, UINT width, UINT height, UINT mipCount,
-                          DWORD linearSize, const std::vector<BYTE> & payload)
+std::vector<BYTE> makeDds(DWORD fourCc, UINT width, UINT height, UINT mipCount, DWORD linearSize,
+                          const std::vector<BYTE> &payload)
 {
     std::vector<BYTE> buf(128 + payload.size(), 0);
     put32(buf, 0, kFourCC('D', 'D', 'S', ' '));
 
     const size_t hdr = 4;
-    DWORD flags = kDdsdCaps | kDdsdHeight | kDdsdWidth | kDdsdPixelFormat |
-                  kDdsdLinearSize;
+    DWORD flags = kDdsdCaps | kDdsdHeight | kDdsdWidth | kDdsdPixelFormat | kDdsdLinearSize;
     if (mipCount > 1)
         flags |= kDdsdMipMapCount;
 
-    put32(buf, hdr + 0, 124);       // dwSize
-    put32(buf, hdr + 4, flags);     // dwFlags
-    put32(buf, hdr + 8, height);    // dwHeight
-    put32(buf, hdr + 12, width);    // dwWidth
+    put32(buf, hdr + 0, 124);    // dwSize
+    put32(buf, hdr + 4, flags);  // dwFlags
+    put32(buf, hdr + 8, height); // dwHeight
+    put32(buf, hdr + 12, width); // dwWidth
     put32(buf, hdr + 16, linearSize);
     put32(buf, hdr + 24, mipCount); // dwMipMapCount
     put32(buf, hdr + 72, 32);       // ddpfPixelFormat.dwSize
@@ -89,16 +86,17 @@ std::vector<BYTE> alphaBlock5(BYTE alpha0, BYTE alpha1, const int indices[16])
     return block;
 }
 
-std::vector<BYTE> concat(const std::vector<BYTE> & a, const std::vector<BYTE> & b)
+std::vector<BYTE> concat(const std::vector<BYTE> &a, const std::vector<BYTE> &b)
 {
     std::vector<BYTE> out(a);
     out.insert(out.end(), b.begin(), b.end());
     return out;
 }
 
-// Loads the fixture, hands the compressed payload to the image and decompresses
-// one mip level. Mirrors the calling convention used by the texture loader.
-std::vector<DWORD> decompress(const std::vector<BYTE> & dds, int mipLevel)
+// Loads the fixture, hands the compressed payload to the image and
+// decompresses one mip level. Mirrors the calling convention used by the
+// texture loader.
+std::vector<DWORD> decompress(const std::vector<BYTE> &dds, int mipLevel)
 {
     CDXTCImage image;
     TEST_ASSERT(image.LoadHeaderFromMemory(dds.data(), static_cast<int>(dds.size())));
@@ -115,8 +113,8 @@ std::vector<DWORD> decompress(const std::vector<BYTE> & dds, int mipLevel)
 
 DWORD rgba(BYTE a, BYTE r, BYTE g, BYTE b)
 {
-    return (static_cast<DWORD>(a) << 24) | (static_cast<DWORD>(r) << 16) |
-           (static_cast<DWORD>(g) << 8) | static_cast<DWORD>(b);
+    return (static_cast<DWORD>(a) << 24) | (static_cast<DWORD>(r) << 16) | (static_cast<DWORD>(g) << 8) |
+           static_cast<DWORD>(b);
 }
 
 void test_dxt1_four_color_block()
@@ -132,8 +130,8 @@ void test_dxt1_four_color_block()
 
     const DWORD c0 = rgba(0xFF, 0xF8, 0x00, 0x00);
     const DWORD c1 = rgba(0xFF, 0x00, 0x00, 0xF8);
-    const DWORD c2 = rgba(0xFF, 165, 0x00, 82);  // (2*c0 + c1) / 3
-    const DWORD c3 = rgba(0xFF, 82, 0x00, 165);  // (c0 + 2*c1) / 3
+    const DWORD c2 = rgba(0xFF, 165, 0x00, 82); // (2*c0 + c1) / 3
+    const DWORD c3 = rgba(0xFF, 82, 0x00, 165); // (c0 + 2*c1) / 3
 
     TEST_ASSERT(pixels[0] == c0);
     TEST_ASSERT(pixels[1] == c1);
@@ -192,8 +190,7 @@ void test_dxt3_explicit_alpha()
         const DWORD expected = rgba(alpha8, 0xF8, 0x00, 0x00);
         if (pixels[i] != expected)
         {
-            std::printf("    pixel %d: got 0x%08X expected 0x%08X\n", i,
-                        static_cast<unsigned>(pixels[i]),
+            std::printf("    pixel %d: got 0x%08X expected 0x%08X\n", i, static_cast<unsigned>(pixels[i]),
                         static_cast<unsigned>(expected));
             TEST_ASSERT(false);
         }
@@ -224,8 +221,7 @@ void test_dxt5_eight_alpha_block()
         const DWORD want = rgba(expected[i % 8], 0xF8, 0x00, 0x00);
         if (pixels[i] != want)
         {
-            std::printf("    pixel %d: got 0x%08X expected 0x%08X\n", i,
-                        static_cast<unsigned>(pixels[i]),
+            std::printf("    pixel %d: got 0x%08X expected 0x%08X\n", i, static_cast<unsigned>(pixels[i]),
                         static_cast<unsigned>(want));
             TEST_ASSERT(false);
         }
@@ -256,8 +252,7 @@ void test_dxt5_six_alpha_block()
         const DWORD want = rgba(expected[i % 8], 0xF8, 0x00, 0x00);
         if (pixels[i] != want)
         {
-            std::printf("    pixel %d: got 0x%08X expected 0x%08X\n", i,
-                        static_cast<unsigned>(pixels[i]),
+            std::printf("    pixel %d: got 0x%08X expected 0x%08X\n", i, static_cast<unsigned>(pixels[i]),
                         static_cast<unsigned>(want));
             TEST_ASSERT(false);
         }
@@ -330,8 +325,7 @@ void test_header_validation()
     const std::vector<BYTE> tiny(3, 0);
     TEST_ASSERT(!image.LoadHeaderFromMemory(tiny.data(), static_cast<int>(tiny.size())));
 
-    std::vector<BYTE> badMagic = makeDds(kFourCC('D', 'X', 'T', '1'), 4, 4, 1, 8,
-                                         std::vector<BYTE>(8, 0));
+    std::vector<BYTE> badMagic = makeDds(kFourCC('D', 'X', 'T', '1'), 4, 4, 1, 8, std::vector<BYTE>(8, 0));
     badMagic[0] = 'X';
     TEST_ASSERT(!image.LoadHeaderFromMemory(badMagic.data(), static_cast<int>(badMagic.size())));
 
@@ -340,15 +334,13 @@ void test_header_validation()
     truncated.resize(4 + 123);
     TEST_ASSERT(!image.LoadHeaderFromMemory(truncated.data(), static_cast<int>(truncated.size())));
 
-    for (DWORD fourCc : {kFourCC('D', 'X', 'T', '2'), kFourCC('D', 'X', 'T', '4'),
-                         kFourCC('A', 'B', 'C', 'D')})
+    for (DWORD fourCc : {kFourCC('D', 'X', 'T', '2'), kFourCC('D', 'X', 'T', '4'), kFourCC('A', 'B', 'C', 'D')})
     {
         const std::vector<BYTE> dds = makeDds(fourCc, 4, 4, 1, 8, std::vector<BYTE>(8, 0));
         TEST_ASSERT(!image.LoadHeaderFromMemory(dds.data(), static_cast<int>(dds.size())));
     }
 
-    const std::vector<BYTE> valid = makeDds(kFourCC('D', 'X', 'T', '5'), 4, 4, 1, 16,
-                                            std::vector<BYTE>(16, 0));
+    const std::vector<BYTE> valid = makeDds(kFourCC('D', 'X', 'T', '5'), 4, 4, 1, 16, std::vector<BYTE>(16, 0));
     TEST_ASSERT(image.LoadHeaderFromMemory(valid.data(), static_cast<int>(valid.size())));
     TEST_ASSERT(image.m_CompFormat == PF_DXT5);
     TEST_ASSERT(image.m_dwMipMapCount == 1);

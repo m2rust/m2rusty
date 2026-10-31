@@ -18,7 +18,8 @@
 #include <cstdio>
 #include <cstring>
 
-namespace {
+namespace
+{
 
 const float kSqrt2Over2 = 0.70710678f;
 
@@ -27,9 +28,8 @@ void assert_close(float actual, float expected, float tolerance = 1e-4f)
     assert(std::fabs(actual - expected) <= tolerance);
 }
 
-void init_transform(granny_transform& transform, float x, float y, float z,
-                    float qx = 0.0f, float qy = 0.0f, float qz = 0.0f,
-                    float qw = 1.0f)
+void init_transform(granny_transform &transform, float x, float y, float z, float qx = 0.0f, float qy = 0.0f,
+                    float qz = 0.0f, float qw = 1.0f)
 {
     std::memset(&transform, 0, sizeof(transform));
     transform.Flags = GrannyHasPosition | GrannyHasOrientation;
@@ -53,8 +53,7 @@ void test_world_pose_reference_rotation()
     // Root: translated to (1,2,3) and rotated 90 degrees around Z.
     bones[0].Name = "Bip01";
     bones[0].ParentIndex = GrannyNoParentBone;
-    init_transform(bones[0].LocalTransform, 1.0f, 2.0f, 3.0f,
-                   0.0f, 0.0f, kSqrt2Over2, kSqrt2Over2);
+    init_transform(bones[0].LocalTransform, 1.0f, 2.0f, 3.0f, 0.0f, 0.0f, kSqrt2Over2, kSqrt2Over2);
     GrannyMathInternal::LoadIdentity4x4(bones[0].InverseWorld4x4);
 
     // Child: 2 units along local X, no extra rotation.
@@ -69,15 +68,15 @@ void test_world_pose_reference_rotation()
     skeleton.BoneCount = 2;
     skeleton.Bones = bones;
 
-    granny_local_pose* localPose = GrannyNewLocalPose(2);
+    granny_local_pose *localPose = GrannyNewLocalPose(2);
     localPose->Transforms[0] = bones[0].LocalTransform;
     localPose->Transforms[1] = bones[1].LocalTransform;
 
-    granny_world_pose* worldPose = GrannyNewWorldPose(2);
+    granny_world_pose *worldPose = GrannyNewWorldPose(2);
     GrannyBuildWorldPose(&skeleton, 0, 2, localPose, nullptr, worldPose);
 
     // Rz(90) in Granny's row-vector layout, translation in the last row.
-    const float* root = GrannyGetWorldPose4x4(worldPose, 0);
+    const float *root = GrannyGetWorldPose4x4(worldPose, 0);
     assert(root != nullptr);
     assert_close(root[0], 0.0f);
     assert_close(root[1], 1.0f);
@@ -89,7 +88,7 @@ void test_world_pose_reference_rotation()
     assert_close(root[14], 3.0f);
 
     // Child world position = parentTranslation + Rz(90) * (2,0,0).
-    const float* hand = GrannyGetWorldPose4x4(worldPose, 1);
+    const float *hand = GrannyGetWorldPose4x4(worldPose, 1);
     assert(hand != nullptr);
     assert_close(hand[0], 0.0f);
     assert_close(hand[1], 1.0f);
@@ -105,21 +104,16 @@ void test_world_pose_reference_rotation()
     std::printf("[PASS] test_world_pose_reference_rotation\n");
 }
 
-void deform_one(const granny_pwnt3432_vertex& source,
-                const granny_matrix_4x4* matrices,
-                granny_pnt332_vertex* result)
+void deform_one(const granny_pwnt3432_vertex &source, const granny_matrix_4x4 *matrices, granny_pnt332_vertex *result)
 {
     granny_int32x boneMap[2] = {0, 1};
-    granny_mesh_deformer* deformer = GrannyNewMeshDeformer(
-        GrannyPWNT3432VertexType, GrannyPNT332VertexType,
-        GrannyDeformPositionNormal);
+    granny_mesh_deformer *deformer =
+        GrannyNewMeshDeformer(GrannyPWNT3432VertexType, GrannyPNT332VertexType, GrannyDeformPositionNormal);
     assert(deformer != nullptr);
     assert(deformer->HasBoneWeights);
 
     std::memset(result, 0, sizeof(*result));
-    GrannyDeformVertices(deformer, boneMap,
-                         reinterpret_cast<const granny_real32*>(matrices), 1,
-                         &source, result);
+    GrannyDeformVertices(deformer, boneMap, reinterpret_cast<const granny_real32 *>(matrices), 1, &source, result);
 
     GrannyFreeMeshDeformer(deformer);
 }
@@ -128,15 +122,8 @@ void test_skinning_reference_weights()
 {
     // Bone 0 rotates 90 degrees around Z; bone 1 translates 10 units on Y.
     granny_matrix_4x4 matrices[2] = {
-        {{0.0f, 1.0f, 0.0f, 0.0f},
-         {-1.0f, 0.0f, 0.0f, 0.0f},
-         {0.0f, 0.0f, 1.0f, 0.0f},
-         {0.0f, 0.0f, 0.0f, 1.0f}},
-        {{1.0f, 0.0f, 0.0f, 0.0f},
-         {0.0f, 1.0f, 0.0f, 0.0f},
-         {0.0f, 0.0f, 1.0f, 0.0f},
-         {0.0f, 10.0f, 0.0f, 1.0f}}
-    };
+        {{0.0f, 1.0f, 0.0f, 0.0f}, {-1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}},
+        {{1.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 10.0f, 0.0f, 1.0f}}};
 
     granny_pwnt3432_vertex source;
     std::memset(&source, 0, sizeof(source));
@@ -222,10 +209,7 @@ void test_curve_sampling_reference()
     assert_close(out[2], 30.0f);
 
     // Orientation curve: identity -> Rz(90); halfway is Rz(45).
-    granny_real32 orientations[8] = {
-        0.0f, 0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, kSqrt2Over2, kSqrt2Over2
-    };
+    granny_real32 orientations[8] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, kSqrt2Over2, kSqrt2Over2};
     granny_curve orientationCurve;
     std::memset(&orientationCurve, 0, sizeof(orientationCurve));
     orientationCurve.Degree = 1;
@@ -263,10 +247,7 @@ void test_animation_pose_reference()
     // x=10 and rotated 90 degrees around Z.
     granny_real32 knots[2] = {0.0f, 1.0f};
     granny_real32 positions[6] = {0.0f, 0.0f, 0.0f, 10.0f, 0.0f, 0.0f};
-    granny_real32 orientations[8] = {
-        0.0f, 0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, kSqrt2Over2, kSqrt2Over2
-    };
+    granny_real32 orientations[8] = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, kSqrt2Over2, kSqrt2Over2};
 
     granny_curve positionCurve;
     std::memset(&positionCurve, 0, sizeof(positionCurve));
@@ -287,16 +268,14 @@ void test_animation_pose_reference()
     granny_curve emptyCurve;
     std::memset(&emptyCurve, 0, sizeof(emptyCurve));
 
-    granny_transform_track track = {
-        "Bip01", positionCurve, orientationCurve, emptyCurve
-    };
+    granny_transform_track track = {"Bip01", positionCurve, orientationCurve, emptyCurve};
     granny_track_group group;
     std::memset(&group, 0, sizeof(group));
     group.Name = "Bip01";
     group.TransformTrackCount = 1;
     group.TransformTracks = &track;
 
-    granny_track_group* groups[1] = {&group};
+    granny_track_group *groups[1] = {&group};
     granny_animation animation;
     std::memset(&animation, 0, sizeof(animation));
     animation.Name = "reference_walk";
@@ -309,16 +288,15 @@ void test_animation_pose_reference()
     model.Name = "ReferenceModel";
     model.Skeleton = &skeleton;
 
-    granny_model_instance* instance = GrannyInstantiateModel(&model);
+    granny_model_instance *instance = GrannyInstantiateModel(&model);
     assert(instance != nullptr);
 
-    granny_control* control =
-        GrannyPlayControlledAnimation(0.0f, &animation, instance);
+    granny_control *control = GrannyPlayControlledAnimation(0.0f, &animation, instance);
     assert(control != nullptr);
     GrannySetControlLoopCount(control, 0);
     GrannySetModelClock(instance, 0.25f);
 
-    granny_local_pose* localPose = GrannyNewLocalPose(1);
+    granny_local_pose *localPose = GrannyNewLocalPose(1);
     GrannySampleModelAnimations(instance, 0, 1, localPose);
 
     // Position is a quarter of the way from 0 to 10.
@@ -327,15 +305,13 @@ void test_animation_pose_reference()
     assert_close(localPose->Transforms[0].Position[2], 0.0f);
 
     // Orientation is a quarter of the way from 0 to 90 degrees.
-    assert_close(localPose->Transforms[0].Orientation[2],
-                 std::sin(3.14159265f / 16.0f), 1e-5f);
-    assert_close(localPose->Transforms[0].Orientation[3],
-                 std::cos(3.14159265f / 16.0f), 1e-5f);
+    assert_close(localPose->Transforms[0].Orientation[2], std::sin(3.14159265f / 16.0f), 1e-5f);
+    assert_close(localPose->Transforms[0].Orientation[3], std::cos(3.14159265f / 16.0f), 1e-5f);
 
-    granny_world_pose* worldPose = GrannyNewWorldPose(1);
+    granny_world_pose *worldPose = GrannyNewWorldPose(1);
     GrannyBuildWorldPose(&skeleton, 0, 1, localPose, nullptr, worldPose);
 
-    const float* world = GrannyGetWorldPose4x4(worldPose, 0);
+    const float *world = GrannyGetWorldPose4x4(worldPose, 0);
     assert(world != nullptr);
     const float c = std::cos(3.14159265f / 8.0f);
     const float s = std::sin(3.14159265f / 8.0f);

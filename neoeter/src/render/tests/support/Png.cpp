@@ -13,7 +13,7 @@ namespace render
 namespace
 {
 
-void PutBigEndian32(std::vector<std::uint8_t>& out, std::uint32_t value)
+void PutBigEndian32(std::vector<std::uint8_t> &out, std::uint32_t value)
 {
     out.push_back(static_cast<std::uint8_t>((value >> 24) & 0xFF));
     out.push_back(static_cast<std::uint8_t>((value >> 16) & 0xFF));
@@ -21,8 +21,7 @@ void PutBigEndian32(std::vector<std::uint8_t>& out, std::uint32_t value)
     out.push_back(static_cast<std::uint8_t>(value & 0xFF));
 }
 
-void AppendChunk(std::vector<std::uint8_t>& out, const char type[4],
-                 const std::uint8_t* data, std::size_t size)
+void AppendChunk(std::vector<std::uint8_t> &out, const char type[4], const std::uint8_t *data, std::size_t size)
 {
     PutBigEndian32(out, static_cast<std::uint32_t>(size));
 
@@ -36,9 +35,9 @@ void AppendChunk(std::vector<std::uint8_t>& out, const char type[4],
     PutBigEndian32(out, static_cast<std::uint32_t>(crc));
 }
 
-bool WriteAll(const std::string& path, const std::vector<std::uint8_t>& bytes, std::string* error)
+bool WriteAll(const std::string &path, const std::vector<std::uint8_t> &bytes, std::string *error)
 {
-    std::FILE* file = std::fopen(path.c_str(), "wb");
+    std::FILE *file = std::fopen(path.c_str(), "wb");
     if (!file)
     {
         if (error)
@@ -59,7 +58,7 @@ bool WriteAll(const std::string& path, const std::vector<std::uint8_t>& bytes, s
 
 } // namespace
 
-bool WritePng(const std::string& path, const Image& image, std::string* error)
+bool WritePng(const std::string &path, const Image &image, std::string *error)
 {
     if (!image.Valid())
     {
@@ -75,14 +74,14 @@ bool WritePng(const std::string& path, const Image& image, std::string* error)
     for (int y = 0; y < image.height; ++y)
     {
         raw.push_back(0);
-        const std::uint8_t* row = image.rgba.data() + static_cast<std::size_t>(y) * image.width * 4;
+        const std::uint8_t *row = image.rgba.data() + static_cast<std::size_t>(y) * image.width * 4;
         raw.insert(raw.end(), row, row + image.width * 4);
     }
 
     uLongf compressedSize = compressBound(static_cast<uLong>(raw.size()));
     std::vector<std::uint8_t> compressed(compressedSize);
-    const int zret = compress2(compressed.data(), &compressedSize, raw.data(),
-                               static_cast<uLong>(raw.size()), Z_BEST_COMPRESSION);
+    const int zret =
+        compress2(compressed.data(), &compressedSize, raw.data(), static_cast<uLong>(raw.size()), Z_BEST_COMPRESSION);
     if (zret != Z_OK)
     {
         if (error)
@@ -92,7 +91,7 @@ bool WritePng(const std::string& path, const Image& image, std::string* error)
     compressed.resize(compressedSize);
 
     std::vector<std::uint8_t> png;
-    static const std::uint8_t signature[8] = { 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
+    static const std::uint8_t signature[8] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
     png.insert(png.end(), signature, signature + sizeof(signature));
 
     std::uint8_t ihdr[13];
@@ -117,12 +116,12 @@ bool WritePng(const std::string& path, const Image& image, std::string* error)
     return WriteAll(path, png, error);
 }
 
-bool LoadPng(const std::string& path, Image* image, std::string* error)
+bool LoadPng(const std::string &path, Image *image, std::string *error)
 {
     if (!image)
         return false;
 
-    std::FILE* file = std::fopen(path.c_str(), "rb");
+    std::FILE *file = std::fopen(path.c_str(), "rb");
     if (!file)
     {
         if (error)
@@ -165,11 +164,10 @@ bool LoadPng(const std::string& path, Image* image, std::string* error)
     return true;
 }
 
-DiffStats CompareImages(const Image& expected, const Image& actual, int channelTolerance)
+DiffStats CompareImages(const Image &expected, const Image &actual, int channelTolerance)
 {
     DiffStats stats;
-    if (!expected.Valid() || !actual.Valid() ||
-        expected.width != actual.width || expected.height != actual.height)
+    if (!expected.Valid() || !actual.Valid() || expected.width != actual.width || expected.height != actual.height)
         return stats;
 
     stats.totalPixels = static_cast<std::size_t>(expected.width) * expected.height;
@@ -194,14 +192,12 @@ DiffStats CompareImages(const Image& expected, const Image& actual, int channelT
             ++stats.differingPixels;
     }
 
-    stats.similarity = 1.0 - static_cast<double>(stats.differingPixels) /
-                                 static_cast<double>(stats.totalPixels);
-    stats.meanAbsError = static_cast<double>(totalError) /
-                         static_cast<double>(stats.totalPixels * 4);
+    stats.similarity = 1.0 - static_cast<double>(stats.differingPixels) / static_cast<double>(stats.totalPixels);
+    stats.meanAbsError = static_cast<double>(totalError) / static_cast<double>(stats.totalPixels * 4);
     return stats;
 }
 
-std::uint64_t PixelHash(const Image& image)
+std::uint64_t PixelHash(const Image &image)
 {
     std::uint64_t hash = 1469598103934665603ULL; // FNV offset basis
     auto mix = [&hash](std::uint8_t byte) {

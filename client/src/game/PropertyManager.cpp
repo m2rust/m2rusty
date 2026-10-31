@@ -10,127 +10,126 @@ CPropertyManager::CPropertyManager()
 
 CPropertyManager::~CPropertyManager()
 {
-	Clear();
+    Clear();
 }
 
 void CPropertyManager::Initialize()
 {
-	auto fileMap = CEterPackManager::Instance().GetFileMap();
+    auto fileMap = CEterPackManager::Instance().GetFileMap();
 
-	for (auto& itor : fileMap)
-	{
-		if (itor.first.rfind("property/reserve", 0) == 0)
-		{
-			LoadReservedCRC(itor.first.c_str());
-			continue;
-		}
+    for (auto &itor : fileMap)
+    {
+        if (itor.first.rfind("property/reserve", 0) == 0)
+        {
+            LoadReservedCRC(itor.first.c_str());
+            continue;
+        }
 
-		if (itor.first.rfind("property/", 0) == 0) {
-			if (!Register(itor.first.c_str()))
-				continue;
-		}
-	}
+        if (itor.first.rfind("property/", 0) == 0)
+        {
+            if (!Register(itor.first.c_str()))
+                continue;
+        }
+    }
 }
 
-bool CPropertyManager::LoadReservedCRC(const char * c_pszFileName)
+bool CPropertyManager::LoadReservedCRC(const char *c_pszFileName)
 {
-	CEterPackManager::TPackDataPtr data;
-	CMemoryTextFileLoader textFileLoader;
+    CEterPackManager::TPackDataPtr data;
+    CMemoryTextFileLoader textFileLoader;
 
-	if (!CEterPackManager::Instance().Get(c_pszFileName, data))
-		return false;
-	
-	textFileLoader.Bind(data->size(), data->data());
+    if (!CEterPackManager::Instance().Get(c_pszFileName, data))
+        return false;
 
-	for (DWORD i = 0; i < textFileLoader.GetLineCount(); ++i)
-	{
-		const char * pszLine = textFileLoader.GetLineString(i).c_str();
+    textFileLoader.Bind(data->size(), data->data());
 
-		if (!pszLine || !*pszLine)
-			continue;
+    for (DWORD i = 0; i < textFileLoader.GetLineCount(); ++i)
+    {
+        const char *pszLine = textFileLoader.GetLineString(i).c_str();
 
-		ReserveCRC(atoi(pszLine));
-	}
+        if (!pszLine || !*pszLine)
+            continue;
 
-	return true;
+        ReserveCRC(atoi(pszLine));
+    }
+
+    return true;
 }
 
 void CPropertyManager::ReserveCRC(DWORD dwCRC)
 {
-	m_ReservedCRCSet.insert(dwCRC);
+    m_ReservedCRCSet.insert(dwCRC);
 }
 
-DWORD CPropertyManager::GetUniqueCRC(const char * c_szSeed)
+DWORD CPropertyManager::GetUniqueCRC(const char *c_szSeed)
 {
-	std::string stTmp = c_szSeed;
+    std::string stTmp = c_szSeed;
 
-	while (1)
-	{
-		DWORD dwCRC = GetCRC32(stTmp.c_str(), stTmp.length());
+    while (1)
+    {
+        DWORD dwCRC = GetCRC32(stTmp.c_str(), stTmp.length());
 
-		if (m_ReservedCRCSet.find(dwCRC) == m_ReservedCRCSet.end() &&
-			m_PropertyByCRCMap.find(dwCRC) == m_PropertyByCRCMap.end())
-			return dwCRC;
+        if (m_ReservedCRCSet.find(dwCRC) == m_ReservedCRCSet.end() &&
+            m_PropertyByCRCMap.find(dwCRC) == m_PropertyByCRCMap.end())
+            return dwCRC;
 
-		char szAdd[2];
-		_snprintf(szAdd, sizeof(szAdd), "%d", random() % 10);
-		stTmp += szAdd;
-	}
+        char szAdd[2];
+        _snprintf(szAdd, sizeof(szAdd), "%d", random() % 10);
+        stTmp += szAdd;
+    }
 }
 
-bool CPropertyManager::Register(const char * c_pszFileName, CProperty ** ppProperty)
+bool CPropertyManager::Register(const char *c_pszFileName, CProperty **ppProperty)
 {
-	CEterPackManager::TPackDataPtr data;
-	if (!CEterPackManager::Instance().Get(c_pszFileName, data))
-		return false;
+    CEterPackManager::TPackDataPtr data;
+    if (!CEterPackManager::Instance().Get(c_pszFileName, data))
+        return false;
 
-	CProperty * pProperty = new CProperty(c_pszFileName);
+    CProperty *pProperty = new CProperty(c_pszFileName);
 
-	if (!pProperty->ReadFromMemory(data->data(), data->size(), c_pszFileName))
-	{
-		delete pProperty;
-		return false;
-	}
+    if (!pProperty->ReadFromMemory(data->data(), data->size(), c_pszFileName))
+    {
+        delete pProperty;
+        return false;
+    }
 
-	DWORD dwCRC = pProperty->GetCRC();
+    DWORD dwCRC = pProperty->GetCRC();
 
-	TPropertyCRCMap::iterator itor = m_PropertyByCRCMap.find(dwCRC);
+    TPropertyCRCMap::iterator itor = m_PropertyByCRCMap.find(dwCRC);
 
-	if (m_PropertyByCRCMap.end() != itor)
-	{
-		Tracef("Property already registered, replace %s to %s\n",
-				itor->second->GetFileName(),
-				c_pszFileName);
+    if (m_PropertyByCRCMap.end() != itor)
+    {
+        Tracef("Property already registered, replace %s to %s\n", itor->second->GetFileName(), c_pszFileName);
 
-		delete itor->second;
-		itor->second = pProperty;
-	}
-	else
-		m_PropertyByCRCMap.insert(TPropertyCRCMap::value_type(dwCRC, pProperty));
+        delete itor->second;
+        itor->second = pProperty;
+    }
+    else
+        m_PropertyByCRCMap.insert(TPropertyCRCMap::value_type(dwCRC, pProperty));
 
-	if (ppProperty)
-		*ppProperty = pProperty;
+    if (ppProperty)
+        *ppProperty = pProperty;
 
-	return true;
+    return true;
 }
 
-bool CPropertyManager::Get(const char * c_pszFileName, CProperty ** ppProperty)
+bool CPropertyManager::Get(const char *c_pszFileName, CProperty **ppProperty)
 {
-	return Register(c_pszFileName, ppProperty);
+    return Register(c_pszFileName, ppProperty);
 }
 
-bool CPropertyManager::Get(DWORD dwCRC, CProperty ** ppProperty)
+bool CPropertyManager::Get(DWORD dwCRC, CProperty **ppProperty)
 {
-	TPropertyCRCMap::iterator itor = m_PropertyByCRCMap.find(dwCRC);
+    TPropertyCRCMap::iterator itor = m_PropertyByCRCMap.find(dwCRC);
 
-	if (m_PropertyByCRCMap.end() == itor)
-		return false;
+    if (m_PropertyByCRCMap.end() == itor)
+        return false;
 
-	*ppProperty = itor->second;
-	return true;
+    *ppProperty = itor->second;
+    return true;
 }
 
 void CPropertyManager::Clear()
 {
-	stl_wipe_second(m_PropertyByCRCMap);
+    stl_wipe_second(m_PropertyByCRCMap);
 }

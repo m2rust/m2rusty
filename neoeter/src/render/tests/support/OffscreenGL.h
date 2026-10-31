@@ -22,25 +22,34 @@ namespace render
 
 class OffscreenGL
 {
-public:
+  public:
     OffscreenGL();
     ~OffscreenGL();
 
-    OffscreenGL(const OffscreenGL&) = delete;
-    OffscreenGL& operator=(const OffscreenGL&) = delete;
+    OffscreenGL(const OffscreenGL &) = delete;
+    OffscreenGL &operator=(const OffscreenGL &) = delete;
 
-    bool Create(int width, int height, std::string* error);
+    bool Create(int width, int height, std::string *error);
     void Destroy();
 
-    bool Capture(Image* image, std::string* error);
+    bool Capture(Image *image, std::string *error);
 
-    int Width() const { return m_width; }
-    int Height() const { return m_height; }
-    const std::string& Renderer() const { return m_renderer; }
+    int Width() const
+    {
+        return m_width;
+    }
+    int Height() const
+    {
+        return m_height;
+    }
+    const std::string &Renderer() const
+    {
+        return m_renderer;
+    }
 
-private:
+  private:
     struct Impl;
-    Impl* m_impl = nullptr;
+    Impl *m_impl = nullptr;
     int m_width = 0;
     int m_height = 0;
     std::string m_renderer;

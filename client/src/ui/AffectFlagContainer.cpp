@@ -3,7 +3,7 @@
 
 CAffectFlagContainer::CAffectFlagContainer()
 {
-	Clear();
+    Clear();
 }
 
 CAffectFlagContainer::~CAffectFlagContainer()
@@ -12,81 +12,81 @@ CAffectFlagContainer::~CAffectFlagContainer()
 
 void CAffectFlagContainer::Clear()
 {
-	memset(m_aElement, 0, sizeof(m_aElement));
+    memset(m_aElement, 0, sizeof(m_aElement));
 }
 
-void CAffectFlagContainer::CopyInstance(const CAffectFlagContainer& c_rkAffectContainer)
+void CAffectFlagContainer::CopyInstance(const CAffectFlagContainer &c_rkAffectContainer)
 {
-	memcpy(m_aElement, c_rkAffectContainer.m_aElement, sizeof(m_aElement));
+    memcpy(m_aElement, c_rkAffectContainer.m_aElement, sizeof(m_aElement));
 }
 
-void CAffectFlagContainer::CopyData(UINT uPos, UINT uByteSize, const void* c_pvData)
+void CAffectFlagContainer::CopyData(UINT uPos, UINT uByteSize, const void *c_pvData)
 {
-	const BYTE* c_pbData=(const BYTE*)c_pvData; 
-	Element bMask=0x01;
+    const BYTE *c_pbData = (const BYTE *)c_pvData;
+    Element bMask = 0x01;
 
-	UINT uBitEnd=uPos+uByteSize*8;
-	for (UINT i=uPos; i<uBitEnd; ++i)
-	{
-		Set(i, (*c_pbData & bMask) ? true : false);
-		bMask<<=1;
+    UINT uBitEnd = uPos + uByteSize * 8;
+    for (UINT i = uPos; i < uBitEnd; ++i)
+    {
+        Set(i, (*c_pbData & bMask) ? true : false);
+        bMask <<= 1;
 
-		if (bMask==0)
-		{
-			++c_pbData;
-			bMask=0x01;
-		}
-	}
+        if (bMask == 0)
+        {
+            ++c_pbData;
+            bMask = 0x01;
+        }
+    }
 }
 
-void CAffectFlagContainer::ConvertToPosition(unsigned* uRetX, unsigned* uRetY) const
+void CAffectFlagContainer::ConvertToPosition(unsigned *uRetX, unsigned *uRetY) const
 {
-	DWORD* pos = (DWORD*)m_aElement;
-	*uRetX = pos[0];
-	*uRetY = pos[1];
+    DWORD *pos = (DWORD *)m_aElement;
+    *uRetX = pos[0];
+    *uRetY = pos[1];
 }
 /*
 const void * CAffectFlagContainer::GetDataPtr(UINT uPos) const
 {
-	if (uPos/8>=BYTE_SIZE)
-	{
-		return NULL;
-	}
+    if (uPos/8>=BYTE_SIZE)
+    {
+        return NULL;
+    }
 
-	return (const void *)&m_aElement[uPos];
+    return (const void *)&m_aElement[uPos];
 }
 */
 
 void CAffectFlagContainer::Set(UINT uPos, bool isSet)
 {
-	if (uPos/8>=BYTE_SIZE)
-	{
-		TraceError("CAffectFlagContainer::Set(uPos=%d>%d, isSet=%d", uPos, BYTE_SIZE*8, isSet);
-		return;
-	}
+    if (uPos / 8 >= BYTE_SIZE)
+    {
+        TraceError("CAffectFlagContainer::Set(uPos=%d>%d, isSet=%d", uPos, BYTE_SIZE * 8, isSet);
+        return;
+    }
 
-	BYTE& rElement=m_aElement[uPos/8];
+    BYTE &rElement = m_aElement[uPos / 8];
 
-	BYTE bMask=BYTE(1<<(uPos&7));
-	if (isSet)
-		rElement|=bMask;
-	else
-		rElement&=~bMask;
+    BYTE bMask = BYTE(1 << (uPos & 7));
+    if (isSet)
+        rElement |= bMask;
+    else
+        rElement &= ~bMask;
 }
 
 bool CAffectFlagContainer::IsSet(UINT uPos) const
 {
-	if (uPos/8>=BYTE_SIZE)
-	{
-		TraceError("CAffectFlagContainer::IsSet(uPos=%d>%d", uPos, BYTE_SIZE*8);
-		return false;
-	}
+    if (uPos / 8 >= BYTE_SIZE)
+    {
+        TraceError("CAffectFlagContainer::IsSet(uPos=%d>%d", uPos, BYTE_SIZE * 8);
+        return false;
+    }
 
-	const BYTE& c_rElement=m_aElement[uPos/8];
+    const BYTE &c_rElement = m_aElement[uPos / 8];
 
-	BYTE bMask=BYTE(1<<(uPos&7));
-	if (c_rElement&bMask)
-		return true;
+    BYTE bMask = BYTE(1 << (uPos & 7));
+    if (c_rElement & bMask)
+        return true;
 
-	return false;
+    return false;
 }

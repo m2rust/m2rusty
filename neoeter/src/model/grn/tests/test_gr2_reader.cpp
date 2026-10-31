@@ -11,17 +11,16 @@
 namespace
 {
 
-void Put32(std::vector<unsigned char> & data, size_t offset, uint32_t value)
+void Put32(std::vector<unsigned char> &data, size_t offset, uint32_t value)
 {
     TEST_ASSERT(offset + sizeof(value) <= data.size());
     std::memcpy(&data[offset], &value, sizeof(value));
 }
 
 // Runs the parser and guarantees that any returned file is freed.
-bool Parses(const std::vector<unsigned char> & data)
+bool Parses(const std::vector<unsigned char> &data)
 {
-    granny_file * file = GrannyParseGR2FromMemory(
-        static_cast<int>(data.size()), data.empty() ? nullptr : data.data());
+    granny_file *file = GrannyParseGR2FromMemory(static_cast<int>(data.size()), data.empty() ? nullptr : data.data());
     if (!file)
         return false;
 
@@ -35,7 +34,7 @@ void test_minimal_model()
     TEST_SECTION("synthetic GR2 model");
 
     const std::vector<unsigned char> data = Gr2Fixture::MakeMinimalModel();
-    granny_file * file = GrannyParseGR2FromMemory(static_cast<int>(data.size()), data.data());
+    granny_file *file = GrannyParseGR2FromMemory(static_cast<int>(data.size()), data.data());
     TEST_ASSERT(file != nullptr);
     TEST_ASSERT(file->FileInfo != nullptr);
     TEST_ASSERT(file->FileInfo->ModelCount == 1);
@@ -59,15 +58,14 @@ void test_truncated_input()
 
     TEST_ASSERT(!Parses({}));
     TEST_ASSERT(!Parses(std::vector<unsigned char>(1, 0)));
-    TEST_ASSERT(!Parses(std::vector<unsigned char>(Gr2Fixture::Magic(),
-                                                  Gr2Fixture::Magic() + 16)));
+    TEST_ASSERT(!Parses(std::vector<unsigned char>(Gr2Fixture::Magic(), Gr2Fixture::Magic() + 16)));
 
-    for (size_t size : {size_t(17), size_t(31), size_t(67), size_t(88),
-                        size_t(100), size_t(111), size_t(150), size_t(300),
-                        valid.size() - 1})
+    for (size_t size : {size_t(17), size_t(31), size_t(67), size_t(88), size_t(100), size_t(111), size_t(150),
+                        size_t(300), valid.size() - 1})
     {
         std::vector<unsigned char> truncated(valid.begin(), valid.begin() + size);
-        Parses(truncated); // must not crash; may accept a structurally complete prefix
+        Parses(truncated); // must not crash; may accept a structurally
+                           // complete prefix
     }
 
     TEST_PASS("short and truncated files are handled without reading past the end");
@@ -81,7 +79,7 @@ void test_corrupt_headers()
 
     struct Patch
     {
-        const char * label;
+        const char *label;
         size_t offset;
         uint32_t value;
     };
@@ -100,7 +98,7 @@ void test_corrupt_headers()
         {"relocation offset", 68 + 28, 0xFFFFFFF0u},
     };
 
-    for (const Patch & patch : patches)
+    for (const Patch &patch : patches)
     {
         std::vector<unsigned char> corrupt = valid;
         Put32(corrupt, patch.offset, patch.value);
@@ -113,8 +111,7 @@ void test_corrupt_headers()
     // Negative model count is clamped by the reader.
     std::vector<unsigned char> negative = valid;
     Put32(negative, 112 + 64, 0xFFFFFFFFu);
-    granny_file * file = GrannyParseGR2FromMemory(static_cast<int>(negative.size()),
-                                                  negative.data());
+    granny_file *file = GrannyParseGR2FromMemory(static_cast<int>(negative.size()), negative.data());
     if (file)
     {
         TEST_ASSERT(file->FileInfo != nullptr);

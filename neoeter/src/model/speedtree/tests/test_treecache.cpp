@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 namespace
 {
 
-std::vector<unsigned char> MakeSpt(const char * barkName)
+std::vector<unsigned char> MakeSpt(const char *barkName)
 {
     std::string spt = "__IdvSpt_02_";
     spt += barkName;
@@ -26,7 +26,7 @@ std::vector<unsigned char> MakeSpt(const char * barkName)
     return std::vector<unsigned char>(spt.begin(), spt.end());
 }
 
-void SetTreeCacheEnv(const std::string & path)
+void SetTreeCacheEnv(const std::string &path)
 {
 #ifdef _WIN32
     _putenv_s("MT2_TREECACHE", path.c_str());
@@ -44,21 +44,20 @@ void ClearTreeCacheEnv()
 #endif
 }
 
-std::string CachePath(const fs::path & dir, uint32_t hash)
+std::string CachePath(const fs::path &dir, uint32_t hash)
 {
     char name[TreeCache::kHashHexDigits + 1];
     TreeCache::FormatHash(hash, name);
     return (dir / (std::string(name) + ".tree")).string();
 }
 
-bool WriteFile(const std::string & path, const std::vector<unsigned char> & data)
+bool WriteFile(const std::string &path, const std::vector<unsigned char> &data)
 {
     std::ofstream out(path, std::ios::binary);
     if (!out)
         return false;
     if (!data.empty())
-        out.write(reinterpret_cast<const char *>(data.data()),
-                  static_cast<std::streamsize>(data.size()));
+        out.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
     return static_cast<bool>(out);
 }
 
@@ -97,8 +96,7 @@ void test_valid_cache_round_trip()
     tree.GetCollisionObject(0, type, position, dimensions);
     TEST_ASSERT(type == CSpeedTreeRT::CO_CYLINDER);
     TEST_ASSERT(position[0] == 1.0f && position[1] == 2.0f && position[2] == 3.0f);
-    TEST_ASSERT(dimensions[0] == 0.5f && dimensions[1] == 61.75f &&
-                dimensions[2] == 0.5f);
+    TEST_ASSERT(dimensions[0] == 0.5f && dimensions[1] == 61.75f && dimensions[2] == 0.5f);
 
     CSpeedTreeRT::SGeometry geometry;
     tree.GetGeometry(geometry);
@@ -130,8 +128,7 @@ void test_rejected_cache_falls_back()
 
     std::vector<unsigned char> valid = TreeCacheFixture::MakeBranchesOnly(hash, 123.5f);
 
-    auto expect_fallback = [&](const std::vector<unsigned char> & cache, const char * label)
-    {
+    auto expect_fallback = [&](const std::vector<unsigned char> &cache, const char *label) {
         TEST_ASSERT(WriteFile(path, cache));
         CSpeedTreeRT tree;
         TEST_ASSERT(tree.LoadTree(spt.data(), static_cast<unsigned int>(spt.size())));
@@ -139,7 +136,8 @@ void test_rejected_cache_falls_back()
         tree.GetBoundingBox(bounds);
         if (bounds[3] == 10.0f && bounds[5] == 123.5f)
         {
-            std::printf("    %s: cache was accepted (bounds %.1f %.1f %.1f %.1f %.1f %.1f)\n",
+            std::printf("    %s: cache was accepted (bounds %.1f %.1f %.1f "
+                        "%.1f %.1f %.1f)\n",
                         label, bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]);
             TEST_ASSERT(false);
         }
@@ -156,8 +154,7 @@ void test_rejected_cache_falls_back()
     badHash[4] ^= 0xFF;
     expect_fallback(badHash, "wrong hash");
 
-    for (size_t size : {size_t(4), size_t(20), size_t(44), size_t(100),
-                        valid.size() / 2})
+    for (size_t size : {size_t(4), size_t(20), size_t(44), size_t(100), valid.size() / 2})
     {
         std::vector<unsigned char> truncated(valid.begin(), valid.begin() + size);
         expect_fallback(truncated, "truncated cache");

@@ -4,7 +4,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-
 #include <Platform/Platform.h>
 #include <Neoeter/Platform/Base/Utils.h>
 #include <Neoeter/Platform/Base/CRC32.h>
@@ -20,38 +19,35 @@
 #include <Client/Game/MapUtil.h>
 #include <Client/Game/Interface.h>
 
-//#include <Client/Game/FlyingObjectManager.h>
-//#include <Client/Game/FlyingData.h>
-//#include <Client/Game/FlyingInstance.h>
-
+// #include <Client/Game/FlyingObjectManager.h>
+// #include <Client/Game/FlyingData.h>
+// #include <Client/Game/FlyingInstance.h>
 
 // Octree
-//#include "Octree.h"
+// #include "Octree.h"
 
 // Item
-//#include <Client/Game/ItemData.h>
-//#include <Client/Game/ItemManager.h>
+// #include <Client/Game/ItemData.h>
+// #include <Client/Game/ItemManager.h>
 
 // Actor
-//#include <Client/Game/WeaponTrace.h>
-//#include <Client/Game/PhysicsObject.h>
-//#include <Client/Game/RaceMotionData.h>
-//#include <Client/Game/RaceData.h>
-//#include <Client/Game/ActorInstance.h>
-//#include <Client/Game/RaceManager.h>
+// #include <Client/Game/WeaponTrace.h>
+// #include <Client/Game/PhysicsObject.h>
+// #include <Client/Game/RaceMotionData.h>
+// #include <Client/Game/RaceData.h>
+// #include <Client/Game/ActorInstance.h>
+// #include <Client/Game/RaceManager.h>
 
 // Property
-//#include <Client/Game/Property.h>
-//#include <Client/Game/PropertyManager.h>
-//#include <Client/Game/PropertyLoader.h>
+// #include <Client/Game/Property.h>
+// #include <Client/Game/PropertyManager.h>
+// #include <Client/Game/PropertyLoader.h>
 
 // Map
-//#include <Client/Game/Area.h>
+// #include <Client/Game/Area.h>
 
 // Path Finder
-//#include "PathFinder.h"
+// #include "PathFinder.h"
 
 // Game Event Manager
-//#include <Client/Game/GameEventManager.h>
-
-
+// #include <Client/Game/GameEventManager.h>

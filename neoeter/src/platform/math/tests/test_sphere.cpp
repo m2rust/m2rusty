@@ -13,23 +13,16 @@ struct TestCallback : public SpherePackCallback
     int rayHits = 0;
     int rangeHits = 0;
 
-    void RayTraceCallback(
-        const Vector3d& /*p1*/,
-        const Vector3d& /*dir*/,
-        float /*distance*/,
-        const Vector3d& /*sect*/,
-        SpherePack* /*sphere*/
-    ) override
+    void RayTraceCallback(const Vector3d & /*p1*/, const Vector3d & /*dir*/, float /*distance*/,
+                          const Vector3d & /*sect*/, SpherePack * /*sphere*/
+                          ) override
     {
         rayHits++;
     }
 
-    void RangeTestCallback(
-        const Vector3d& /*searchpos*/,
-        float /*distance*/,
-        SpherePack* /*sphere*/,
-        ViewState /*state*/
-    ) override
+    void RangeTestCallback(const Vector3d & /*searchpos*/, float /*distance*/, SpherePack * /*sphere*/,
+                           ViewState /*state*/
+                           ) override
     {
         rangeHits++;
     }
@@ -66,8 +59,8 @@ int main()
     // 3. Test SpherePackFactory hierarchy, Process(), and RangeTest
     {
         SpherePackFactory factory(64, 1024.0f, 256.0f, 16.0f);
-        SpherePack* sp1 = factory.AddSphere_(Vector3d(10.0f, 10.0f, 10.0f), 5.0f, nullptr, true);
-        SpherePack* sp2 = factory.AddSphere_(Vector3d(500.0f, 500.0f, 500.0f), 5.0f, nullptr, true);
+        SpherePack *sp1 = factory.AddSphere_(Vector3d(10.0f, 10.0f, 10.0f), 5.0f, nullptr, true);
+        SpherePack *sp2 = factory.AddSphere_(Vector3d(500.0f, 500.0f, 500.0f), 5.0f, nullptr, true);
         assert(sp1 != nullptr);
         assert(sp2 != nullptr);
 

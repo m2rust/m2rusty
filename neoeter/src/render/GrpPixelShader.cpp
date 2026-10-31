@@ -6,45 +6,45 @@
 
 CPixelShader::CPixelShader()
 {
-	Initialize();
+    Initialize();
 }
 
 CPixelShader::~CPixelShader()
 {
-	Destroy();
+    Destroy();
 }
 
 void CPixelShader::Initialize()
 {
-	m_handle=0;
+    m_handle = 0;
 }
 
 void CPixelShader::Destroy()
 {
-	if (m_handle)
-		m_handle=0;
+    if (m_handle)
+        m_handle = 0;
 }
 
-bool CPixelShader::CreateFromDiskFile(const char* c_szFileName)
+bool CPixelShader::CreateFromDiskFile(const char *c_szFileName)
 {
-	Destroy();
+    Destroy();
 
-	LPD3DXBUFFER lpd3dxShaderBuffer;
-	LPD3DXBUFFER lpd3dxErrorBuffer;
+    LPD3DXBUFFER lpd3dxShaderBuffer;
+    LPD3DXBUFFER lpd3dxErrorBuffer;
 
-	if (FAILED(D3DXAssembleShaderFromFileA(c_szFileName, 0, NULL, 0, &lpd3dxShaderBuffer, &lpd3dxErrorBuffer)))
-		return false;
+    if (FAILED(D3DXAssembleShaderFromFileA(c_szFileName, 0, NULL, 0, &lpd3dxShaderBuffer, &lpd3dxErrorBuffer)))
+        return false;
 
-	if (FAILED(ms_lpd3dDevice->CreatePixelShader((const DWORD*)lpd3dxShaderBuffer->GetBufferPointer(), &m_handle)))
-		return false;
+    if (FAILED(ms_lpd3dDevice->CreatePixelShader((const DWORD *)lpd3dxShaderBuffer->GetBufferPointer(), &m_handle)))
+        return false;
 
-	// D13: the GL path returns a dummy handle; record the parity delta.
-	CShaderStats::OnCreated(false, c_szFileName);
+    // D13: the GL path returns a dummy handle; record the parity delta.
+    CShaderStats::OnCreated(false, c_szFileName);
 
-	return true;
+    return true;
 }
 
 void CPixelShader::Set()
 {
-	STATEMANAGER.SetPixelShader(m_handle);
+    STATEMANAGER.SetPixelShader(m_handle);
 }

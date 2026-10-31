@@ -4,23 +4,23 @@
 
 class CTextBar : public CDibBar
 {
-	public:
-		CTextBar(int fontSize, bool isBold);
-		virtual ~CTextBar();
-		
-		void TextOut(int ix, int iy, const char * c_szText);
-		void SetTextColor(int r, int g, int b);
-		void GetTextExtent(const char * c_szText, SIZE* p_size);
+  public:
+    CTextBar(int fontSize, bool isBold);
+    virtual ~CTextBar();
 
-	protected:
-		void __SetFont(int fontSize, bool isBold);
+    void TextOut(int ix, int iy, const char *c_szText);
+    void SetTextColor(int r, int g, int b);
+    void GetTextExtent(const char *c_szText, SIZE *p_size);
 
-		void OnCreate();
+  protected:
+    void __SetFont(int fontSize, bool isBold);
 
-	protected:
-		HFONT m_hFont;
-		HFONT m_hOldFont;
-		
-		int		m_fontSize;
-		bool	m_isBold;
+    void OnCreate();
+
+  protected:
+    HFONT m_hFont;
+    HFONT m_hOldFont;
+
+    int m_fontSize;
+    bool m_isBold;
 };

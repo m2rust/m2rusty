@@ -92,15 +92,14 @@ void test_manager_overlay_and_search_mode()
 
     const fs::path archive = root / "overlay.zip";
     TEST_ASSERT(WriteZipFixture(archive.string(),
-                                {{"ymir work/ui/Window.dds", {'Z', 'I', 'P'}},
-                                 {"ymir work/ui/OnlyZip.dds", {'Z'}}}));
+                                {{"ymir work/ui/Window.dds", {'Z', 'I', 'P'}}, {"ymir work/ui/OnlyZip.dds", {'Z'}}}));
 
     CEterPackManager manager;
     TEST_ASSERT(manager.RegisterPack((root / "folder").string(), "FOLDER"));
     TEST_ASSERT(manager.RegisterPack((root / "overlay").string(), "ZIP"));
 
-    // Direct-file lookup uses the process cwd, so create the virtual path there
-    // to give SEARCH_FILE_FIRST something that overlaps the pack entry.
+    // Direct-file lookup uses the process cwd, so create the virtual path
+    // there to give SEARCH_FILE_FIRST something that overlaps the pack entry.
     const fs::path previousCwd = fs::current_path();
     fs::current_path(root);
     fs::create_directories("d:/ymir work/ui");
@@ -185,11 +184,9 @@ void test_malformed_archives()
     {
         // A valid archive truncated in the middle of its central directory.
         const fs::path source = root / "source.zip";
-        TEST_ASSERT(WriteZipFixture(source.string(),
-                                    {{"a.txt", {'a'}}, {"b.txt", {'b'}}}));
+        TEST_ASSERT(WriteZipFixture(source.string(), {{"a.txt", {'a'}}, {"b.txt", {'b'}}}));
         std::ifstream in(source, std::ios::binary);
-        std::vector<char> bytes((std::istreambuf_iterator<char>(in)),
-                                std::istreambuf_iterator<char>());
+        std::vector<char> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         in.close();
         TEST_ASSERT(bytes.size() > 20);
 
@@ -220,8 +217,7 @@ void test_filename_normalization()
     TEST_SECTION("pack filename normalization");
 
     CEterPackManager manager;
-    TEST_ASSERT(manager.ConvertFileName("D:\\Ymir Work\\UI\\Game.DDS") ==
-                "d:/ymir work/ui/game.dds");
+    TEST_ASSERT(manager.ConvertFileName("D:\\Ymir Work\\UI\\Game.DDS") == "d:/ymir work/ui/game.dds");
     TEST_ASSERT(manager.ConvertFileName("") == "");
     TEST_ASSERT(manager.ConvertFileName("MIXED/Path\\Name.TXT") == "mixed/path/name.txt");
 

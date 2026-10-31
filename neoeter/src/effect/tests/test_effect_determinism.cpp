@@ -27,36 +27,38 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace {
+namespace
+{
 
 // EffectLib only advances particles for texture-animation frames that have an
 // image. A null image is enough to create frame 0 without touching the GPU.
-void add_placeholder_frame(CParticleProperty* property)
+void add_placeholder_frame(CParticleProperty *property)
 {
     property->m_ImageVector.push_back(nullptr);
 }
 
-void add_constant_float(TTimeEventTableFloat* table, float value)
+void add_constant_float(TTimeEventTableFloat *table, float value)
 {
     InsertItemTimeEvent(table, 0.0f, value);
 }
 
-void add_constant_color(TTimeEventTableColor* table, DWORD value)
+void add_constant_color(TTimeEventTableColor *table, DWORD value)
 {
     DWORDCOLOR color;
     color.m_dwColor = value;
     InsertItemTimeEvent(table, 0.0f, color);
 }
 
-// Two-key tables keep the decorator alive for the whole particle lifetime, so
-// the test exercises interpolation rather than the one-shot "remove me" path.
-void add_spanning_float(TTimeEventTableFloat* table, float value)
+// Two-key tables keep the decorator alive for the whole particle lifetime,
+// so the test exercises interpolation rather than the one-shot "remove me"
+// path.
+void add_spanning_float(TTimeEventTableFloat *table, float value)
 {
     InsertItemTimeEvent(table, 0.0f, value);
     InsertItemTimeEvent(table, 100.0f, value);
 }
 
-void add_spanning_color(TTimeEventTableColor* table, DWORD value)
+void add_spanning_color(TTimeEventTableColor *table, DWORD value)
 {
     DWORDCOLOR color;
     color.m_dwColor = value;
@@ -64,11 +66,11 @@ void add_spanning_color(TTimeEventTableColor* table, DWORD value)
     InsertItemTimeEvent(table, 100.0f, color);
 }
 
-void configure_deterministic_data(CParticleSystemData* data)
+void configure_deterministic_data(CParticleSystemData *data)
 {
     data->Clear();
 
-    CEmitterProperty* emitter = data->GetEmitterPropertyPointer();
+    CEmitterProperty *emitter = data->GetEmitterPropertyPointer();
     emitter->m_dwMaxEmissionCount = 100;
     emitter->m_fCycleLength = 1000.0f;
     emitter->m_bCycleLoopFlag = TRUE;
@@ -86,7 +88,7 @@ void configure_deterministic_data(CParticleSystemData* data)
     add_constant_float(&emitter->m_TimeEventEmittingDirectionY, 0.0f);
     add_constant_float(&emitter->m_TimeEventEmittingDirectionZ, 0.0f);
 
-    CParticleProperty* particle = data->GetParticlePropertyPointer();
+    CParticleProperty *particle = data->GetParticlePropertyPointer();
     particle->m_byBillboardType = BILLBOARD_TYPE_ALL;
     particle->m_byRotationType = CParticleProperty::ROTATION_TYPE_NONE;
     particle->m_fRotationSpeed = 0.0f;
@@ -102,19 +104,18 @@ void configure_deterministic_data(CParticleSystemData* data)
 
 class TestParticleSystem : public CParticleSystemInstance
 {
-public:
+  public:
     std::size_t ParticleCount() const
     {
         std::size_t count = 0;
-        for (const auto& frame : m_ParticleInstanceListVector)
+        for (const auto &frame : m_ParticleInstanceListVector)
             count += frame.size();
         return count;
     }
 
-    CParticleInstance* FirstParticle()
+    CParticleInstance *FirstParticle()
     {
-        if (m_ParticleInstanceListVector.empty() ||
-            m_ParticleInstanceListVector[0].empty())
+        if (m_ParticleInstanceListVector.empty() || m_ParticleInstanceListVector[0].empty())
             return nullptr;
         return m_ParticleInstanceListVector[0].front();
     }
@@ -127,8 +128,7 @@ void assert_close(float actual, float expected, float tolerance = 1e-4f)
 
 // Reference integration: gravity is applied first, then air resistance, then
 // the position is advanced by the new velocity (CParticleInstance::Update).
-void reference_step(D3DXVECTOR3* position, D3DXVECTOR3* velocity,
-                    float dt, float gravity, float airResistance)
+void reference_step(D3DXVECTOR3 *position, D3DXVECTOR3 *velocity, float dt, float gravity, float airResistance)
 {
     velocity->z -= gravity * dt;
     velocity->x *= 1.0f - airResistance;
@@ -158,7 +158,7 @@ void test_deterministic_particle_update()
     assert(system.GetEmissionCount() == static_cast<DWORD>(updates));
     assert(system.ParticleCount() == static_cast<std::size_t>(updates));
 
-    CParticleInstance* first = system.FirstParticle();
+    CParticleInstance *first = system.FirstParticle();
     assert(first != nullptr);
 
     // The first particle is spawned during update 1 and stepped updates-1 times.
@@ -191,12 +191,10 @@ void test_deterministic_particle_update()
     for (int i = 0; i < updates; ++i)
         assert(second.Update(dt));
 
-    CParticleInstance* secondParticle = second.FirstParticle();
+    CParticleInstance *secondParticle = second.FirstParticle();
     assert(secondParticle != nullptr);
-    assert(std::memcmp(&first->GetPosition(), &secondParticle->GetPosition(),
-                       sizeof(D3DXVECTOR3)) == 0);
-    assert(std::memcmp(&first->GetVelocity(), &secondParticle->GetVelocity(),
-                       sizeof(D3DXVECTOR3)) == 0);
+    assert(std::memcmp(&first->GetPosition(), &secondParticle->GetPosition(), sizeof(D3DXVECTOR3)) == 0);
+    assert(std::memcmp(&first->GetVelocity(), &secondParticle->GetVelocity(), sizeof(D3DXVECTOR3)) == 0);
 
     system.Destroy();
     second.Destroy();
@@ -204,16 +202,15 @@ void test_deterministic_particle_update()
     std::printf("[PASS] test_deterministic_particle_update\n");
 }
 
-void configure_random_data(CParticleSystemData* data)
+void configure_random_data(CParticleSystemData *data)
 {
     data->Clear();
 
-    CEmitterProperty* emitter = data->GetEmitterPropertyPointer();
+    CEmitterProperty *emitter = data->GetEmitterPropertyPointer();
     emitter->m_dwMaxEmissionCount = 10;
     emitter->m_fCycleLength = 1000.0f;
     emitter->m_byEmitterShape = CEmitterProperty::EMITTER_SHAPE_POINT;
-    emitter->m_byEmitterAdvancedType =
-        CEmitterProperty::EMITTER_ADVANCED_TYPE_OUTER;
+    emitter->m_byEmitterAdvancedType = CEmitterProperty::EMITTER_ADVANCED_TYPE_OUTER;
     // A zero emitting direction keeps the random source in the advanced-type
     // branch only (three frandom() calls for the initial velocity).
     emitter->m_v3EmittingDirection = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
@@ -227,7 +224,7 @@ void configure_random_data(CParticleSystemData* data)
     add_constant_float(&emitter->m_TimeEventEmittingDirectionY, 0.0f);
     add_constant_float(&emitter->m_TimeEventEmittingDirectionZ, 0.0f);
 
-    CParticleProperty* particle = data->GetParticlePropertyPointer();
+    CParticleProperty *particle = data->GetParticlePropertyPointer();
     particle->m_byBillboardType = BILLBOARD_TYPE_ALL;
     particle->m_byRotationType = CParticleProperty::ROTATION_TYPE_NONE;
     add_spanning_float(&particle->m_TimeEventScaleX, 1.0f);
@@ -251,7 +248,7 @@ void test_seeded_emission_is_reproducible()
         srandom(1234);
         assert(system.Update(1.0f));
 
-        CParticleInstance* particle = system.FirstParticle();
+        CParticleInstance *particle = system.FirstParticle();
         assert(particle != nullptr);
 
         D3DXVECTOR3 velocity = particle->GetVelocity();
