@@ -26,6 +26,10 @@ fn golden_scenes() {
             stats.fraction() * 100.0,
             stats.off_edge
         );
+        if std::env::var_os("M2_GOLDEN_DUMP").is_some() {
+            write_png(&out.join(format!("{}.actual.png", scene.name)), &actual);
+            write_png(&out.join(format!("{}.diff.png", scene.name)), &diff);
+        }
         let ok = stats.max_delta <= scene.tolerance.max_delta
             && stats.fraction() <= scene.tolerance.max_fraction
             && stats.off_edge == 0;

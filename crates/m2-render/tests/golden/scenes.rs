@@ -10,9 +10,8 @@ use std::sync::{Arc, Mutex};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::camera::{Camera, RenderTarget, Viewport};
-use bevy::input::InputPlugin;
 use bevy::log::LogPlugin;
-use bevy::math::{Quat, Vec3, Vec4};
+use bevy::math::{Quat, Vec3};
 use bevy::mesh::{Mesh, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::render::pipelined_rendering::PipelinedRenderingPlugin;
@@ -165,7 +164,10 @@ fn textured(c: &mut Ctx, size: u32, pixels: &[u32]) -> FixedFunctionMaterial {
     FixedFunctionMaterial { textures: [Some(tex), None], ..base() }
 }
 
-fn scene_clear(_: &mut Ctx) {}
+fn scene_clear(c: &mut Ctx) {
+    // Nothing to draw: pins the clear colour and the empty target.
+    c.ortho_camera();
+}
 
 fn scene_ortho_triangle(c: &mut Ctx) {
     c.ortho_camera();
@@ -260,6 +262,12 @@ fn scene_fog_linear(c: &mut Ctx) {
 fn scene_viewport(c: &mut Ctx) {
     // Clear the whole target, then draw the full ortho quad into a sub-rectangle.
     c.camera(0, FixedFunctionProjection::orthographic_2d(WIDTH as f32, HEIGHT as f32), Transform::IDENTITY, None, true);
+    // The clearing camera must not draw the quad: put it on an empty render layer.
+    let clearer = {
+        let world = &mut *c.world;
+        world.query_filtered::<Entity, With<Camera>>().iter(world).next().unwrap()
+    };
+    c.world.entity_mut(clearer).insert(bevy::camera::visibility::RenderLayers::layer(1));
     let viewport = Viewport { physical_position: UVec2::new(40, 30), physical_size: UVec2::new(80, 60), ..default() };
     c.camera(1, FixedFunctionProjection::orthographic_2d(WIDTH as f32, HEIGHT as f32), Transform::IDENTITY, Some(viewport), false);
     c.draw(&quad(0.0, 0.0, WIDTH as f32, HEIGHT as f32, -0.5, argb(255, 220, 140, 60), [0.0; 4]), base(), Transform::IDENTITY);
@@ -479,6 +487,7 @@ pub fn compare(golden: &Rgba, actual: &Rgba) -> (Stats, Rgba) {
     (stats, diff)
 }
 
+/// Failure images go to `$M2_GOLDEN_OUT`, else `<temp dir>/m2_render_golden`.
 pub fn output_dir() -> PathBuf {
-    std::env::temp_dir().join("m2_render_golden")
+    std::env::var_os("M2_GOLDEN_OUT").map(PathBuf::from).unwrap_or_else(|| std::env::temp_dir().join("m2_render_golden"))
 }
