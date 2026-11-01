@@ -242,9 +242,24 @@ impl OutdoorMap {
     /// `CMapOutdoor::GetTerrainNumFromCoord`: the slot is a `BYTE`, so far
     /// coordinates wrap into the window; `false` above 9.
     pub fn terrain_num_from_coord(&self, x: u16, y: u16) -> Option<u8> {
+        let (ok, b) = self.terrain_num_from_coord_raw(x, y);
+        ok.then_some(b)
+    }
+
+    /// As [`terrain_num_from_coord`](Self::terrain_num_from_coord), also
+    /// returning the (wrapped) slot C++ stores in its out-parameter on
+    /// failure.
+    pub fn terrain_num_from_coord_raw(&self, x: u16, y: u16) -> (bool, u8) {
         let v = (i32::from(y) - i32::from(self.cur.1) + 1) * 3 + (i32::from(x) - i32::from(self.cur.0) + 1);
         let b = v as u8;
-        (i32::from(b) <= AROUND_AREA_NUM).then_some(b)
+        (i32::from(b) <= AROUND_AREA_NUM, b)
+    }
+
+    /// `CMapOutdoor::GetTerrainNum(float, float)` with the out-parameter.
+    pub fn terrain_num_raw(&self, x: f32, y: f32) -> (bool, u8) {
+        let y = if y < 0.0 { -y } else { y };
+        let (ix, iy) = (float_to_int(x), float_to_int(y));
+        self.terrain_num_from_coord_raw((ix / TERRAIN_WORLD) as u16, (iy / TERRAIN_WORLD) as u16)
     }
 
     /// `CMapOutdoor::GetTerrainPointer`.
