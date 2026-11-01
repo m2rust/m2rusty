@@ -151,7 +151,7 @@ pub fn rotation_yaw_pitch_roll(yaw: f32, pitch: f32, roll: f32) -> [f32; 16] {
 
 /// `D3DXToRadian`.
 fn to_radian(degree: f32) -> f32 {
-    degree * (3.141_592_7_f32 / 180.0f32)
+    degree * (std::f32::consts::PI / 180.0f32)
 }
 
 fn building_like(p: &Property, want: &[u8]) -> Option<()> {

@@ -7,7 +7,7 @@
 pub type Vec3 = [f32; 3];
 
 /// `D3DX_PI`.
-pub const PI: f32 = 3.141592654f32;
+pub const PI: f32 = std::f32::consts::PI;
 
 /// `D3DXToRadian`.
 pub fn to_radian(degree: f32) -> f32 {
