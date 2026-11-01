@@ -144,7 +144,7 @@ impl RaceData {
             if tokens.len() % 2 != 0 {
                 return false;
             }
-            for pair in tokens.chunks_exact(2) {
+            for pair in tokens.as_chunks::<2>().0 {
                 let smoke = atoi(&pair[0]);
                 if !(0..SMOKE_NUM as i32).contains(&smoke) {
                     return false;

@@ -111,7 +111,7 @@ impl HitData {
 
         self.hit_positions.clear();
         if let Some(tokens) = cur.tokens("hitposition") {
-            for chunk in tokens.chunks_exact(7) {
+            for chunk in tokens.as_chunks::<7>().0 {
                 let time = atof_f32(&chunk[0]);
                 let hit = HitPosition {
                     last_position: vector3_of(&chunk[1..4]),
