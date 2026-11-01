@@ -32,3 +32,9 @@ set(CLIENT_STANDALONE OFF CACHE BOOL "" FORCE)
 add_subdirectory(neoeter)
 add_subdirectory(neoeter-python)
 add_subdirectory(client)
+
+# C++ reference dumpers for the Rust port's differential tests.
+option(M2_BUILD_DIFF_TOOLS "Build tools/differential" OFF)
+if(M2_BUILD_DIFF_TOOLS)
+    add_subdirectory(tools/differential)
+endif()

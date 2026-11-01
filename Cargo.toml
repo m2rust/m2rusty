@@ -14,7 +14,11 @@ publish = false
 # Pinned for the whole port; upgrades are a deliberate, separate change.
 bevy = "=0.20.1"
 cmake = "0.1.58"
+# Stored + deflate, as the client's packs use; zlib-rs keeps it pure Rust.
+zip = { version = "9.2.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+tempfile = "3.27.0"
 
+m2-formats = { path = "crates/m2-formats" }
 m2-script = { path = "crates/m2-script" }
 
 # Bevy is slow unoptimised; optimise dependencies even in dev builds.

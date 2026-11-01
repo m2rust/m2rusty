@@ -7,7 +7,7 @@ Status: proposal. Nothing here is implemented yet.
 | Area | Today (C++) | Size | Moves to |
 |---|---|---|---|
 | `neoeter/src/platform` | OS layer, LZO/TEA/CRC, timers, D3D9→GL compat device, locale codecs, math | 10.6k | Rust (most of it disappears into Bevy/std) |
-| `neoeter/src/io` | EIX/EPK/ZIP pack providers | 1.2k | Rust: `m2-pack` + Bevy `AssetReader` |
+| `neoeter/src/io` | ZIP and folder pack providers | 1.2k | Rust: `m2-formats::pack` + Bevy `AssetReader` |
 | `neoeter/src/image` | DXT, stb, DDS/TGA | 1.9k | Rust: `image` crate + Bevy's DDS support |
 | `neoeter/src/render` | Grp* device/state wrappers, camera, culling, fonts, text tags, IME, **network** (`NetStream`), threads, sky/lens flare | 26.7k | Rust: Bevy render + custom materials; net goes to `m2-net` |
 | `neoeter/src/audio` | Miles façade over miniaudio | 2.2k | Rust: `bevy_kira_audio` (or `bevy_audio`) |
@@ -142,7 +142,7 @@ headless boot test `cargo test -p m2-script`. Run everything from
   mirrors today's `TA.6` test.
 
 ### Phase 1: Formats, no Bevy (3–5 weeks)
-- `m2-formats`: EIX/EPK/ZIP packs, LZO, TEA, CRC32, `Index`/`Index.dev`, path
+- `m2-formats`: ZIP/folder packs (**done**: `m2_formats::pack`, byte-identical to C++ on all 52,578 files of `bin/pack`), LZO, TEA, CRC32, `Index`/`Index.dev`, path
   normalisation, text-file loader/parser (`TextFileLoader`, `parser.cpp`),
   locale codecs (`encoding_rs` for CP949/CP1252/…, plus the Arabic, Japanese
   and Vietnamese handling), item/mob proto, skill tables, race data, `.msm`,

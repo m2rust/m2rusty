@@ -1,0 +1,14 @@
+[package]
+name = "m2-formats"
+description = "Metin2 data formats, without Bevy (docs/bevy-port-plan.md, phase 1)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+zip.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+crc32fast = "1.5.3"
