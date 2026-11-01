@@ -6,6 +6,7 @@
 
 pub mod crypt;
 pub mod gr2;
+pub mod image;
 pub mod locale;
 pub mod pack;
 pub mod proto;

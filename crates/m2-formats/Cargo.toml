@@ -9,7 +9,10 @@ publish.workspace = true
 [dependencies]
 zip.workspace = true
 crc32fast = "1.5.3"
+png = "0.18.1"
 
 [dev-dependencies]
+# Candidate crates, only to document in tests/crate_candidates.rs why they are not used (docs/bevy-port-plan.md D16).
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "tga", "bmp"] }
 tempfile.workspace = true
 crc32fast = "1.5.3"
