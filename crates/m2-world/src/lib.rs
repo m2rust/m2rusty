@@ -18,7 +18,7 @@ pub mod outdoor;
 pub mod sort;
 pub mod splat;
 
-pub use load::{LoadedMap, load_map};
+pub use load::{LoadedMap, load_atlas, load_map, map_at};
 pub use outdoor::{OutdoorMap, TerrainCell, float_to_long};
 
 /// `CTerrainImpl::TERRAIN_XSIZE`: world units per terrain side.

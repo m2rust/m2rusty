@@ -62,6 +62,34 @@ pub fn prepare_map(packs: &PackManager, name: &str) -> Result<PreparedMap, Strin
     Ok(PreparedMap { map, ground_image, effects, errors })
 }
 
+/// A map chosen by a global position: the client's `net.Warp`.
+pub struct WarpedMap {
+    /// The map at that position, ready to spawn.
+    pub prepared: PreparedMap,
+    /// The map directory name (`AtlasInfo.txt`).
+    pub name: String,
+    /// The position local to the map (`CPythonBackground::Warp`).
+    pub local_x: i32,
+    pub local_y: i32,
+}
+
+/// Loads the map that holds global position `(x, y)`
+/// (`CPythonBackground::GlobalPositionToMapInfo`) and the position inside it.
+/// Blocking and slow: run it on `AsyncComputeTaskPool`.
+pub fn prepare_map_at(packs: &PackManager, locale_path: &str, x: i32, y: i32) -> Result<WarpedMap, String> {
+    let atlas = m2_world::load_atlas(packs, locale_path);
+    let entry =
+        m2_world::map_at(&atlas, x, y).ok_or_else(|| format!("no map in AtlasInfo holds global position {x},{y}"))?;
+    let name = entry.name_utf8(m2_formats::utf8::DEFAULT_NAME_CODE_PAGE).into_owned();
+    let prepared = prepare_map(packs, &name)?;
+    Ok(WarpedMap {
+        prepared,
+        name,
+        local_x: x.wrapping_sub(entry.base_x as i32),
+        local_y: y.wrapping_sub(entry.base_y as i32),
+    })
+}
+
 /// Counts of what [`MapScene::spawn`] built, for logs and inspectors.
 #[derive(Default, Clone, Copy, Debug)]
 pub struct SpawnStats {
@@ -251,7 +279,11 @@ fn spawn_terrain(
                 );
                 mesh.insert_attribute(
                     Mesh::ATTRIBUTE_UV_0,
-                    patch.water_vertices.iter().map(|v| [v.position[0] / 800.0, -v.position[1] / 800.0]).collect::<Vec<_>>(),
+                    patch
+                        .water_vertices
+                        .iter()
+                        .map(|v| [v.position[0] / 800.0, -v.position[1] / 800.0])
+                        .collect::<Vec<_>>(),
                 );
                 let mut water_indices: Vec<u32> = (0..patch.water_vertices.len() as u32).collect();
                 coords::flip_winding(&mut water_indices);
@@ -384,6 +416,25 @@ mod tests {
         let prepared = prepare_map(&packs, "metin2_map_a1").unwrap();
         assert!(prepared.errors.is_empty(), "{:?}", prepared.errors);
         assert!(!prepared.effects.is_empty());
-        assert_eq!(prepared.ground_image.texture_descriptor.size.depth_or_array_layers as usize, prepared.map.textures.len());
+        assert_eq!(
+            prepared.ground_image.texture_descriptor.size.depth_or_array_layers as usize,
+            prepared.map.textures.len()
+        );
+    }
+
+    #[test]
+    #[ignore = "requires the bundled client packs under bin/"]
+    fn bundled_position_finds_the_map_the_server_put_the_character_in() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin");
+        let mut packs = PackManager::new(root);
+        m2_formats::pack::load_index(&mut packs, "pack", "pack/Index.dev").unwrap();
+        // The global position the local server sends for a new `admin` character.
+        let warped = prepare_map_at(&packs, "locale/en", 66382, 164633).unwrap();
+        assert_eq!(warped.name, "metin2_map_b1");
+        assert_eq!((warped.local_x, warped.local_y), (66382, 62233));
+        assert_eq!((warped.prepared.map.terrain_count), (4, 5));
+        let height = warped.prepared.map.terrain_height(warped.local_x as f32, warped.local_y as f32);
+        // World units are centimetres: the terrain must be inside the map's scale.
+        assert!((0.0..100_000.0).contains(&height), "height {height} is not a sensible terrain height");
     }
 }

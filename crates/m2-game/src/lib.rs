@@ -8,12 +8,15 @@
 //! - [`world`]: an outdoor map loaded by [`m2_world::load_map`], prepared off
 //!   the main thread ([`world::prepare_map`]) and spawned as one scene
 //!   ([`world::MapScene`]).
+//! - [`ingame`]: the in-game scene (map, player character, third-person
+//!   camera) for the position the server warps to.
 //!
 //! Everything spawned here hangs under a root entity the caller owns, so the
 //! caller tags and despawns that root. The camera the scene is drawn for
 //! carries [`SceneCamera`]: tree leaves face it, clouds follow it, effects
 //! billboard towards it and the sky is installed on it.
 
+pub mod ingame;
 pub mod net;
 pub mod render;
 pub mod world;
@@ -29,6 +32,6 @@ pub struct M2GamePlugin;
 
 impl Plugin for M2GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((render::terrain::TerrainPlugin, render::cloud::CloudPlugin));
+        app.add_plugins((render::terrain::TerrainPlugin, render::cloud::CloudPlugin, ingame::InGamePlugin));
     }
 }

@@ -6,25 +6,27 @@
 //! hair and looping its intro wait motion; the selected one steps forward. "Start"
 //! plays the intro *selected* motion on it and *not selected* on the others, and
 //! three seconds later (`introselect.py`'s `startReservingTime`) asks the network
-//! to enter the game ([`EnterGame`]). When the server sends `MainCharacter` the
-//! game is entered right away with [`Net::start_game`]; the original does that after
-//! the loading screen has loaded the map, which the port does not draw yet.
+//! to enter the game ([`EnterGame`]). When the server switches to the Game phase
+//! the screen hands the character and its global position to `m2-game`'s in-game
+//! scene ([`EnterWorld`]: the map from `AtlasInfo.txt`, the character, the
+//! third-person camera).
 
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, futures::check_ready};
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 use m2_assets::M2Packs;
 use m2_game::SceneCamera;
+use m2_game::ingame::{EnterWorld, GameWorld, LOCALE_PATH};
 use m2_game::net::{EnterGame, Net, NetMessage};
 use m2_game::render::character::{ArmorShapes, Character, IntroMotion, Look};
 use m2_net::phase::{NetEvent, Phase};
 
 use crate::login::{Autologin, CharacterSlot, LoginScreen, RunDone, Status, empire_name, race_name};
 
-/// `MULTI_LOCALE_PATH`'s default (`Locale.cpp`); the client has no `locale.cfg`.
-const LOCALE_PATH: &str = "locale/en";
 /// `introselect.py`: the start is sent 3 seconds after the button.
 const START_DELAY: f32 = 3.0;
+/// How long an unattended run waits for the in-game scene before giving up.
+const SCENE_WAIT: f32 = 180.0;
 /// World units between two characters in the row.
 const SPACING: f32 = 130.0;
 /// How far the selected character stands in front of the others.
@@ -60,7 +62,7 @@ impl Plugin for SelectScreenPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectScreen>()
             .add_systems(Startup, load_armor_shapes)
-            .add_systems(Update, (poll_armor_shapes, track_entering, drive_scene).chain())
+            .add_systems(Update, (poll_armor_shapes, track_entering, finish_when_loaded, drive_scene).chain())
             .add_systems(EguiPrimaryContextPass, select_ui);
     }
 }
@@ -96,14 +98,17 @@ fn track_entering(
     mut screen: ResMut<LoginScreen>,
     mut select: ResMut<SelectScreen>,
     mut net: ResMut<Net>,
-    auto: Res<Autologin>,
-    mut done: ResMut<RunDone>,
+    mut enter_world: MessageWriter<EnterWorld>,
 ) {
     for message in messages.read() {
         let Status::Entering { slot, step } = &mut screen.status else { continue };
         match message {
-            NetMessage::Game(NetEvent::PhaseChanged { to: Phase::HandShake, .. }) => *step = "Connecting to the game server…".into(),
-            NetMessage::Game(NetEvent::PhaseChanged { to: Phase::Select, .. }) => *step = "Selecting the character…".into(),
+            NetMessage::Game(NetEvent::PhaseChanged { to: Phase::HandShake, .. }) => {
+                *step = "Connecting to the game server…".into()
+            }
+            NetMessage::Game(NetEvent::PhaseChanged { to: Phase::Select, .. }) => {
+                *step = "Selecting the character…".into()
+            }
             NetMessage::Game(NetEvent::PhaseChanged { to: Phase::Loading, .. }) => *step = "Loading…".into(),
             NetMessage::Game(NetEvent::MainCharacter(main)) => {
                 info!("main character {} (vid {}) at {},{}", main.name, main.vid, main.x, main.y);
@@ -113,15 +118,43 @@ fn track_entering(
                 net.start_game();
             }
             NetMessage::Game(NetEvent::PhaseChanged { to: Phase::Game, .. }) => {
+                let slot = *slot;
                 let (name, x, y) = select.main.clone().unwrap_or_else(|| (format!("slot {slot}"), 0, 0));
+                let look = select.characters.iter().find(|(c, _)| c.slot == slot).map(|(_, c)| c.look);
                 info!("in game as {name}");
-                screen.status = Status::InGame { name, x, y };
-                if auto.enter.is_some() {
-                    done.0 = true;
+                // `introloading.py`: `net.Warp(playerX, playerY)` and the game window.
+                match look {
+                    Some(look) => {
+                        enter_world.write(EnterWorld { x, y, look });
+                    }
+                    None => warn!("no look for slot {slot}; the in-game character stays unspawned"),
                 }
+                screen.status = Status::InGame { name, x, y };
             }
             _ => {}
         }
+    }
+}
+
+/// An unattended run ends when the in-game scene is loaded (or failed), so the
+/// screenshot shows the character in the map.
+fn finish_when_loaded(
+    mut done: ResMut<RunDone>,
+    auto: Res<Autologin>,
+    screen: Res<LoginScreen>,
+    game: Res<GameWorld>,
+    time: Res<Time>,
+    mut waited: Local<f32>,
+) {
+    if auto.enter.is_none() || !matches!(screen.status, Status::InGame { .. }) || done.0 {
+        return;
+    }
+    *waited += time.delta_secs();
+    if game.is_loaded(time.elapsed_secs()) || game.error().is_some() {
+        done.0 = true;
+    } else if *waited >= SCENE_WAIT {
+        warn!("the in-game scene did not load in {SCENE_WAIT} s; taking the screenshot anyway");
+        done.0 = true;
     }
 }
 
@@ -140,7 +173,9 @@ fn drive_scene(world: &mut World) {
             return;
         }
         if select.root.is_none() {
-            let (Status::Select { characters, .. }, Some(shapes)) = (&status, world.get_resource::<ArmorShapes>().cloned()) else {
+            let (Status::Select { characters, .. }, Some(shapes)) =
+                (&status, world.get_resource::<ArmorShapes>().cloned())
+            else {
                 return;
             };
             build_scene(world, &mut select, characters, &shapes);
@@ -181,7 +216,8 @@ fn drive_scene(world: &mut World) {
                 Some(slot) => {
                     if let Some(index) = select.characters.iter().position(|(c, _)| c.slot == slot) {
                         select.selected = index;
-                        world.resource_mut::<LoginScreen>().status = Status::Entering { slot, step: "Starting…".into() };
+                        world.resource_mut::<LoginScreen>().status =
+                            Status::Entering { slot, step: "Starting…".into() };
                     }
                 }
                 None => world.resource_mut::<RunDone>().0 = true,
@@ -220,7 +256,14 @@ fn slot_position(index: usize, count: usize, selected: bool) -> Vec3 {
     Vec3::new(x, 0.0, if selected { -STEP_FORWARD } else { 0.0 })
 }
 
-fn select_ui(mut contexts: EguiContexts, mut screen: ResMut<LoginScreen>, mut select: ResMut<SelectScreen>, mut net: ResMut<Net>) -> Result {
+fn select_ui(
+    mut contexts: EguiContexts,
+    mut screen: ResMut<LoginScreen>,
+    mut select: ResMut<SelectScreen>,
+    mut net: ResMut<Net>,
+    game: Res<GameWorld>,
+    time: Res<Time>,
+) -> Result {
     if !matches!(screen.status, Status::Select { .. } | Status::Entering { .. } | Status::InGame { .. }) {
         return Ok(());
     }
@@ -263,25 +306,44 @@ fn select_ui(mut contexts: EguiContexts, mut screen: ResMut<LoginScreen>, mut se
                 });
         }
         Status::Entering { step, .. } => {
-            egui::Window::new("Entering the game").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_BOTTOM, egui::Vec2::new(0.0, -32.0)).show(
-                ctx,
-                |ui| {
+            egui::Window::new("Entering the game")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_BOTTOM, egui::Vec2::new(0.0, -32.0))
+                .show(ctx, |ui| {
                     ui.horizontal(|ui| {
                         ui.spinner();
                         ui.label(step);
                     });
-                },
-            );
+                });
         }
         Status::InGame { name, x, y } => {
             egui::Window::new("In game")
                 .collapsible(false)
                 .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .anchor(egui::Align2::LEFT_TOP, egui::Vec2::new(16.0, 16.0))
                 .show(ctx, |ui| {
-                    ui.heading(format!("{name} entered the game"));
-                    ui.label(format!("Position {x}, {y} (global)"));
-                    ui.label("The map and the character come next (roadmap milestone 2).");
+                    ui.heading(name);
+                    ui.label(format!("Global position {x}, {y}"));
+                    match (&game.map, game.local) {
+                        (Some(map), Some((lx, ly))) => {
+                            ui.label(format!("{map} at {lx}, {ly}"));
+                        }
+                        _ => {
+                            ui.horizontal(|ui| {
+                                ui.spinner();
+                                ui.label("Loading the map…");
+                            });
+                        }
+                    }
+                    if let Some(error) = game.error() {
+                        ui.colored_label(egui::Color32::LIGHT_RED, format!("The map could not be loaded: {error}"));
+                    } else if game.is_ready() && !game.is_loaded(time.elapsed_secs()) {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.label("Loading objects…");
+                        });
+                    }
                     if ui.button("Log out").clicked() {
                         log_out = true;
                     }

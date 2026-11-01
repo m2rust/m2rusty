@@ -7,12 +7,13 @@
 //! Rendering (meshes, textures, materials) belongs to the Bevy side.
 
 use m2_formats::map::{
-    Area, AreaPropertyError, EnvironmentData, MapProperty, MapSetting, PropertyError, SettingError, Terrain,
-    TerrainTexture, TextureSet, area_dir_name, load_environment,
+    Area, AreaPropertyError, AtlasEntry, EnvironmentData, MapProperty, MapSetting, PropertyError, SettingError,
+    Terrain, TerrainTexture, TextureSet, area_dir_name, load_environment, parse_atlas_info,
 };
 use m2_formats::pack::PackManager;
 use m2_formats::property::PropertyManager;
 
+use crate::TERRAIN_WORLD;
 use crate::TerrainCell;
 use crate::area::{PlacedObject, place_object};
 
@@ -120,6 +121,32 @@ pub fn load_map(packs: &PackManager, name: &str) -> Result<LoadedMap, String> {
     })
 }
 
+impl LoadedMap {
+    /// `CTerrainImpl::GetHeight` at a position local to this map, terrain only
+    /// (`CMapOutdoor::GetTerrainHeight`); 0 outside the map.
+    pub fn terrain_height(&self, x: f32, y: f32) -> f32 {
+        let (x, y) = (x as i32, y as i32);
+        let coord = ((x / TERRAIN_WORLD) as u16, (y / TERRAIN_WORLD) as u16);
+        self.terrains.iter().find(|cell| (cell.x, cell.y) == coord).map_or(0.0, |cell| cell.height(x, y))
+    }
+}
+
+/// The maps of `AtlasInfo.txt` (`CMapManager::__LoadMapInfoVector`): the
+/// locale's file when the client has one, else the root one. An unreadable
+/// file leaves the list empty, as in C++.
+pub fn load_atlas(packs: &PackManager, locale_path: &str) -> Vec<AtlasEntry> {
+    let locale_file = format!("{locale_path}/AtlasInfo.txt");
+    let data = packs.get(locale_file.as_bytes()).or_else(|_| packs.get(b"AtlasInfo.txt"));
+    data.map(|data| parse_atlas_info(&data)).unwrap_or_default()
+}
+
+/// `CPythonBackground::GlobalPositionToMapInfo`: the first map whose square
+/// holds the global position, which is the map the client warps to.
+pub fn map_at(entries: &[AtlasEntry], x: i32, y: i32) -> Option<&AtlasEntry> {
+    let (x, y) = (x as u32, y as u32);
+    entries.iter().find(|entry| !(x < entry.base_x || x >= entry.end_x || y < entry.base_y || y >= entry.end_y))
+}
+
 /// The map file errors only derive `Debug`, and their pack payload is a path
 /// that reads much better through `Display`.
 fn describe_property_error(error: &PropertyError) -> String {
@@ -154,6 +181,21 @@ mod tests {
     use crate::area::PlacedKind;
 
     #[test]
+    fn the_first_map_holding_the_position_wins() {
+        // The shipped `AtlasInfo.txt` order: a1 (409600..512000, 896000..1024000),
+        // then b1 (0..102400, 102400..230400).
+        let atlas = parse_atlas_info(b"metin2_map_a1 409600 896000 4 5\nmetin2_map_b1 0 102400 4 5\n");
+        assert_eq!(map_at(&atlas, 475982, 1000000).unwrap().name, b"metin2_map_a1");
+        assert_eq!(map_at(&atlas, 66382, 164633).unwrap().name, b"metin2_map_b1");
+        // Edges are half-open, as `FFindWarpMapName` has them: `end` is outside,
+        // `base` is inside.
+        assert_eq!(map_at(&atlas, 102399, 230399).unwrap().name, b"metin2_map_b1");
+        assert!(map_at(&atlas, 102400, 230399).is_none());
+        assert!(map_at(&atlas, 102399, 230400).is_none());
+        assert!(map_at(&atlas, 512000, 1000000).is_none());
+    }
+
+    #[test]
     #[ignore = "requires the bundled client packs under bin/"]
     fn bundled_a1_loads_terrains_objects_and_environment() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin");
@@ -174,6 +216,8 @@ mod tests {
         for texture in map.textures.iter().skip(1) {
             assert!(packs.exists(&texture.file_name), "{:?}", texture.file_name);
         }
-        assert!(map.terrains.iter().any(|cell| crate::splat::generate_splats(&cell.terrain, map.textures.len()).len() > 1));
+        assert!(
+            map.terrains.iter().any(|cell| crate::splat::generate_splats(&cell.terrain, map.textures.len()).len() > 1)
+        );
     }
 }

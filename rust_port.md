@@ -14,8 +14,8 @@ Last updated: 2026-11-01.
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
 | 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming belong to the game-world integration |
-| 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen and lists the account's characters. Character select, entering the game and the bot gate remain |
-| 5. UI in Rust (D17; was "Python bridge and UI") | **started**: `m2-ui` crate with the login screen (logs in to a real server, lists the characters). The Python bridge is dropped; layouts come from the original `uiscript` data files (roadmap §8) |
+| 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen, selects a character and enters the game standing in the map the server put it in. Actors, movement and the bot gate remain |
+| 5. UI in Rust (D17; was "Python bridge and UI") | **started**: `m2-ui` crate with the login and select screens (logs in to a real server, draws the characters, enters the game). The Python bridge is dropped; layouts come from the original `uiscript` data files (roadmap §8) |
 | 6. Parity and cut-over | not started |
 
 ### Phase 1 format families (`crates/m2-formats`)
@@ -44,7 +44,10 @@ the largest differing-pixel fraction is 4.13% (`texture_modulate`), within the
 scene's configured tolerance. The `m2-ui-core` differential suite was re-run
 after the `@NNNN` fix and passes all three tests (46 074 corpus strings and 300
 random scenarios). The effect viewer was checked by screenshot on
-`critical.mse` and `success.mse`.
+`critical.mse` and `success.mse`. The client's `--login admin admin --enter 0
+--screenshot` run was checked end to end: it logs in, selects slot 0, resolves
+`metin2_map_b1` from `AtlasInfo.txt` and draws the character in the b1 village
+(buildings, trees, fog, sky).
 
 ## 2. What exists
 
@@ -56,21 +59,29 @@ random scenarios). The effect viewer was checked by screenshot on
   m2-script` boots the interpreter headless and runs `dbg`/`time`/`math`.
 - **`crates/m2-client`**: the Bevy app; it composes `m2_game::net::NetPlugin` and
   `m2_ui::M2UiPlugin`. No Python and no C++ build step (D17). `m2-client --login
-  admin admin --screenshot out.png` logs in unattended and captures the result;
+  admin admin --screenshot out.png` logs in unattended and captures the select
+  screen; `--enter <slot>` starts the game and captures the character in the map;
   `--host`/`--auth-port` override the shipped `serverinfo.py` defaults.
-- **`crates/m2-ui`**: the game UI in Rust (D17). So far the login screen
-  (`login.rs`, egui): ID, password, channel, the original failure messages, and
-  the account's characters after `LoginSuccess`. It is an egui stopgap; the real
-  screens are `bevy_ui` (D18).
+- **`crates/m2-ui`**: the game UI in Rust (D17). The login screen (`login.rs`) is
+  egui with the original failure messages; the select screen (`select.rs`) draws
+  the account's characters in 3D with their intro motions, starts the game and
+  reports the enter progress. Both are egui stopgaps; the real screens are
+  `bevy_ui` (D18).
 - **`crates/m2-game`**: the game-side Bevy library shared by the client and the
   viewer. `render::{model, tree, effect, terrain, sky, cloud}` draw with the
-  client's render states; `world::prepare_map` loads a map (`m2_world::load_map`
-  plus the ground texture array and effect instances) off the main thread and
-  `world::MapScene` spawns and runs it. Everything spawns under a caller-owned
-  root; the scene camera carries `m2_game::SceneCamera`. `net::NetPlugin` is the
+  client's render states; `render::character` dresses a race in its shape and
+  hair and plays `.msa` motions (the select scene). `world::prepare_map` loads a
+  map (`m2_world::load_map` plus the ground texture array and effect instances)
+  off the main thread and `world::MapScene` spawns and runs it.
+  `ingame::{InGamePlugin, GameWorld}` is the in-game scene: on `EnterWorld` it
+  resolves the map from the global position in `AtlasInfo.txt`
+  (`world::prepare_map_at`), loads it off the main thread and spawns the map, the
+  player character at its terrain height and a third-person camera.
+  Everything spawns under a caller-owned root; the scene camera carries
+  `m2_game::SceneCamera`. `net::NetPlugin` is the
   server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
-  `PreUpdate`, driven by `LoginRequest` and reported as `NetMessage`s; the open
-  game connection is `Net::game`. `m2-world` stays
+  `PreUpdate`, driven by `LoginRequest`/`EnterGame` and reported as
+  `NetMessage`s; the open game connection is `Net::game`. `m2-world` stays
   free of Bevy (D3), so loading is there and spawning here.
 - **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
@@ -255,20 +266,24 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 - **Phase 2 gate:** closed. The golden-image suite passes, the texture,
   model/motion, SpeedTree and effect viewers are registered, and `.mse` effects
   simulate.
-- **Model and effect viewer screenshots are empty (found 2026-11-01, not yet
-  investigated).** `m2-viewer --motion "d:/ymir work/pc/assassin/general/wait.msa"
-  --screenshot "d:/ymir work/pc/assassin/assassin.gr2" out.png` and
-  `--screenshot "d:/ymir work/effect/hit/critical.mse" out.png` show only the
-  ground grid, while the inspector reports the model loaded and animating (or 2
-  live particles). It is identical at `7336ab7`, before the `m2-game`
-  extraction, so it predates it; the skinning walkthrough and the effect checks
-  claimed above need re-checking. Maps and SpeedTrees draw. The model's
-  `assassin_lord1/2.dds` textures are not in the packs (named by the `.gr2`).
+- **Missing-model screenshots, fixed.** `m2-viewer --motion
+  "d:/ymir work/pc/assassin/general/wait.msa" --screenshot
+  "d:/ymir work/pc/assassin/assassin.gr2" out.png` used to show only the ground
+  grid: the `.gr2` names `assassin_lord1/2.dds`, which are not in the packs, and
+  Bevy drops a mesh whose texture fails to load. `m2_game::render::model` now
+  leaves a missing texture out so the part draws untextured, like the C++ client
+  (`/tmp` check: the assassin draws and animates). Effect screenshots were not
+  re-checked in the same run.
 - **Phase 3 gate remains open:** LOD 1/2, quadtree culling, 3×3 streaming,
   textured sky boxes, audio and gameplay entities remain. Terrain, splats,
   water, objects, map effects, fog, sky and clouds are drawn (`m2-game`).
-- **Phase 4 gate remains open:** login works against a real server; character
-  select, entering the game, actors and the headless bot remain.
+- **Phase 4 gate remains open:** login, character select and entering the game
+  work against a real server (the player stands in b1 where the server put it);
+  actors, movement, warps and the headless bot remain.
+- **CP949 object names block a few map objects.** `metin2_map_b1` places
+  `ymir work/zone/<CP949 dir>/hay_01.gr2`/`hay_02.gr2`; the `m2://` source takes
+  UTF-8 names, so those two fail to load (logged by Bevy). The reversible
+  canonical mapping promised in §9 is now needed for full map objects.
 - **Superseded by D17, still in the tree:** `m2-script`, `m2-modgen`, the C ABI
   (`neoeter_python_abi`, CMake option `M2_BUILD_PYTHON_ABI`) and the module
   specs in `modules/`. Nothing in the client uses them any more; remove them
@@ -302,6 +317,7 @@ scripts/differential.sh bin gr2            # one suite
 cargo run -p m2-net --example login        # headless login: 127.0.0.1 11000 13000 admin admin
 cargo run -p m2-client                     # the client: login screen
 cargo run -p m2-client -- --login admin admin --screenshot /tmp/login.png
+cargo run -p m2-client -- --login admin admin --enter 0 --screenshot /tmp/ingame.png
 cargo run -p m2-viewer -- bin --map metin2_map_a1
 ```
 
@@ -323,15 +339,17 @@ Done so far:
 
 Next, in order. Each milestone ends with something visible against the server.
 
-5. **Milestone 2, character select and entering the game.**
-   - `m2-ui`: select screen (characters with their stats, empire choice for a
-     new account, create and delete) as a minimal egui stopgap (D18): it is
-     replaced in Milestone 4, so no polish here.
-   - `m2-game`: `send_select_character`/`send_enter_game`, the Loading phase,
-     `MainCharacter`: find the map from the position (`AtlasInfo.txt` +
-     `m2_world`), `prepare_map`, spawn the player's race model (`.msm` → body,
-     hair and armor parts) at its position, a third-person camera.
-   - Visible result: standing in the map where the server put the character.
+5. ~~**Milestone 2, character select and entering the game**~~ (2026-11-01),
+   for the existing-character path:
+   `m2-ui`'s select screen draws the characters (race model, armor shape, hair,
+   intro motions) and starts the chosen slot; `m2-game` sends
+   `SendSelectCharacter`/`SendEnterGame`, and `m2_game::ingame` resolves the map
+   from the global position in `AtlasInfo.txt` (`m2_world::{load_atlas, map_at}`),
+   loads it off the main thread, spawns the player at its terrain height and a
+   third-person camera. Visible result: `--enter 0` stands in `metin2_map_b1`'s
+   village, drawn with its buildings, trees, fog and sky. Character creation,
+   deletion and the empire choice for a new account move with the real
+   `bevy_ui` select screen (Milestone 4).
 6. **Milestone 3, the living world.**
    - Actors from `ActorAppend`/`Update`/`Move`/`Remove`/`Sync`: NPCs, monsters
      and players with their motions (`.msa` wait/run/attack, blending).
