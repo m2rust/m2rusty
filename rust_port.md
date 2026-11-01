@@ -105,6 +105,8 @@ Current totals on `main`: 131 tests pass, `cargo clippy -p m2-formats
     in C++ (pack). `.gr2` whole-suite is comparable (C++ 33 s, Rust 41 s,
     including pack reads and dump formatting; parse time alone not measured).
 
+See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the way.
+
 ## 4. Decisions
 
 | # | Decision | Why |
