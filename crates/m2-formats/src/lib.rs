@@ -5,6 +5,7 @@
 //! is CP949/CP1252, not UTF-8.
 
 pub mod crypt;
+pub mod gr2;
 pub mod locale;
 pub mod pack;
 pub mod proto;
