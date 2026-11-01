@@ -1,0 +1,2 @@
+add_executable(m2diff_spt SptDump.cpp)
+target_link_libraries(m2diff_spt PRIVATE neoeter_io neoeter_model_speedtree)
