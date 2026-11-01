@@ -14,12 +14,12 @@
 use bevy::asset::{AssetServer, RenderAssetUsages, embedded_asset};
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::hierarchy::ChildOf;
+use bevy::image::{ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor};
 use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::pbr::{Material, MaterialPlugin};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, BlendComponent, BlendFactor, BlendOperation, BlendState, CompareFunction, ShaderType,
-    SpecializedMeshPipelineError,
+    AsBindGroup, BlendComponent, BlendFactor, BlendOperation, BlendState, ShaderType, SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
 use bevy::transform::TransformSystems;
@@ -71,26 +71,29 @@ impl Material for CloudMaterial {
         _layout: &bevy::mesh::MeshVertexBufferLayoutRef,
         _key: bevy::pbr::MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        // The quad is seen from below; never cull it. Depth test on, write off
-        // as the client's `RenderCloud`.
+        // The quad is seen from below; never cull it. Depth write off as the
+        // client's `RenderCloud`, and the depth test stays Bevy's (reverse-Z
+        // `GreaterEqual`) so buildings and trees occlude the layer.
         descriptor.primitive.cull_mode = None;
         if let Some(depth) = descriptor.depth_stencil.as_mut() {
             depth.depth_write_enabled = Some(false);
-            depth.depth_compare = Some(CompareFunction::LessEqual);
         }
-        // `ONE`/`INVSRCCOLOR`, as `RenderCloud` sets it. Bevy would otherwise
-        // pick its standard alpha blend for the transparent phase.
+        // `ONE`/`INVSRCCOLOR`, as `RenderCloud` sets it. WebGPU has no
+        // source-colour destination factor, so the shader writes the cloud's
+        // luminance as alpha and the blend scales with `ONE - alpha`; the cloud
+        // textures are grayscale, which makes the two identical (see
+        // `cloud.wesl`).
         if let Some(fragment) = descriptor.fragment.as_mut() {
             for target in fragment.targets.iter_mut().flatten() {
                 target.blend = Some(BlendState {
                     color: BlendComponent {
                         src_factor: BlendFactor::One,
-                        dst_factor: BlendFactor::OneMinusSrc,
+                        dst_factor: BlendFactor::OneMinusSrcAlpha,
                         operation: BlendOperation::Add,
                     },
                     alpha: BlendComponent {
                         src_factor: BlendFactor::One,
-                        dst_factor: BlendFactor::OneMinusSrc,
+                        dst_factor: BlendFactor::OneMinusSrcAlpha,
                         operation: BlendOperation::Add,
                     },
                 });
@@ -135,7 +138,20 @@ pub fn spawn_cloud(world: &mut World, environment: &EnvironmentData, parent: Opt
     if sky.cloud_texture_file_name.is_empty() {
         return None;
     }
-    let image = world.resource::<AssetServer>().load(paths::asset_source_uri(&sky.cloud_texture_file_name));
+    // The texture is tiled `CloudTextureScale` times over the quad; the client's
+    // D3D sampler wraps (the default address mode), so a clamped sampler would
+    // smear the edge texels across most of the sky.
+    let image: Handle<Image> = world
+        .resource::<AssetServer>()
+        .load_builder()
+        .with_settings(|settings: &mut ImageLoaderSettings| {
+            settings.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+                address_mode_u: ImageAddressMode::Repeat,
+                address_mode_v: ImageAddressMode::Repeat,
+                ..ImageSamplerDescriptor::linear()
+            });
+        })
+        .load(paths::asset_source_uri(&sky.cloud_texture_file_name));
     let params = CloudUniform {
         color: Vec4::from_array(sky.cloud_color.first),
         offset: Vec2::ZERO,

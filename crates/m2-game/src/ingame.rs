@@ -479,7 +479,7 @@ fn drive_world(world: &mut World) {
                 control.facing = facing_degrees(direction);
                 if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
                     let angle = -control.facing.to_radians();
-                    transform.rotation = transform.rotation.slerp(Quat::from_rotation_y(angle), 0.25);
+                    transform.rotation = Quat::from_rotation_y(angle);
                 }
             }
             let height = scene.map.map.terrain_height(local.x, local.y);

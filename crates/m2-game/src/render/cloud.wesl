@@ -1,9 +1,10 @@
 // Cloud layer of the map environment (`CSkyBox::RenderCloud`).
 //
 // The client's stage is D3DTOP_MODULATEINVALPHA_ADDCOLOR with Arg1 = texture
-// and Arg2 = diffuse (the cloud colour): rgb = tex + colour * (1 - tex.a),
-// alpha = tex.a. The material blends ONE / INVSRCCOLOR, so the returned rgb is
-// added and the destination is scaled by its inverse.
+// and Arg2 = diffuse (the cloud colour): rgb = tex.rgb * (1 - colour.a) +
+// colour.rgb, alpha = tex.a. The material blends ONE / INVSRCCOLOR, i.e. the
+// source is added and the destination is scaled by one minus the source
+// colour, so the cloud texture's black texels leave the scene untouched.
 
 import bevy_pbr::render::{
     mesh_functions,
@@ -41,5 +42,11 @@ fn vertex(input: Vertex) -> VertexOutput {
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let tex = textureSample(image, image_sampler, in.uv * cloud.scale + cloud.offset);
-    return vec4<f32>(tex.rgb + cloud.color.rgb * (1.0 - tex.a), tex.a);
+    let rgb = tex.rgb * (1.0 - cloud.color.a) + cloud.color.rgb;
+    // `D3DBLEND_INVSRCCOLOR` scales the destination by one minus the source
+    // colour, per channel. WebGPU can only scale by one minus the source
+    // alpha, so the luminance (the shipped cloud textures are grayscale) is
+    // written there instead.
+    let luminance = dot(rgb, vec3<f32>(0.299, 0.587, 0.114));
+    return vec4<f32>(rgb, luminance);
 }

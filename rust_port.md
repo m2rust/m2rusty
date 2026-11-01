@@ -84,8 +84,10 @@ accepted.
   player character at its terrain height and a third-person camera. The same
   module drives the controls: left-click ground picking (heightfield ray march),
   `WASD`/arrows relative to the camera, `FUNC_MOVE`/`FUNC_WAIT` position reports
-  every 300 ms, and space attacks the nearest actor (`CG_ATTACK`). Other actors
-  are tracked from `ActorAppend`/`Move`/`Sync`/`Remove`.
+  every 300 ms, and space attacks the nearest actor (`CG_ATTACK`). The character
+  snaps to the movement direction and motion clips switch without blending, as
+  the client does. Other actors are tracked from
+  `ActorAppend`/`Move`/`Sync`/`Remove`.
   Everything spawns under a caller-owned root; the scene camera carries
   `m2_game::SceneCamera`. `net::NetPlugin` is the
   server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
@@ -126,7 +128,12 @@ accepted.
   fog range, so fog is opt-in. The gradient sky is baked from
   `SkyBoxGradientColorVector` into a cubemap on the camera (`Skybox`), which
   Bevy draws as a background; the scrolling cloud layer is a large quad with
-  the client's `MODULATEINVALPHA_ADDCOLOR` and `ONE`/`INVSRCCOLOR` state.
+  the client's `MODULATEINVALPHA_ADDCOLOR` and `ONE`/`INVSRCCOLOR` state. It is
+  depth-tested with Bevy's reverse-Z so terrain and objects occlude it, its
+  texture sampler repeats (`CloudTextureScale` tiles it), and the shader
+  emulates `INVSRCCOLOR` by writing the cloud luminance into alpha (WebGPU has
+  no source-colour destination factor; the shipped cloud textures are
+  grayscale, so it matches).
   Textured sky boxes (`SkyBoxTextureRenderMode`) are still missing. The viewer
   is deliberately a preview: LOD 1/2, quadtree culling and 3×3 streaming belong
   to the game-world integration, not to `m2-viewer`.
@@ -269,6 +276,10 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
   animations reallocate (dangling pointer when a file has more than one
   animation); a zero weight total divides by zero. Rust checks all of these and
   adds a 256 MiB section cap and a work budget.
+- **cloud:** `D3DBLEND_INVSRCCOLOR` (destination scaled by one minus the source
+  colour) has no WebGPU blend factor; the cloud shader writes the source
+  luminance into alpha and uses `ONE`/`ONE_MINUS_SRC_ALPHA`. Exact for the
+  shipped grayscale cloud textures, approximate for a tinted `CloudColor`.
 
 ## 6. Open items and risks
 
