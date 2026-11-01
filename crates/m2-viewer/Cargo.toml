@@ -1,0 +1,13 @@
+[package]
+name = "m2-viewer"
+description = "Asset viewer: browse packs, show models, motions, trees (docs/bevy-port-plan.md, phase 2)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy.workspace = true
+m2-assets.workspace = true
+m2-render.workspace = true
+m2-formats.workspace = true

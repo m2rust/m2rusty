@@ -3634,6 +3634,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "m2-assets"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "m2-formats",
+]
+
+[[package]]
 name = "m2-client"
 version = "0.1.0"
 dependencies = [
@@ -3653,10 +3661,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "m2-render"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "m2-script"
 version = "0.1.0"
 dependencies = [
  "cmake",
+]
+
+[[package]]
+name = "m2-viewer"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "m2-assets",
+ "m2-formats",
+ "m2-render",
 ]
 
 [[package]]
