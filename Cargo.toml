@@ -22,6 +22,7 @@ m2-assets = { path = "crates/m2-assets" }
 m2-formats = { path = "crates/m2-formats" }
 m2-render = { path = "crates/m2-render" }
 m2-script = { path = "crates/m2-script" }
+m2-world = { path = "crates/m2-world" }
 
 # Bevy is slow unoptimised; optimise dependencies even in dev builds.
 [profile.dev.package."*"]

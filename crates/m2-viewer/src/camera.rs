@@ -185,7 +185,7 @@ fn orbit_control(
             let up = tf.up();
             orbit.focus += (-right * d.x + up * d.y) * s;
         }
-        orbit.radius = (orbit.radius * 0.9f32.powf(input.scroll)).clamp(0.05, 5000.0);
+        orbit.radius = (orbit.radius * 0.9f32.powf(input.scroll)).clamp(0.05, 300_000.0);
     }
     if kb {
         let k = |c| keys.pressed(c);
@@ -227,7 +227,7 @@ fn orbit_control(
             orbit.radius = (orbit.radius * (1.0 - 1.5 * dt)).max(0.05);
         }
         if k(KeyCode::Minus) || k(KeyCode::NumpadSubtract) || k(KeyCode::PageDown) {
-            orbit.radius = (orbit.radius * (1.0 + 1.5 * dt)).min(5000.0);
+            orbit.radius = (orbit.radius * (1.0 + 1.5 * dt)).min(300_000.0);
         }
         if keys.just_pressed(KeyCode::KeyR) {
             **orbit = OrbitCamera::default();

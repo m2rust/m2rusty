@@ -14,6 +14,7 @@ bevy_egui = { version = "0.43.1", default-features = false, features = ["render"
 m2-formats.workspace = true
 m2-assets.workspace = true
 m2-render.workspace = true
+m2-world.workspace = true
 
 [features]
 # Faster iterative links after the first Bevy dylib build. Release packagers

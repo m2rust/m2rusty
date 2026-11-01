@@ -3971,6 +3971,7 @@ dependencies = [
  "m2-assets",
  "m2-formats",
  "m2-render",
+ "m2-world",
 ]
 
 [[package]]
