@@ -1,7 +1,5 @@
 //! Uncompressed RGB(A) DDS files and the texture decoder's tests.
 
-use crate::texture::{M2ImageSettings, decode};
-
 /// Uncompressed RGB(A) DDS with 16, 24 or 32 bits per pixel and arbitrary
 /// channel masks (A1R5G5B5, R5G6B5, A4R4G4B4, R8G8B8, A8R8G8B8, X8R8G8B8...).
 /// Channels narrower than 8 bits are expanded by bit replication, as D3DX does.
@@ -59,7 +57,7 @@ pub(crate) fn decode_uncompressed_dds(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::texture::{M2ImageSettings, decode};
 
     /// DDS header with the given pixel format fields.
     fn dds(width: u32, height: u32, mips: u32, flags: u32, fourcc: &[u8; 4], bits: u32, masks: [u32; 4]) -> Vec<u8> {

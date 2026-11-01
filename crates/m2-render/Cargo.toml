@@ -1,6 +1,6 @@
 [package]
 name = "m2-render"
-description = "Materials emulating the client's D3D9 fixed-function rendering (docs/bevy-port-plan.md, phase 2)"
+description = "Fixed-function (D3D9-style) materials for Bevy (docs/bevy-port-plan.md, phase 2)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,3 +8,7 @@ publish.workspace = true
 
 [dependencies]
 bevy.workspace = true
+
+[dev-dependencies]
+png = "0.18.1"
+tempfile.workspace = true

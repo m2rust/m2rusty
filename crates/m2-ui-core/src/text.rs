@@ -193,7 +193,10 @@ impl TextInstance {
         while begin < end {
             let wide: Vec<u32> = bytes.iter().map(|&b| b as u32).collect();
             let token = find_token(&wide, begin);
-            let chars = m2_formats::locale::ymir_decode(cp, &bytes[begin..token]);
+            let chars: Vec<u32> = m2_formats::utf8::decode(cp, &bytes[begin..token])
+                .chars()
+                .map(u32::from)
+                .collect();
             text.push_str(&from_wide(&chars));
             segments.push((cp, chars));
             if token < end {

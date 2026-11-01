@@ -6,7 +6,7 @@
 
 use std::fmt::Write;
 
-use m2_formats::locale::ymir_decode;
+use m2_formats::utf8;
 use m2_ui_core::text::{Glyph, TextInstance, TextMeasure};
 use m2_ui_core::text_tag::*;
 
@@ -26,7 +26,7 @@ pub fn dump_corpus(corpus: &str) -> String {
         let mut it = line.split_whitespace();
         let cp: u32 = it.next().unwrap().parse().unwrap();
         let bytes = unhex(it.next().unwrap_or("-"));
-        let w = ymir_decode(cp, &bytes);
+        let w: Vec<u32> = utf8::decode(cp, &bytes).chars().map(u32::from).collect();
         writeln!(out, "t {n} cp={cp}").unwrap();
         writeln!(out, " w {}", whex(&w)).unwrap();
         let olen = get_text_tag_output_len(&w);

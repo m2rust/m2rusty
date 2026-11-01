@@ -1,6 +1,6 @@
 [package]
 name = "m2-assets"
-description = "Bevy asset layer over the client packs (docs/bevy-port-plan.md, phase 2)"
+description = "Bevy asset source and loaders for Metin2 data (docs/bevy-port-plan.md, phase 2)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,3 +9,6 @@ publish.workspace = true
 [dependencies]
 bevy.workspace = true
 m2-formats.workspace = true
+# Settings of asset loaders are serialised into `.meta` files.
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.21"

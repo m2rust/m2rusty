@@ -8,6 +8,11 @@ publish.workspace = true
 
 [dependencies]
 bevy.workspace = true
-m2-assets.workspace = true
-m2-render.workspace = true
+# UI toolkit: egui (pure Rust; desktop, wasm, Android, iOS). bevy_egui 0.43 targets Bevy 0.20.
+# The clipboard feature (arboard) has no Android/iOS/wasm backend, so it is desktop-only below.
+bevy_egui = { version = "0.43.1", default-features = false, features = ["render", "default_fonts", "open_url"] }
 m2-formats.workspace = true
+# TODO(integrator): re-add m2-assets / m2-render once those crates land.
+
+[target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
+bevy_egui = { version = "0.43.1", default-features = false, features = ["manage_clipboard"] }

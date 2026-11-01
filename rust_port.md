@@ -12,10 +12,10 @@ Last updated: 2026-11-01.
 |---|---|
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
-| 2. Asset viewer in Bevy | not started |
-| 3. World | not started |
-| 4. Game logic and networking | not started |
-| 5. Python bridge and UI | not started |
+| 2. Asset viewer in Bevy | **partial**: asset loaders, fixed-function material, viewer shell, and render harness merged; gameplay asset viewers and golden-image gate remain |
+| 3. World | **partial**: world queries/meshes and effect simulation crates merged; Bevy world rendering/integration remains |
+| 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
+| 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
 | 6. Parity and cut-over | not started |
 
 ### Phase 1 format families (`crates/m2-formats`)
@@ -35,9 +35,10 @@ Last updated: 2026-11-01.
 | `effect` | `.mse`, particles, `.mde` meshes, flying data `.msf` | 1,148 `.mse`, 98 `.msf`, 112 `.mde` (1.57 M lines) | merged |
 | `image` | DXT/DDS, TGA, stb JPEG/BMP/PNG loaders, `CImage` | 7,445 dds, 4,022 tga, 471 jpg, 8 bmp (81.9k lines; 516 files pixel-for-pixel); 44 synthetic files | merged |
 
-Current totals on `main`: 151 tests pass, `cargo clippy -p m2-formats
---all-targets` is clean, and ten differential suites pass
-(`scripts/differential.sh`).
+Before the later Phase 2–5 merges, 151 tests, clippy, and ten differential
+suites passed (`scripts/differential.sh`). In this continuation,
+`nix-shell --run 'cargo check --workspace --all-targets'` passes on the merged
+workspace. The test and C++ differential suites were not executed in this run.
 
 ## 2. What exists
 
@@ -49,8 +50,24 @@ Current totals on `main`: 151 tests pass, `cargo clippy -p m2-formats
   m2-script` boots the interpreter headless and runs `dbg`/`time`/`math`.
 - **`crates/m2-client`**: minimal Bevy window with the Python host running
   beside it. Runs; not yet the real client.
-- **`crates/m2-formats`**: pure Rust, no Bevy dependency. Names and contents are
-  bytes, never `String`, because the data is CP949/CP1252.
+- **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
+  `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
+  D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,
+  inspector shell and texture viewer. Model/motion/tree/effect viewers are not
+  wired in, and the golden-image gate has not been run on this merged state.
+- **World and effects:** `m2-world` ports terrain height/attribute queries,
+  patch meshes, splats, lighting and area placement. `m2-effect` ports particle,
+  mesh and light simulation with a C++ differential harness. These are Rust
+  logic crates; they are not yet connected to Bevy rendering or the client.
+- **Networking:** `m2-net` contains packet structs/codecs, packet framing,
+  sequence handling, transport abstractions and a login phase machine. It is
+  not yet connected to `m2-client` or game entities.
+- **UI and Python modules:** `m2-ui-core` contains window, slot, text and edit
+  logic; `m2-modgen` extracts module specs and generates Rust/C++ glue. The
+  generated shims are not yet wired into the Python ABI or the Bevy app.
+- **`crates/m2-formats`**: pure Rust, no Bevy dependency. Binary format APIs
+  stay byte-oriented; `utf8` provides the `encoding_rs` display boundary and
+  `locale` keeps its glibc reference behind the optional `glibc-tables` feature.
 - **C ABI** (`neoeter-python/include/Neoeter/Python/Abi/neoeter_python.h`):
   `neoeter_python_version/init/run_line/shutdown`. Opt-in via
   `-DM2_BUILD_PYTHON_ABI=ON`; the normal C++ build is unchanged. Only
@@ -114,9 +131,9 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 |---|---|---|
 | D1 | Python 2.7 and the 38 module shims stay in C++ | PyO3 does not support 2.7; this was the brief |
 | D2 | `m2-script` links one shared library (`neoeter_python_abi`) | Avoids Rust having to link the engine's static archives and their system deps |
-| D3 | Pin Bevy `=0.20.1` | Avoid churn mid-phase; isolate Bevy behind `m2-render`/`m2-assets` later |
+| D3 | Pin Bevy `=0.20.1` | Avoid churn mid-phase; keep Bevy dependencies in the asset/render/viewer crates |
 | D4 | Rust ports must match C++ *byte for byte on real data*, proven by differential tests | The only way to port 100k+ lines of binary/text format code without regressions |
-| D5 | Names and contents are `&[u8]`/`Vec<u8>` | Data is CP949/CP1252 |
+| D5 | Phase 1 names and contents stay `&[u8]`/`Vec<u8>`; new display APIs decode to UTF-8 | Preserve byte-exact format behavior while exposing UTF-8 to the rest of the client |
 | D6 | Reference = Linux C++ build (glibc `atoi`/`atof`/`iconv`) | That is what builds here; MSVC would differ on `atoi` overflow, hex floats, some code pages |
 | D7 | Malformed input returns an error, never panics; C++ undefined behaviour is *not* mirrored | Several C++ readers over-read or divide by zero on corrupt files; deviations are documented per module |
 | D8 | Real C++ bugs are mirrored when they affect output on real data, with a comment | e.g. Arabic shaping skips one index after LAM-ALEF; CP1255/CP1258 decoder loses its held character at end of input |
@@ -155,9 +172,14 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 
 ## 6. Open items and risks
 
-- **Phase 1 not finished:** race/property, map and effect are in flight
-  (agents resumed after a usage limit); `image` (DXT, DDS/TGA/JPG, stb) has no
-  owner yet.
+- **Phase 2 gate remains open:** the viewer shell currently registers only the
+  texture viewer. The model/motion, SpeedTree and effect viewers and the
+  character skinning walkthrough still need to be connected and checked.
+- **Phase 3 gate remains open:** world and effect Rust logic is not yet drawn
+  by Bevy systems; maps, water, sky, audio and gameplay entities remain.
+- **Phase 4/5 gates remain open:** networking is not integrated with a game
+  state, and the generated module glue/UI are not yet connected to the real
+  Python scripts.
 - **No `rustfmt.toml`:** `cargo fmt` would reformat every module. Agents format
   their own files with `max_width = 120, use_small_heuristics = "Max"`. Add that
   as a config before the next big merge.
@@ -187,31 +209,32 @@ cargo run -p m2-client                     # Bevy window + Python host
 
 ## 8. Next steps
 
-1. Phase 1 is closed. Next: the UTF-8 façade (D14) and the crate review (D16, §10) can run in parallel with Phase 2.
-2. (done) `image` with the existing `test_dxt_invariants`
-   cases; close Phase 1.
-3. Add `rustfmt.toml` and run it once on the whole crate.
-4. Phase 2: `m2-assets` (pack `AssetSource`, loaders for textures, gr2, spt),
-   `m2-render` materials checked against `neoeter/src/render/tests/golden`.
+1. Run the differential suites for the merged networking, world, effects and UI
+   code against the local client data; resolve any failures.
+2. Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
+   then run the golden-image suite and skinning walkthrough.
+3. Connect world/effect outputs to Bevy rendering and build the fly-camera map
+   parity gate.
+4. Connect `m2-net` to the client state and implement the headless login/play
+   bot gate.
+5. Wire `m2-modgen` output to the C ABI and `m2-ui-core` to Bevy, then reach
+   login and in-game with the unmodified Python scripts.
 
 ## 9. UTF-8 policy (D14): what it means for the code
 
 - **Phase 1 stays as is.** `pack`, `script`, `race`, … keep `Vec<u8>` names and
   tokens. That is what makes them verifiable byte for byte, and changing it now
   would throw the comparison away. 31 file names in `bin/pack` are CP949 bytes.
-- **New code is UTF-8.** `m2-assets`, `m2-ui`, `m2-game` and the script bridge
-  take and return `&str`/`String`. Conversion from the legacy code page
-  happens once, where bytes enter from a pack or from the network.
-- **Decide at the boundary, not per call site.** Candidates: decode names in
-  `PackManager` into UTF-8 virtual names (the Python scripts and the proto
-  tables must then agree on the same spelling), and decode `proto`/locale
-  text when it is loaded.
-- **`locale` can shrink.** It currently reproduces glibc's `iconv` tables for 20
-  code pages (320 KB of tables) to be byte-identical with C++. Under D14 that
-  fidelity is no longer needed; a later cleanup can replace it with
-  `encoding_rs` for the few locales actually shipped and drop the tables and
-  the Arabic/Japanese/Vietnamese reproduction that is not needed for display.
-  Nothing depends on this today, so it is deferred.
+- **New code is UTF-8.** `m2-formats::utf8` uses `encoding_rs` for the shipped
+  legacy code pages. UI text decodes to Unicode scalar values through this
+  facade; the glibc-exact implementation is behind `glibc-tables` for reference
+  tests.
+- **Pack names are a known boundary limitation.** `m2-assets` exposes UTF-8
+  asset paths, so the 31 CP949-only names in the client pack cannot be addressed
+  by that Bevy source yet. Keep raw names available in `m2-formats`; add a
+  reversible canonical mapping before the game or viewer needs those files.
+- **Decode proto and locale display text on load.** Keep raw bytes for keys and
+  differential comparisons; expose the decoded form to UI and game code.
 - **Open question for Phase 5:** Python 2.7 `str` is bytes. The scripts and
   the C++ modules pass text in the client's code page. The shim layer converts
   to and from UTF-8 at the boundary; which source encoding the shipped
@@ -237,8 +260,8 @@ Candidates to revisit under D16 (each needs a differential check, none is urgent
 
 - `crypt`: own LZO1X decoder and XTEA; a maintained pure-Rust LZO crate may
   exist.
-- `locale`: glibc-exact tables (see §9); `encoding_rs` is the likely
-  replacement once D14 is applied.
+- `locale`: `encoding_rs` is the default display codec; the glibc-exact tables
+  remain optional as the differential reference (see §9).
 - `gr2`'s decompressor (Oodle1-style) and `spt` have no crate equivalents;
   they stay as own code.
 - `image`: evaluated, see below. BMP is the one case where a crate matched on all real files but own code was kept; switch to the `image` crate if you want strict D16.

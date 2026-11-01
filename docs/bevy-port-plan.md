@@ -1,6 +1,8 @@
 # Porting m2rusty to Bevy (Rust)
 
-Status: proposal. Nothing here is implemented yet.
+Status: active migration. Phases 0 and 1 are complete. Foundations for phases
+2–5 have been merged; their integration and acceptance gates remain open. See
+[`rust_port.md`](../rust_port.md) for current implementation status and findings.
 
 ## 1. What we are porting
 
