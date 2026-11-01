@@ -4,7 +4,8 @@
 //!
 //! ```text
 //! m2-client [--client <dir>] [--host <addr>] [--auth-port <port>]
-//!           [--login <id> <password>] [--enter <slot>] [--screenshot <out.png>]
+//!           [--login <id> <password>] [--enter <slot>] [--demo]
+//!           [--screenshot <out.png>]
 //! ```
 //!
 //! `--client` is the folder with `pack/` (default `bin`).
@@ -55,6 +56,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
                 let slot = it.next().ok_or("--enter needs a slot (0-3)")?;
                 a.autologin.enter = Some(slot.parse().map_err(|_| format!("bad slot {slot}"))?);
             }
+            "--demo" => a.autologin.demo = true,
             "--screenshot" => a.autologin.screenshot = Some(PathBuf::from(it.next().ok_or("--screenshot needs <out.png>")?)),
             other => return Err(format!("unknown argument {other}")),
         }
@@ -140,7 +142,7 @@ mod tests {
     fn args() {
         assert_eq!(p(&[]).unwrap(), Args::default());
         let a = p(&[
-            "--client", "c", "--host", "10.0.0.2", "--auth-port", "11002", "--login", "admin", "pw", "--enter", "1", "--screenshot", "o.png",
+            "--client", "c", "--host", "10.0.0.2", "--auth-port", "11002", "--login", "admin", "pw", "--enter", "1", "--demo", "--screenshot", "o.png",
         ])
         .unwrap();
         assert_eq!(a.client_dir, PathBuf::from("c"));
@@ -148,6 +150,7 @@ mod tests {
         assert_eq!(a.auth_port, Some(11002));
         assert_eq!(a.autologin.login, Some(("admin".into(), "pw".into())));
         assert_eq!(a.autologin.enter, Some(1));
+        assert!(a.autologin.demo);
         assert_eq!(a.autologin.screenshot, Some(PathBuf::from("o.png")));
         assert!(p(&["--login", "admin"]).is_err());
         assert!(p(&["--auth-port", "x"]).is_err());

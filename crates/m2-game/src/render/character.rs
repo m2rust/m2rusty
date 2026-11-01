@@ -28,24 +28,51 @@ pub struct RaceFiles {
     pub msm: &'static str,
     /// The folder of the select-screen motions (`SetIntroMotions`).
     pub intro: &'static str,
+    /// The folder of the normal motions (`SetGeneralMotions`).
+    pub general: &'static str,
 }
 
 /// `playersettingmodule.py`'s `LoadGameData("INIT")`: warrior (m), assassin (f),
 /// sura (m), shaman (f), then warrior (f), assassin (m), sura (f), shaman (m).
 const RACES: [RaceFiles; 8] = [
-    RaceFiles { msm: "warrior_m.msm", intro: "d:/ymir work/pc/warrior/intro/" },
-    RaceFiles { msm: "assassin_w.msm", intro: "d:/ymir work/pc/assassin/intro/" },
-    RaceFiles { msm: "sura_m.msm", intro: "d:/ymir work/pc/sura/intro/" },
-    RaceFiles { msm: "shaman_w.msm", intro: "d:/ymir work/pc/shaman/intro/" },
-    RaceFiles { msm: "warrior_w.msm", intro: "d:/ymir work/pc2/warrior/intro/" },
-    RaceFiles { msm: "assassin_m.msm", intro: "d:/ymir work/pc2/assassin/intro/" },
-    RaceFiles { msm: "sura_w.msm", intro: "d:/ymir work/pc2/sura/intro/" },
-    RaceFiles { msm: "shaman_m.msm", intro: "d:/ymir work/pc2/shaman/intro/" },
+    RaceFiles { msm: "warrior_m.msm", intro: "d:/ymir work/pc/warrior/intro/", general: "d:/ymir work/pc/warrior/general/" },
+    RaceFiles { msm: "assassin_w.msm", intro: "d:/ymir work/pc/assassin/intro/", general: "d:/ymir work/pc/assassin/general/" },
+    RaceFiles { msm: "sura_m.msm", intro: "d:/ymir work/pc/sura/intro/", general: "d:/ymir work/pc/sura/general/" },
+    RaceFiles { msm: "shaman_w.msm", intro: "d:/ymir work/pc/shaman/intro/", general: "d:/ymir work/pc/shaman/general/" },
+    RaceFiles { msm: "warrior_w.msm", intro: "d:/ymir work/pc2/warrior/intro/", general: "d:/ymir work/pc2/warrior/general/" },
+    RaceFiles { msm: "assassin_m.msm", intro: "d:/ymir work/pc2/assassin/intro/", general: "d:/ymir work/pc2/assassin/general/" },
+    RaceFiles { msm: "sura_w.msm", intro: "d:/ymir work/pc2/sura/intro/", general: "d:/ymir work/pc2/sura/general/" },
+    RaceFiles { msm: "shaman_m.msm", intro: "d:/ymir work/pc2/shaman/intro/", general: "d:/ymir work/pc2/shaman/general/" },
 ];
 
 /// The files of player race `race` (0..8).
 pub fn race_files(race: u8) -> Option<RaceFiles> {
     RACES.get(usize::from(race)).copied()
+}
+
+/// The normal motions (`playersettingmodule.py`'s `SetGeneralMotions` plus the
+/// general-mode attack).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Motion {
+    Wait,
+    Walk,
+    Run,
+    Attack,
+}
+
+impl Motion {
+    /// The `.msa` of this motion for `race`. `SetGeneralMotions` registers
+    /// `wait`/`walk`/`run`; the general-mode combo attack is `attack.msa`
+    /// (`__LoadGameAssassinEx` and the other `__LoadGame*Ex` functions).
+    pub fn file(self, race: u8) -> Option<String> {
+        let name = match self {
+            Motion::Wait => "wait.msa",
+            Motion::Walk => "walk.msa",
+            Motion::Run => "run.msa",
+            Motion::Attack => "attack.msa",
+        };
+        race_files(race).map(|r| format!("{}{name}", r.general))
+    }
 }
 
 /// The select-screen motions (`chr.MOTION_INTRO_*`).
@@ -107,8 +134,10 @@ enum Stage {
     Failed,
 }
 
-struct Motion {
+struct Playing {
     msa: Handle<RaceMotionAsset>,
+    /// The `.msa` path, for the log.
+    file: String,
     clip: Option<Handle<AnimationClip>>,
     repeat: bool,
     started: bool,
@@ -121,7 +150,7 @@ pub struct Character {
     pub root: Entity,
     pub look: Look,
     stage: Stage,
-    motion: Option<Motion>,
+    motion: Option<Playing>,
     /// Why the character cannot be drawn (unknown race, a missing file).
     pub error: Option<String>,
 }
@@ -147,8 +176,29 @@ impl Character {
 
     /// Plays a `.msa` motion, looping or once (then holding its last frame).
     pub fn play(&mut self, world: &mut World, msa: &str, repeat: bool) {
+        let file = msa.to_owned();
         let msa = world.resource::<AssetServer>().load(paths::asset_source_uri(msa));
-        self.motion = Some(Motion { msa, clip: None, repeat, started: false });
+        self.motion = Some(Playing { msa, file, clip: None, repeat, started: false });
+    }
+
+    /// Plays one of the race's normal motions.
+    pub fn play_motion(&mut self, world: &mut World, motion: Motion, repeat: bool) {
+        if let Some(file) = motion.file(self.look.race) {
+            self.play(world, &file, repeat);
+        }
+    }
+
+    /// The last played motion has ended. False while it is still loading.
+    pub fn motion_finished(&self, world: &World) -> bool {
+        match &self.stage {
+            Stage::Spawned(spawned) => world.get::<AnimationPlayer>(spawned.root).is_some_and(|player| player.all_finished()),
+            _ => false,
+        }
+    }
+
+    /// The requested motion has started playing (its clip is loaded).
+    pub fn motion_started(&self) -> bool {
+        self.motion.as_ref().is_some_and(|motion| motion.started)
     }
 
     /// Advances loading and starts the requested motion once everything is in.
@@ -244,6 +294,7 @@ impl Character {
             }
         }
         motion.started = true;
+        info!("motion {} started", motion.file);
     }
 }
 

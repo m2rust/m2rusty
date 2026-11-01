@@ -14,7 +14,7 @@ Last updated: 2026-11-01.
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
 | 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming belong to the game-world integration |
-| 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen, selects a character and enters the game standing in the map the server put it in. Actors, movement and the bot gate remain |
+| 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen, selects a character, enters the game and walks/attacks with a third-person camera. Actors are tracked but not drawn; movement and warps streaming and the bot gate remain |
 | 5. UI in Rust (D17; was "Python bridge and UI") | **started**: `m2-ui` crate with the login and select screens (logs in to a real server, draws the characters, enters the game). The Python bridge is dropped; layouts come from the original `uiscript` data files (roadmap §8) |
 | 6. Parity and cut-over | not started |
 
@@ -47,7 +47,10 @@ random scenarios). The effect viewer was checked by screenshot on
 `critical.mse` and `success.mse`. The client's `--login admin admin --enter 0
 --screenshot` run was checked end to end: it logs in, selects slot 0, resolves
 `metin2_map_b1` from `AtlasInfo.txt` and draws the character in the b1 village
-(buildings, trees, fog, sky).
+(buildings, trees, fog, sky). `--demo` walks to the nearest actor, swings at it
+and the screenshot shows the attack pose with the target named in the HUD; the
+server kept the reported position across runs, so the `FUNC_MOVE` stream is
+accepted.
 
 ## 2. What exists
 
@@ -61,11 +64,13 @@ random scenarios). The effect viewer was checked by screenshot on
   `m2_ui::M2UiPlugin`. No Python and no C++ build step (D17). `m2-client --login
   admin admin --screenshot out.png` logs in unattended and captures the select
   screen; `--enter <slot>` starts the game and captures the character in the map;
+  `--demo` walks to the nearest actor and swings once before the capture;
   `--host`/`--auth-port` override the shipped `serverinfo.py` defaults.
 - **`crates/m2-ui`**: the game UI in Rust (D17). The login screen (`login.rs`) is
   egui with the original failure messages; the select screen (`select.rs`) draws
-  the account's characters in 3D with their intro motions, starts the game and
-  reports the enter progress. Both are egui stopgaps; the real screens are
+  the account's characters in 3D with their intro motions, starts the game,
+  reports the enter progress and, in game, shows the map position, the current
+  target and the control help. Both are egui stopgaps; the real screens are
   `bevy_ui` (D18).
 - **`crates/m2-game`**: the game-side Bevy library shared by the client and the
   viewer. `render::{model, tree, effect, terrain, sky, cloud}` draw with the
@@ -76,7 +81,11 @@ random scenarios). The effect viewer was checked by screenshot on
   `ingame::{InGamePlugin, GameWorld}` is the in-game scene: on `EnterWorld` it
   resolves the map from the global position in `AtlasInfo.txt`
   (`world::prepare_map_at`), loads it off the main thread and spawns the map, the
-  player character at its terrain height and a third-person camera.
+  player character at its terrain height and a third-person camera. The same
+  module drives the controls: left-click ground picking (heightfield ray march),
+  `WASD`/arrows relative to the camera, `FUNC_MOVE`/`FUNC_WAIT` position reports
+  every 300 ms, and space attacks the nearest actor (`CG_ATTACK`). Other actors
+  are tracked from `ActorAppend`/`Move`/`Sync`/`Remove`.
   Everything spawns under a caller-owned root; the scene camera carries
   `m2_game::SceneCamera`. `net::NetPlugin` is the
   server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
@@ -277,13 +286,20 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 - **Phase 3 gate remains open:** LOD 1/2, quadtree culling, 3×3 streaming,
   textured sky boxes, audio and gameplay entities remain. Terrain, splats,
   water, objects, map effects, fog, sky and clouds are drawn (`m2-game`).
-- **Phase 4 gate remains open:** login, character select and entering the game
-  work against a real server (the player stands in b1 where the server put it);
-  actors, movement, warps and the headless bot remain.
+- **Phase 4 gate remains open:** login, character select, entering the game and
+  movement/attack work against a real server (the player walks where clicked and
+  the server keeps the reported position); actors are tracked but not drawn,
+  terrain attributes/collision are not checked, warps are not handled and the
+  headless bot does not exist yet.
 - **CP949 object names block a few map objects.** `metin2_map_b1` places
   `ymir work/zone/<CP949 dir>/hay_01.gr2`/`hay_02.gr2`; the `m2://` source takes
   UTF-8 names, so those two fail to load (logged by Bevy). The reversible
   canonical mapping promised in §9 is now needed for full map objects.
+- **Movement has no collision or pathfinding.** Click-to-move runs in a straight
+  line and only the terrain height is sampled: the character can walk through
+  buildings, trees and water (`m2_world`'s attribute maps are ported but not
+  wired). Attacks target any tracked actor inside 320 units (NPCs included) and
+  the server's damage replies are ignored.
 - **Superseded by D17, still in the tree:** `m2-script`, `m2-modgen`, the C ABI
   (`neoeter_python_abi`, CMake option `M2_BUILD_PYTHON_ABI`) and the module
   specs in `modules/`. Nothing in the client uses them any more; remove them
@@ -318,6 +334,7 @@ cargo run -p m2-net --example login        # headless login: 127.0.0.1 11000 130
 cargo run -p m2-client                     # the client: login screen
 cargo run -p m2-client -- --login admin admin --screenshot /tmp/login.png
 cargo run -p m2-client -- --login admin admin --enter 0 --screenshot /tmp/ingame.png
+cargo run -p m2-client -- --login admin admin --enter 0 --demo --screenshot /tmp/demo.png
 cargo run -p m2-viewer -- bin --map metin2_map_a1
 ```
 
@@ -350,14 +367,20 @@ Next, in order. Each milestone ends with something visible against the server.
    village, drawn with its buildings, trees, fog and sky. Character creation,
    deletion and the empire choice for a new account move with the real
    `bevy_ui` select screen (Milestone 4).
-6. **Milestone 3, the living world.**
-   - Actors from `ActorAppend`/`Update`/`Move`/`Remove`/`Sync`: NPCs, monsters
-     and players with their motions (`.msa` wait/run/attack, blending).
-   - Click-to-move and keyboard movement with `send_move`; terrain height and
-     attributes from `m2_world::OutdoorMap`.
+6. **Milestone 3, the living world** (in progress, 2026-11-01):
+   - ~~Click-to-move and keyboard movement with `send_move`; terrain height;
+     third-person camera (orbit/zoom).~~ Done: ground picking, `WASD`/arrows,
+     `FUNC_MOVE` every 300 ms and `FUNC_WAIT` on stop, the server accepts and
+     persists the reported position.
+   - ~~Attack~~ Done for the player: space plays `attack.msa` and sends
+     `CG_ATTACK` to the nearest tracked actor inside `ATTACK_RANGE`.
+   - Actors from `ActorAppend`/`Update`/`Move`/`Remove`/`Sync` are tracked (VID,
+     race, name, position) but not drawn yet: NPCs, monsters and other players
+     with their motions (`.msa` wait/run/attack, blending) are the next step.
    - Game-world rendering the viewer left out: 3×3 terrain streaming around the
      player, LOD 1/2, quadtree culling, warps between maps.
-   - Visible result: walking around a1 with monsters and other players moving.
+   - Visible result so far: walking around b1 and swinging at the nearest NPC,
+     shown by `--demo` (the character moves and the HUD names the target).
 7. **Milestone 4, the UI system (the original look, from the original data).**
    - `m2-formats::uiscript`: evaluate the layout dialect of `uiscript/*.py` and
      `locale/*/ui/*.py` (dict/tuple/list literals, numbers and strings,

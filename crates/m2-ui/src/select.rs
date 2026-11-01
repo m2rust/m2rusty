@@ -16,7 +16,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, futures::check_ready};
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
 use m2_assets::M2Packs;
 use m2_game::SceneCamera;
-use m2_game::ingame::{EnterWorld, GameWorld, LOCALE_PATH};
+use m2_game::ingame::{Actors, EnterWorld, GameWorld, LOCALE_PATH, PlayerControl, UiFocus};
 use m2_game::net::{EnterGame, Net, NetMessage};
 use m2_game::render::character::{ArmorShapes, Character, IntroMotion, Look};
 use m2_net::phase::{NetEvent, Phase};
@@ -41,8 +41,8 @@ pub struct SelectScreen {
     characters: Vec<(CharacterSlot, Character)>,
     /// When "Start" was pressed (app seconds) and whether [`EnterGame`] was sent.
     start: Option<(f32, bool)>,
-    /// `MainCharacter` while entering: name and position for the in-game screen.
-    main: Option<(String, i32, i32)>,
+    /// `MainCharacter` while entering: name, position and VID for the in-game screen.
+    main: Option<(String, i32, i32, u32)>,
 }
 
 impl SelectScreen {
@@ -98,6 +98,7 @@ fn track_entering(
     mut screen: ResMut<LoginScreen>,
     mut select: ResMut<SelectScreen>,
     mut net: ResMut<Net>,
+    auto: Res<Autologin>,
     mut enter_world: MessageWriter<EnterWorld>,
 ) {
     for message in messages.read() {
@@ -112,20 +113,20 @@ fn track_entering(
             NetMessage::Game(NetEvent::PhaseChanged { to: Phase::Loading, .. }) => *step = "Loading…".into(),
             NetMessage::Game(NetEvent::MainCharacter(main)) => {
                 info!("main character {} (vid {}) at {},{}", main.name, main.vid, main.x, main.y);
-                select.main = Some((main.name.clone(), main.x, main.y));
+                select.main = Some((main.name.clone(), main.x, main.y, main.vid));
                 *step = "Entering the game…".into();
                 // The game window's `net.SendEnterGamePacket()`; see the module docs.
                 net.start_game();
             }
             NetMessage::Game(NetEvent::PhaseChanged { to: Phase::Game, .. }) => {
                 let slot = *slot;
-                let (name, x, y) = select.main.clone().unwrap_or_else(|| (format!("slot {slot}"), 0, 0));
+                let (name, x, y, vid) = select.main.clone().unwrap_or_else(|| (format!("slot {slot}"), 0, 0, 0));
                 let look = select.characters.iter().find(|(c, _)| c.slot == slot).map(|(_, c)| c.look);
                 info!("in game as {name}");
                 // `introloading.py`: `net.Warp(playerX, playerY)` and the game window.
                 match look {
                     Some(look) => {
-                        enter_world.write(EnterWorld { x, y, look });
+                        enter_world.write(EnterWorld { x, y, look, vid, demo: auto.demo });
                     }
                     None => warn!("no look for slot {slot}; the in-game character stays unspawned"),
                 }
@@ -256,18 +257,25 @@ fn slot_position(index: usize, count: usize, selected: bool) -> Vec3 {
     Vec3::new(x, 0.0, if selected { -STEP_FORWARD } else { 0.0 })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn select_ui(
     mut contexts: EguiContexts,
     mut screen: ResMut<LoginScreen>,
     mut select: ResMut<SelectScreen>,
     mut net: ResMut<Net>,
+    mut focus: ResMut<UiFocus>,
     game: Res<GameWorld>,
+    control: Res<PlayerControl>,
+    actors: Res<Actors>,
     time: Res<Time>,
 ) -> Result {
+    let ctx = contexts.ctx_mut()?;
+    // The game must not move or attack while an egui window has the input.
+    focus.pointer = ctx.egui_wants_pointer_input();
+    focus.keyboard = ctx.egui_wants_keyboard_input();
     if !matches!(screen.status, Status::Select { .. } | Status::Entering { .. } | Status::InGame { .. }) {
         return Ok(());
     }
-    let ctx = contexts.ctx_mut()?;
     let id = screen.id.clone();
     let mut log_out = false;
     let mut start = None;
@@ -317,25 +325,30 @@ fn select_ui(
                     });
                 });
         }
-        Status::InGame { name, x, y } => {
+        Status::InGame { name, .. } => {
             egui::Window::new("In game")
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::LEFT_TOP, egui::Vec2::new(16.0, 16.0))
                 .show(ctx, |ui| {
                     ui.heading(name);
-                    ui.label(format!("Global position {x}, {y}"));
-                    match (&game.map, game.local) {
-                        (Some(map), Some((lx, ly))) => {
-                            ui.label(format!("{map} at {lx}, {ly}"));
-                        }
-                        _ => {
-                            ui.horizontal(|ui| {
-                                ui.spinner();
-                                ui.label("Loading the map…");
-                            });
-                        }
+                    if let (Some(map), Some((lx, ly))) = (&game.map, game.local) {
+                        let (gx, gy) = (lx + game.base.0 as i32, ly + game.base.1 as i32);
+                        ui.label(format!("{map} at {lx}, {ly} (global {gx}, {gy})"));
+                    } else {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.label("Loading the map…");
+                        });
                     }
+                    if let Some(vid) = control.target
+                        && let Some(target) = actors.by_vid.get(&vid)
+                    {
+                        ui.label(format!("Target: {} (VID {vid})", target.name));
+                    }
+                    ui.separator();
+                    ui.label("Right-drag: camera · Wheel: zoom");
+                    ui.label("Left-click / WASD: move · Space: attack");
                     if let Some(error) = game.error() {
                         ui.colored_label(egui::Color32::LIGHT_RED, format!("The map could not be loaded: {error}"));
                     } else if game.is_ready() && !game.is_loaded(time.elapsed_secs()) {

@@ -28,7 +28,7 @@ use crate::stream::{FrameError, NetStream};
 use crate::wire::{self, GcPacket, TPacketCGCreateCharacter, TPacketCGLogin, TPacketCGLogin2, Wire, cg, consts, gc};
 use crate::wire::{TPacketCGClientVersion, TPacketCGClientVersion2, TPacketCGDestroyCharacter, TPacketCGDirectEnter};
 use crate::wire::{TPacketCGEmpire, TPacketCGEnterFrontGame, TPacketCGMove, TPacketCGPong, TPacketCGSelectCharacter};
-use crate::wire::{TPacketGCHandshake, TSimplePlayerInformation};
+use crate::wire::{TPacketCGAttack, TPacketGCHandshake, TSimplePlayerInformation};
 
 /// `PHASE_*` values of `EPhase` (Packet.h) that the client switches on.
 pub mod phase_id {
@@ -975,5 +975,17 @@ impl NetMachine {
             rot %= 360.0;
         }
         self.stream.send_packet(&TPacketCGMove { bHeader: cg::CHARACTER_MOVE, bFunc: func, bArg: arg, bRot: (rot / 5.0) as u8, lX: x, lY: y, dwTime: server_ms })
+    }
+
+    /// `SendAttackPacket`: `skill` is 0 for a normal attack, `victim` the target's
+    /// VID (0 for a swing at nothing).
+    pub fn send_attack(&mut self, skill: u8, victim: u32) -> bool {
+        self.stream.send_packet(&TPacketCGAttack {
+            header: cg::ATTACK,
+            bType: skill,
+            dwVictimVID: victim,
+            bCRCMagicCubeProcPiece: 0,
+            bCRCMagicCubeFilePiece: 0,
+        })
     }
 }

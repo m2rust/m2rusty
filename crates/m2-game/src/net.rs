@@ -114,6 +114,9 @@ pub struct Net {
     link: Link,
     game_addr: (String, u16),
     start: Instant,
+    /// The last handshake's server time and the client time it arrived at
+    /// (`ELTimer_SetServerMSec`).
+    server_clock: Option<(u32, u32)>,
 }
 
 impl Default for Net {
@@ -124,6 +127,7 @@ impl Default for Net {
             link: Link::Idle,
             game_addr: (String::new(), 0),
             start: Instant::now(),
+            server_clock: None,
         }
     }
 }
@@ -132,6 +136,27 @@ impl Net {
     /// A connection is being made or is open.
     pub fn busy(&self) -> bool {
         !matches!(self.link, Link::Idle)
+    }
+
+    /// `ELTimer_GetServerMSec`: the server time at the last handshake plus the
+    /// client time since then.
+    pub fn server_ms(&self) -> u32 {
+        match self.server_clock {
+            Some((server, client)) => server.wrapping_add(self.now_ms().wrapping_sub(client)),
+            None => self.now_ms(),
+        }
+    }
+
+    /// `SendCharacterStatePacket` with global coordinates. `func` is
+    /// `CInstanceBase::FUNC_MOVE` (1) or `FUNC_WAIT` (0).
+    pub fn send_move(&mut self, func: u8, arg: u8, rotation: f32, x: i32, y: i32) -> bool {
+        let server_ms = self.server_ms();
+        self.game.send_move(func, arg, rotation, x, y, server_ms)
+    }
+
+    /// `SendAttackPacket`: 0 is a normal attack, `victim` 0 swings at nothing.
+    pub fn send_attack(&mut self, victim: u32) -> bool {
+        self.game.send_attack(0, victim)
     }
 
     /// `SendEnterGame` (`net.SendEnterGamePacket`, sent by the game window when it
@@ -296,6 +321,9 @@ fn pump_net(mut net: ResMut<Net>, mut out: MessageWriter<NetMessage>) {
                 if let (NetEvent::PhaseChanged { to: Phase::Select, .. }, Some(slot)) = (event, net.game.direct_enter_slot()) {
                     info!("selecting character slot {slot}");
                     net.game.send_select_character(slot);
+                }
+                if let NetEvent::HandshakeReceived { server_time } = event {
+                    net.server_clock = Some((*server_time, now));
                 }
             }
             out.write_batch(events.into_iter().map(NetMessage::Game));

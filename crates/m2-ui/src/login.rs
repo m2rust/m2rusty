@@ -51,13 +51,15 @@ pub struct LoginScreen {
 }
 
 /// Unattended runs: `--login <id> <password>` submits once at startup, `--enter
-/// <slot>` starts the game with that slot once the select screen is ready, and
-/// `--screenshot <png>` saves the window when the run is done (select screen ready
-/// without `--enter`, in game, or failed), then exits.
+/// <slot>` starts the game with that slot once the select screen is ready,
+/// `--demo` walks and swings once in game, and `--screenshot <png>` saves the
+/// window when the run is done (select screen ready without `--enter`, in game,
+/// or failed), then exits.
 #[derive(Resource, Default, Clone, Debug, PartialEq)]
 pub struct Autologin {
     pub login: Option<(String, String)>,
     pub enter: Option<u8>,
+    pub demo: bool,
     pub screenshot: Option<PathBuf>,
 }
 

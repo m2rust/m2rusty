@@ -68,6 +68,9 @@ pub struct WarpedMap {
     pub prepared: PreparedMap,
     /// The map directory name (`AtlasInfo.txt`).
     pub name: String,
+    /// The map's origin in global coordinates (`CPythonBackground::m_dwBaseX/Y`).
+    pub base_x: u32,
+    pub base_y: u32,
     /// The position local to the map (`CPythonBackground::Warp`).
     pub local_x: i32,
     pub local_y: i32,
@@ -85,6 +88,8 @@ pub fn prepare_map_at(packs: &PackManager, locale_path: &str, x: i32, y: i32) ->
     Ok(WarpedMap {
         prepared,
         name,
+        base_x: entry.base_x,
+        base_y: entry.base_y,
         local_x: x.wrapping_sub(entry.base_x as i32),
         local_y: y.wrapping_sub(entry.base_y as i32),
     })
