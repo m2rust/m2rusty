@@ -49,6 +49,8 @@ as a module path, not a line number.
 | R23 | `map` | `LoadArea`, `LoadTerrain` | Path buffers are cut to 64 bytes (except `AreaProperty.txt`) | Mirrored |
 | R24 | `map` | `SetTerrainCount` | Ignores sizes of 0 or above 256 | Mirrored |
 | R25 | `map` | `CTerrain::LoadHeightMap` | Computes normals even when reading the height file failed | Mirrored |
+| R26 | `image` | `CTGAImage` | Uncompressed 24-bit data swaps red and blue | Mirrored; `image::tga` |
+| R27 | `image` | `CTGAImage` RLE decode | An RLE packet running past the pixel count fails the load | Mirrored; `image::tga` |
 
 ## 2. Not replicated: C++ bug, Rust differs
 
@@ -85,6 +87,9 @@ Real bugs where mirroring would be wrong or impossible.
 | N27 | `map` | default environment file | A map name shorter than 2 bytes throws | Whole name used |
 | N28 | `map` | object sort | Order of equal-CRC objects is unspecified | Stable sort (file order) |
 | N29 | `map` | `AtlasInfo.txt` | Lines before the first scanned name read an uninitialised buffer | Skipped |
+| N30 | `image` | TGA / DDS / JPEG readers | Reads past the end of a TGA, a DDS pointer outside the file, or a `Platform_GetImageInfo` DDS branch on files under 20 bytes read garbage | Return `None`/`false` |
+| N31 | `image` | TGA / JPEG decode | Pixels left uninitialised (unsupported TGA type/depth combinations, missing parts of a truncated JPEG) | Zero |
+| N32 | `image` | stb JPEG | The client uses SSE2 kernels; the port is the scalar stb code. Identical on all 471 real jpg, but not proven identical for extreme coefficients | Scalar port; revisit if a mismatch ever shows |
 
 ## 3. Reference-platform choices (not bugs)
 

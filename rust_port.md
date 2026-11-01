@@ -11,7 +11,7 @@ Last updated: 2026-11-01.
 | Phase | State |
 |---|---|
 | 0. Groundwork | done (`1b5b551`) |
-| 1. Formats, no Bevy | in progress: 11 of 12 format families merged; `image` running |
+| 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | not started |
 | 3. World | not started |
 | 4. Game logic and networking | not started |
@@ -33,10 +33,10 @@ Last updated: 2026-11-01.
 | `property` | `Property*.cpp` (`.prb .prt .prd .pre .pra`), reserved CRCs | 1,835 files (1,342 properties, 69 reserved CRCs) | merged |
 | `map` | `setting.txt`, area, terrain, texture sets, monster areas, atlas | 88 maps, 1,189 terrains, 51,344 area objects (66k lines) | merged |
 | `effect` | `.mse`, particles, `.mde` meshes, flying data `.msf` | 1,148 `.mse`, 98 `.msf`, 112 `.mde` (1.57 M lines) | merged |
-| `image` | DXT codecs, DDS/TGA/JPG (`neoeter/src/image`) | | agent running |
+| `image` | DXT/DDS, TGA, stb JPEG/BMP/PNG loaders, `CImage` | 7,445 dds, 4,022 tga, 471 jpg, 8 bmp (81.9k lines; 516 files pixel-for-pixel); 44 synthetic files | merged |
 
-Current totals on `main`: 131 tests pass, `cargo clippy -p m2-formats
---all-targets` is clean, and nine differential suites pass
+Current totals on `main`: 151 tests pass, `cargo clippy -p m2-formats
+--all-targets` is clean, and ten differential suites pass
 (`scripts/differential.sh`).
 
 ## 2. What exists
@@ -186,8 +186,8 @@ cargo run -p m2-client                     # Bevy window + Python host
 
 ## 8. Next steps
 
-1. Land `image` (race/property, map and effect are merged); re-run all suites.
-2. Port `image` (DXT, DDS/TGA/JPG) with the existing `test_dxt_invariants`
+1. Phase 1 is closed. Next: the UTF-8 façade (D14) and the crate review (D16, §10) can run in parallel with Phase 2.
+2. (done) `image` with the existing `test_dxt_invariants`
    cases; close Phase 1.
 3. Add `rustfmt.toml` and run it once on the whole crate.
 4. Phase 2: `m2-assets` (pack `AssetSource`, loaders for textures, gr2, spt),
@@ -240,10 +240,31 @@ Candidates to revisit under D16 (each needs a differential check, none is urgent
   replacement once D14 is applied.
 - `gr2`'s decompressor (Oodle1-style) and `spt` have no crate equivalents;
   they stay as own code.
-- `image` (running): the agent was told to evaluate crates per codec.
+- `image`: evaluated, see below. BMP is the one case where a crate matched on all real files but own code was kept; switch to the `image` crate if you want strict D16.
 
 Platform limits the policy cannot remove: the Python 2.7 host in
 `neoeter-python` is C and C++ code linked through `m2-script`, so the Rust client
 as a whole will not build for wasm32 or iOS while that bridge is in. The
 format and game crates (`m2-formats`, later `m2-assets` and `m2-game`) must
 stay free of it so they can.
+
+### Crate evaluation for `image` (D16, measured)
+
+| Codec | Used | Evidence |
+|---|---|---|
+| JPEG | own port of stb's decoder | `image` 0.25.10 (zune-jpeg 0.5.15) differs from C++ on 468 of 471 real files (max channel delta 4) |
+| DXT1/3/5 | own port | The conventional high-bit-replicating decode differs on 6,525 of 6,549 DXT1 files: `CDXTCImage` expands 5/6-bit channels with `<< 3`/`<< 2`. `ddsfile` only parses containers. `texpresso`/`bcdec` could not be fetched offline, so an equivalent decoder written inline was measured instead |
+| TGA | own port | `image`'s TGA differs on all 4,191 files (max delta 255) |
+| BMP | own port | `image`'s BMP matched all 8 real files; kept own code for stb's header/mask edge cases (goes against D16 on a small scale) |
+| PNG | `png` 0.18.1 | Pure Rust, lossless; stb's 8-bit RGBA conversions applied on top. No PNG in the packs, so only synthetic coverage |
+
+Evidence lives in `crates/m2-formats/tests/crate_candidates.rs` (ignored tests;
+`image` is a dev-dependency only). `cargo check -p m2-formats --lib --target
+wasm32-unknown-unknown` passes. Android and iOS were not built, but nothing in
+the crate needs a C compiler or system library.
+
+Lesson for later: "reputable crate" and "identical to the original client"
+conflict for pixel-exact codecs. The original decoders have quirks (stb
+rounding, `<< 3` expansion) that every texture in the game depends on, so a
+visually equivalent crate still changes pixels. D16 therefore only helps for
+containers and lossless formats unless pixel-exactness is relaxed.
