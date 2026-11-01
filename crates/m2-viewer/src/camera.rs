@@ -4,7 +4,7 @@
 use bevy::input::mouse::{AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy_egui::EguiContexts;
+use bevy_egui::{EguiContexts, EguiGlobalSettings, PrimaryEguiContext};
 
 use crate::viewer::{CameraMode, MainCamera, ViewerInput, ViewerRegistry};
 
@@ -36,6 +36,10 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
+        // Egui must measure the full window, not the scene viewport that its
+        // own panels shrink. Sharing a camera creates a feedback loop that
+        // collapses both the scene and UI to a one-pixel strip.
+        app.world_mut().resource_mut::<EguiGlobalSettings>().auto_create_primary_context = false;
         app.init_resource::<ViewerInput>()
             .init_resource::<ActiveCameraMode>()
             .add_systems(Startup, setup)
@@ -49,11 +53,59 @@ fn setup(mut commands: Commands) {
         Camera3d::default(),
         // Unlit texture previews must show the file's colours untouched.
         bevy::core_pipeline::tonemapping::Tonemapping::None,
+        bevy::core_pipeline::tonemapping::DebandDither::Disabled,
         MainCamera,
         orbit,
         orbit.transform(),
     ));
+    commands.spawn((
+        Camera2d,
+        PrimaryEguiContext,
+        bevy::camera::visibility::RenderLayers::none(),
+        Camera {
+            order: 1,
+            output_mode: bevy::camera::CameraOutputMode::Write {
+                blend_state: Some(bevy::render::render_resource::BlendState::ALPHA_BLENDING),
+                clear_color: ClearColorConfig::None,
+            },
+            clear_color: ClearColorConfig::Custom(Color::NONE),
+            ..default()
+        },
+    ));
     commands.spawn((DirectionalLight::default(), Transform::from_xyz(4.0, 8.0, 6.0).looking_at(Vec3::ZERO, Vec3::Y)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::ecs::system::RunSystemOnce;
+    use bevy_egui::EguiContext;
+
+    #[test]
+    fn panel_layout_cannot_shrink_the_egui_camera() {
+        let mut app = App::new();
+        app.init_resource::<EguiGlobalSettings>().add_plugins(CameraPlugin);
+        assert!(!app.world().resource::<EguiGlobalSettings>().auto_create_primary_context);
+        let world = app.world_mut();
+        world.run_system_once(setup).unwrap();
+
+        // The scene can be resized by the panels without changing the camera
+        // from which egui measures and renders the next frame's full window.
+        let scene = world.query_filtered::<Entity, With<MainCamera>>().single(world).unwrap();
+        assert!(!world.entity(scene).contains::<EguiContext>());
+        world.get_mut::<Camera>(scene).unwrap().viewport = Some(bevy::camera::Viewport {
+            physical_position: UVec2::new(380, 0),
+            physical_size: UVec2::new(560, 720),
+            ..default()
+        });
+        let (ui_camera, layers) = world
+            .query_filtered::<(&Camera, &bevy::camera::visibility::RenderLayers), With<PrimaryEguiContext>>()
+            .single(world)
+            .unwrap();
+        assert!(ui_camera.viewport.is_none());
+        assert_eq!(ui_camera.order, 1);
+        assert_eq!(*layers, bevy::camera::visibility::RenderLayers::none());
+    }
 }
 
 fn update_mode(reg: Res<ViewerRegistry>, mut mode: ResMut<ActiveCameraMode>) {

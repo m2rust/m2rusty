@@ -12,7 +12,14 @@ bevy.workspace = true
 # The clipboard feature (arboard) has no Android/iOS/wasm backend, so it is desktop-only below.
 bevy_egui = { version = "0.43.1", default-features = false, features = ["render", "default_fonts", "open_url"] }
 m2-formats.workspace = true
-# TODO(integrator): re-add m2-assets / m2-render once those crates land.
+m2-assets.workspace = true
+m2-render.workspace = true
+
+[features]
+# Faster iterative links after the first Bevy dylib build. Release packagers
+# that need a self-contained binary can build with `--no-default-features`.
+default = ["dynamic-linking"]
+dynamic-linking = ["bevy/dynamic_linking"]
 
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
 bevy_egui = { version = "0.43.1", default-features = false, features = ["manage_clipboard"] }

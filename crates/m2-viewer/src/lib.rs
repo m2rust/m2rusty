@@ -3,6 +3,7 @@
 
 pub mod camera;
 pub mod index;
+pub mod model;
 pub mod texture;
 pub mod tree;
 pub mod ui;
@@ -12,6 +13,8 @@ use std::path::PathBuf;
 
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
+use m2_assets::M2AssetsPlugin;
+use m2_render::M2RenderPlugin;
 
 /// Parsed command line: `m2-viewer [client dir] [--index <file>] [--screenshot <vpath> <out.png>]`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,20 +42,22 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String
     Ok(a)
 }
 
-/// The viewer app with the texture viewer registered. The integrator adds more with
-/// [`viewer::ViewerAppExt::add_viewer`] before `run`.
+/// The viewer app with texture and Granny model/motion viewers registered.
 pub fn build_app(args: &Args) -> App {
     use viewer::ViewerAppExt;
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+    app.add_plugins(M2AssetsPlugin::new(args.client_dir.clone()).with_index(&args.index))
+    .add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window { title: "Metin2 asset viewer".into(), ..default() }),
         ..default()
     }))
     .add_plugins(EguiPlugin::default())
+    .add_plugins(M2RenderPlugin)
     .insert_resource(ClearColor(Color::srgb(0.12, 0.12, 0.14)))
     .insert_resource(ui::Shell::new(args.client_dir.clone(), args.index.clone(), args.screenshot.as_ref().map(|s| s.0.clone())))
-    .add_plugins((ui::ShellPlugin, camera::CameraPlugin))
-    .add_viewer(texture::TextureViewer::default());
+    .add_plugins((ui::ShellPlugin, camera::CameraPlugin, model::ModelViewerPlugin))
+    .add_viewer(texture::TextureViewer::default())
+    .add_viewer(model::Gr2Viewer::default());
     if let Some((_, out)) = &args.screenshot {
         app.insert_resource(ui::ScreenshotJob::new(out.clone())).add_systems(Update, ui::screenshot_system);
     }

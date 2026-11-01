@@ -366,7 +366,10 @@ pub fn screenshot_system(mut commands: Commands, mut job: ResMut<ScreenshotJob>,
     }
     if cur.0.is_some() {
         job.frames += 1;
-        if job.frames >= 30 {
+        // Give the pack reader, GR2 loader, and first egui/GPU frame time to
+        // settle before capturing the window. This keeps the CLI useful for
+        // checking real assets instead of saving the startup frame.
+        if job.frames >= 120 {
             job.requested = true;
             job.frames = 0;
             let out = job.out.clone();

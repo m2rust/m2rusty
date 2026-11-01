@@ -53,6 +53,21 @@ pub fn canonical_asset_path(path: &str) -> String {
     asset_path(&virtual_name(path)).unwrap_or_else(|| path.to_owned())
 }
 
+/// Canonical client spelling, retaining the `d:/` prefix used by the C++
+/// client for files rooted under `ymir work/`.
+pub fn canonical_game_path(path: &str) -> String {
+    let name = virtual_name(path);
+    std::str::from_utf8(&name).map(str::to_owned).unwrap_or_else(|_| path.to_owned())
+}
+
+/// Bevy source URI for a client path. Bevy's `AssetPath` syntax requires
+/// `source://path`; a literal `d:/path` is a normal filesystem path, so the
+/// `m2://` adapter is kept at this boundary while game-facing paths retain
+/// their original `d:/` spelling.
+pub fn asset_source_uri(path: &str) -> String {
+    format!("m2://{}", canonical_asset_path(path))
+}
+
 /// Whether `asset_path` has a `ymir work/` root, i.e. maps to a `d:/` name.
 pub fn is_ymir_work(path: &str) -> bool {
     canonical_asset_path(path).starts_with(YMIR_WORK)
@@ -98,6 +113,8 @@ mod tests {
             assert_eq!(asset_path(&virtual_name(p)).unwrap(), p);
         }
         assert_eq!(canonical_asset_path("D:\\Ymir Work\\PC\\A.GR2"), "ymir work/pc/a.gr2");
+        assert_eq!(canonical_game_path("D:\\Ymir Work\\PC\\A.GR2"), "d:/ymir work/pc/a.gr2");
+        assert_eq!(asset_source_uri("D:\\Ymir Work\\PC\\A.GR2"), "m2://ymir work/pc/a.gr2");
         assert!(is_ymir_work("d:/Ymir Work/x"));
         assert!(!is_ymir_work("locale/x"));
         assert_eq!(parent("ymir work/pc/a.gr2"), "ymir work/pc");
