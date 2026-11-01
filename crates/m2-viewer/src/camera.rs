@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_egui::{EguiContexts, EguiGlobalSettings, PrimaryEguiContext};
 
+use crate::ui::ScreenshotJob;
 use crate::viewer::{CameraMode, MainCamera, ViewerInput, ViewerRegistry};
 
 #[derive(Component, Clone, Copy)]
@@ -117,10 +118,18 @@ fn gather_input(
     mut contexts: EguiContexts,
     buttons: Res<ButtonInput<MouseButton>>,
     scroll: Res<AccumulatedMouseScroll>,
+    job: Option<Res<ScreenshotJob>>,
     window: Single<&Window, With<PrimaryWindow>>,
     camera: Single<&Camera, With<MainCamera>>,
     mut last: Local<Option<Vec2>>,
 ) {
+    // A screenshot must show the framed scene, not whatever the physical
+    // mouse did to the orbit camera while the app waited for its frame.
+    if job.is_some() {
+        *input = ViewerInput::default();
+        *last = window.cursor_position();
+        return;
+    }
     let egui_wants = contexts.ctx_mut().map(|c| c.egui_wants_pointer_input() || c.is_pointer_over_egui()).unwrap_or(false);
     let cursor = window.cursor_position();
     let in_view = match (cursor, camera.logical_viewport_rect()) {
