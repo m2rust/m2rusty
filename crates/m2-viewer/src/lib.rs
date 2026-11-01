@@ -1,0 +1,79 @@
+//! Phase 2 asset viewer shell (docs/bevy-port-plan.md). See `README`-style
+//! notes in [`viewer`] for the content-viewer plugin interface.
+
+pub mod camera;
+pub mod index;
+pub mod texture;
+pub mod tree;
+pub mod ui;
+pub mod viewer;
+
+use std::path::PathBuf;
+
+use bevy::prelude::*;
+use bevy_egui::EguiPlugin;
+
+/// Parsed command line: `m2-viewer [client dir] [--index <file>] [--screenshot <vpath> <out.png>]`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Args {
+    pub client_dir: PathBuf,
+    pub index: String,
+    pub screenshot: Option<(String, PathBuf)>,
+}
+
+pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
+    let mut a = Args { client_dir: "bin".into(), index: "pack/Index.dev".into(), screenshot: None };
+    let mut it = args.into_iter();
+    while let Some(s) = it.next() {
+        match s.as_str() {
+            "--screenshot" => {
+                let v = it.next().ok_or("--screenshot needs <virtual path> <out.png>")?;
+                let o = it.next().ok_or("--screenshot needs <virtual path> <out.png>")?;
+                a.screenshot = Some((v.to_lowercase(), o.into()));
+            }
+            "--index" => a.index = it.next().ok_or("--index needs a file")?,
+            s if s.starts_with("--") => return Err(format!("unknown option {s}")),
+            _ => a.client_dir = s.into(),
+        }
+    }
+    Ok(a)
+}
+
+/// The viewer app with the texture viewer registered. The integrator adds more with
+/// [`viewer::ViewerAppExt::add_viewer`] before `run`.
+pub fn build_app(args: &Args) -> App {
+    use viewer::ViewerAppExt;
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window { title: "Metin2 asset viewer".into(), ..default() }),
+        ..default()
+    }))
+    .add_plugins(EguiPlugin::default())
+    .insert_resource(ClearColor(Color::srgb(0.12, 0.12, 0.14)))
+    .insert_resource(ui::Shell::new(args.client_dir.clone(), args.index.clone(), args.screenshot.as_ref().map(|s| s.0.clone())))
+    .add_plugins((ui::ShellPlugin, camera::CameraPlugin))
+    .add_viewer(texture::TextureViewer::default());
+    if let Some((_, out)) = &args.screenshot {
+        app.insert_resource(ui::ScreenshotJob::new(out.clone())).add_systems(Update, ui::screenshot_system);
+    }
+    app
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn p(v: &[&str]) -> Result<Args, String> {
+        parse_args(v.iter().map(|s| s.to_string()))
+    }
+
+    #[test]
+    fn args() {
+        assert_eq!(p(&[]).unwrap().client_dir, PathBuf::from("bin"));
+        let a = p(&["x", "--screenshot", "D:/A.dds", "o.png"]).unwrap();
+        assert_eq!(a.client_dir, PathBuf::from("x"));
+        assert_eq!(a.screenshot.unwrap().0, "d:/a.dds");
+        assert!(p(&["--screenshot", "a"]).is_err());
+        assert!(p(&["--nope"]).is_err());
+    }
+}
