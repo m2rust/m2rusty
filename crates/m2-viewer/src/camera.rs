@@ -55,6 +55,9 @@ fn setup(mut commands: Commands) {
         // Unlit texture previews must show the file's colours untouched.
         bevy::core_pipeline::tonemapping::Tonemapping::None,
         bevy::core_pipeline::tonemapping::DebandDither::Disabled,
+        // The viewer's custom materials write display-space colours; this
+        // makes the skybox pass use the same scale (exposure 1.0).
+        bevy::camera::Exposure { ev100: -(1.2f32).log2() },
         MainCamera,
         orbit,
         orbit.transform(),
@@ -159,7 +162,7 @@ fn gather_input(
     input.middle = buttons.pressed(MouseButton::Middle);
 }
 
-fn orbit_control(
+pub(crate) fn orbit_control(
     input: Res<ViewerInput>,
     mode: Res<ActiveCameraMode>,
     keys: Res<ButtonInput<KeyCode>>,

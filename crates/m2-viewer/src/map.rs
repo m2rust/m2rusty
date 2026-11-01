@@ -77,7 +77,7 @@ pub struct MapViewerPlugin;
 
 impl Plugin for MapViewerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(crate::map_render::MapRenderPlugin)
+        app.add_plugins((crate::map_render::MapRenderPlugin, crate::cloud::CloudPlugin))
             .init_resource::<MapPreload>()
             .add_systems(Startup, start_preload)
             .add_systems(Update, poll_preload);
@@ -428,6 +428,10 @@ impl ContentViewer for MapViewer {
             self.rebuild(world);
         }
     }
+
+    fn close(&mut self, world: &mut World) {
+        crate::sky::clear_sky(world);
+    }
 }
 
 impl MapViewer {
@@ -456,6 +460,10 @@ impl MapViewer {
 
         let root =
             world.spawn((ViewerEntity, Name::new(map.name.clone()), Transform::IDENTITY, Visibility::Visible)).id();
+        if let Some(environment) = &map.environment {
+            crate::sky::install_sky(world, environment);
+            crate::cloud::spawn_cloud(world, environment);
+        }
         self.water_frames = (1..=30)
             .map(|frame| {
                 world
@@ -637,8 +645,8 @@ fn map_fog(environment: &EnvironmentData) -> Option<Fog> {
     Some(if fog.density { Fog::exp(color, 0.00015) } else { Fog::linear(color, fog.near_distance, fog.far_distance) })
 }
 
-/// The clear colour stands in for the sky the viewer does not draw yet: the
-/// fog colour keeps the horizon seamless.
+/// The clear colour behind the sky and terrain: the environment fog colour
+/// keeps the horizon seamless.
 fn set_clear_color(world: &mut World, color: [f32; 4]) {
     let mut query = world.query_filtered::<&mut Camera, With<MainCamera>>();
     if let Ok(mut camera) = query.single_mut(world) {

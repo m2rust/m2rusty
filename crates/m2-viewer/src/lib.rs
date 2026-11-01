@@ -3,12 +3,14 @@
 //! See the notes in [`viewer`] for the content-viewer plugin interface.
 
 pub mod camera;
+pub mod cloud;
 pub mod effect;
 mod effect_draw;
 pub mod index;
 pub mod map;
 mod map_render;
 pub mod model;
+pub mod sky;
 pub mod speedtree;
 pub mod texture;
 pub mod tree;
