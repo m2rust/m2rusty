@@ -1,0 +1,2 @@
+add_executable(m2diff_script ScriptDump.cpp)
+target_link_libraries(m2diff_script PRIVATE neoeter_render neoeter_io)

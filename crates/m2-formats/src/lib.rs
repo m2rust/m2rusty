@@ -5,4 +5,5 @@
 //! is CP949/CP1252, not UTF-8.
 
 pub mod pack;
+pub mod script;
 pub mod text;
