@@ -1,0 +1,2 @@
+add_executable(m2diff_locale LocaleDump.cpp)
+target_link_libraries(m2diff_locale PRIVATE neoeter_platform_locale)
