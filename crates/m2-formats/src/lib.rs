@@ -8,6 +8,7 @@ pub mod crypt;
 pub mod effect;
 pub mod gr2;
 pub mod locale;
+pub mod map;
 pub mod pack;
 pub mod property;
 pub mod proto;
