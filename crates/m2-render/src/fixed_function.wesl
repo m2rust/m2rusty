@@ -8,7 +8,8 @@
 // Vertex contract (Bevy mesh attributes):
 //   POSITION  location 0   required
 //   NORMAL    location 1   only read when lighting is enabled
-//   UV_0      location 2   texture coordinates of both stages
+//   UV_0      location 2   repeating texture coordinates
+//   UV_1      location 3   optional stage 1 coordinates (falls back to UV_0)
 //   COLOR     location 5   Float32x4 gamma-space diffuse, white when absent
 //   JOINT_INDEX / JOINT_WEIGHT (6, 7) with a SkinnedMesh component: GPU skinning
 
@@ -52,6 +53,7 @@ struct FixedFunction {
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
+    @location(3) uv1: vec2<f32>,
     @location(1) color: vec4<f32>,
     // Distance along the view axis, the fog coordinate of the GL reference.
     @location(2) view_depth: f32,
@@ -79,6 +81,11 @@ fn vertex(vertex_no_morph: Vertex) -> VertexOutput {
     out.uv = vertex.uv;
 @else
     out.uv = vec2<f32>(0.0);
+
+@if(VERTEX_UVS_B)
+    out.uv1 = vertex.uv_b;
+@else
+    out.uv1 = out.uv;
 
     // Primary colour: vertex colour when the mesh has one, else the material colour.
 @if(VERTEX_COLORS)
@@ -164,7 +171,7 @@ fn compare_alpha(func: u32, a: u32, r: u32) -> bool {
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     // Sample unconditionally to stay in uniform control flow.
     let tex0 = textureSample(texture0, sampler0, in.uv);
-    let tex1 = textureSample(texture1, sampler1, in.uv);
+    let tex1 = textureSample(texture1, sampler1, in.uv1);
 
     let diffuse = in.color;
     let tfactor = ff.texture_factor;

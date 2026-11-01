@@ -58,6 +58,7 @@ impl ContentViewer for SpeedTreeViewer {
             let Some(handle) = &self.handle else { return };
             if let Some(tree) = world.resource::<Assets<SptTree>>().get(handle).cloned() {
                 self.spawn(world, &tree);
+                fit_camera(world, tree.bounding_box);
                 self.tree = Some(tree);
             } else if self.error.is_none() {
                 self.error = load_failed(world.resource::<AssetServer>(), handle.id());
@@ -134,6 +135,19 @@ fn present(yes: bool) -> &'static str {
 }
 
 impl SpeedTreeViewer {
+    pub(crate) fn placed(world: &mut World, tree: SptTree, transform: Transform) -> Self {
+        let mut viewer = Self::default();
+        // Each instance needs its own mutable billboard mesh.
+        let mut tree = tree;
+        if let Some(mesh) = tree.leaf_mesh.as_ref().and_then(|h| world.resource::<Assets<Mesh>>().get(h)).cloned() {
+            tree.leaf_mesh = Some(world.resource_mut::<Assets<Mesh>>().add(mesh));
+        }
+        viewer.spawn(world, &tree);
+        world.entity_mut(viewer.root.unwrap()).insert(transform);
+        viewer.tree = Some(tree);
+        viewer
+    }
+
     fn spawn(&mut self, world: &mut World, tree: &SptTree) {
         info!(
             "loaded {}: branches {}, fronds {}, {} leaf quad(s), {} collision(s), bounds {:?}..{:?}, {}",
@@ -184,7 +198,6 @@ impl SpeedTreeViewer {
             self.leaf_camera = None;
         }
 
-        fit_camera(world, tree.bounding_box);
     }
 
     fn spawn_part(&self, world: &mut World, root: Entity, name: &str, part: &SptPart, texture: Option<Handle<Image>>) {
@@ -214,8 +227,10 @@ impl SpeedTreeViewer {
         if self.leaf_camera == Some(camera) {
             return;
         }
+        let local_camera = self.root.and_then(|root| world.get::<Transform>(root))
+            .map_or(camera, |transform| transform.to_matrix().inverse().transform_point3(camera));
         if let Some(mut mesh) = world.resource_mut::<Assets<Mesh>>().get_mut(handle) {
-            tree.update_leaf_billboards(&mut mesh, Vec3::ZERO, camera);
+            tree.update_leaf_billboards(&mut mesh, Vec3::ZERO, local_camera);
             self.leaf_camera = Some(camera);
         }
     }

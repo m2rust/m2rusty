@@ -53,7 +53,7 @@ impl Plugin for ModelViewerPlugin {
     }
 }
 
-fn spawn_model(world: &mut World, model: &Gr2Model) -> (Entity, Vec<Entity>) {
+pub(crate) fn spawn_model(world: &mut World, model: &Gr2Model) -> (Entity, Vec<Entity>) {
     let root = world
         .spawn((ViewerEntity, Name::new(model.name.clone()), Transform::IDENTITY, Visibility::Visible, AnimationPlayer::default()))
         .id();
