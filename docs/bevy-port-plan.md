@@ -178,6 +178,9 @@ the roadmap in `rust_port.md` §8.
   scroll bars, slots and grid slots, list boxes), `.sub` sprite sheets, fonts,
   focus, capture, drag and drop, tooltips, cursors, and IME (Bevy `Ime` events).
   `m2-ui-core` provides the ported text layout, edit and slot logic.
+- Toolkit: `bevy_ui` (D18). The egui login/select screens of milestones 1-2
+  are stopgaps; login and select are rebuilt on `bevy_ui` first, to prove the
+  approach on a small surface before the in-game windows.
 - Screen behaviour (what `root/*.py` does) is written in Rust against
   `m2-game` state, screen by screen: login and select first, then the in-game
   windows in dependency order (task bar, chat, character/inventory, skills and
@@ -236,9 +239,18 @@ independent once `m2-formats` exists.
 
 ## 7. Open decisions
 
-1. UI toolkit: the first screens use egui (`bevy_egui`); the original-look UI
-   (phase 5) is planned on `bevy_ui`. Confirm before the widget tree is built.
-2. When to delete the superseded Python pieces (`m2-script`, `m2-modgen`,
+### Decided
+
+- **UI toolkit (D18, 2026-11-01): `bevy_ui` for the game UI, egui for developer
+  tools** (the asset viewer, debug overlays) and for stopgap screens until the
+  layout loader exists. The client's layouts are absolute positions and sprites,
+  which map onto a retained `bevy_ui` tree; slots, drag and drop and tooltips are
+  stateful and fit ECS; `m2-ui-core` already holds that state. Editable text and
+  IME are the cost: `m2-ui-core`'s edit logic over Bevy keyboard and `Ime` events.
+
+### Open
+
+1. When to delete the superseded Python pieces (`m2-script`, `m2-modgen`,
    `modules/*.toml`, `neoeter_python_abi`): nothing uses them since D17.
-3. Windows: confirm the Rust target (`x86_64-pc-windows-gnu` or `-msvc`); with
+2. Windows: confirm the Rust target (`x86_64-pc-windows-gnu` or `-msvc`); with
    no Python there is nothing else to link.

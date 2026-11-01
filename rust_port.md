@@ -60,7 +60,8 @@ random scenarios). The effect viewer was checked by screenshot on
   `--host`/`--auth-port` override the shipped `serverinfo.py` defaults.
 - **`crates/m2-ui`**: the game UI in Rust (D17). So far the login screen
   (`login.rs`, egui): ID, password, channel, the original failure messages, and
-  the account's characters after `LoginSuccess`. `bevy_ui` is the long-term toolkit.
+  the account's characters after `LoginSuccess`. It is an egui stopgap; the real
+  screens are `bevy_ui` (D18).
 - **`crates/m2-game`**: the game-side Bevy library shared by the client and the
   viewer. `render::{model, tree, effect, terrain, sky, cloud}` draw with the
   client's render states; `world::prepare_map` loads a map (`m2_world::load_map`
@@ -222,6 +223,7 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 | D14 | **UTF-8 everywhere it is possible** (user decision, 2026-11-01). New Rust APIs (Phase 2 onwards) expose text as `String`/`&str`. Legacy code pages are converted to UTF-8 once, at the file boundary; other encodings are not a goal and are not preserved on output | The user does not care about non-UTF-8 encodings. Phase 1 modules stay byte-oriented because they are proven byte-identical to C++; a UTF-8 façade is added on top, not a rewrite |
 | D15 | C++ bugs that are replicated or deliberately not replicated are tracked in [c++_rust_bugs.md](c++_rust_bugs.md) | One ledger, stable IDs, referenced from Rust comments |
 | D17 | **The UI is reimplemented in Rust; the port runs no Python** (user decision, 2026-11-01). Supersedes D1, D2 and D10 and the Python-bridge plan of Phase 5. Screens live in `m2-ui` on top of `m2-game` state; the original `uiscript`/`locale/*/ui` layout files are read as data | Removes CPython 2.7, the C ABI, the generated shims and the main-loop inversion; the client becomes pure Rust (one toolchain, and wasm/mobile are reachable). The 350 layout files are pure data (dict literals and simple expressions, no `def`/`class`/loops), so the original look survives without an interpreter |
+| D18 | **The game UI is built on `bevy_ui`; egui is for developer tools and stopgap screens** (user decision, 2026-11-01). The asset viewer, debug overlays and the temporary login/select screens use egui; the original-look UI (Milestone 4 onwards) is a retained `bevy_ui` tree | The layouts are absolute positions and `.sub` sprites, which map almost one to one onto `bevy_ui` nodes; matching the original pixel for pixel in egui would be a constant fight. Slots, drag and drop, cooldowns, tooltips and chat links are stateful, which suits ECS entities better than immediate mode. `m2-ui-core` already holds that state as a retained tree. One renderer, input path, asset source and version pin, on every target. Cost: no ready-made widgets, and editable text/IME is `bevy_ui`'s weak spot (covered by `m2-ui-core`'s edit logic over Bevy keyboard and `Ime` events) |
 | D16 | **Reuse reputable Rust crates instead of reimplementing formats and codecs, but only if they work on every target platform: desktop (Linux/Windows/macOS), wasm32, Android and iOS.** In practice: pure Rust, no C/C++ build step or system library, maintained and widely used. Where a crate would change output on valid real data compared with C++, the differential test decides and own code is used (or the difference is accepted explicitly by the user) | User policy, 2026-11-01. Less code to own, and the port keeps the option of non-desktop targets |
 
 ## 5. Known deviations from C++ (all on malformed input or C++ UB)
@@ -323,7 +325,8 @@ Next, in order. Each milestone ends with something visible against the server.
 
 5. **Milestone 2, character select and entering the game.**
    - `m2-ui`: select screen (characters with their stats, empire choice for a
-     new account, create and delete), still egui.
+     new account, create and delete) as a minimal egui stopgap (D18): it is
+     replaced in Milestone 4, so no polish here.
    - `m2-game`: `send_select_character`/`send_enter_game`, the Loading phase,
      `MainCharacter`: find the map from the position (`AtlasInfo.txt` +
      `m2_world`), `prepare_map`, spawn the player's race model (`.msm` → body,
@@ -344,13 +347,18 @@ Next, in order. Each milestone ends with something visible against the server.
      such as `uiScriptLocale.*` and `localeInfo.*` from the locale text files).
      All 350 files are data: no `def`, `class` or loops. Differential-check the
      evaluated trees against CPython on every file.
+   - The toolkit is `bevy_ui` (D18). Editable text and IME are its weak spot:
+     edit lines are `m2-ui-core`'s ported edit logic fed by Bevy keyboard and
+     `Ime` events; widgets reproduce the client's own, so none come from a crate.
    - `m2-ui`: a window tree on `bevy_ui` built from those layouts (image,
      expanded/ani image, board/thinboard, title bar, button/toggle/radio, text,
      edit line, scroll bar, slot/grid slot, list box), `.sub` sprite sheets, the
      client fonts, focus, drag and drop, tooltips. Reuse `m2-ui-core` for text
      layout, edit and slot logic.
-   - Rebuild login and select on it. Visible result: they look like the
-     original, from the same layout files.
+   - Rebuild login and select on it first: a small surface that proves the
+     approach before the in-game windows depend on it, and retires the egui
+     stopgaps. Visible result: they look like the original, from the same
+     layout files.
 8. **Milestone 5, in-game windows**, in dependency order: task bar, chat, target,
    character and inventory (items from `item_proto`), skills and quick slots,
    minimap, shops, exchange and safebox, quest letters and dialogs (`SCRIPT`
