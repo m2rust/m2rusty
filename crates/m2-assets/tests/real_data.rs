@@ -89,7 +89,10 @@ fn directory_listing_and_non_utf8_count() {
     let index = reader.index();
     eprintln!("files: {} addressable, {} with non-UTF-8 names", index.file_count(), index.non_utf8());
     assert!(index.file_count() > 50_000);
-    assert!(index.non_utf8() > 0 && index.non_utf8() < 200, "{}", index.non_utf8());
+    // The folder packs in `bin/pack` store their dozen CP949 names as Latin-1
+    // mojibake, which is valid UTF-8, so this is 0 there; zipped packs with raw
+    // CP949 names would count here.
+    assert!(index.non_utf8() < 200, "{}", index.non_utf8());
     let root: Vec<_> = index.list("").unwrap().collect();
     assert!(root.contains(&("ymir work", true)), "{root:?}");
     assert!(index.is_dir("ymir work/pc/assassin"));
@@ -176,19 +179,32 @@ fn headless_app_loads_everything() {
         let w = b.parent.map_or(local, |p| world[p] * local);
         world.push(w);
     }
-    // (The root bone `assasin_low` of the object meshes is the exception in the
-    // data itself: its inverse_world includes the model's InitialPlacement, which
-    // the C++ client does not apply either.)
+    // The data has one exception: the root `assasin_low` of the object meshes
+    // stores inverse_world = (InitialPlacement * local)^-1, so every bone under
+    // it has the residual InitialPlacement^-1. The C++ client never applies
+    // InitialPlacement either (`GrannyCompat.h`: composite = InverseWorld4x4 *
+    // world), so that is expected. What must hold: within one root's subtree
+    // the residual is the same matrix, and the body skeleton (`Bip01`) is exact.
+    let max_diff = |a: Mat4, b: Mat4| (a - b).to_cols_array().iter().fold(0.0f32, |m, v| m.max(v.abs()));
+    let root_of = |mut i: usize| {
+        while let Some(p) = skel.bones[i].parent {
+            i = p;
+        }
+        i
+    };
+    let residual = |i: usize| world[i] * skel.bones[i].inverse_world;
     let mut bad = Vec::new();
-    for (w, b) in world.iter().zip(&skel.bones) {
-        let id = *w * b.inverse_world;
-        let err = (id - Mat4::IDENTITY).to_cols_array().iter().fold(0.0f32, |a, v| a.max(v.abs()));
+    for i in 0..skel.bones.len() {
+        let root = root_of(i);
+        let err = max_diff(residual(i), residual(root));
         if err > 5e-3 {
-            bad.push((b.name.clone(), err));
+            bad.push((skel.bones[i].name.clone(), err));
         }
     }
-    eprintln!("bind pose: {} of {} bones inconsistent: {bad:?}", bad.len(), skel.bones.len());
-    assert!(bad.len() * 10 < skel.bones.len(), "bind pose mismatch");
+    eprintln!("bind pose: {} of {} bones inconsistent with their root: {bad:?}", bad.len(), skel.bones.len());
+    assert!(bad.is_empty(), "bind pose mismatch");
+    let bip = skel.bones.iter().position(|b| b.name == "Bip01").expect("Bip01");
+    assert!(max_diff(residual(bip), Mat4::IDENTITY) < 5e-3, "Bip01 bind pose: {:?}", residual(bip));
 
     // Motion has curves for the skeleton's bones.
     let clips = app.world().resource::<Assets<AnimationClip>>();
