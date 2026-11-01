@@ -113,6 +113,9 @@ fn update_mode(reg: Res<ViewerRegistry>, mut mode: ResMut<ActiveCameraMode>) {
     mode.0 = reg.active.map(|a| reg.viewers[a].camera_mode()).unwrap_or_default();
 }
 
+// Bevy systems read their state as parameters; grouping these into a custom
+// `SystemParam` would only move the same list one level down.
+#[allow(clippy::too_many_arguments)]
 fn gather_input(
     mut input: ResMut<ViewerInput>,
     mut contexts: EguiContexts,

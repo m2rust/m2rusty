@@ -130,16 +130,33 @@ pub struct CurrentFile(pub Option<OpenFile>);
 #[derive(Resource, Default)]
 pub struct PendingOpen(pub Option<OpenFile>);
 
+/// Removes every entity the active viewer spawned.
+///
+/// `World::despawn` is recursive and a viewer tags its root with
+/// `ViewerEntity` just like its children, so only roots are collected here.
+/// Despawning a child as well would hit an entity the root already took with
+/// it and log "Could not despawn entity ... invalid; its index now has
+/// generation N". Selecting roots by `Without<ChildOf>` keeps this
+/// independent of query iteration order.
+///
+/// Returns the number of roots despawned, i.e. not the number of entities the
+/// viewer owned.
+pub fn despawn_viewer_entities(world: &mut World) -> usize {
+    let roots: Vec<Entity> =
+        world.query_filtered::<Entity, (With<ViewerEntity>, Without<ChildOf>)>().iter(world).collect();
+    for root in &roots {
+        world.despawn(*root);
+    }
+    roots.len()
+}
+
 pub fn drive_viewers(world: &mut World) {
     world.resource_scope(|world, mut reg: Mut<ViewerRegistry>| {
         if let Some(file) = world.resource_mut::<PendingOpen>().0.take() {
             if let Some(a) = reg.active.take() {
                 reg.viewers[a].close(world);
             }
-            let stale: Vec<Entity> = world.query_filtered::<Entity, With<ViewerEntity>>().iter(world).collect();
-            for e in stale {
-                world.despawn(e);
-            }
+            despawn_viewer_entities(world);
             reg.active = reg.route(&file.name);
             if let Some(a) = reg.active {
                 reg.viewers[a].open(world, &file);
@@ -155,6 +172,7 @@ pub fn drive_viewers(world: &mut World) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::ecs::hierarchy::ChildOf;
 
     #[test]
     fn routing() {
@@ -162,5 +180,23 @@ mod tests {
         assert_eq!(route_extension(lists.iter().copied(), "dds"), Some(0));
         assert_eq!(route_extension(lists.iter().copied(), "tga"), Some(2));
         assert_eq!(route_extension(lists.iter().copied(), "spt"), None);
+    }
+
+    #[test]
+    fn nested_viewer_entities_are_despawned_once() {
+        let mut world = World::new();
+        let root = world.spawn(ViewerEntity).id();
+        let children = (0..3).map(|_| world.spawn((ViewerEntity, ChildOf(root))).id()).collect::<Vec<_>>();
+
+        // The root's despawn already takes the children with it; despawning
+        // them again would log "Could not despawn entity" with a stale
+        // generation, so only roots are collected.
+        assert_eq!(despawn_viewer_entities(&mut world), 1);
+        for child in &children {
+            assert!(!world.entities().contains(*child));
+        }
+        let left = world.query_filtered::<Entity, With<ViewerEntity>>().iter(&world).count();
+        assert_eq!(left, 0);
+        assert_eq!(despawn_viewer_entities(&mut world), 0);
     }
 }
