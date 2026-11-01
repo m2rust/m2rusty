@@ -1,0 +1,83 @@
+# Buttons, toggle/radio/drag buttons, key capture, focus and IME routing.
+screen 640 480 1280 960
+new 1 window UI
+size 1 400 300
+pos 1 10 10
+show 1
+new 2 button UI
+parent 2 1
+size 2 60 20
+pos 2 5 5
+show 2
+handler 2 DownEvent 0
+handler 2 CallEvent 0
+handler 2 ShowToolTip 0
+handler 2 HideToolTip 0
+new 3 togglebutton UI
+parent 3 1
+size 3 60 20
+pos 3 5 40
+show 3
+handler 3 OnToggleUp 0
+handler 3 OnToggleDown 0
+handler 3 ShowToolTip 0
+new 4 radiobutton UI
+parent 4 1
+size 4 60 20
+pos 4 5 80
+show 4
+handler 4 CallEvent 0
+new 5 dragbutton UI
+parent 5 1
+size 5 20 20
+pos 5 100 5
+show 5
+restrict 5 90 0 120 100
+handler 5 OnMove 0
+handler 5 OnMouseOverIn 0
+handler 5 OnMouseOverOut 0
+move 40 40
+move 80 80
+ldown 80 80
+lup 80 80
+move 80 120
+ldown 80 120
+ldown 80 120
+lup 80 120
+ldbl 80 120
+move 160 200
+ldown 160 200
+lup 160 200
+move 0 0
+pos 5 500 500
+pos 5 -50 -50
+disable 2
+move 40 40
+ldown 40 40
+lup 40 40
+enable 2
+btn 2 down
+btn 2 up
+dump 2
+new 6 window UI
+handler 6 OnKeyDown 1
+handler 6 OnKeyUp 0
+handler 6 OnPressEscapeKey 1
+handler 6 OnIMEReturn 1
+handler 6 OnIMETab 0
+handler 6 OnKillFocus 0
+handler 6 OnSetFocus 0
+size 6 10 10
+show 6
+keydown 65
+keydown 65
+keyup 65
+keyup 65
+esc
+exitkey
+focus 6
+focus 1
+imereturn
+imetab
+killfocus
+dumpmgr

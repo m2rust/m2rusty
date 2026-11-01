@@ -1,0 +1,90 @@
+# Slot and grid slot windows: items, selection, cover buttons, attached icons.
+screen 800 600
+mousehandler
+new 1 slot UI
+pos 1 20 20
+size 1 140 100
+show 1
+slot_append 1 0 0 0 32 32
+slot_append 1 1 40 0 32 32
+slot_append 1 2 0 40 32 32
+slot_append 1 7 40 40 32 32
+handler 1 OnSelectItemSlot 0
+handler 1 OnSelectEmptySlot 0
+handler 1 OnUnselectItemSlot 0
+handler 1 OnUnselectEmptySlot 0
+handler 1 OnUseSlot 0
+handler 1 OnOverInItem 0
+handler 1 OnOverOutItem 0
+slot_set 1 1 4711 1 2
+slot_count 1 1 20
+slot_countnew 1 2 1 5
+slot_cooltime 1 1 10 2
+tick
+tick
+slot_cooltime 1 7 5 0
+slot_lock 1 1
+slot_unlock 1 1
+slot_cantuse 1 0
+slot_use 1 0
+slot_disable 1 0
+slot_select 1 1
+slot_select 1 0
+dumpslot 1
+move 30 30
+move 70 30
+ldown 70 30
+lup 70 30
+ldbl 70 30
+rdown 70 30
+rup 70 30
+move 70 90
+move 30 90
+ldown 30 90
+slot_cover 1 1 1 1
+slot_internalsize 1 cover 1 32 32
+slot_button 1
+slot_internalsize 1 btn 1 10 10
+slot_showbutton 1 1
+slot_sign 1
+dumptree
+move 70 30
+ldown 70 30
+lup 70 30
+rdown 70 30
+rup 70 30
+slot_refresh 1
+dumpslot 1
+slot_clearall 1
+update
+dumptree
+new 2 gridslot UI
+pos 2 300 100
+show 2
+grid 2 10 5 4 32 32 2 2
+handler 2 OnSelectItemSlot 0
+handler 2 OnSelectEmptySlot 0
+handler 2 OnOverInItem 0
+handler 2 OnOverOutItem 0
+slot_set 2 17 100 1 2
+slot_set 2 12 200 2 3
+slot_refresh 2
+dumpslot 2
+move 340 140
+move 345 150
+attach 1 100 17 1 2
+move 345 150
+ldown 345 150
+dumpslot 2
+move 400 200
+lup 400 200
+rup 400 200
+attach 1 200 12 2 3
+move 310 105
+dumpslot 2
+slot_usemode 2 1
+slot_usable 2 1
+move 345 150
+dumpslot 2
+deattach
+attachflag 0
