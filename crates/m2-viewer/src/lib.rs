@@ -4,6 +4,7 @@
 pub mod camera;
 pub mod index;
 pub mod model;
+pub mod speedtree;
 pub mod texture;
 pub mod tree;
 pub mod ui;
@@ -16,16 +17,19 @@ use bevy_egui::EguiPlugin;
 use m2_assets::M2AssetsPlugin;
 use m2_render::M2RenderPlugin;
 
-/// Parsed command line: `m2-viewer [client dir] [--index <file>] [--screenshot <vpath> <out.png>]`.
+/// Parsed command line: `m2-viewer [client dir] [--index <file>]
+/// [--motion <vpath>] [--screenshot <vpath> <out.png>]`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Args {
     pub client_dir: PathBuf,
     pub index: String,
+    /// Motion played when the viewed model opens; `.msa` or motion-only `.gr2`.
+    pub motion: Option<String>,
     pub screenshot: Option<(String, PathBuf)>,
 }
 
 pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
-    let mut a = Args { client_dir: "bin".into(), index: "pack/Index.dev".into(), screenshot: None };
+    let mut a = Args { client_dir: "bin".into(), index: "pack/Index.dev".into(), motion: None, screenshot: None };
     let mut it = args.into_iter();
     while let Some(s) = it.next() {
         match s.as_str() {
@@ -34,6 +38,7 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String
                 let o = it.next().ok_or("--screenshot needs <virtual path> <out.png>")?;
                 a.screenshot = Some((v.to_lowercase(), o.into()));
             }
+            "--motion" => a.motion = Some(it.next().ok_or("--motion needs a virtual path")?.to_lowercase()),
             "--index" => a.index = it.next().ok_or("--index needs a file")?,
             s if s.starts_with("--") => return Err(format!("unknown option {s}")),
             _ => a.client_dir = s.into(),
@@ -57,7 +62,8 @@ pub fn build_app(args: &Args) -> App {
     .insert_resource(ui::Shell::new(args.client_dir.clone(), args.index.clone(), args.screenshot.as_ref().map(|s| s.0.clone())))
     .add_plugins((ui::ShellPlugin, camera::CameraPlugin, model::ModelViewerPlugin))
     .add_viewer(texture::TextureViewer::default())
-    .add_viewer(model::Gr2Viewer::default());
+    .add_viewer(speedtree::SpeedTreeViewer::default())
+    .add_viewer(model::Gr2Viewer::default().with_motion(args.motion.clone()));
     if let Some((_, out)) = &args.screenshot {
         app.insert_resource(ui::ScreenshotJob::new(out.clone())).add_systems(Update, ui::screenshot_system);
     }
@@ -80,5 +86,8 @@ mod tests {
         assert_eq!(a.screenshot.unwrap().0, "d:/a.dds");
         assert!(p(&["--screenshot", "a"]).is_err());
         assert!(p(&["--nope"]).is_err());
+        let a = p(&["--motion", "D:/Ymir Work/PC/A/Wait.msa"]).unwrap();
+        assert_eq!(a.motion.as_deref(), Some("d:/ymir work/pc/a/wait.msa"));
+        assert!(p(&["--motion"]).is_err());
     }
 }

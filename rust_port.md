@@ -12,7 +12,7 @@ Last updated: 2026-11-01.
 |---|---|
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
-| 2. Asset viewer in Bevy | **partial**: asset loaders, fixed-function material, viewer shell, and render harness merged; golden-image suite passes, gameplay asset viewers and skinning walkthrough remain |
+| 2. Asset viewer in Bevy | **near done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree viewers, and the render harness merged; golden-image suite passes and a model plays `.msa` motions with skinning. Effect (`.mse`) viewer and the map viewer remain |
 | 3. World | **partial**: world queries/meshes and effect simulation crates merged; Bevy world rendering/integration remains |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
 | 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
@@ -56,8 +56,14 @@ executed in this run.
 - **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
   D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,
-  inspector shell and texture viewer. Model/motion/tree/effect viewers are not
-  wired in; the 12-scene golden-image suite passes on the current machine.
+  inspector shell and the texture, Granny model/motion and SpeedTree viewers.
+  The 12-scene golden-image suite passes on the current machine. The effect
+  (`.mse`) viewer is still missing.
+- **Viewer CLI:** `m2-viewer [client dir] [--index file] [--motion <vpath>]
+  [--screenshot <vpath> <out.png>]`. `--motion` starts a `.msa`/motion-only
+  `.gr2` on the opened model, which is what makes the skinning walkthrough
+  checkable from the command line. Screenshot mode ignores scene input, so
+  repeated captures are byte-identical.
 - **World and effects:** `m2-world` ports terrain height/attribute queries,
   patch meshes, splats, lighting and area placement. `m2-effect` ports particle,
   mesh and light simulation with a C++ differential harness. These are Rust

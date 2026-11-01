@@ -27,6 +27,9 @@ struct SkeletonOverlay(bool);
 #[derive(Default)]
 pub struct Gr2Viewer {
     path: String,
+    /// Motion requested on the command line; survives the `open` reset so the
+    /// skinning walkthrough can be driven without a click.
+    initial_motion: Option<String>,
     model_handle: Option<Handle<Gr2Model>>,
     model: Option<Gr2Model>,
     root: Option<Entity>,
@@ -162,6 +165,34 @@ fn load_failed(server: &AssetServer, id: impl Into<bevy::asset::UntypedAssetId>)
     }
 }
 
+impl Gr2Viewer {
+    /// Starts the given motion (`.msa` or a motion-only `.gr2`) as soon as the
+    /// model opens.
+    pub fn with_motion(mut self, motion: Option<String>) -> Self {
+        self.initial_motion = motion.map(|m| paths::canonical_game_path(&m));
+        self
+    }
+
+    /// Requests a motion; the clip and animation graph follow when the assets
+    /// have loaded. Also used by the inspector's motion picker.
+    fn select_motion(&mut self, world: &mut World, path: &str) {
+        self.motion_handle = Some(world.resource::<AssetServer>().load(paths::asset_source_uri(path)));
+        self.motion = None;
+        self.clip_handle = None;
+        self.animation_node = None;
+        self.error = None;
+        if let Some(root) = self.root {
+            if let Some(mut player) = world.entity_mut(root).get_mut::<AnimationPlayer>() {
+                player.stop_all();
+            }
+        }
+        if let Some(graph) = self.graph_handle.take() {
+            world.resource_mut::<Assets<AnimationGraph>>().remove(graph.id());
+        }
+        self.selected_motion = Some(path.to_owned());
+    }
+}
+
 impl ContentViewer for Gr2Viewer {
     fn id(&self) -> &'static str {
         "gr2 model"
@@ -172,11 +203,15 @@ impl ContentViewer for Gr2Viewer {
     }
 
     fn open(&mut self, world: &mut World, file: &OpenFile) {
-        *self = Self::default();
+        let initial_motion = self.initial_motion.take();
+        *self = Self { initial_motion, ..Self::default() };
         self.path = paths::canonical_game_path(&file.name);
         self.model_handle = Some(world.resource::<AssetServer>().load(paths::asset_source_uri(&self.path)));
         if let Some(packs) = world.get_resource::<M2Packs>() {
             self.motions = packs.motion_files(paths::parent(&self.path)).iter().map(|path| paths::canonical_game_path(path)).collect();
+        }
+        if let Some(motion) = self.initial_motion.clone() {
+            self.select_motion(world, &motion);
         }
     }
 
@@ -286,22 +321,10 @@ impl ContentViewer for Gr2Viewer {
                     }
                 });
             if chosen != self.selected_motion {
-                if let Some(path) = chosen.clone() {
-                    self.motion_handle = Some(world.resource::<AssetServer>().load(paths::asset_source_uri(&path)));
-                    self.motion = None;
-                    self.clip_handle = None;
-                    self.animation_node = None;
-                    self.error = None;
-                    if let Some(root) = self.root {
-                        if let Some(mut player) = world.entity_mut(root).get_mut::<AnimationPlayer>() {
-                            player.stop_all();
-                        }
-                    }
-                    if let Some(graph) = self.graph_handle.take() {
-                        world.resource_mut::<Assets<AnimationGraph>>().remove(graph.id());
-                    }
+                match chosen.clone() {
+                    Some(path) => self.select_motion(world, &path),
+                    None => self.selected_motion = None,
                 }
-                self.selected_motion = chosen;
             }
             if let Some(motion) = &self.motion {
                 ui.label(format!("Animation: {}", motion.motion_file));

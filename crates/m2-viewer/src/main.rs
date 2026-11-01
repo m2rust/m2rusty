@@ -4,7 +4,10 @@ fn main() {
             m2_viewer::build_app(&args).run();
         }
         Err(e) => {
-            eprintln!("m2-viewer: {e}\nusage: m2-viewer [client dir] [--index file] [--screenshot <virtual path> <out.png>]");
+            eprintln!(
+                "m2-viewer: {e}\nusage: m2-viewer [client dir] [--index file] [--motion <virtual path>] \
+                 [--screenshot <virtual path> <out.png>]"
+            );
             std::process::exit(2);
         }
     }
