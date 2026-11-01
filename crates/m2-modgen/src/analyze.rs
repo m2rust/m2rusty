@@ -527,7 +527,9 @@ pub fn analyze(toks: &[Tok], args_name: &str, noargs: bool) -> Analysis {
         // on_bad_arg
         let mut kinds: BTreeSet<String> = BTreeSet::new();
         for g in &gets {
-            if g.required && !g.fail.is_empty() {
+            // An argument guarded by a `PyTuple_Size` check is optional; its
+            // failure return is not the shim's bad-argument path.
+            if g.required && g.ctx == Ctx::None && !g.fail.is_empty() {
                 kinds.insert(g.fail.clone());
             }
         }

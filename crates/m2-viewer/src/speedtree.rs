@@ -138,8 +138,7 @@ fn present(yes: bool) -> &'static str {
 
 impl SpeedTreeViewer {
     pub(crate) fn placed(world: &mut World, tree: SptTree, transform: Transform, fog: Option<Fog>) -> Self {
-        let mut viewer = Self::default();
-        viewer.fog = fog;
+        let mut viewer = Self { fog, ..Self::default() };
         // Each instance needs its own mutable billboard mesh.
         let mut tree = tree;
         if let Some(mesh) = tree.leaf_mesh.as_ref().and_then(|h| world.resource::<Assets<Mesh>>().get(h)).cloned() {
