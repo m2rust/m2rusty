@@ -1,0 +1,2 @@
+add_executable(m2diff_image ImageDump.cpp)
+target_link_libraries(m2diff_image PRIVATE neoeter_image neoeter_io)

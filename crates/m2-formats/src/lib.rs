@@ -7,6 +7,7 @@
 pub mod crypt;
 pub mod effect;
 pub mod gr2;
+pub mod image;
 pub mod locale;
 pub mod map;
 pub mod pack;
