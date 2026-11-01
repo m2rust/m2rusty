@@ -126,6 +126,7 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 | D13 | Not ported: `parser.cpp` (`script::Group`), skill icon images, the Vietnamese weapon-vnum conversion, the LZO compressor, CRC32 (no loader uses it), `Arabic_ConvEnglishModeSymbol` | Unused or only in other builds |
 | D14 | **UTF-8 everywhere it is possible** (user decision, 2026-11-01). New Rust APIs (Phase 2 onwards) expose text as `String`/`&str`. Legacy code pages are converted to UTF-8 once, at the file boundary; other encodings are not a goal and are not preserved on output | The user does not care about non-UTF-8 encodings. Phase 1 modules stay byte-oriented because they are proven byte-identical to C++; a UTF-8 façade is added on top, not a rewrite |
 | D15 | C++ bugs that are replicated or deliberately not replicated are tracked in [c++_rust_bugs.md](c++_rust_bugs.md) | One ledger, stable IDs, referenced from Rust comments |
+| D16 | **Reuse reputable Rust crates instead of reimplementing formats and codecs, but only if they work on every target platform: desktop (Linux/Windows/macOS), wasm32, Android and iOS.** In practice: pure Rust, no C/C++ build step or system library, maintained and widely used. Where a crate would change output on valid real data compared with C++, the differential test decides and own code is used (or the difference is accepted explicitly by the user) | User policy, 2026-11-01. Less code to own, and the port keeps the option of non-desktop targets |
 
 ## 5. Known deviations from C++ (all on malformed input or C++ UB)
 
@@ -214,3 +215,35 @@ cargo run -p m2-client                     # Bevy window + Python host
   the C++ modules pass text in the client's code page. The shim layer converts
   to and from UTF-8 at the boundary; which source encoding the shipped
   `bin/pack/root/*.py` files use has not been checked yet.
+
+## 10. Crate-reuse policy (D16): what it means for the code
+
+Rule of thumb when a format or codec is needed:
+
+1. Look for an existing crate that is reputable (maintained, widely used).
+2. Check it builds for all targets: desktop, `wasm32-unknown-unknown`, Android
+   (`aarch64-linux-android`) and iOS (`aarch64-apple-ios`). A C/C++ build step
+   or a system library disqualifies it, as does `std::fs`/thread assumptions
+   that do not hold on wasm.
+3. Use it only if the differential test against C++ still passes on the real
+   data. If it differs on valid data, port the C++ logic or get the user's
+   explicit OK for the difference.
+
+Already in line with the policy: `zip` (with `deflate-flate2-zlib-rs`, pure
+Rust), `crc32fast`, and the no-C-dependencies choice for `m2-formats`.
+
+Candidates to revisit under D16 (each needs a differential check, none is urgent):
+
+- `crypt`: own LZO1X decoder and XTEA; a maintained pure-Rust LZO crate may
+  exist.
+- `locale`: glibc-exact tables (see §9); `encoding_rs` is the likely
+  replacement once D14 is applied.
+- `gr2`'s decompressor (Oodle1-style) and `spt` have no crate equivalents;
+  they stay as own code.
+- `image` (running): the agent was told to evaluate crates per codec.
+
+Platform limits the policy cannot remove: the Python 2.7 host in
+`neoeter-python` is C and C++ code linked through `m2-script`, so the Rust client
+as a whole will not build for wasm32 or iOS while that bridge is in. The
+format and game crates (`m2-formats`, later `m2-assets` and `m2-game`) must
+stay free of it so they can.
