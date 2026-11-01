@@ -1,24 +1,38 @@
-//! The client: the Bevy app that puts `m2-game` (network, world) and `m2-ui`
-//! (screens) together. There is no Python: the UI is reimplemented in Rust.
+//! The client: the Bevy app that puts `m2-game` (network, world, drawing) and
+//! `m2-ui` (screens) together. There is no Python: the UI is reimplemented in
+//! Rust (D17).
 //!
 //! ```text
-//! m2-client [--host <addr>] [--auth-port <port>] [--login <id> <password>] [--screenshot <out.png>]
+//! m2-client [--client <dir>] [--host <addr>] [--auth-port <port>]
+//!           [--login <id> <password>] [--enter <slot>] [--screenshot <out.png>]
 //! ```
+//!
+//! `--client` is the folder with `pack/` (default `bin`).
 
 use std::path::PathBuf;
 
 use bevy::prelude::*;
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiGlobalSettings, EguiPlugin, PrimaryEguiContext};
+use m2_assets::M2AssetsPlugin;
 use m2_game::net::{NetPlugin, ServerInfo};
+use m2_game::{M2GamePlugin, SceneCamera};
+use m2_render::M2RenderPlugin;
 use m2_ui::M2UiPlugin;
 use m2_ui::login::Autologin;
 
 /// Parsed command line.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, PartialEq)]
 struct Args {
+    client_dir: PathBuf,
     host: Option<String>,
     auth_port: Option<u16>,
     autologin: Autologin,
+}
+
+impl Default for Args {
+    fn default() -> Self {
+        Args { client_dir: "bin".into(), host: None, auth_port: None, autologin: Autologin::default() }
+    }
 }
 
 fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
@@ -26,6 +40,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
     let mut it = args.into_iter();
     while let Some(arg) = it.next() {
         match arg.as_str() {
+            "--client" => a.client_dir = it.next().ok_or("--client needs a folder")?.into(),
             "--host" => a.host = Some(it.next().ok_or("--host needs an address")?),
             "--auth-port" => {
                 let port = it.next().ok_or("--auth-port needs a port")?;
@@ -35,6 +50,10 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
                 let id = it.next().ok_or("--login needs <id> <password>")?;
                 let password = it.next().ok_or("--login needs <id> <password>")?;
                 a.autologin.login = Some((id, password));
+            }
+            "--enter" => {
+                let slot = it.next().ok_or("--enter needs a slot (0-3)")?;
+                a.autologin.enter = Some(slot.parse().map_err(|_| format!("bad slot {slot}"))?);
             }
             "--screenshot" => a.autologin.screenshot = Some(PathBuf::from(it.next().ok_or("--screenshot needs <out.png>")?)),
             other => return Err(format!("unknown argument {other}")),
@@ -63,22 +82,50 @@ fn main() -> AppExit {
         let _ = std::fs::remove_file(out);
     }
 
-    App::new()
+    let mut app = App::new();
+    app.add_plugins(M2AssetsPlugin::new(args.client_dir))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window { title: "m2rusty".into(), ..default() }),
             ..default()
         }))
-        .add_plugins(EguiPlugin::default())
+        .add_plugins((EguiPlugin::default(), M2RenderPlugin, M2GamePlugin))
         .insert_resource(ClearColor(Color::srgb(0.08, 0.08, 0.1)))
         .insert_resource(server)
         .insert_resource(args.autologin)
         .add_plugins((NetPlugin, M2UiPlugin))
-        .add_systems(Startup, setup)
-        .run()
+        .add_systems(Startup, setup);
+    // egui draws on its own camera over the whole window (see `setup`).
+    app.world_mut().resource_mut::<EguiGlobalSettings>().auto_create_primary_context = false;
+    app.run()
 }
 
+/// The scene camera (3D, the client's fixed-function colours) and the UI camera
+/// over it.
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((
+        Camera3d::default(),
+        // The custom materials write display-space colours.
+        bevy::core_pipeline::tonemapping::Tonemapping::None,
+        bevy::core_pipeline::tonemapping::DebandDither::Disabled,
+        bevy::camera::Exposure { ev100: -(1.2f32).log2() },
+        SceneCamera,
+        Transform::from_xyz(0.0, 150.0, -520.0).looking_at(Vec3::new(0.0, 90.0, 0.0), Vec3::Y),
+    ));
+    commands.spawn((
+        Camera2d,
+        PrimaryEguiContext,
+        bevy::camera::visibility::RenderLayers::none(),
+        Camera {
+            order: 1,
+            output_mode: bevy::camera::CameraOutputMode::Write {
+                blend_state: Some(bevy::render::render_resource::BlendState::ALPHA_BLENDING),
+                clear_color: ClearColorConfig::None,
+            },
+            clear_color: ClearColorConfig::Custom(Color::NONE),
+            ..default()
+        },
+    ));
+    commands.spawn((DirectionalLight::default(), Transform::from_xyz(4.0, 8.0, -6.0).looking_at(Vec3::ZERO, Vec3::Y)));
 }
 
 #[cfg(test)]
@@ -92,13 +139,19 @@ mod tests {
     #[test]
     fn args() {
         assert_eq!(p(&[]).unwrap(), Args::default());
-        let a = p(&["--host", "10.0.0.2", "--auth-port", "11002", "--login", "admin", "pw", "--screenshot", "o.png"]).unwrap();
+        let a = p(&[
+            "--client", "c", "--host", "10.0.0.2", "--auth-port", "11002", "--login", "admin", "pw", "--enter", "1", "--screenshot", "o.png",
+        ])
+        .unwrap();
+        assert_eq!(a.client_dir, PathBuf::from("c"));
         assert_eq!(a.host.as_deref(), Some("10.0.0.2"));
         assert_eq!(a.auth_port, Some(11002));
         assert_eq!(a.autologin.login, Some(("admin".into(), "pw".into())));
+        assert_eq!(a.autologin.enter, Some(1));
         assert_eq!(a.autologin.screenshot, Some(PathBuf::from("o.png")));
         assert!(p(&["--login", "admin"]).is_err());
         assert!(p(&["--auth-port", "x"]).is_err());
+        assert!(p(&["--enter", "x"]).is_err());
         assert!(p(&["what"]).is_err());
     }
 }

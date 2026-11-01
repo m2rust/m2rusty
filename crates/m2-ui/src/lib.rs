@@ -7,12 +7,15 @@
 //! expressions; see the roadmap in `rust_port.md`).
 //!
 //! Screens so far:
-//! - [`login`]: account, password and channel; the account's characters once the
-//!   server accepts the login.
+//! - [`login`]: account, password and channel.
+//! - [`select`]: the account's characters in 3D; "Start" enters the game.
 //!
-//! The screens use egui for now (`bevy_egui`); the app adds `EguiPlugin`.
+//! The screens use egui for now (`bevy_egui`; stopgaps until the `bevy_ui` widget
+//! tree, D18). The app adds `EguiPlugin`, the asset and render plugins, and a 3D
+//! camera with `m2_game::SceneCamera` for the scenes.
 
 pub mod login;
+pub mod select;
 
 use bevy::prelude::*;
 
@@ -21,6 +24,6 @@ pub struct M2UiPlugin;
 
 impl Plugin for M2UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(login::LoginScreenPlugin);
+        app.add_plugins((login::LoginScreenPlugin, select::SelectScreenPlugin));
     }
 }

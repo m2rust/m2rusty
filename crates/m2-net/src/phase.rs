@@ -470,6 +470,19 @@ impl NetMachine {
         self.direct_enter
     }
 
+    /// `ConnectGameServer`'s state change: enter the game with `slot` after the next
+    /// connection (its address is the slot's `lAddr`/`wPort`). The login then keeps the
+    /// character list, and the driver sends [`Self::send_select_character`] when the
+    /// server reaches the Select phase. `None` for a slot past `PLAYER_PER_ACCOUNT4`.
+    pub fn set_direct_enter(&mut self, slot: u8) -> Option<&TSimplePlayerInformation> {
+        if usize::from(slot) >= self.players.len() {
+            return None;
+        }
+        self.selected_slot = slot;
+        self.direct_enter = Some(slot);
+        Some(&self.players[usize::from(slot)])
+    }
+
     /// `SetLoginInfo`.
     pub fn set_login_info(&mut self, id: &str, password: &str) {
         self.login_id = id.to_owned();

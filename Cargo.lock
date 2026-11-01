@@ -3904,7 +3904,9 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "m2-assets",
  "m2-game",
+ "m2-render",
  "m2-ui",
 ]
 
@@ -3976,6 +3978,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",
+ "m2-assets",
  "m2-game",
  "m2-net",
 ]

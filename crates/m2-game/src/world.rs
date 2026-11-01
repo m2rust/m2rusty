@@ -196,7 +196,7 @@ impl MapScene {
                 ObjectAsset::Model(handle) => {
                     let model = world.resource::<Assets<Gr2Model>>().get(handle).cloned();
                     if let Some(model) = &model {
-                        let spawned = model::spawn_model(world, model, Some(self.root), self.fog);
+                        let spawned = model::spawn_model(world, model, Some(self.root), &[], self.fog);
                         world.entity_mut(spawned.root).insert(transform);
                     }
                     (model.is_some(), handle.id().untyped())

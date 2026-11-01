@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 use bevy::prelude::*;
 use bevy::tasks::{IoTaskPool, Task, futures::check_ready};
 use m2_net::auth::{AuthEvent, AuthMachine, random_client_key};
-use m2_net::phase::{NetConfig, NetEvent, NetMachine};
+use m2_net::phase::{NetConfig, NetEvent, NetMachine, Phase};
 use m2_net::transport::pump;
 use m2_net::transport::tcp::TcpTransport;
 
@@ -64,6 +64,17 @@ pub struct LoginRequest {
     pub password: String,
     /// Index into [`ServerInfo::channels`].
     pub channel: usize,
+}
+
+/// Enters the game with a character of the account (`net.DirectEnter`, then the
+/// loading window's `SendSelectCharacterPacket`): reconnect to the slot's server,
+/// log in again with the key, and select the character once the server is in the
+/// Select phase. The server then sends the Loading phase and `MainCharacter`; call
+/// [`Net::start_game`] when the game is ready to be shown. Ignored unless logged in
+/// (game connection in the Select phase).
+#[derive(Message, Clone, Copy, Debug)]
+pub struct EnterGame {
+    pub slot: u8,
 }
 
 /// Which of the two connections a [`NetMessage`] is about.
@@ -123,6 +134,31 @@ impl Net {
         !matches!(self.link, Link::Idle)
     }
 
+    /// `SendEnterGame` (`net.SendEnterGamePacket`, sent by the game window when it
+    /// opens): the server answers with the Game phase.
+    pub fn start_game(&mut self) -> bool {
+        self.game.send_enter_game()
+    }
+
+    /// `ConnectGameServer`: drop the connection without leaving the phase and connect
+    /// to the server that holds `slot`'s character.
+    fn enter_game(&mut self, slot: u8) -> Result<(), String> {
+        if !matches!(self.link, Link::Online(Server::Game, _)) || self.game.phase() != Phase::Select {
+            return Err("not logged in".into());
+        }
+        let info = self.game.set_direct_enter(slot).ok_or_else(|| format!("no slot {slot}"))?;
+        if info.dwID == 0 {
+            return Err(format!("slot {slot} is empty"));
+        }
+        // `CNetworkStream::Connect(DWORD)`: the lowest byte is the first octet.
+        let host = std::net::Ipv4Addr::from((info.lAddr as u32).to_le_bytes()).to_string();
+        let port = info.wPort;
+        info!("entering the game with slot {slot} on {host}:{port}");
+        self.link = Link::Idle;
+        self.connect(Server::Game, host, port);
+        Ok(())
+    }
+
     /// Closes whatever is open (`net.Disconnect`).
     pub fn disconnect(&mut self) {
         self.link = Link::Idle;
@@ -154,9 +190,10 @@ impl Plugin for NetPlugin {
         app.init_resource::<ServerInfo>()
             .init_resource::<Net>()
             .add_message::<LoginRequest>()
+            .add_message::<EnterGame>()
             .add_message::<NetMessage>()
             // Before the UI reads this frame's messages.
-            .add_systems(PreUpdate, (start_login, pump_net).chain());
+            .add_systems(PreUpdate, (start_login, enter_game, pump_net).chain());
     }
 }
 
@@ -185,6 +222,14 @@ fn start_login(mut requests: MessageReader<LoginRequest>, mut net: ResMut<Net>, 
         net.game_addr = (info.host.clone(), channel.port);
         info!("connecting to the account server {}:{} for {} ({})", info.host, info.auth_port, request.id, channel.name);
         net.connect(Server::Account, info.host.clone(), info.auth_port);
+    }
+}
+
+fn enter_game(mut requests: MessageReader<EnterGame>, mut net: ResMut<Net>) {
+    for request in requests.read() {
+        if let Err(error) = net.enter_game(request.slot) {
+            warn!("enter game ignored: {error}");
+        }
     }
 }
 
@@ -239,6 +284,20 @@ fn pump_net(mut net: ResMut<Net>, mut out: MessageWriter<NetMessage>) {
         }
         Link::Online(Server::Game, transport) => {
             let (events, closed) = pump(&mut net.game, transport, now);
+            for event in &events {
+                match event {
+                    NetEvent::Unhandled { phase, header } => warn!("unhandled packet header {header} in {phase:?}; receive buffer cleared"),
+                    NetEvent::Frame(error) => warn!("framing error {error:?}; receive buffer cleared"),
+                    NetEvent::Malformed { header } => warn!("malformed packet header {header}"),
+                    _ => {}
+                }
+                // `SetSelectPhase` in direct-enter mode opens the loading window, whose
+                // first act is `SendSelectCharacterPacket`.
+                if let (NetEvent::PhaseChanged { to: Phase::Select, .. }, Some(slot)) = (event, net.game.direct_enter_slot()) {
+                    info!("selecting character slot {slot}");
+                    net.game.send_select_character(slot);
+                }
+            }
             out.write_batch(events.into_iter().map(NetMessage::Game));
             if closed {
                 net.link = Link::Idle;

@@ -1,36 +1,44 @@
-//! Native login screen (egui): account, password and channel, the progress of
-//! the login, and the account's characters once the server accepts it.
-//!
-//! The Rust counterpart of `intrologin.py` (and, for now, the character list of
-//! `introselect.py`).
+//! Native login screen (egui): account, password and channel, and the progress
+//! of the login. The Rust counterpart of `intrologin.py`; once the server
+//! accepts the account, [`crate::select`] takes over.
 
 use std::path::PathBuf;
 
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use m2_game::net::{LoginRequest, Net, NetMessage, Server, ServerInfo, login_failure_text};
 use m2_net::auth::AuthEvent;
 use m2_net::phase::NetEvent;
 use m2_net::wire::cstr_to_string;
 
-use m2_game::net::{LoginRequest, Net, NetMessage, Server, ServerInfo, login_failure_text};
-
 /// One character slot of the account (`TSimplePlayerInformation`).
 #[derive(Clone, Debug)]
 pub struct CharacterSlot {
-    pub slot: usize,
+    pub slot: u8,
     pub name: String,
     pub race: u8,
     pub level: u8,
+    /// `wMainPart`: the armor (an item vnum, or a shape for 0 and 1).
+    pub armor: u16,
+    /// `wHairPart`: the hair index of the race.
+    pub hair: u16,
+    pub play_minutes: u32,
 }
 
+/// Where the player is, from the login form to the game.
 #[derive(Clone, Debug, Default)]
 pub enum Status {
     #[default]
     Idle,
     Working(String),
     Failed(String),
-    LoggedIn { empire: u8, characters: Vec<CharacterSlot> },
+    /// Logged in: the account's characters (the select screen).
+    Select { empire: u8, characters: Vec<CharacterSlot> },
+    /// "Start" was pressed for `slot`; `step` says what the client waits for.
+    Entering { slot: u8, step: String },
+    /// The server switched to the Game phase.
+    InGame { name: String, x: i32, y: i32 },
 }
 
 /// The form and what the login reached.
@@ -42,13 +50,20 @@ pub struct LoginScreen {
     pub status: Status,
 }
 
-/// `--login <id> <password>`: submit once at startup. `--screenshot <png>`: save
-/// the window once logged in (or failed), then exit.
+/// Unattended runs: `--login <id> <password>` submits once at startup, `--enter
+/// <slot>` starts the game with that slot once the select screen is ready, and
+/// `--screenshot <png>` saves the window when the run is done (select screen ready
+/// without `--enter`, in game, or failed), then exits.
 #[derive(Resource, Default, Clone, Debug, PartialEq)]
 pub struct Autologin {
     pub login: Option<(String, String)>,
+    pub enter: Option<u8>,
     pub screenshot: Option<PathBuf>,
 }
+
+/// Set by a screen when an unattended run has reached what it waited for.
+#[derive(Resource, Default)]
+pub struct RunDone(pub bool);
 
 pub struct LoginScreenPlugin;
 
@@ -56,6 +71,7 @@ impl Plugin for LoginScreenPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<LoginScreen>()
             .init_resource::<Autologin>()
+            .init_resource::<RunDone>()
             .add_systems(Startup, autologin)
             .add_systems(Update, (track_login, screenshot_when_done))
             .add_systems(EguiPrimaryContextPass, login_ui);
@@ -70,7 +86,7 @@ fn autologin(auto: Res<Autologin>, mut screen: ResMut<LoginScreen>, mut requests
     }
 }
 
-/// Follows the login through the network messages.
+/// Follows the login (and the connection's failures) through the network messages.
 fn track_login(mut messages: MessageReader<NetMessage>, mut screen: ResMut<LoginScreen>, mut net: ResMut<Net>, info: Res<ServerInfo>) {
     for message in messages.read() {
         match message {
@@ -95,19 +111,28 @@ fn track_login(mut messages: MessageReader<NetMessage>, mut screen: ResMut<Login
                 net.disconnect();
                 screen.status = Status::Failed("This server asks for a matrix card or passpod, which the port does not support.".into());
             }
-            NetMessage::Game(NetEvent::LoginSuccess { players, .. }) => {
+            // The login while entering the game (direct-enter mode) refreshes nothing.
+            NetMessage::Game(NetEvent::LoginSuccess { players, .. }) if net.game.direct_enter_slot().is_none() => {
                 let characters = players
                     .iter()
                     .enumerate()
                     .filter(|(_, p)| p.dwID != 0)
-                    .map(|(slot, p)| CharacterSlot { slot, name: cstr_to_string(&p.szName), race: p.byJob, level: p.byLevel })
+                    .map(|(slot, p)| CharacterSlot {
+                        slot: slot as u8,
+                        name: cstr_to_string(&p.szName),
+                        race: p.byJob,
+                        level: p.byLevel,
+                        armor: p.wMainPart,
+                        hair: p.wHairPart,
+                        play_minutes: p.dwPlayMinutes,
+                    })
                     .collect();
                 info!("logged in as {}", screen.id);
                 screen.password.clear();
-                screen.status = Status::LoggedIn { empire: net.game.empire(), characters };
+                screen.status = Status::Select { empire: net.game.empire(), characters };
             }
             NetMessage::Game(NetEvent::Empire(empire)) => {
-                if let Status::LoggedIn { empire: shown, .. } = &mut screen.status {
+                if let Status::Select { empire: shown, .. } = &mut screen.status {
                     *shown = *empire;
                 }
             }
@@ -123,38 +148,16 @@ fn server_name(server: Server) -> &'static str {
     }
 }
 
-/// `MAIN_RACE_*`: 0 warrior (m), 1 assassin (f), 2 sura (m), 3 shaman (f), then the
-/// other gender of each in the same order.
-pub fn race_name(race: u8) -> &'static str {
-    match race {
-        0 => "Warrior (m)",
-        1 => "Ninja (f)",
-        2 => "Sura (m)",
-        3 => "Shaman (f)",
-        4 => "Warrior (f)",
-        5 => "Ninja (m)",
-        6 => "Sura (f)",
-        7 => "Shaman (m)",
-        _ => "Unknown race",
-    }
-}
-
-pub fn empire_name(empire: u8) -> &'static str {
-    match empire {
-        1 => "Shinsoo",
-        2 => "Chunjo",
-        3 => "Jinno",
-        _ => "no empire yet",
-    }
-}
-
 fn login_ui(
     mut contexts: EguiContexts,
     mut screen: ResMut<LoginScreen>,
-    mut net: ResMut<Net>,
+    net: Res<Net>,
     info: Res<ServerInfo>,
     mut requests: MessageWriter<LoginRequest>,
 ) -> Result {
+    if !matches!(screen.status, Status::Idle | Status::Working(_) | Status::Failed(_)) {
+        return Ok(());
+    }
     let ctx = contexts.ctx_mut()?;
     egui::Window::new(format!("{} — login", info.name))
         .collapsible(false)
@@ -162,31 +165,6 @@ fn login_ui(
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .show(ctx, |ui| {
             let screen = &mut *screen;
-            if let Status::LoggedIn { empire, characters } = &screen.status {
-                ui.heading(format!("Logged in as {}", screen.id));
-                let channel = info.channels.get(screen.channel).map_or("?", |c| c.name.as_str());
-                ui.label(format!("{} · {channel} · empire: {}", info.name, empire_name(*empire)));
-                ui.separator();
-                if characters.is_empty() {
-                    ui.label("This account has no characters yet.");
-                }
-                egui::Grid::new("characters").striped(true).show(ui, |ui| {
-                    for c in characters {
-                        ui.label(format!("Slot {}", c.slot + 1));
-                        ui.strong(&c.name);
-                        ui.label(race_name(c.race));
-                        ui.label(format!("Lv. {}", c.level));
-                        ui.end_row();
-                    }
-                });
-                ui.separator();
-                if ui.button("Log out").clicked() {
-                    net.disconnect();
-                    screen.status = Status::Idle;
-                }
-                return;
-            }
-
             let working = matches!(screen.status, Status::Working(_)) || net.busy();
             ui.add_enabled_ui(!working, |ui| {
                 egui::Grid::new("form").num_columns(2).show(ui, |ui| {
@@ -234,16 +212,17 @@ fn login_ui(
     Ok(())
 }
 
-/// With `--screenshot`: capture once the login finished either way, then exit.
+/// With `--screenshot`: capture once the run is done (or failed), then exit.
 fn screenshot_when_done(
     mut commands: Commands,
     auto: Res<Autologin>,
     screen: Res<LoginScreen>,
+    done: Res<RunDone>,
     mut frames: Local<u32>,
     mut exit: MessageWriter<AppExit>,
 ) {
     let Some(out) = &auto.screenshot else { return };
-    if !matches!(screen.status, Status::LoggedIn { .. } | Status::Failed(_)) {
+    if !done.0 && !matches!(screen.status, Status::Failed(_)) {
         *frames = 0;
         return;
     }
@@ -257,6 +236,31 @@ fn screenshot_when_done(
     } else if *frames > 600 {
         error!("screenshot timed out");
         exit.write(AppExit::error());
+    }
+}
+
+/// `MAIN_RACE_*`: 0 warrior (m), 1 assassin (f), 2 sura (m), 3 shaman (f), then the
+/// other gender of each in the same order.
+pub fn race_name(race: u8) -> &'static str {
+    match race {
+        0 => "Warrior (m)",
+        1 => "Ninja (f)",
+        2 => "Sura (m)",
+        3 => "Shaman (f)",
+        4 => "Warrior (f)",
+        5 => "Ninja (m)",
+        6 => "Sura (f)",
+        7 => "Shaman (m)",
+        _ => "Unknown race",
+    }
+}
+
+pub fn empire_name(empire: u8) -> &'static str {
+    match empire {
+        1 => "Shinsoo",
+        2 => "Chunjo",
+        3 => "Jinno",
+        _ => "no empire yet",
     }
 }
 

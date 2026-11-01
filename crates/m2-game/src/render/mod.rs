@@ -1,5 +1,6 @@
 //! Drawing game content with the client's render states.
 
+pub mod character;
 pub mod cloud;
 pub mod effect;
 pub mod model;

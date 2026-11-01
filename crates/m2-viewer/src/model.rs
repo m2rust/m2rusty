@@ -50,7 +50,7 @@ impl Plugin for ModelViewerPlugin {
 /// Spawns `model` for the viewer: the shared client spawn, tagged for the
 /// shell and linked for the skeleton overlay.
 fn spawn_model(world: &mut World, model: &Gr2Model) -> (Entity, Vec<Entity>) {
-    let spawned = m2_game::render::model::spawn_model(world, model, None, None);
+    let spawned = m2_game::render::model::spawn_model(world, model, None, &[], None);
     world.entity_mut(spawned.root).insert(ViewerEntity);
     if let Some(skeleton) = &model.skeleton {
         for (bone, &entity) in skeleton.bones.iter().zip(&spawned.bones) {
