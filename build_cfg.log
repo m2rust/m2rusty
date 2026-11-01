@@ -1,0 +1,26 @@
+-- Neoeter configured (platform/base;platform/locale;platform/math;io;image;render;audio;model/grn;model/speedtree;terrain;effect)
+CMake Warning (policy) at neoeter-python/src/host/CMakeLists.txt:43 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+This warning is for project developers.  Use -Wno-author or -Wno-policy to
+suppress it.
+
+-- neoeter_python_host: build-time Python stdlib /nix/store/56p9073nx0a2ry7i6c8k8v5slpbxd8fs-python-2.7.18.8/lib/python2.7
+CMake Warning (policy) at neoeter-python/src/bindings/CMakeLists.txt:43 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+This warning is for project developers.  Use -Wno-author or -Wno-policy to
+suppress it.
+
+CMake Warning (policy) at client/src/ui/CMakeLists.txt:43 (find_package):
+  Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+  are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+  the cmake_policy command to set the policy and suppress this warning.
+This warning is for project developers.  Use -Wno-author or -Wno-policy to
+suppress it.
+
+-- Configuring done (0.3s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/rucadi/m2rusty/.claude/worktrees/agent-abc7a8955d769288e/build/differential
