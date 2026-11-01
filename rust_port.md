@@ -11,7 +11,7 @@ Last updated: 2026-11-01.
 | Phase | State |
 |---|---|
 | 0. Groundwork | done (`1b5b551`) |
-| 1. Formats, no Bevy | in progress: 6 of 11 format families merged |
+| 1. Formats, no Bevy | in progress: 11 of 12 format families merged; `image` running |
 | 2. Asset viewer in Bevy | not started |
 | 3. World | not started |
 | 4. Game logic and networking | not started |
@@ -29,14 +29,14 @@ Last updated: 2026-11-01.
 | `crypt` | XTEA ("TEA"), `CLZObject`, LZO1X decoder | 48 LZ objects made by real liblzo, both keys | merged |
 | `proto` | item/mob/skill tables, insult list, `lang*.cvt`, `LoadLocaleData` | all 15 `locale_*` packs, both YMIR modes (~15k lines per run) | merged |
 | `gr2` | `Gr2Reader.cpp`, `Gr2Decompress.c` | all 8,831 `.gr2` (809,200 lines, 364,853 tracks); 420 damaged files | merged |
-| `race` | `.msm` race data, `.msa` motions, `.mss` | | agent running |
-| `property` | `Property*.cpp` (`.prb .prt .prd .pre .pra`), reserved CRCs | | agent running |
-| `map` | `setting.txt`, area, terrain, texture sets, monster areas | | agent running |
-| `effect` | `.mse`, particles, `.mde` meshes, flying data `.msf` | | agent running |
-| `image` | DXT codecs, DDS/TGA/JPG (`neoeter/src/image`) | | **not started** |
+| `race` | `.msm` race data, `.msa` motions, `.mss` | 2,877 `.msm` + 6,027 `.msa` (all load; 98.6k lines) | merged |
+| `property` | `Property*.cpp` (`.prb .prt .prd .pre .pra`), reserved CRCs | 1,835 files (1,342 properties, 69 reserved CRCs) | merged |
+| `map` | `setting.txt`, area, terrain, texture sets, monster areas, atlas | 88 maps, 1,189 terrains, 51,344 area objects (66k lines) | merged |
+| `effect` | `.mse`, particles, `.mde` meshes, flying data `.msf` | 1,148 `.mse`, 98 `.msf`, 112 `.mde` (1.57 M lines) | merged |
+| `image` | DXT codecs, DDS/TGA/JPG (`neoeter/src/image`) | | agent running |
 
-Current totals on `main`: 90 tests pass, `cargo clippy -p m2-formats
---all-targets` is clean, and six differential suites pass
+Current totals on `main`: 131 tests pass, `cargo clippy -p m2-formats
+--all-targets` is clean, and nine differential suites pass
 (`scripts/differential.sh`).
 
 ## 2. What exists
@@ -122,6 +122,8 @@ Current totals on `main`: 90 tests pass, `cargo clippy -p m2-formats
 | D11 | Differential dumpers live in `tools/differential/` (opt-in `M2_BUILD_DIFF_TOOLS`), not in the engine tree | Keeps test tooling out of the C++ libraries |
 | D12 | Parallel module ports run as subagents in git worktrees, one module each, merged by hand | Modules are independent once `script` exists |
 | D13 | Not ported: `parser.cpp` (`script::Group`), skill icon images, the Vietnamese weapon-vnum conversion, the LZO compressor, CRC32 (no loader uses it), `Arabic_ConvEnglishModeSymbol` | Unused or only in other builds |
+| D14 | **UTF-8 everywhere it is possible** (user decision, 2026-11-01). New Rust APIs (Phase 2 onwards) expose text as `String`/`&str`. Legacy code pages are converted to UTF-8 once, at the file boundary; other encodings are not a goal and are not preserved on output | The user does not care about non-UTF-8 encodings. Phase 1 modules stay byte-oriented because they are proven byte-identical to C++; a UTF-8 façade is added on top, not a rewrite |
+| D15 | C++ bugs that are replicated or deliberately not replicated are tracked in [c++_rust_bugs.md](c++_rust_bugs.md) | One ledger, stable IDs, referenced from Rust comments |
 
 ## 5. Known deviations from C++ (all on malformed input or C++ UB)
 
@@ -181,9 +183,32 @@ cargo run -p m2-client                     # Bevy window + Python host
 
 ## 8. Next steps
 
-1. Land race/property, map and effect; merge and re-run all suites.
+1. Land `image` (race/property, map and effect are merged); re-run all suites.
 2. Port `image` (DXT, DDS/TGA/JPG) with the existing `test_dxt_invariants`
    cases; close Phase 1.
 3. Add `rustfmt.toml` and run it once on the whole crate.
 4. Phase 2: `m2-assets` (pack `AssetSource`, loaders for textures, gr2, spt),
    `m2-render` materials checked against `neoeter/src/render/tests/golden`.
+
+## 9. UTF-8 policy (D14): what it means for the code
+
+- **Phase 1 stays as is.** `pack`, `script`, `race`, … keep `Vec<u8>` names and
+  tokens. That is what makes them verifiable byte for byte, and changing it now
+  would throw the comparison away. 31 file names in `bin/pack` are CP949 bytes.
+- **New code is UTF-8.** `m2-assets`, `m2-ui`, `m2-game` and the script bridge
+  take and return `&str`/`String`. Conversion from the legacy code page
+  happens once, where bytes enter from a pack or from the network.
+- **Decide at the boundary, not per call site.** Candidates: decode names in
+  `PackManager` into UTF-8 virtual names (the Python scripts and the proto
+  tables must then agree on the same spelling), and decode `proto`/locale
+  text when it is loaded.
+- **`locale` can shrink.** It currently reproduces glibc's `iconv` tables for 20
+  code pages (320 KB of tables) to be byte-identical with C++. Under D14 that
+  fidelity is no longer needed; a later cleanup can replace it with
+  `encoding_rs` for the few locales actually shipped and drop the tables and
+  the Arabic/Japanese/Vietnamese reproduction that is not needed for display.
+  Nothing depends on this today, so it is deferred.
+- **Open question for Phase 5:** Python 2.7 `str` is bytes. The scripts and
+  the C++ modules pass text in the client's code page. The shim layer converts
+  to and from UTF-8 at the boundary; which source encoding the shipped
+  `bin/pack/root/*.py` files use has not been checked yet.
