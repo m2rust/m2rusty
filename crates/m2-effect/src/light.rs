@@ -58,6 +58,10 @@ impl LightInstance {
         self.state.started
     }
 
+    pub fn is_active(&self) -> bool {
+        self.state.active
+    }
+
     pub fn local_time(&self) -> f32 {
         self.state.local_time
     }

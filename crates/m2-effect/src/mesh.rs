@@ -17,6 +17,8 @@ pub struct MeshDraw<'a> {
     pub mesh_index: usize,
     /// Texture name of the current texture frame, if there is one.
     pub texture: Option<&'a [u8]>,
+    /// Index of the current texture frame (`texture` exists when in range).
+    pub texture_frame: usize,
     /// World matrix, the effect matrix already applied.
     pub world: Mat4,
     /// Source and destination blend, or `None` when blending is off.
@@ -87,6 +89,21 @@ impl EffectMeshInstance {
 
     pub fn is_started(&self) -> bool {
         self.state.started
+    }
+
+    /// The element's own active flag (`SetActive`/`SetDeactive`).
+    pub fn is_active(&self) -> bool {
+        self.state.active
+    }
+
+    /// Whether the `.mde` resource was found.
+    pub fn has_mesh(&self) -> bool {
+        self.mesh.is_some()
+    }
+
+    /// Whether the mesh animation controller is still running.
+    pub fn mesh_controller_active(&self) -> bool {
+        self.mesh_controller.is_active(0)
     }
 
     pub fn local_time(&self) -> f32 {
@@ -218,6 +235,7 @@ impl EffectMeshInstance {
             out.push(MeshDraw {
                 mesh_index: i,
                 texture,
+                texture_frame,
                 world,
                 blend,
                 color_operation,
