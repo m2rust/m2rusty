@@ -3927,6 +3927,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "m2-game"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "m2-assets",
+ "m2-effect",
+ "m2-formats",
+ "m2-render",
+ "m2-world",
+]
+
+[[package]]
 name = "m2-modgen"
 version = "0.1.0"
 dependencies = [
@@ -3969,8 +3981,8 @@ dependencies = [
  "bevy",
  "bevy_egui",
  "m2-assets",
- "m2-effect",
  "m2-formats",
+ "m2-game",
  "m2-render",
  "m2-world",
 ]

@@ -1,33 +1,22 @@
-//! Outdoor map viewer (`--map`): loads a map through `m2-formats`/`m2-world`
-//! off the main thread and draws every terrain patch as its own mesh.
+//! Outdoor map viewer (`--map`): prepares a map with
+//! [`m2_game::world::prepare_map`] off the main thread and shows it as a
+//! [`m2_game::world::MapScene`]. This module adds only the viewer side: the
+//! preload for `--map`, the inspector, and the overview camera.
 //!
 //! The map is addressed like `CMapOutdoor`: a map directory name
 //! (`metin2_map_a1`) whose `MapProperty.txt` may redirect every other file to
-//! its `ParentMapName`. Terrain patches are built by [`m2_world::mesh`] and
-//! textured with the tile-selected layers of the map's texture set.
+//! its `ParentMapName`.
 
 use std::sync::Arc;
 
-use bevy::asset::{AssetServer, Assets, LoadState, RenderAssetUsages};
-use bevy::ecs::hierarchy::ChildOf;
-use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, futures::check_ready};
 use bevy_egui::egui;
 use m2_assets::M2Packs;
-use m2_assets::coords;
-use m2_assets::paths;
-use m2_assets::{gr2::Gr2Model, spt::SptTree};
-use m2_formats::map::{
-    AreaPropertyError, EnvironmentData, MapProperty, MapSetting, PropertyError, SettingError, TERRAIN_TEX_COORD_BASE,
-    Terrain, TerrainTexture, TextureSet, load_environment, splat_alpha_matrix,
-};
 use m2_formats::pack::PackManager;
-use m2_formats::property::PropertyManager;
-use m2_render::{Blend, DepthState, FixedFunctionMaterial, Fog, TextureArg, TextureOp, TextureStage};
-use m2_world::area::{PlacedKind, PlacedObject, place_object, rotation_yaw_pitch_roll};
-use m2_world::mesh::{DEFAULT_OPAQUE_WATER_DEPTH, build_index_buffers, build_terrain_patches};
-use m2_world::{TERRAIN_WORLD, TerrainCell};
+use m2_game::render::sky;
+use m2_game::world::{MapScene, PreparedMap, prepare_map};
+use m2_world::TERRAIN_WORLD;
 
 use crate::index::FileKind;
 use crate::viewer::{ContentViewer, MainCamera, OpenFile, PendingOpen, ViewerEntity};
@@ -37,25 +26,10 @@ use crate::viewer::{ContentViewer, MainCamera, OpenFile, PendingOpen, ViewerEnti
 /// `<map>/map.map` entry (see [`map_open_file`]).
 const MAP_EXT: &str = "map";
 
-/// One map, loaded off the main thread.
-pub struct LoadedMap {
-    pub name: String,
-    pub terrain_count: (i16, i16),
-    pub terrain_loaded: usize,
-    pub terrain_failed: usize,
-    pub terrain_error: Option<String>,
-    pub height_scale: f32,
-    pub texture_set_len: usize,
-    pub textures: Vec<TerrainTexture>,
-    pub ground_image: Image,
-    pub objects: Vec<PlacedObject>,
-    pub effects: Vec<m2_effect::EffectInstance>,
-    pub environment: Option<EnvironmentData>,
-    pub environment_error: Option<String>,
-    pub object_errors: Vec<String>,
-    pub terrains: Vec<TerrainCell>,
-    pub property_error: Option<String>,
-    pub setting_error: Option<String>,
+type MapTask = Task<Result<Arc<PreparedMap>, String>>;
+
+fn spawn_prepare(packs: Arc<PackManager>, name: String) -> MapTask {
+    AsyncComputeTaskPool::get().spawn(async move { prepare_map(&packs, &name).map(Arc::new) })
 }
 
 /// `--map`: the background load started before the viewer opens. The shell
@@ -66,8 +40,8 @@ pub struct MapPreload {
     pub map: Option<String>,
     /// `--fog`: apply the environment fog from the start.
     pub fog: bool,
-    task: Option<Task<Result<Arc<LoadedMap>, String>>>,
-    loaded: Option<Arc<LoadedMap>>,
+    task: Option<MapTask>,
+    loaded: Option<Arc<PreparedMap>>,
     error: Option<String>,
     /// Whether the synthetic `PendingOpen` was already queued.
     opened: bool,
@@ -77,10 +51,7 @@ pub struct MapViewerPlugin;
 
 impl Plugin for MapViewerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((crate::map_render::MapRenderPlugin, crate::cloud::CloudPlugin))
-            .init_resource::<MapPreload>()
-            .add_systems(Startup, start_preload)
-            .add_systems(Update, poll_preload);
+        app.init_resource::<MapPreload>().add_systems(Startup, start_preload).add_systems(Update, poll_preload);
     }
 }
 
@@ -88,8 +59,7 @@ fn start_preload(mut preload: ResMut<MapPreload>, packs: Res<M2Packs>) {
     let Some(name) = preload.map.clone() else {
         return;
     };
-    let packs = Arc::clone(&packs.packs);
-    preload.task = Some(AsyncComputeTaskPool::get().spawn(async move { load_map(packs, name).map(Arc::new) }));
+    preload.task = Some(spawn_prepare(Arc::clone(&packs.packs), name));
 }
 
 fn poll_preload(mut preload: ResMut<MapPreload>, mut pending: ResMut<PendingOpen>, packs: Res<M2Packs>) {
@@ -105,17 +75,18 @@ fn poll_preload(mut preload: ResMut<MapPreload>, mut pending: ResMut<PendingOpen
     preload.task = None;
     let name = preload.map.clone().unwrap_or_default();
     match result {
-        Ok(map) => {
+        Ok(prepared) => {
+            let map = &prepared.map;
             info!(
                 "loaded map {}: {}x{} terrains ({} loaded, {} failed), {} texture(s)",
                 map.name,
                 map.terrain_count.0,
                 map.terrain_count.1,
-                map.terrain_loaded,
+                map.terrains.len(),
                 map.terrain_failed,
-                map.texture_set_len
+                map.textures.len()
             );
-            preload.loaded = Some(map);
+            preload.loaded = Some(prepared);
         }
         Err(e) => {
             error!("map {name}: {e}");
@@ -149,155 +120,16 @@ pub fn map_open_file(name: &str, manager: Arc<PackManager>) -> OpenFile {
     }
 }
 
-/// Loads the property, setting and every terrain of the map, mirroring
-/// `CMapOutdoor::LoadMap` closely enough for a preview: a file that fails is
-/// skipped, the rest still loads.
-fn load_map(packs: Arc<PackManager>, name: String) -> Result<LoadedMap, String> {
-    let map_name = name.as_bytes().to_vec();
-    let property = MapProperty::load(&packs, &map_name);
-    let property_error = property.error.as_ref().map(describe_property_error);
-    let data_directory = property.data_directory(&map_name).to_vec();
-
-    let mut setting = MapSetting::load(&packs, &data_directory);
-    let setting_error = setting.error.take().map(|e| describe_setting_error(&e));
-    let environment_name = setting.environment_file_name(&map_name, &data_directory, |n| packs.exists(n));
-    let (environment, environment_error) = match load_environment(&packs, &environment_name) {
-        Ok(environment) => (Some(environment), None),
-        Err(error) => (None, Some(format!("Environment {}: {error}", String::from_utf8_lossy(&environment_name)))),
-    };
-    let (count_x, count_y) = setting.terrain_count;
-    if count_x <= 0 || count_y <= 0 {
-        return Err(setting_error.unwrap_or_else(|| format!("{name}: MapSize is {}x{count_y}", count_x)));
-    }
-
-    let mut props = PropertyManager::default();
-    props.initialize(&packs);
-    let mut objects = Vec::new();
-    let mut object_errors = Vec::new();
-    let mut terrains = Vec::new();
-    let mut terrain_failed = 0usize;
-    let mut terrain_error = None;
-    for ty in 0..count_y as u16 {
-        for tx in 0..count_x as u16 {
-            let dir = m2_formats::map::area_dir_name(&data_directory, tx, ty);
-            let area = m2_formats::map::Area::load(&packs, &dir, |_| true);
-            if let Some(error) = area.object_error {
-                object_errors.push(format!("Area {tx},{ty}: {error:?}"));
-            }
-            for object in area.objects {
-                if let Some(placed) = place_object(&object, &props, &|path| packs.exists(path)) {
-                    objects.push(placed);
-                } else {
-                    object_errors.push(format!("Unresolved property CRC {}", object.crc));
-                }
-            }
-            match Terrain::load(&packs, &data_directory, tx, ty, setting.height_scale) {
-                Ok((terrain, _load)) => terrains.push(TerrainCell { x: tx, y: ty, terrain }),
-                Err(e) => {
-                    terrain_failed += 1;
-                    if terrain_error.is_none() {
-                        terrain_error = Some(format!("{tx:03}{ty:03}: {}", describe_area_error(&e)));
-                    }
-                }
-            }
-        }
-    }
-    if terrains.is_empty() {
-        return Err(terrain_error.unwrap_or_else(|| format!("{name}: no terrain loaded")));
-    }
-
-    let mut effects = Vec::new();
-    for object in &objects {
-        if let PlacedKind::Effect { file, matrix, .. } = &object.kind {
-            match crate::effect_draw::load_instance(&packs, file, *matrix) {
-                Ok(effect) => effects.push(effect),
-                Err(error) => object_errors.push(error),
-            }
-        }
-    }
-    let TextureSet { textures, .. } = setting.texture_set;
-    for texture in &textures {
-        if !texture.file_name.is_empty() && !packs.exists(&texture.file_name) {
-            object_errors.push(format!("Missing terrain texture: {}", String::from_utf8_lossy(&texture.file_name)));
-        }
-    }
-    let (ground_image, texture_errors) = crate::map_render::ground(&packs, &textures);
-    object_errors.extend(texture_errors);
-    Ok(LoadedMap {
-        name,
-        terrain_count: (count_x, count_y),
-        terrain_loaded: terrains.len(),
-        terrain_failed,
-        terrain_error,
-        height_scale: setting.height_scale,
-        texture_set_len: textures.len(),
-        textures,
-        ground_image,
-        objects,
-        effects,
-        environment,
-        environment_error,
-        object_errors,
-        terrains,
-        property_error,
-        setting_error,
-    })
-}
-
-/// Error text for the inspector: the map file errors only derive `Debug`, and
-/// their pack payload is a path that reads much better through `Display`.
-fn describe_property_error(error: &PropertyError) -> String {
-    match error {
-        PropertyError::Pack(e) => format!("MapProperty.txt: {e}"),
-        PropertyError::MissingKey(key) => format!("MapProperty.txt: missing {key}"),
-        PropertyError::ScriptType => "MapProperty.txt: ScriptType is not MapProperty".into(),
-    }
-}
-
-fn describe_area_error(error: &AreaPropertyError) -> String {
-    match error {
-        AreaPropertyError::Pack(e) => format!("AreaProperty.txt: {e}"),
-        AreaPropertyError::MissingKey(key) => format!("AreaProperty.txt: missing {key}"),
-        AreaPropertyError::ScriptType => "AreaProperty.txt: ScriptType is not AreaProperty".into(),
-    }
-}
-
-fn describe_setting_error(error: &SettingError) -> String {
-    match error {
-        SettingError::Pack(e) => format!("Setting.txt: {e}"),
-        SettingError::MissingKey(key) => format!("Setting.txt: missing {key}"),
-        SettingError::ScriptType => "Setting.txt: ScriptType is not MapSetting".into(),
-        SettingError::ViewRadius => "Setting.txt: ViewRadius must be above 0".into(),
-        SettingError::TextureSet(e) => format!("Setting.txt: texture set: {e:?}"),
-    }
-}
-
-#[derive(Default, Clone, Copy)]
-struct SpawnStats {
-    patches: usize,
-    vertices: usize,
-    triangles: usize,
-}
-
 #[derive(Default)]
 pub struct MapViewer {
     path: String,
-    map: Option<Arc<LoadedMap>>,
-    task: Option<Task<Result<Arc<LoadedMap>, String>>>,
+    scene: Option<MapScene>,
+    task: Option<MapTask>,
     error: Option<String>,
-    stats: SpawnStats,
     fit_camera: bool,
-    pending_objects: Vec<(PlacedObject, ObjectAsset)>,
-    trees: Vec<crate::speedtree::SpeedTreeViewer>,
-    objects_loaded: usize,
-    effects: crate::effect_draw::EffectRenderer,
-    fog: Option<Fog>,
     /// Apply the environment fog. Off for the overview camera, which sits far
     /// outside the map's fog range; on when the view is near the ground.
     fog_enabled: bool,
-    water: Option<Handle<FixedFunctionMaterial>>,
-    water_frames: Vec<Handle<Image>>,
-    object_errors: Vec<String>,
 }
 
 impl ContentViewer for MapViewer {
@@ -312,25 +144,24 @@ impl ContentViewer for MapViewer {
     fn open(&mut self, world: &mut World, file: &OpenFile) {
         *self = Self::default();
         self.fog_enabled = world.resource::<MapPreload>().fog;
-        self.path = paths::canonical_game_path(paths::parent(&file.name));
+        self.path = m2_assets::paths::canonical_game_path(m2_assets::paths::parent(&file.name));
         let (loaded, error) = {
             let mut preload = world.resource_mut::<MapPreload>();
             (preload.loaded.take(), preload.error.take())
         };
-        if let Some(map) = loaded.filter(|map| map.name == self.path) {
+        if let Some(map) = loaded.filter(|prepared| prepared.map.name == self.path) {
             self.spawn(world, map);
         } else if let Some(error) = error {
             self.error = Some(error);
         } else {
-            // Viewing a map without the CLI preload (future browser entry).
+            // Viewing a map without the CLI preload (a browser entry).
             let packs = Arc::clone(&world.resource::<M2Packs>().packs);
-            let name = self.path.clone();
-            self.task = Some(AsyncComputeTaskPool::get().spawn(async move { load_map(packs, name).map(Arc::new) }));
+            self.task = Some(spawn_prepare(packs, self.path.clone()));
         }
     }
 
     fn update(&mut self, world: &mut World) {
-        if self.map.is_none() {
+        if self.scene.is_none() {
             let Some(task) = &mut self.task else { return };
             let Some(result) = check_ready(task) else {
                 return;
@@ -341,21 +172,11 @@ impl ContentViewer for MapViewer {
                 Err(e) => self.error = Some(e),
             }
         }
-        self.update_objects(world);
-        self.effects.update(world);
-        if let Some(water) = &self.water {
-            let frame = (world.resource::<Time>().elapsed_secs() / 0.07) as usize % self.water_frames.len();
-            world.resource_mut::<Assets<FixedFunctionMaterial>>().get_mut(water).unwrap().textures[0] =
-                Some(self.water_frames[frame].clone());
-        }
-        for tree in &mut self.trees {
-            tree.update(world);
-        }
+        let Some(scene) = &mut self.scene else { return };
+        scene.update(world);
         if self.fit_camera {
-            if let Some(map) = &self.map {
-                fit_camera(world, map);
-                self.fit_camera = false;
-            }
+            fit_camera(world, &scene.map);
+            self.fit_camera = false;
         }
     }
 
@@ -366,13 +187,14 @@ impl ContentViewer for MapViewer {
         if let Some(error) = &self.error {
             ui.colored_label(egui::Color32::LIGHT_RED, error);
         }
-        let Some(map) = &self.map else {
+        let Some(scene) = &self.scene else {
             if self.error.is_none() {
                 ui.spinner();
                 ui.label("Loading map setting and terrain tiles…");
             }
             return;
         };
+        let map = &scene.map.map;
         let mut refog = false;
         if let Some(error) = &map.property_error {
             ui.colored_label(egui::Color32::YELLOW, error);
@@ -403,22 +225,21 @@ impl ContentViewer for MapViewer {
             refog = ui.checkbox(&mut self.fog_enabled, "Environment fog").changed();
         }
         ui.label(format!("Map size: {} × {} terrains", map.terrain_count.0, map.terrain_count.1));
-        ui.label(format!("Loaded terrains: {} ({} failed)", map.terrain_loaded, map.terrain_failed));
+        ui.label(format!("Loaded terrains: {} ({} failed)", map.terrains.len(), map.terrain_failed));
         if let Some(error) = &map.terrain_error {
             ui.label(format!("First terrain error: {error}"));
         }
         ui.label(format!("Height scale: {}", map.height_scale));
-        ui.label(format!("Texture set: {} entries", map.texture_set_len));
-        ui.label(format!("Objects: {} loaded · {} pending", self.objects_loaded, self.pending_objects.len()));
-        ui.label(format!("Effects: {}", self.effects.instances.len()));
-        ui.label(format!("Load errors: {}", map.object_errors.len() + self.object_errors.len()));
-        for error in map.object_errors.iter().chain(&self.object_errors).take(12) {
+        ui.label(format!("Texture set: {} entries", map.textures.len()));
+        ui.label(format!("Objects: {} loaded · {} pending", scene.objects_loaded, scene.pending_objects()));
+        ui.label(format!("Effects: {}", scene.effects.instances.len()));
+        let errors = map.object_errors.iter().chain(&scene.map.errors).chain(&scene.object_errors);
+        ui.label(format!("Load errors: {}", errors.clone().count()));
+        for error in errors.take(12) {
             ui.colored_label(egui::Color32::YELLOW, error);
         }
-        ui.label(format!(
-            "Patches: {} · {} vertices · {} triangles",
-            self.stats.patches, self.stats.vertices, self.stats.triangles
-        ));
+        let stats = scene.stats;
+        ui.label(format!("Patches: {} · {} vertices · {} triangles", stats.patches, stats.vertices, stats.triangles));
         ui.label("Terrain LOD 0 · texture splats · animated water");
         if ui.button("Fit map").clicked() {
             self.fit_camera = true;
@@ -430,219 +251,30 @@ impl ContentViewer for MapViewer {
     }
 
     fn close(&mut self, world: &mut World) {
-        crate::sky::clear_sky(world);
+        sky::clear_sky(world);
     }
 }
 
 impl MapViewer {
-    /// Rebuilds the scene after a render-state change (the fog toggle).
-    fn rebuild(&mut self, world: &mut World) {
-        let Some(map) = self.map.clone() else { return };
-        crate::viewer::despawn_viewer_entities(world);
-        self.pending_objects.clear();
-        self.trees.clear();
-        self.water = None;
-        self.effects = Default::default();
-        self.stats = Default::default();
-        self.spawn(world, map);
-    }
-}
-
-impl MapViewer {
-    fn spawn(&mut self, world: &mut World, map: Arc<LoadedMap>) {
+    fn spawn(&mut self, world: &mut World, map: Arc<PreparedMap>) {
         // The map is 25 600 world units per terrain: a few terrain sides away
         // from the default camera's far plane is already clipped.
         set_far_plane(world, 400_000.0);
-        let fog = map.environment.as_ref().filter(|_| self.fog_enabled).and_then(map_fog);
-        if let Some(environment) = &map.environment {
+        if let Some(environment) = &map.map.environment {
             set_clear_color(world, environment.fog.color);
         }
-
-        let root =
-            world.spawn((ViewerEntity, Name::new(map.name.clone()), Transform::IDENTITY, Visibility::Visible)).id();
-        if let Some(environment) = &map.environment {
-            crate::sky::install_sky(world, environment);
-            crate::cloud::spawn_cloud(world, environment);
-        }
-        self.water_frames = (1..=30)
-            .map(|frame| {
-                world
-                    .resource::<AssetServer>()
-                    .load(paths::asset_source_uri(&format!("d:/ymir work/special/water/{frame:02}.dds")))
-            })
-            .collect();
-        let water = FixedFunctionMaterial::opaque(self.water_frames[0].clone())
-            .blend(Blend::ALPHA)
-            .cull(m2_render::CullMode::None)
-            .depth(DepthState { write: false, ..Default::default() })
-            .stage0(TextureStage {
-                color_op: TextureOp::SelectArg1,
-                color_arg1: TextureArg::TEXTURE,
-                color_arg2: TextureArg::TEXTURE,
-                alpha_op: TextureOp::SelectArg1,
-                alpha_arg1: TextureArg::DIFFUSE,
-                alpha_arg2: TextureArg::DIFFUSE,
-            });
-        let water = if let Some(fog) = fog { water.fog(fog) } else { water };
-        self.water = Some(world.resource_mut::<Assets<FixedFunctionMaterial>>().add(water));
-        let splat_alpha = splat_alpha_matrix();
-        let indices = strip_to_triangles(&build_index_buffers()[0]);
-        let ground = world.resource_mut::<Assets<Image>>().add(map.ground_image.clone());
-        let mut stats = SpawnStats::default();
-        for cell in &map.terrains {
-            let masks = world.resource_mut::<Assets<Image>>().add(crate::map_render::masks(&cell.terrain, map.textures.len()));
-            let patches = build_terrain_patches(&cell.terrain, cell.x, cell.y, DEFAULT_OPAQUE_WATER_DEPTH);
-            for (index, patch) in patches.iter().enumerate() {
-                if !patch.water_vertices.is_empty() {
-                    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
-                    mesh.insert_attribute(
-                        Mesh::ATTRIBUTE_POSITION,
-                        patch.water_vertices.iter().map(|v| coords::vec3(v.position).to_array()).collect::<Vec<_>>(),
-                    );
-                    mesh.insert_attribute(
-                        Mesh::ATTRIBUTE_COLOR,
-                        patch
-                            .water_vertices
-                            .iter()
-                            .map(|v| m2_render::d3d_color(v.diffuse).to_array())
-                            .collect::<Vec<_>>(),
-                    );
-                    mesh.insert_attribute(
-                        Mesh::ATTRIBUTE_UV_0,
-                        patch
-                            .water_vertices
-                            .iter()
-                            .map(|v| [v.position[0] / 800.0, -v.position[1] / 800.0])
-                            .collect::<Vec<_>>(),
-                    );
-                    let mut water_indices: Vec<u32> = (0..patch.water_vertices.len() as u32).collect();
-                    coords::flip_winding(&mut water_indices);
-                    mesh.insert_indices(Indices::U32(water_indices));
-                    let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
-                    world.spawn((
-                        ViewerEntity,
-                        Name::new("Water"),
-                        Mesh3d(mesh),
-                        MeshMaterial3d(self.water.as_ref().unwrap().clone()),
-                        Transform::IDENTITY,
-                        Visibility::Visible,
-                        ChildOf(root),
-                    ));
-                }
-                let positions: Vec<[f32; 3]> =
-                    patch.vertices.iter().map(|v| coords::vec3(v.position).to_array()).collect();
-                let normals: Vec<[f32; 3]> = patch.vertices.iter().map(|v| coords::vec3(v.normal).to_array()).collect();
-                stats.patches += 1;
-                let mut params = crate::map_render::patch_uniform(&map.textures, &cell.terrain.patch_tile_count[index]);
-                crate::map_render::set_fog(&mut params, fog);
-                let material = world.resource_mut::<Assets<crate::map_render::TerrainMaterial>>().add(crate::map_render::TerrainMaterial {
-                    params, ground: ground.clone(), masks: masks.clone(),
-                });
-                    let uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(
-                        &patch.vertices,
-                        u32::from(cell.x),
-                        u32::from(cell.y),
-                        TERRAIN_TEX_COORD_BASE,
-                        &splat_alpha,
-                    )
-                    .iter()
-                    .map(|uv| uv.tile)
-                    .collect();
-
-                    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
-                    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions.clone());
-                    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
-                    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-                    let alpha_uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(
-                        &patch.vertices,
-                        u32::from(cell.x),
-                        u32::from(cell.y),
-                        TERRAIN_TEX_COORD_BASE,
-                        &splat_alpha,
-                    )
-                    .iter()
-                    .map(|uv| uv.alpha)
-                    .collect();
-                    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, alpha_uvs);
-                    mesh.insert_indices(Indices::U32(indices.clone()));
-                    let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
-
-                    stats.vertices += patch.vertices.len();
-                    stats.triangles += indices.len() / 3;
-                    world.spawn((
-                        ViewerEntity,
-                        Name::new(format!("patch {:03}{:03} #{}", cell.x, cell.y, index)),
-                        Mesh3d(mesh),
-                        MeshMaterial3d(material.clone()),
-                        Transform::IDENTITY,
-                        Visibility::Visible,
-                        ChildOf(root),
-                    ));
-            }
-        }
-        info!(
-            "map {}: {} patch(es), {} vertices, {} triangles, texture set of {}",
-            map.name, stats.patches, stats.vertices, stats.triangles, map.texture_set_len
-        );
-        for object in &map.objects {
-            let asset = match &object.kind {
-                PlacedKind::Building { file, .. } | PlacedKind::DungeonBlock { file, .. } => ObjectAsset::Model(
-                    world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(file))),
-                ),
-                PlacedKind::Tree { file } => ObjectAsset::Tree(
-                    world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(file))),
-                ),
-                PlacedKind::Effect { .. } => continue,
-                PlacedKind::Ambience { .. } => continue,
-            };
-            self.pending_objects.push((object.clone(), asset));
-        }
-        self.effects.instances = map.effects.clone();
-        self.effects.fog = fog;
-        self.fog = fog;
-        self.stats = stats;
-        self.map = Some(map);
-        fit_camera(world, self.map.as_ref().unwrap());
+        let scene = MapScene::spawn(world, Arc::clone(&map), self.fog_enabled);
+        world.entity_mut(scene.root).insert(ViewerEntity);
+        self.scene = Some(scene);
+        fit_camera(world, &map);
     }
-}
 
-/// Terrain UV of `1/640` per unit (5 repeats per 3200-unit patch) scaled by
-/// the texture set entry, whose scale is relative to that 5-repeat default.
-#[cfg(test)]
-fn tile_uv(tile: [f32; 2], u_scale: f32, v_scale: f32, u_offset: f32, v_offset: f32) -> [f32; 2] {
-    [tile[0] * u_scale * 0.2 + u_offset, tile[1] * v_scale * 0.2 - v_offset]
-}
-
-/// The LOD 0 terrain index buffer is a triangle strip; Bevy meshes are
-/// triangle lists with counter-clockwise front faces, which is what
-/// [`m2_assets::coords::flip_winding`] gives a Metin2 (clockwise-front) list.
-fn strip_to_triangles(strip: &[u16]) -> Vec<u32> {
-    let mut out = Vec::with_capacity(strip.len().saturating_sub(2) * 3);
-    for (i, w) in strip.windows(3).enumerate() {
-        let (a, b, c) = (u32::from(w[0]), u32::from(w[1]), u32::from(w[2]));
-        if a == b || b == c || a == c {
-            continue;
-        }
-        if i % 2 == 0 {
-            out.extend_from_slice(&[a, b, c]);
-        } else {
-            out.extend_from_slice(&[b, a, c]);
-        }
+    /// Rebuilds the scene after a render-state change (the fog toggle).
+    fn rebuild(&mut self, world: &mut World) {
+        let Some(scene) = self.scene.take() else { return };
+        crate::viewer::despawn_viewer_entities(world);
+        self.spawn(world, scene.map);
     }
-    coords::flip_winding(&mut out);
-    out
-}
-
-/// `CMapManager::SetEnvironmentData`'s fog state as the fixed-function fog of
-/// `m2-render`. Density fog is exponential at the client's fixed 0.00015.
-fn map_fog(environment: &EnvironmentData) -> Option<Fog> {
-    let fog = environment.fog;
-    if !fog.enable {
-        return None;
-    }
-    let [r, g, b, a] = fog.color;
-    let color = Vec4::new(r, g, b, a);
-    Some(if fog.density { Fog::exp(color, 0.00015) } else { Fog::linear(color, fog.near_distance, fog.far_distance) })
 }
 
 /// The clear colour behind the sky and terrain: the environment fog colour
@@ -656,22 +288,22 @@ fn set_clear_color(world: &mut World, color: [f32; 4]) {
 
 fn set_far_plane(world: &mut World, far: f32) {
     let mut query = world.query_filtered::<&mut Projection, With<MainCamera>>();
-    if let Ok(mut projection) = query.single_mut(world) {
-        if let Projection::Perspective(perspective) = &mut *projection {
-            perspective.near = 0.5;
-            perspective.far = far;
-        }
+    if let Ok(mut projection) = query.single_mut(world)
+        && let Projection::Perspective(perspective) = &mut *projection
+    {
+        perspective.near = 0.5;
+        perspective.far = far;
     }
 }
 
 /// Frames every loaded terrain: `radius` is the diagonal of the loaded area,
 /// which the 45° vertical field of view covers at pitch ~55°.
-fn fit_camera(world: &mut World, map: &LoadedMap) {
+fn fit_camera(world: &mut World, map: &PreparedMap) {
     let size = TERRAIN_WORLD as f32;
     let (mut min_x, mut max_x) = (f32::MAX, f32::MIN);
     let (mut min_z, mut max_z) = (f32::MAX, f32::MIN);
     let (mut min_y, mut max_y) = (f32::MAX, f32::MIN);
-    for cell in &map.terrains {
+    for cell in &map.map.terrains {
         let x = f32::from(cell.x) * size;
         // Game Y is negated for display, so terrain rows run towards -Z.
         let z = -(f32::from(cell.y) + 1.0) * size;
@@ -706,145 +338,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn area_property_places_building_with_height_bias_and_rotation() {
-        let property = m2_formats::property::Property::read_from_memory(
-            b"property/house.prb",
-            b"YPRT\n123\nPropertyName house\nPropertyType Building\nBuildingFile \"d:/ymir work/house.gr2\"\n",
-        )
-        .unwrap();
-        let mut props = PropertyManager::default();
-        props.by_crc.insert(123, property);
-        let objects = m2_formats::map::parse_area_data(
-            b"AreaDataFile\nObjectCount 1\nStart Object000\n100 -200 300\n123\n0.000000#0.000000#90.000000\n25\nEnd Object\n",
-            |_| true,
-        ).unwrap();
-        let placed = place_object(&objects[0], &props, &|_| false).unwrap();
-        let transform = object_transform(&placed);
-        assert_eq!(transform.translation, Vec3::new(100.0, 325.0, -200.0));
-        assert!((transform.rotation * Vec3::X - Vec3::Z).length() < 1e-5);
-        assert!(matches!(placed.kind, PlacedKind::Building { ref file, .. } if file == b"d:/ymir work/house.gr2"));
-    }
-
-    #[test]
-    #[ignore = "requires the bundled client packs under bin/"]
-    fn bundled_a1_loads_textures_objects_and_effects() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin");
-        let mut packs = PackManager::new(root);
-        m2_formats::pack::load_index(&mut packs, "pack", "pack/Index.dev").unwrap();
-        let packs = Arc::new(packs);
-        let map = load_map(packs.clone(), "metin2_map_a1".into()).unwrap();
-        assert_eq!(map.terrain_loaded, 20);
-        assert_eq!(map.terrain_failed, 0);
-        assert!(map.property_error.is_none(), "{:?}", map.property_error);
-        assert!(map.setting_error.is_none(), "{:?}", map.setting_error);
-        assert!(map.object_errors.is_empty(), "{:?}", map.object_errors);
-        assert!(map.objects.iter().any(|o| matches!(o.kind, PlacedKind::Building { .. })));
-        assert!(map.objects.iter().any(|o| matches!(o.kind, PlacedKind::Tree { .. })));
-        assert!(!map.effects.is_empty());
-        let environment = map.environment.as_ref().expect("a1 has an environment");
-        assert!(environment.fog.enable);
-        assert!(environment.fog.far_distance > environment.fog.near_distance);
-        assert!(map.environment_error.is_none(), "{:?}", map.environment_error);
-        assert!(map_fog(environment).is_some());
-        for texture in map.textures.iter().skip(1) {
-            assert!(packs.exists(&texture.file_name), "{:?}", texture.file_name);
-        }
-        assert!(
-            map.terrains
-                .iter()
-                .any(|cell| { m2_world::splat::generate_splats(&cell.terrain, map.textures.len()).len() > 1 })
-        );
-    }
-
-    #[test]
-    fn environment_fog_becomes_fixed_function_fog() {
-        use m2_render::FogMode;
-        let mut environment = EnvironmentData::default();
-        assert!(map_fog(&environment).is_none());
-        environment.fog.enable = true;
-        environment.fog.near_distance = 10.0;
-        environment.fog.far_distance = 20.0;
-        assert_eq!(map_fog(&environment).unwrap().mode, FogMode::Linear { start: 10.0, end: 20.0 });
-        environment.fog.density = true;
-        assert_eq!(map_fog(&environment).unwrap().mode, FogMode::Exp { density: 0.00015 });
-    }
-
-    #[test]
-    fn strip_becomes_a_list_with_flipped_winding() {
-        // Two strip triangles, the second one reversed by the strip itself.
-        let tris = strip_to_triangles(&[0, 1, 2, 3]);
-        assert_eq!(tris.len(), 6);
-        // `[0,1,2]` keeps its order before the Metin2 winding flip, so the
-        // stored triangle is `[0,2,1]`; the odd `[1,2,3]` is `[2,1,3]` first.
-        assert_eq!(&tris[..3], &[0, 2, 1]);
-        assert_eq!(&tris[3..], &[2, 3, 1]);
-    }
-
-    #[test]
     fn a_map_is_opened_from_its_property_or_setting_file() {
         assert_eq!(map_dir_of_entry("metin2_map_b1/mapproperty.txt").as_deref(), Some("metin2_map_b1"));
         assert_eq!(map_dir_of_entry("metin2_map_b1/Setting.TXT").as_deref(), Some("metin2_map_b1"));
         // Anything else stays an ordinary file.
         assert_eq!(map_dir_of_entry("metin2_map_b1/0000001.tga"), None);
         assert_eq!(map_dir_of_entry("mapproperty.txt"), None);
-    }
-
-    #[test]
-    fn texture_scale_is_relative_to_five_repeats_per_patch() {
-        // A patch is 3200 units wide; UV 1/640 per unit repeats 5 times.
-        let tile = [1.0, -1.0];
-        assert_eq!(tile_uv(tile, 5.0, 5.0, 0.0, 0.0), [1.0, -1.0]);
-        assert_eq!(tile_uv(tile, 10.0, 10.0, 0.0, 0.0), [2.0, -2.0]);
-        assert_eq!(tile_uv(tile, 5.0, 5.0, 0.25, 0.5), [1.25, -1.5]);
-    }
-}
-
-enum ObjectAsset {
-    Model(Handle<Gr2Model>),
-    Tree(Handle<SptTree>),
-}
-
-fn object_transform(object: &PlacedObject) -> Transform {
-    let [yaw, pitch, roll] = object.rotation.map(f32::to_radians);
-    let m = rotation_yaw_pitch_roll(yaw, pitch, roll);
-    let rows = std::array::from_fn(|r| std::array::from_fn(|c| m[r * 4 + c]));
-    let mut transform = Transform::from_matrix(coords::mat4_from_d3d(rows));
-    transform.translation = coords::vec3(object.position);
-    transform
-}
-
-impl MapViewer {
-    fn update_objects(&mut self, world: &mut World) {
-        let mut pending = Vec::new();
-        for (object, asset) in self.pending_objects.drain(..) {
-            let transform = object_transform(&object);
-            let (ready, id) = match &asset {
-                ObjectAsset::Model(handle) => {
-                    let model = world.resource::<Assets<Gr2Model>>().get(handle).cloned();
-                    let ready = model.is_some();
-                    if let Some(model) = model {
-                        let (root, _) = crate::model::spawn_model(world, &model, self.fog);
-                        world.entity_mut(root).insert(transform);
-                    }
-                    (ready, handle.id().untyped())
-                }
-                ObjectAsset::Tree(handle) => {
-                    let tree = world.resource::<Assets<SptTree>>().get(handle).cloned();
-                    let ready = tree.is_some();
-                    if let Some(tree) = tree {
-                        self.trees.push(crate::speedtree::SpeedTreeViewer::placed(world, tree, transform, self.fog));
-                    }
-                    (ready, handle.id().untyped())
-                }
-            };
-            if ready {
-                self.objects_loaded += 1;
-            } else if let Some(LoadState::Failed(error)) = world.resource::<AssetServer>().get_load_state(id) {
-                self.object_errors.push(format!("Object {}: {error}", object.crc));
-            } else {
-                pending.push((object, asset));
-            }
-        }
-        self.pending_objects = pending;
     }
 }

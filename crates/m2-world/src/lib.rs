@@ -12,11 +12,13 @@
 
 pub mod area;
 pub mod lighting;
+pub mod load;
 pub mod mesh;
 pub mod outdoor;
 pub mod sort;
 pub mod splat;
 
+pub use load::{LoadedMap, load_map};
 pub use outdoor::{OutdoorMap, TerrainCell, float_to_long};
 
 /// `CTerrainImpl::TERRAIN_XSIZE`: world units per terrain side.

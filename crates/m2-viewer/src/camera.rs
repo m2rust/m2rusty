@@ -59,6 +59,7 @@ fn setup(mut commands: Commands) {
         // makes the skybox pass use the same scale (exposure 1.0).
         bevy::camera::Exposure { ev100: -(1.2f32).log2() },
         MainCamera,
+        m2_game::SceneCamera,
         orbit,
         orbit.transform(),
     ));

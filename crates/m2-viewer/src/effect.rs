@@ -2,7 +2,7 @@
 //!
 //! The script is loaded with `m2-formats::effect`, meshes with the same
 //! loader, and the simulation runs in `m2-effect`. Drawing goes through the
-//! shared [`crate::effect_draw::EffectRenderer`], so the viewer and the map
+//! shared [`m2_game::render::effect::EffectRenderer`], so the viewer and the map
 //! effects use the same fixed-function state translation.
 
 use std::sync::Arc;
@@ -11,9 +11,9 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use m2_assets::coords;
 use m2_formats::effect::{EffectData, TimeEventTableFloat};
+use m2_game::render::effect::{EffectMeshes, EffectRenderer, instance_from_data, load_data, load_meshes};
 
-use crate::effect_draw::{EffectMeshes, EffectRenderer, instance_from_data, load_data, load_meshes};
-use crate::viewer::{ContentViewer, MainCamera, OpenFile};
+use crate::viewer::{ContentViewer, MainCamera, OpenFile, ViewerEntity};
 
 /// Column-major identity in the layout `EffectInstance::set_global_matrix` takes.
 const IDENTITY: [f32; 16] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
@@ -154,10 +154,10 @@ impl ContentViewer for EffectViewer {
         };
         let instance = instance_from_data(Arc::clone(&data), &meshes, IDENTITY);
         self.renderer.instances = vec![instance];
+        self.renderer.root = Some(world.spawn((ViewerEntity, Name::new("effect"), Transform::IDENTITY, Visibility::Visible)).id());
         self.data = Some(data);
         self.meshes = meshes;
         self.begin_fit();
-        let _ = world;
     }
 
     fn update(&mut self, world: &mut World) {

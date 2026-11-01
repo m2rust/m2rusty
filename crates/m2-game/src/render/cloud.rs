@@ -13,6 +13,7 @@
 
 use bevy::asset::{AssetServer, RenderAssetUsages, embedded_asset};
 use bevy::camera::visibility::NoFrustumCulling;
+use bevy::ecs::hierarchy::ChildOf;
 use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::pbr::{Material, MaterialPlugin};
 use bevy::prelude::*;
@@ -21,10 +22,11 @@ use bevy::render::render_resource::{
     SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
+use bevy::transform::TransformSystems;
 use m2_assets::{coords, paths};
 use m2_formats::map::EnvironmentData;
 
-use crate::viewer::{MainCamera, ViewerEntity};
+use crate::SceneCamera;
 
 /// The cloud colour and texture transform. `_pad` keeps the WGSL uniform
 /// struct's 16-byte alignment explicit.
@@ -47,10 +49,10 @@ pub struct CloudMaterial {
 
 impl Material for CloudMaterial {
     fn vertex_shader() -> ShaderRef {
-        "embedded://m2_viewer/cloud.wesl".into()
+        "embedded://m2_game/render/cloud.wesl".into()
     }
     fn fragment_shader() -> ShaderRef {
-        "embedded://m2_viewer/cloud.wesl".into()
+        "embedded://m2_game/render/cloud.wesl".into()
     }
     fn alpha_mode(&self) -> bevy::material::AlphaMode {
         // The layer blends `ONE`/`INVSRCCOLOR`, so it belongs in the sorted
@@ -118,12 +120,17 @@ impl Plugin for CloudPlugin {
     fn build(&self, app: &mut App) {
         embedded_asset!(app, "cloud.wesl");
         app.add_plugins(MaterialPlugin::<CloudMaterial>::default())
-            .add_systems(Update, (scroll_clouds, follow_camera).after(crate::camera::orbit_control));
+            .add_systems(Update, scroll_clouds)
+            // After every camera controller (they run in `Update`), before the
+            // transforms are propagated.
+            .add_systems(PostUpdate, follow_camera.before(TransformSystems::Propagate));
     }
 }
 
-/// Builds the cloud layer of `environment`, if it names a texture.
-pub fn spawn_cloud(world: &mut World, environment: &EnvironmentData) -> Option<Entity> {
+/// Builds the cloud layer of `environment`, if it names a texture, under
+/// `parent` when given (the parent must stay at the origin: the layer's
+/// `Transform` is set from the camera's position).
+pub fn spawn_cloud(world: &mut World, environment: &EnvironmentData, parent: Option<Entity>) -> Option<Entity> {
     let sky = &environment.sky_box;
     if sky.cloud_texture_file_name.is_empty() {
         return None;
@@ -156,21 +163,22 @@ pub fn spawn_cloud(world: &mut World, environment: &EnvironmentData) -> Option<E
     let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
 
     let scale = coords::scale([sky.cloud_scale[0], sky.cloud_scale[1], 1.0]);
-    Some(
-        world
-            .spawn((
-                ViewerEntity,
-                Name::new("Clouds"),
-                Mesh3d(mesh),
-                MeshMaterial3d(material.clone()),
-                Transform::from_scale(scale),
-                Visibility::Visible,
-                NoFrustumCulling,
-                CloudLayer { material, speed: Vec2::from_array(sky.cloud_speed), offset: Vec2::ZERO },
-                CloudFollow { height: sky.cloud_height },
-            ))
-            .id(),
-    )
+    let entity = world
+        .spawn((
+            Name::new("Clouds"),
+            Mesh3d(mesh),
+            MeshMaterial3d(material.clone()),
+            Transform::from_scale(scale),
+            Visibility::Visible,
+            NoFrustumCulling,
+            CloudLayer { material, speed: Vec2::from_array(sky.cloud_speed), offset: Vec2::ZERO },
+            CloudFollow { height: sky.cloud_height },
+        ))
+        .id();
+    if let Some(parent) = parent {
+        world.entity_mut(entity).insert(ChildOf(parent));
+    }
+    Some(entity)
 }
 
 /// `RenderCloud`'s scroll: `position += speed * dt`, wrapped at one texture
@@ -187,8 +195,8 @@ fn scroll_clouds(time: Res<Time>, mut layers: Query<&mut CloudLayer>, mut materi
 
 /// `CSkyObject::Update` for the cloud layer: the plane stays above the eye.
 fn follow_camera(
-    camera: Query<&Transform, With<MainCamera>>,
-    mut clouds: Query<(&CloudFollow, &mut Transform), Without<MainCamera>>,
+    camera: Query<&Transform, With<SceneCamera>>,
+    mut clouds: Query<(&CloudFollow, &mut Transform), Without<SceneCamera>>,
 ) {
     let Ok(camera) = camera.single() else {
         return;
@@ -205,7 +213,7 @@ mod tests {
     #[test]
     fn no_texture_builds_no_clouds() {
         let mut world = World::new();
-        assert!(spawn_cloud(&mut world, &EnvironmentData::default()).is_none());
+        assert!(spawn_cloud(&mut world, &EnvironmentData::default(), None).is_none());
     }
 
     #[test]

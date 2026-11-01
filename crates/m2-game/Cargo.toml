@@ -1,0 +1,15 @@
+[package]
+name = "m2-game"
+description = "Game-side Bevy library: drawing models, trees, effects and outdoor maps with the client's render states (docs/bevy-port-plan.md, phases 3-4)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy.workspace = true
+m2-assets.workspace = true
+m2-effect.workspace = true
+m2-formats.workspace = true
+m2-render.workspace = true
+m2-world.workspace = true

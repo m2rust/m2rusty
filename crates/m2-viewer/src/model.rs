@@ -1,20 +1,14 @@
 //! Granny model and motion preview (`.gr2` + `.msa`).
 
-use std::collections::HashMap;
-
 use bevy::animation::graph::{AnimationGraph, AnimationGraphHandle, AnimationNodeIndex};
-use bevy::animation::{AnimationClip, AnimationPlayer, AnimatedBy};
+use bevy::animation::{AnimationClip, AnimationPlayer};
 use bevy::asset::{AssetServer, Assets, LoadState};
-use bevy::camera::visibility::NoFrustumCulling;
-use bevy::ecs::hierarchy::ChildOf;
-use bevy::mesh::skinning::SkinnedMesh;
 use bevy::prelude::*;
 use bevy_egui::egui;
-use m2_assets::gr2::{self, Gr2Model};
+use m2_assets::gr2::Gr2Model;
 use m2_assets::paths;
 use m2_assets::race::RaceMotionAsset;
 use m2_assets::M2Packs;
-use m2_render::{Blend, CullMode, FixedFunctionMaterial, Fog, TextureArg, TextureOp, TextureStage};
 
 use crate::viewer::{ContentViewer, MainCamera, OpenFile, ViewerEntity};
 
@@ -53,100 +47,17 @@ impl Plugin for ModelViewerPlugin {
     }
 }
 
-pub(crate) fn spawn_model(world: &mut World, model: &Gr2Model, fog: Option<Fog>) -> (Entity, Vec<Entity>) {
-    let root = world
-        .spawn((ViewerEntity, Name::new(model.name.clone()), Transform::IDENTITY, Visibility::Visible, AnimationPlayer::default()))
-        .id();
-
-    let bones = model
-        .skeleton
-        .as_ref()
-        .map(|skeleton| {
-            skeleton
-                .bones
-                .iter()
-                .map(|bone| {
-                    world
-                        .spawn((
-                            ViewerEntity,
-                            Name::new(bone.name.clone()),
-                            bone.local,
-                            Visibility::Visible,
-                            gr2::bone_target_id(&bone.name),
-                            AnimatedBy(root),
-                        ))
-                        .id()
-                })
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-
+/// Spawns `model` for the viewer: the shared client spawn, tagged for the
+/// shell and linked for the skeleton overlay.
+fn spawn_model(world: &mut World, model: &Gr2Model) -> (Entity, Vec<Entity>) {
+    let spawned = m2_game::render::model::spawn_model(world, model, None, None);
+    world.entity_mut(spawned.root).insert(ViewerEntity);
     if let Some(skeleton) = &model.skeleton {
-        for (index, bone) in skeleton.bones.iter().enumerate() {
-            let parent = bone.parent.map_or(root, |parent| bones[parent]);
-            world.entity_mut(bones[index]).insert((ChildOf(parent), SkeletonLink(bone.parent.map(|p| bones[p]))));
+        for (bone, &entity) in skeleton.bones.iter().zip(&spawned.bones) {
+            world.entity_mut(entity).insert(SkeletonLink(bone.parent.map(|p| spawned.bones[p])));
         }
     }
-
-    let bone_by_name: HashMap<String, Entity> = model
-        .skeleton
-        .iter()
-        .flat_map(|skeleton| skeleton.bones.iter().zip(&bones))
-        .map(|(bone, &entity)| (bone.name.clone(), entity))
-        .collect();
-    let lowercase: HashMap<String, Entity> = bone_by_name.iter().map(|(name, entity)| (name.to_ascii_lowercase(), *entity)).collect();
-    let joints: Vec<Entity> = model
-        .skeleton
-        .iter()
-        .flat_map(|skeleton| {
-            skeleton
-                .bones
-                .iter()
-                .map(|bone| bone_by_name.get(&bone.name).or_else(|| lowercase.get(&bone.name.to_ascii_lowercase())).copied().unwrap_or(root))
-        })
-        .collect();
-
-    for mesh in &model.meshes {
-        for part in &mesh.parts {
-            let asset_server = world.resource::<AssetServer>();
-            let diffuse = part.material.diffuse.as_deref().map(|path| asset_server.load::<Image>(paths::asset_source_uri(path)));
-            let opacity = part.material.opacity.as_deref().map(|path| asset_server.load::<Image>(paths::asset_source_uri(path)));
-            let mut material = diffuse
-                .map(FixedFunctionMaterial::opaque)
-                .unwrap_or_else(|| FixedFunctionMaterial::untextured().diffuse(Vec4::new(0.82, 0.72, 0.58, 1.0)));
-            if let Some(opacity) = opacity {
-                let alpha_stage = TextureStage {
-                    color_op: TextureOp::SelectArg1,
-                    color_arg1: TextureArg::CURRENT,
-                    color_arg2: TextureArg::CURRENT,
-                    alpha_op: TextureOp::Modulate,
-                    alpha_arg1: TextureArg::TEXTURE,
-                    alpha_arg2: TextureArg::CURRENT,
-                };
-                material = material.stage1(opacity, alpha_stage, Default::default()).blend(Blend::ALPHA);
-            }
-            if mesh.two_sided {
-                material = material.cull(CullMode::None);
-            }
-            if let Some(fog) = fog {
-                material = material.fog(fog);
-            }
-            let material = world.resource_mut::<Assets<FixedFunctionMaterial>>().add(material);
-            let mut components = world.spawn((
-                ViewerEntity,
-                Name::new(mesh.name.clone()),
-                Mesh3d(part.mesh.clone()),
-                MeshMaterial3d(material),
-                Transform::IDENTITY,
-                Visibility::Visible,
-                ChildOf(root),
-            ));
-            if let (Some(bindposes), true) = (&model.inverse_bindposes, !joints.is_empty()) {
-                components.insert((SkinnedMesh { inverse_bindposes: bindposes.clone(), joints: joints.clone() }, NoFrustumCulling));
-            }
-        }
-    }
-    (root, bones)
+    (spawned.root, spawned.bones)
 }
 
 fn fit_camera(world: &mut World, model: &Gr2Model) {
@@ -226,7 +137,7 @@ impl ContentViewer for Gr2Viewer {
                     let ready_meshes = parts.iter().filter(|part| world.resource::<Assets<Mesh>>().get(&part.mesh).is_some()).count();
                     info!("loaded {}: {} mesh group(s), {}/{} mesh parts ready, {} bone(s), bounds {:?}..{:?}",
                         self.path, model.meshes.len(), ready_meshes, parts.len(), model.skeleton.as_ref().map_or(0, |s| s.bones.len()), model.bounds.0, model.bounds.1);
-                    let (root, bones) = spawn_model(world, &model, None);
+                    let (root, bones) = spawn_model(world, &model);
                     fit_camera(world, &model);
                     self.root = Some(root);
                     self.bones = bones;

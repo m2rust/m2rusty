@@ -3,7 +3,7 @@
 //! The simulation is in `m2-effect`; this module turns the draws it produces
 //! into meshes and fixed-function materials and keeps one entity per batch
 //! alive across frames.
-use crate::viewer::{MainCamera, ViewerEntity};
+use crate::SceneCamera;
 use bevy::{
     asset::RenderAssetUsages,
     mesh::{Indices, PrimitiveTopology},
@@ -22,15 +22,15 @@ use std::{collections::HashMap, sync::Arc};
 
 /// The `.mde` meshes an effect names, loaded once and shared by every
 /// instance (and every restart) of that effect.
-pub(crate) type EffectMeshes = HashMap<Vec<u8>, Arc<EffectMesh>>;
+pub type EffectMeshes = HashMap<Vec<u8>, Arc<EffectMesh>>;
 
-pub(crate) fn load_data(packs: &PackManager, file: &[u8]) -> Result<Arc<EffectData>, String> {
+pub fn load_data(packs: &PackManager, file: &[u8]) -> Result<Arc<EffectData>, String> {
     load_effect(packs, file)
         .map(Arc::new)
         .map_err(|e| format!("Effect {}: {e:?}", String::from_utf8_lossy(file)))
 }
 
-pub(crate) fn load_meshes(packs: &PackManager, data: &EffectData) -> Result<EffectMeshes, String> {
+pub fn load_meshes(packs: &PackManager, data: &EffectData) -> Result<EffectMeshes, String> {
     let mut meshes = EffectMeshes::new();
     for mesh in &data.meshes {
         let loaded = load_effect_mesh(packs, &mesh.mesh_file_name)
@@ -41,7 +41,7 @@ pub(crate) fn load_meshes(packs: &PackManager, data: &EffectData) -> Result<Effe
 }
 
 /// Builds an instance from loaded data and meshes, placed at `matrix`.
-pub(crate) fn instance_from_data(
+pub fn instance_from_data(
     data: Arc<EffectData>,
     meshes: &EffectMeshes,
     matrix: [f32; 16],
@@ -52,15 +52,19 @@ pub(crate) fn instance_from_data(
     instance
 }
 
-pub(crate) fn load_instance(packs: &PackManager, file: &[u8], matrix: [f32; 16]) -> Result<EffectInstance, String> {
+pub fn load_instance(packs: &PackManager, file: &[u8], matrix: [f32; 16]) -> Result<EffectInstance, String> {
     let data = load_data(packs, file)?;
     let meshes = load_meshes(packs, &data)?;
     Ok(instance_from_data(data, &meshes, matrix))
 }
 
+/// Simulates effect instances and keeps one entity per draw batch alive
+/// across frames.
 #[derive(Default)]
-pub(crate) struct EffectRenderer {
+pub struct EffectRenderer {
     pub instances: Vec<EffectInstance>,
+    /// Parent of the batch entities; they are top-level when `None`.
+    pub root: Option<Entity>,
     /// The map environment's fog, when these are map effects.
     pub fog: Option<Fog>,
     rng: GlibcRandom,
@@ -83,7 +87,7 @@ impl EffectRenderer {
         if self.instances.is_empty() {
             return;
         }
-        let Some(camera) = world.query_filtered::<&GlobalTransform, With<MainCamera>>().iter(world).next().copied()
+        let Some(camera) = world.query_filtered::<&GlobalTransform, With<SceneCamera>>().iter(world).next().copied()
         else {
             return;
         };
@@ -183,7 +187,6 @@ impl EffectRenderer {
                 let material = world.resource_mut::<Assets<FixedFunctionMaterial>>().add(material);
                 let entity = world
                     .spawn((
-                        ViewerEntity,
                         Name::new("Effect"),
                         Mesh3d(mesh.clone()),
                         MeshMaterial3d(material.clone()),
@@ -192,6 +195,9 @@ impl EffectRenderer {
                         bevy::camera::visibility::NoFrustumCulling,
                     ))
                     .id();
+                if let Some(root) = self.root {
+                    world.entity_mut(entity).insert(ChildOf(root));
+                }
                 self.draws.push((entity, mesh, material));
             }
         }

@@ -3,14 +3,10 @@
 //! See the notes in [`viewer`] for the content-viewer plugin interface.
 
 pub mod camera;
-pub mod cloud;
 pub mod effect;
-mod effect_draw;
 pub mod index;
 pub mod map;
-mod map_render;
 pub mod model;
-pub mod sky;
 pub mod speedtree;
 pub mod texture;
 pub mod tree;
@@ -22,6 +18,7 @@ use std::path::PathBuf;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use m2_assets::M2AssetsPlugin;
+use m2_game::M2GamePlugin;
 use m2_render::M2RenderPlugin;
 
 /// Parsed command line: `m2-viewer [client dir] [--index <file>]
@@ -89,7 +86,7 @@ pub fn build_app(args: &Args) -> App {
         ..default()
     }))
     .add_plugins(EguiPlugin::default())
-    .add_plugins(M2RenderPlugin)
+    .add_plugins((M2RenderPlugin, M2GamePlugin))
     .insert_resource(ClearColor(Color::srgb(0.12, 0.12, 0.14)))
     .insert_resource(ui::Shell::new(
         args.client_dir.clone(),

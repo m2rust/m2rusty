@@ -19,7 +19,10 @@ zip = { version = "9.2.0", default-features = false, features = ["deflate-flate2
 tempfile = "3.27.0"
 
 m2-assets = { path = "crates/m2-assets" }
+m2-effect = { path = "crates/m2-effect" }
 m2-formats = { path = "crates/m2-formats" }
+m2-game = { path = "crates/m2-game" }
+m2-net = { path = "crates/m2-net" }
 m2-render = { path = "crates/m2-render" }
 m2-script = { path = "crates/m2-script" }
 m2-world = { path = "crates/m2-world" }

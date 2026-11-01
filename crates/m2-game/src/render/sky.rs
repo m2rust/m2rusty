@@ -10,8 +10,8 @@
 //! the skybox as a background, which gives the client's "sky behind
 //! everything" result without its render-order problems.
 //!
-//! Textured sky boxes (`SkyBoxTextureRenderMode`) and the scrolling cloud
-//! layer are not ported yet.
+//! Textured sky boxes (`SkyBoxTextureRenderMode`) are not ported yet; the
+//! cloud layer is [`super::cloud`].
 
 use bevy::asset::RenderAssetUsages;
 use bevy::core_pipeline::Skybox;
@@ -21,7 +21,7 @@ use bevy::render::render_resource::TextureFormat;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureViewDescriptor, TextureViewDimension};
 use m2_formats::map::{EnvironmentData, SkyBox};
 
-use crate::viewer::MainCamera;
+use crate::SceneCamera;
 
 /// Rows per cubemap face. The gradient is piecewise linear with at most a few
 /// entries; 64 rows keep the segment breakpoints within a pixel.
@@ -42,7 +42,7 @@ pub fn install_sky(world: &mut World, environment: &EnvironmentData) -> Option<H
 
     let image = cubemap(sky, upper, lower);
     let handle = world.resource_mut::<Assets<Image>>().add(image);
-    let mut query = world.query_filtered::<Entity, With<MainCamera>>();
+    let mut query = world.query_filtered::<Entity, With<SceneCamera>>();
     if let Ok(camera) = query.single(world) {
         world.entity_mut(camera).insert(Skybox {
             image: Some(handle.clone()),
@@ -57,7 +57,7 @@ pub fn install_sky(world: &mut World, environment: &EnvironmentData) -> Option<H
 
 /// Removes the sky from the camera (the next map may have none).
 pub fn clear_sky(world: &mut World) {
-    let mut query = world.query_filtered::<Entity, With<MainCamera>>();
+    let mut query = world.query_filtered::<Entity, With<SceneCamera>>();
     if let Ok(camera) = query.single(world) {
         world.entity_mut(camera).remove::<Skybox>();
     }
@@ -145,10 +145,10 @@ mod tests {
     fn no_levels_installs_no_sky() {
         let mut app = App::new();
         app.init_resource::<Assets<Image>>();
-        app.world_mut().spawn(MainCamera);
+        app.world_mut().spawn(SceneCamera);
         assert!(install_sky(app.world_mut(), &environment(0, 0, vec![])).is_none());
         let world = app.world_mut();
-        let camera = world.query_filtered::<Entity, With<MainCamera>>().single(world).unwrap();
+        let camera = world.query_filtered::<Entity, With<SceneCamera>>().single(world).unwrap();
         assert!(world.entity(camera).get::<Skybox>().is_none());
     }
 
@@ -156,7 +156,7 @@ mod tests {
     fn a_mismatched_gradient_installs_no_sky() {
         let mut app = App::new();
         app.init_resource::<Assets<Image>>();
-        app.world_mut().spawn(MainCamera);
+        app.world_mut().spawn(SceneCamera);
         assert!(install_sky(app.world_mut(), &environment(2, 1, gradient(2))).is_none());
     }
 

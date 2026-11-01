@@ -12,7 +12,7 @@ use m2_render::{Fog, FogMode};
 const MAX_LAYERS: usize = 256;
 
 #[derive(Clone, ShaderType, Debug)]
-pub(crate) struct TerrainUniform {
+pub struct TerrainUniform {
     pub transforms: [Vec4; MAX_LAYERS],
     pub layers: [UVec4; MAX_LAYERS / 4],
     pub count: UVec4,
@@ -24,7 +24,7 @@ pub(crate) struct TerrainUniform {
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
-pub(crate) struct TerrainMaterial {
+pub struct TerrainMaterial {
     #[uniform(0)]
     pub params: TerrainUniform,
     #[texture(1, dimension = "2d_array")]
@@ -36,21 +36,24 @@ pub(crate) struct TerrainMaterial {
 }
 
 impl Material for TerrainMaterial {
-    fn vertex_shader() -> ShaderRef { "embedded://m2_viewer/terrain.wesl".into() }
-    fn fragment_shader() -> ShaderRef { "embedded://m2_viewer/terrain.wesl".into() }
+    fn vertex_shader() -> ShaderRef { "embedded://m2_game/render/terrain.wesl".into() }
+    fn fragment_shader() -> ShaderRef { "embedded://m2_game/render/terrain.wesl".into() }
     fn enable_prepass() -> bool { false }
     fn enable_shadows() -> bool { false }
 }
 
-pub(crate) struct MapRenderPlugin;
-impl Plugin for MapRenderPlugin {
+/// The terrain material and its shader.
+pub struct TerrainPlugin;
+impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
         embedded_asset!(app, "terrain.wesl");
         app.add_plugins(MaterialPlugin::<TerrainMaterial>::default());
     }
 }
 
-pub(crate) fn patch_uniform(textures: &[TerrainTexture], counts: &[u32; 256]) -> TerrainUniform {
+/// The per-patch uniform: every texture-set layer's UV transform, and the
+/// layers this patch actually uses (its non-zero tile counts).
+pub fn patch_uniform(textures: &[TerrainTexture], counts: &[u32; 256]) -> TerrainUniform {
     let mut params = TerrainUniform {
         transforms: [Vec4::ZERO; MAX_LAYERS],
         layers: [UVec4::ZERO; MAX_LAYERS / 4],
@@ -74,7 +77,7 @@ pub(crate) fn patch_uniform(textures: &[TerrainTexture], counts: &[u32; 256]) ->
 
 /// `D3DRS_FOG*` for the terrain pass. The shader mirrors the fixed-function
 /// material's per-fragment fog exactly.
-pub(crate) fn set_fog(params: &mut TerrainUniform, fog: Option<Fog>) {
+pub fn set_fog(params: &mut TerrainUniform, fog: Option<Fog>) {
     let Some(fog) = fog.filter(|f| f.is_active()) else {
         params.fog_mode = UVec4::ZERO;
         return;
@@ -96,7 +99,8 @@ pub(crate) fn set_fog(params: &mut TerrainUniform, fog: Option<Fog>) {
     };
 }
 
-pub(crate) fn masks(terrain: &Terrain, texture_count: usize) -> Image {
+/// One terrain's splat alpha masks, one 256×256 array slice per texture-set entry.
+pub fn masks(terrain: &Terrain, texture_count: usize) -> Image {
     let count = texture_count.clamp(1, MAX_LAYERS);
     let mut pixels = vec![0; 256 * 256 * count];
     for splat in m2_world::splat::generate_splats(terrain, count) {
@@ -105,7 +109,9 @@ pub(crate) fn masks(terrain: &Terrain, texture_count: usize) -> Image {
     array_image(256, 256, count, pixels, TextureFormat::R8Unorm, false)
 }
 
-pub(crate) fn ground(packs: &PackManager, textures: &[TerrainTexture]) -> (Image, Vec<String>) {
+/// The texture set as one mipmapped 2D array (missing textures become a flat
+/// grass colour), plus the decode errors. Slow: build it off the main thread.
+pub fn ground(packs: &PackManager, textures: &[TerrainTexture]) -> (Image, Vec<String>) {
     let mut errors = Vec::new();
     let decoded: Vec<_> = textures.iter().take(MAX_LAYERS).map(|texture| {
         if texture.file_name.is_empty() { return None; }
