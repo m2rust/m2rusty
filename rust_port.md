@@ -12,7 +12,7 @@ Last updated: 2026-11-01.
 |---|---|
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
-| 2. Asset viewer in Bevy | **partial**: asset loaders, fixed-function material, viewer shell, and render harness merged; gameplay asset viewers and golden-image gate remain |
+| 2. Asset viewer in Bevy | **partial**: asset loaders, fixed-function material, viewer shell, and render harness merged; golden-image suite passes, gameplay asset viewers and skinning walkthrough remain |
 | 3. World | **partial**: world queries/meshes and effect simulation crates merged; Bevy world rendering/integration remains |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
 | 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
@@ -38,7 +38,10 @@ Last updated: 2026-11-01.
 Before the later Phase 2–5 merges, 151 tests, clippy, and ten differential
 suites passed (`scripts/differential.sh`). In this continuation,
 `nix-shell --run 'cargo check --workspace --all-targets'` passes on the merged
-workspace. The test and C++ differential suites were not executed in this run.
+workspace. The golden-image test also passes all 12 scenes on the local GPU;
+the largest differing-pixel fraction is 4.13% (`texture_modulate`), within the
+scene's configured tolerance. Other test and C++ differential suites were not
+executed in this run.
 
 ## 2. What exists
 
@@ -54,7 +57,7 @@ workspace. The test and C++ differential suites were not executed in this run.
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
   D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,
   inspector shell and texture viewer. Model/motion/tree/effect viewers are not
-  wired in, and the golden-image gate has not been run on this merged state.
+  wired in; the 12-scene golden-image suite passes on the current machine.
 - **World and effects:** `m2-world` ports terrain height/attribute queries,
   patch meshes, splats, lighting and area placement. `m2-effect` ports particle,
   mesh and light simulation with a C++ differential harness. These are Rust
@@ -172,9 +175,9 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 
 ## 6. Open items and risks
 
-- **Phase 2 gate remains open:** the viewer shell currently registers only the
-  texture viewer. The model/motion, SpeedTree and effect viewers and the
-  character skinning walkthrough still need to be connected and checked.
+- **Phase 2 gate remains open:** the golden-image suite passes, but the viewer
+  shell currently registers only the texture viewer. Model/motion, SpeedTree
+  and effect viewers and the character skinning walkthrough remain.
 - **Phase 3 gate remains open:** world and effect Rust logic is not yet drawn
   by Bevy systems; maps, water, sky, audio and gameplay entities remain.
 - **Phase 4/5 gates remain open:** networking is not integrated with a game
@@ -212,7 +215,7 @@ cargo run -p m2-client                     # Bevy window + Python host
 1. Run the differential suites for the merged networking, world, effects and UI
    code against the local client data; resolve any failures.
 2. Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
-   then run the golden-image suite and skinning walkthrough.
+   then run the character skinning walkthrough.
 3. Connect world/effect outputs to Bevy rendering and build the fly-camera map
    parity gate.
 4. Connect `m2-net` to the client state and implement the headless login/play
