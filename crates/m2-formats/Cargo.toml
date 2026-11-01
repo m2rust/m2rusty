@@ -6,13 +6,24 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+# The glibc-exact `iconv` port (320 KB of tables), Arabic shaping, Shift-JIS
+# helpers and the CP1258 codec in `locale`. Off by default: `utf8` (encoding_rs)
+# does the shipped locales' text conversion (D14/D16). The tests turn it on
+# (self dev-dependency below) so the differential comparison keeps running.
+glibc-tables = []
+
 [dependencies]
 zip.workspace = true
 crc32fast = "1.5.3"
 png = "0.18.1"
+encoding_rs = "0.8.44"
 
 [dev-dependencies]
 # Candidate crates, only to document in tests/crate_candidates.rs why they are not used (docs/bevy-port-plan.md D16).
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "tga", "bmp"] }
 tempfile.workspace = true
 crc32fast = "1.5.3"
+# Enables `glibc-tables` for `cargo test` and the dump binaries it builds.
+m2-formats = { path = ".", features = ["glibc-tables"] }
