@@ -1,0 +1,10 @@
+[package]
+name = "m2-effect"
+description = "Metin2 effect runtime (particles, effect meshes, lights), without Bevy (docs/bevy-port-plan.md)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+m2-formats.workspace = true
