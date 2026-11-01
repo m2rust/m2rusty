@@ -1,0 +1,2 @@
+add_executable(m2diff_gr2 Gr2Dump.cpp)
+target_link_libraries(m2diff_gr2 PRIVATE neoeter_model_grn neoeter_io)

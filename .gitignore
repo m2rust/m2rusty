@@ -9,3 +9,5 @@ target/
 
 # Client data (assets), not part of the repository.
 /bin/
+# Agent worktrees
+.claude/worktrees/
