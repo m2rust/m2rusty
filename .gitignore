@@ -7,4 +7,5 @@ compile_commands.json
 # Cargo
 target/
 
-bin/
+# Client data (assets), not part of the repository.
+/bin/
