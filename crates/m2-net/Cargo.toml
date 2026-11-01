@@ -1,0 +1,14 @@
+[package]
+name = "m2-net"
+description = "Metin2 client networking without Bevy: packets, stream framing, phase state machine (docs/bevy-port-plan.md, phase 4)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = ["tcp"]
+# std::net transport; turn off for wasm (a WebSocket Transport replaces it).
+tcp = []
+
+[dependencies]
