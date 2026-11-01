@@ -13,7 +13,7 @@ use crate::event::{UiEvent, UiHost};
 use crate::slot::SlotState;
 use crate::text::TextInstance;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct WindowId {
     index: u32,
     generation: u32,

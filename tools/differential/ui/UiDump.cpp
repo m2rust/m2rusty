@@ -55,6 +55,7 @@ namespace
 
 std::map<int, CWindow *> g_byId;
 std::map<CWindow *, std::string> g_names;
+std::map<CWindow *, std::string> g_internal;
 PyObject *g_hClass = nullptr;
 PyObject *g_flush = nullptr;
 PyObject *g_define = nullptr;
@@ -113,6 +114,9 @@ std::string NameOf(CWindow *w)
     auto it = g_names.find(w);
     if (it != g_names.end())
         return it->second;
+    it = g_internal.find(w);
+    if (it != g_internal.end())
+        return it->second;
     return "?";
 }
 
@@ -169,6 +173,7 @@ const char *TypeName(CWindow *w)
 
 void NameInternals()
 {
+    g_internal.clear();
     for (auto &kv : g_byId)
     {
         auto *s = dynamic_cast<CSlotWindow *>(kv.second);
@@ -179,13 +184,13 @@ void NameInternals()
             std::string base = std::to_string(kv.first) + ".";
             std::string idx = std::to_string(sl.dwSlotNumber);
             if (sl.pCoverButton)
-                g_names[(CWindow *)sl.pCoverButton] = base + "cover." + idx;
+                g_internal[(CWindow *)sl.pCoverButton] = base + "cover." + idx;
             if (sl.pSlotButton)
-                g_names[(CWindow *)sl.pSlotButton] = base + "btn." + idx;
+                g_internal[(CWindow *)sl.pSlotButton] = base + "btn." + idx;
             if (sl.pSignImage)
-                g_names[sl.pSignImage] = base + "sign." + idx;
+                g_internal[sl.pSignImage] = base + "sign." + idx;
             if (sl.pFinishCoolTimeEffect)
-                g_names[sl.pFinishCoolTimeEffect] = base + "fx." + idx;
+                g_internal[sl.pFinishCoolTimeEffect] = base + "fx." + idx;
         }
     }
 }
@@ -297,6 +302,8 @@ void DumpSlot(CWindow *w)
 
 // ---- fake glyph metrics ---------------------------------------------------
 
+void EnsureFont();
+
 struct FakeInfo
 {
     static short Width(unsigned c) { return 4 + (c % 7); }
@@ -320,6 +327,7 @@ void Prefill(WORD cp, wchar_t c)
 
 void PrefillText(const std::string &text)
 {
+    EnsureFont();
     UINT cp = GetDefaultCodePage();
     const char *begin = text.c_str();
     const char *end = begin + text.size();
@@ -540,7 +548,10 @@ void RunScenario(const char *path)
         }
         else if (c == "update")
         {
+            std::list<CWindow *> doomed = wm.m_ReserveDeleteWindowList;
             wm.Update();
+            for (auto *d : doomed)
+                g_names.erase(d);
             NameInternals();
         }
         else if (c == "tick")

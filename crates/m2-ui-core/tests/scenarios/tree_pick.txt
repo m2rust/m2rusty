@@ -1,0 +1,66 @@
+# Parenting, alignment, hit testing, SetTop and the drag rules.
+screen 800 600
+mousehandler
+new 1 window UI
+size 1 300 200
+pos 1 100 50
+show 1
+flag 1 movable
+flag 1 float
+flag 1 limit
+bias 1 10 10 10 10
+handler 1 OnMoveWindow 0
+handler 1 OnTop 0
+handler 1 OnMouseOverIn 0
+handler 1 OnMouseOverOut 0
+handler 1 OnMouseLeftButtonDown 1
+new 2 window UI
+size 2 200 200
+pos 2 150 100
+show 2
+flag 2 movable
+flag 2 float
+handler 2 OnTop 0
+handler 2 OnMoveWindow 0
+new 3 bar UI
+parent 3 1
+size 3 80 40
+pos 3 10 10
+halign 3 2
+valign 3 1
+show 3
+new 4 box UI
+parent 4 1
+size 4 -1 40
+pos 4 5 5
+show 4
+flag 4 not_pick
+dumptree
+move 200 120
+dumpmgr
+pickwin 1 200 120
+picktop 1 200 120
+ldown 200 120
+move 250 160
+move 900 700
+dumptree
+lup 900 700
+dumpmgr
+move 120 60
+ldown 120 60
+lup 120 60
+query 3 1
+query 4 1
+hide 1
+move 130 70
+dumpmgr
+show 1
+lock 2
+move 130 70
+dumpmgr
+unlock
+move 130 70
+dumpmgr
+destroy 3
+update
+dumptree
