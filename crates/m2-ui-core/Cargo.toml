@@ -1,0 +1,10 @@
+[package]
+name = "m2-ui-core"
+description = "Engine-independent core of the script-driven UI: window tree, text tags, slots (docs/bevy-port-plan.md, phase 5)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+m2-formats.workspace = true
