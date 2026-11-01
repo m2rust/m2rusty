@@ -29,6 +29,26 @@ pub fn header_info(header: u8) -> Option<&'static HeaderInfo> {
     GC_HEADER_MAP.iter().find(|h| h.header == header)
 }
 
+/// Headers whose C++ handler reads more bytes than the header map announces (each is a
+/// C++ inconsistency; see the crate docs). The C++ `CheckPacket` only waits for the map
+/// size and the handler's `Recv` then fails (and the whole buffer is dropped) if the rest
+/// has not arrived yet; the port waits for the handler's size instead.
+///
+/// `HEADER_GC_PLAYER_DELETE_SUCCESS` is mapped to `TPacketGCBlank` but read as
+/// `TPacketGCDestroyCharacterSuccess`; `SAFEBOX_SET`/`MALL_SET` are mapped to
+/// `TPacketGCItemSet` but read as `TPacketGCItemSet2`.
+///
+/// `HEADER_GC_WHISPER` is mapped as a static packet but carries its length in `wSize` and
+/// a text tail (`RecvWhisperPacket`); the stream frames it as a dynamic packet.
+pub fn handler_size_override(header: u8) -> Option<usize> {
+    use crate::wire::{TPacketGCDestroyCharacterSuccess, TPacketGCItemSet2, gc};
+    match header {
+        gc::PLAYER_DELETE_SUCCESS => Some(TPacketGCDestroyCharacterSuccess::SIZE),
+        gc::SAFEBOX_SET | gc::MALL_SET => Some(TPacketGCItemSet2::SIZE),
+        _ => None,
+    }
+}
+
 /// One complete packet: the header byte followed by the body (for dynamic packets the
 /// whole frame including the 3-byte dynamic header).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -134,19 +154,20 @@ impl NetStream {
             self.clear_recv();
             return Err(FrameError::UnknownHeader(header));
         };
-        let size = if info.dynamic {
+        let size = if info.dynamic || header == crate::wire::gc::WHISPER {
             if !self.peek(DYNAMIC_HEADER_SIZE) {
                 return Ok(None);
             }
             let p = self.recv_pos;
             let size = u16::from_le_bytes([self.recv[p + 1], self.recv[p + 2]]) as usize;
-            if size < DYNAMIC_HEADER_SIZE || size > self.recv_cap {
+            let min = if info.dynamic { DYNAMIC_HEADER_SIZE } else { info.size };
+            if size < min || size > self.recv_cap {
                 self.clear_recv();
                 return Err(FrameError::BadDynamicSize { header, size });
             }
             size
         } else {
-            info.size
+            handler_size_override(header).unwrap_or(info.size)
         };
         if !self.peek(size) {
             return Ok(None);

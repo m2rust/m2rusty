@@ -152,7 +152,13 @@ fn script(seed: u64, with_unknown: bool) -> Vec<Vec<u8>> {
         for _ in 0..rng.below(3) {
             stream.push(0);
         }
-        let h = &GC_HEADER_MAP[rng.below(GC_HEADER_MAP.len())];
+        // The four headers whose handlers read more than the map announces are framed differently on purpose.
+        let h = loop {
+            let h = &GC_HEADER_MAP[rng.below(GC_HEADER_MAP.len())];
+            if !matches!(h.header, wire::gc::WHISPER | wire::gc::PLAYER_DELETE_SUCCESS | wire::gc::SAFEBOX_SET | wire::gc::MALL_SET) {
+                break h;
+            }
+        };
         let mut p = vec![0u8; if h.dynamic { 3 + rng.below(40) } else { h.size }];
         for b in p.iter_mut() {
             *b = rng.next() as u8;

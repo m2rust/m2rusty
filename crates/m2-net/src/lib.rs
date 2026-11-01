@@ -2,5 +2,6 @@
 //!
 //! Sans-IO: `wire` (packets), `stream` (framing), `phase` (state machine),
 //! `transport` (byte pipe trait and a `std::net` adapter).
+pub mod phase;
 pub mod stream;
 pub mod wire;
