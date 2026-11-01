@@ -197,17 +197,21 @@ void NameInternals()
 
 void DumpWindow(CWindow *w, int depth)
 {
+    // `RECT` fields are 32-bit `LONG`; passing them to `%ld` is variadic UB and
+    // left the upper half of the register unspecified (negative coordinates
+    // came out as 4294967133 instead of -163). Cast so both sides agree.
     std::printf("w %d %s %s show=%d pos=%ld,%ld size=%ld,%ld rect=%ld,%ld,%ld,%ld flag=%x ha=%d va=%d bias=%ld,%ld,%ld,%ld "
                 "par=%s",
-                depth, NameOf(w).c_str(), TypeName(w), w->IsShow() ? 1 : 0, w->m_x, w->m_y, w->m_lWidth, w->m_lHeight,
-                w->m_rect.left, w->m_rect.top, w->m_rect.right, w->m_rect.bottom, w->m_dwFlag, (int)w->m_HorizontalAlign,
-                (int)w->m_VerticalAlign, w->m_limitBiasRect.left, w->m_limitBiasRect.right, w->m_limitBiasRect.top,
-                w->m_limitBiasRect.bottom, NameOf(w->m_pParent).c_str());
+                depth, NameOf(w).c_str(), TypeName(w), w->IsShow() ? 1 : 0, (long)w->m_x, (long)w->m_y, (long)w->m_lWidth,
+                (long)w->m_lHeight, (long)w->m_rect.left, (long)w->m_rect.top, (long)w->m_rect.right,
+                (long)w->m_rect.bottom, w->m_dwFlag, (int)w->m_HorizontalAlign, (int)w->m_VerticalAlign,
+                (long)w->m_limitBiasRect.left, (long)w->m_limitBiasRect.right, (long)w->m_limitBiasRect.top,
+                (long)w->m_limitBiasRect.bottom, NameOf(w->m_pParent).c_str());
     if (auto *b = dynamic_cast<CButton *>(w))
         std::printf(" enable=%d pressed=%d flash=%d", b->m_bEnable, b->m_isPressed, b->m_isFlash);
     if (auto *d = dynamic_cast<CDragButton *>(w))
-        std::printf(" restrict=%ld,%ld,%ld,%ld", d->m_restrictArea.left, d->m_restrictArea.top, d->m_restrictArea.right,
-                    d->m_restrictArea.bottom);
+        std::printf(" restrict=%ld,%ld,%ld,%ld", (long)d->m_restrictArea.left, (long)d->m_restrictArea.top,
+                    (long)d->m_restrictArea.right, (long)d->m_restrictArea.bottom);
     if (auto *a = dynamic_cast<CAniImageBox *>(w))
         std::printf(" ani=%d,%d,%d", a->m_bycurDelay, a->m_byDelay, a->m_bycurIndex);
     std::printf(" kids=%zu", w->m_pChildList.size());
@@ -315,8 +319,10 @@ void Prefill(WORD cp, wchar_t c)
 {
     auto &map = g_font->m_fontTexture.m_charInfoMap;
     CGraphicFontTexture::TCharacterKey key(cp, c);
-    if (map.find(key) != map.end())
-        return;
+    // Overwrite instead of skipping existing entries: the stub font texture
+    // already holds a few glyphs (notably the space, with height 16), and
+    // keeping those makes the dump depend on the font rather than on the fake
+    // metrics. The Rust side has no font and uses the fake values throughout.
     CGraphicFontTexture::TCharacterInfomation i{};
     i.index = 0;
     i.width = FakeInfo::Width(c);
@@ -357,6 +363,10 @@ void EnsureFont()
     g_font = new CGraphicText("fake.fnt");
     g_font->m_fontTexture.m_fontMap[0] = nullptr; // IsEmpty() == false
     g_font->AddReference();
+    // The space glyph is measured even for text that was never set, and
+    // CGraphicTextInstance::Update only runs once per text, so it has to carry
+    // the fake metrics before the first text instance updates.
+    Prefill(GetDefaultCodePage(), ' ');
 }
 
 void DumpTextInstance(const char *label, CGraphicTextInstance &ti)
@@ -779,6 +789,10 @@ void RunScenario(const char *path)
         else if (c == "dumptext" && w)
         {
             auto *tl = static_cast<CTextLine *>(w);
+            // An instance whose text was never set still measures the height of
+            // a space; prefill it so the dump uses the fake metrics instead of
+            // whatever the stub FreeType font reports.
+            PrefillText("");
             tl->m_TextInstance.Update();
             std::string label = "text " + NameOf(w);
             DumpTextInstance(label.c_str(), tl->m_TextInstance);

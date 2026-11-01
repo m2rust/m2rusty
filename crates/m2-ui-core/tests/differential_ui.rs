@@ -30,14 +30,26 @@ fn scratch(name: &str, contents: &str) -> PathBuf {
     path
 }
 
-/// The launcher prints its Python path on stdout; that is not part of the dump.
+/// Line prefixes the dumper itself prints (see `tools/differential/ui/UiDump.cpp`
+/// and [`Scenario::run`]). The engine traces to stdout as well — the Python
+/// launcher's path, `CResource::Load file not exist …`, `SYSERR: [UI] …`, font
+/// loading — and none of that is part of the dump.
+const DUMP_PREFIXES: &[&str] = &[
+    "w ", " w ", "mgr ", "slotwin ", "s ", "> ", "ev ", "text ", "t ", "textpos ", "pickwin ", "picktop ",
+    "mgrpick ", "out ", "q ", "!!",
+];
+
+fn is_dump_line(line: &str) -> bool {
+    DUMP_PREFIXES.iter().any(|p| line.starts_with(p))
+}
+
 fn cpp(mode: &str, input: &str) -> Vec<u8> {
     let path = scratch("in.txt", input);
     let raw = run(&cpp_tool("ui"), &[mode.as_ref(), path.as_os_str()]);
     let _ = fs::remove_file(&path);
     String::from_utf8_lossy(&raw)
         .lines()
-        .filter(|l| !l.starts_with("Python standard library"))
+        .filter(|l| is_dump_line(l))
         .map(|l| format!("{l}\n"))
         .collect::<String>()
         .into_bytes()
