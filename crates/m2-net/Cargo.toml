@@ -6,6 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
-[dependencies]
+[features]
+default = ["tcp"]
+# std::net transport; turn off for wasm (a WebSocket Transport replaces it).
+tcp = []
 
-[dev-dependencies]
+[dependencies]

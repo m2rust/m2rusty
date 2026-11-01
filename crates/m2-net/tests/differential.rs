@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity, clippy::same_item_push)]
 //! Differential tests against the real C++ (`tools/differential/net`, target
 //! `m2diff_net`). They skip with a message when the dumper is not built; build it with
 //! `scripts/differential.sh` or

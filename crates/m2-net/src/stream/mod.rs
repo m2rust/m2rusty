@@ -212,6 +212,11 @@ impl NetStream {
         self.send.len()
     }
 
+    /// Puts bytes a transport did not accept back at the front of the queue.
+    pub fn requeue_front(&mut self, data: &[u8]) {
+        self.send.splice(0..0, data.iter().copied());
+    }
+
     /// Takes up to `max` queued bytes (a partial `send()` leaves the rest queued).
     pub fn take_output(&mut self, max: usize) -> Vec<u8> {
         let n = max.min(self.send.len());
