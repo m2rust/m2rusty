@@ -202,7 +202,7 @@ fn load_map(packs: Arc<PackManager>, name: String) -> Result<LoadedMap, String> 
     let mut effects = Vec::new();
     for object in &objects {
         if let PlacedKind::Effect { file, matrix, .. } = &object.kind {
-            match crate::map_effects::load(&packs, file, *matrix) {
+            match crate::effect_draw::load_instance(&packs, file, *matrix) {
                 Ok(effect) => effects.push(effect),
                 Err(error) => object_errors.push(error),
             }
@@ -281,7 +281,7 @@ pub struct MapViewer {
     pending_objects: Vec<(PlacedObject, ObjectAsset)>,
     trees: Vec<crate::speedtree::SpeedTreeViewer>,
     objects_loaded: usize,
-    effects: crate::map_effects::MapEffects,
+    effects: crate::effect_draw::EffectRenderer,
     water: Option<Handle<FixedFunctionMaterial>>,
     water_frames: Vec<Handle<Image>>,
     object_errors: Vec<String>,

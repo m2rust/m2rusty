@@ -1,10 +1,12 @@
-//! Phase 2 asset viewer shell (docs/bevy-port-plan.md). See `README`-style
-//! notes in [`viewer`] for the content-viewer plugin interface.
+//! Phase 2 asset viewer shell (docs/bevy-port-plan.md): pack browser, inspector,
+//! camera and the texture, Granny model/motion, SpeedTree and effect viewers.
+//! See the notes in [`viewer`] for the content-viewer plugin interface.
 
 pub mod camera;
+pub mod effect;
+mod effect_draw;
 pub mod index;
 pub mod map;
-mod map_effects;
 mod map_render;
 pub mod model;
 pub mod speedtree;
@@ -93,6 +95,7 @@ pub fn build_app(args: &Args) -> App {
     .add_viewer(texture::TextureViewer::default())
     .add_viewer(speedtree::SpeedTreeViewer::default())
     .add_viewer(model::Gr2Viewer::default().with_motion(args.motion.clone()))
+    .add_viewer(effect::EffectViewer::default())
     .add_viewer(map::MapViewer::default());
     // `--map` has no browser entry, so its screenshot may omit the virtual
     // path; the map load itself queues the shell's `PendingOpen`.

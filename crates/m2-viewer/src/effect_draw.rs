@@ -1,4 +1,8 @@
-//! Bevy draw adapter for the existing map-effect simulation.
+//! Bevy draw adapter shared by the map effects and the `.mse` effect viewer.
+//!
+//! The simulation is in `m2-effect`; this module turns the draws it produces
+//! into meshes and fixed-function materials and keeps one entity per batch
+//! alive across frames.
 use crate::viewer::{MainCamera, ViewerEntity};
 use bevy::{
     asset::RenderAssetUsages,
@@ -8,7 +12,7 @@ use bevy::{
 use m2_assets::{coords, paths};
 use m2_effect::{Camera, EffectInstance, GlibcRandom};
 use m2_formats::{
-    effect::{load_effect, load_effect_mesh},
+    effect::{EffectData, EffectMesh, load_effect, load_effect_mesh},
     pack::PackManager,
 };
 use m2_render::{
@@ -16,23 +20,46 @@ use m2_render::{
 };
 use std::{collections::HashMap, sync::Arc};
 
-pub(crate) fn load(packs: &PackManager, file: &[u8], matrix: [f32; 16]) -> Result<EffectInstance, String> {
-    let data =
-        Arc::new(load_effect(packs, file).map_err(|e| format!("Effect {}: {e:?}", String::from_utf8_lossy(file)))?);
-    let mut meshes = HashMap::new();
+/// The `.mde` meshes an effect names, loaded once and shared by every
+/// instance (and every restart) of that effect.
+pub(crate) type EffectMeshes = HashMap<Vec<u8>, Arc<EffectMesh>>;
+
+pub(crate) fn load_data(packs: &PackManager, file: &[u8]) -> Result<Arc<EffectData>, String> {
+    load_effect(packs, file)
+        .map(Arc::new)
+        .map_err(|e| format!("Effect {}: {e:?}", String::from_utf8_lossy(file)))
+}
+
+pub(crate) fn load_meshes(packs: &PackManager, data: &EffectData) -> Result<EffectMeshes, String> {
+    let mut meshes = EffectMeshes::new();
     for mesh in &data.meshes {
         let loaded = load_effect_mesh(packs, &mesh.mesh_file_name)
             .map_err(|e| format!("Effect mesh {}: {e:?}", String::from_utf8_lossy(&mesh.mesh_file_name)))?;
         meshes.insert(mesh.mesh_file_name.clone(), Arc::new(loaded));
     }
+    Ok(meshes)
+}
+
+/// Builds an instance from loaded data and meshes, placed at `matrix`.
+pub(crate) fn instance_from_data(
+    data: Arc<EffectData>,
+    meshes: &EffectMeshes,
+    matrix: [f32; 16],
+) -> EffectInstance {
     let mut instance = EffectInstance::new(data, &|name: &[u8]| meshes.get(name).cloned(), 0.0);
     instance
         .set_global_matrix(m2_effect::Mat4 { m: std::array::from_fn(|r| std::array::from_fn(|c| matrix[r * 4 + c])) });
-    Ok(instance)
+    instance
+}
+
+pub(crate) fn load_instance(packs: &PackManager, file: &[u8], matrix: [f32; 16]) -> Result<EffectInstance, String> {
+    let data = load_data(packs, file)?;
+    let meshes = load_meshes(packs, &data)?;
+    Ok(instance_from_data(data, &meshes, matrix))
 }
 
 #[derive(Default)]
-pub(crate) struct MapEffects {
+pub(crate) struct EffectRenderer {
     pub instances: Vec<EffectInstance>,
     rng: GlibcRandom,
     draws: Vec<(Entity, Handle<Mesh>, Handle<FixedFunctionMaterial>)>,
@@ -49,7 +76,7 @@ struct Draw {
     operation: u8,
 }
 
-impl MapEffects {
+impl EffectRenderer {
     pub fn update(&mut self, world: &mut World) {
         if self.instances.is_empty() {
             return;
@@ -151,7 +178,7 @@ impl MapEffects {
                 let entity = world
                     .spawn((
                         ViewerEntity,
-                        Name::new("Map effect"),
+                        Name::new("Effect"),
                         Mesh3d(mesh.clone()),
                         MeshMaterial3d(material.clone()),
                         Transform::IDENTITY,

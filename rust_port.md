@@ -12,8 +12,8 @@ Last updated: 2026-11-01.
 |---|---|
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
-| 2. Asset viewer in Bevy | **near done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree viewers, and the render harness merged; golden-image suite passes and a model plays `.msa` motions with skinning. Effect (`.mse`) viewer and the map viewer remain |
-| 3. World | **partial**: world queries/meshes and effect simulation crates merged; `m2-viewer --map` draws whole outdoor maps (LOD 0, one ground texture). Splat layers, water, sky/fog, LOD and streaming remain |
+| 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
+| 3. World | **partial**: world queries/meshes and effect simulation crates merged; `m2-viewer --map` draws whole outdoor maps (LOD 0, splat layers, animated water, buildings/trees, map effects). Sky/fog, LOD 1/2, quadtree culling and 3×3 streaming remain |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
 | 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
 | 6. Parity and cut-over | not started |
@@ -40,8 +40,10 @@ suites passed (`scripts/differential.sh`). In this continuation,
 `nix-shell --run 'cargo check --workspace --all-targets'` passes on the merged
 workspace. The golden-image test also passes all 12 scenes on the local GPU;
 the largest differing-pixel fraction is 4.13% (`texture_modulate`), within the
-scene's configured tolerance. Other test and C++ differential suites were not
-executed in this run.
+scene's configured tolerance. The `m2-ui-core` differential suite was re-run
+after the `@NNNN` fix and passes all three tests (46 074 corpus strings and 300
+random scenarios). The effect viewer was checked by screenshot on
+`critical.mse` and `success.mse`.
 
 ## 2. What exists
 
@@ -56,23 +58,30 @@ executed in this run.
 - **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
   D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,
-  inspector shell and the texture, Granny model/motion and SpeedTree viewers.
-  The 12-scene golden-image suite passes on the current machine. The effect
-  (`.mse`) viewer is still missing.
+  inspector shell and the texture, Granny model/motion, SpeedTree and effect
+  viewers. The 12-scene golden-image suite passes on the current machine.
+  The effect viewer and the map effects share one Bevy adapter
+  (`m2-viewer::effect_draw`): `m2-effect` produces quads/meshes, the adapter
+  translates blend, texture-stage and depth state and keeps one entity per
+  batch alive across frames.
 - **Viewer CLI:** `m2-viewer [client dir] [--index file] [--motion <vpath>]
-  [--screenshot <vpath> <out.png>]`. `--motion` starts a `.msa`/motion-only
-  `.gr2` on the opened model, which is what makes the skinning walkthrough
-  checkable from the command line. Screenshot mode ignores scene input, so
-  repeated captures are byte-identical.
+  [--map <name>] [--screenshot <vpath> <out.png>] [--screenshot-only <out.png>]`.
+  `--motion` starts a `.msa`/motion-only `.gr2` on the opened model, which is
+  what makes the skinning walkthrough checkable from the command line. A `.mse`
+  screenshot (`--screenshot "d:/ymir work/effect/…/x.mse" out.png`) is the
+  effect check; the viewer loops and frames the effect from the live particle
+  extent. Screenshot mode ignores scene input, so repeated captures are
+  byte-identical.
 - **World and effects:** `m2-world` ports terrain height/attribute queries,
   patch meshes, splats, lighting and area placement. `m2-effect` ports particle,
-  mesh and light simulation with a C++ differential harness. `m2-effect` is not
-  connected to Bevy yet; `m2-world` is, through the map viewer:
+  mesh and light simulation with a C++ differential harness, and is drawn by
+  Bevy through the shared effect adapter (map effects and the `.mse` viewer).
+  `m2-world` is drawn through the map viewer:
   `m2-viewer --map metin2_map_a1 --screenshot-only /tmp/a1.png` loads a map on
   `AsyncComputeTaskPool` and spawns one mesh per terrain patch (LOD 0, UVs from
-  `m2_world::lighting`, lit fixed-function material with the first real texture
-  of the set). Splat layers need a second UV set in `m2-render`; water, sky,
-  fog, LOD 1/2, quadtree culling and 3×3 streaming are still missing.
+  `m2_world::lighting`, splat layers blended in `terrain.wesl`, animated water,
+  buildings, trees and the placed effects). Sky, fog, LOD 1/2, quadtree
+  culling and 3×3 streaming are still missing.
 - **Networking:** `m2-net` contains packet structs/codecs, packet framing,
   sequence handling, transport abstractions and a login phase machine. It is
   not yet connected to `m2-client` or game entities.
@@ -107,16 +116,16 @@ just the format readers. On the local `bin/` (2026-11-01):
 | `m2-net` | 6 | pass (structs, offsets, headers, sequence, framing) |
 | `m2-world` | 1 | pass (88 maps, 156 080 dump lines, 43 s) |
 | `m2-effect` | 2 | pass (1 148 effects, 734 720 frames) |
-| `m2-ui-core` | 3 | 1 fails: 3 of 30 random seeds |
+| `m2-ui-core` | 3 | pass (46 074 corpus strings, 300 random scenarios, 252 615 dump lines) |
 
 The UI dumper used to fail for reasons that were not Rust bugs, all fixed:
 `RECT` fields went through `%ld` as 32-bit `LONG` (variadic UB, so `-163`
 printed as `4294967133`), engine `Tracef` lines were compared as dump lines,
 and an empty text measured the stub font's space glyph (height 16) instead of
-the fake metrics. What remains is real: `@NNNN` is a **code-page switch token**
-in `C++` (`GrpTextInstance.cpp:88-116`, five characters, `@9999` = UTF-8) and
-the Rust text layout does not consume it identically, so text such as
-`||[Sword]|Hx|Hx@0949€` lays out 11 glyphs instead of 9.
+the fake metrics. The remaining real difference — `@NNNN` is a **code-page
+switch token** in `C++` (`GrpTextInstance.cpp:88-116`, five characters,
+`@9999` = UTF-8) — is now decoded the way the C++ iconv loop does, so the
+`m2-ui-core` suite passes in full (2026-11-01).
 
 ## 3. Findings
 
@@ -208,11 +217,13 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 
 ## 6. Open items and risks
 
-- **Phase 2 gate remains open:** the golden-image suite passes, but the viewer
-  shell currently registers only the texture viewer. Model/motion, SpeedTree
-  and effect viewers and the character skinning walkthrough remain.
-- **Phase 3 gate remains open:** world and effect Rust logic is not yet drawn
-  by Bevy systems; maps, water, sky, audio and gameplay entities remain.
+- **Phase 2 gate:** closed. The golden-image suite passes, the texture,
+  model/motion, SpeedTree and effect viewers are registered, the character
+  skinning walkthrough passes, and `.mse` effects simulate and draw (checked by
+  screenshot on `critical.mse` and `success.mse`).
+- **Phase 3 gate remains open:** world and effect Rust logic is not yet fully
+  drawn by Bevy systems; sky/fog, LOD 1/2, quadtree culling, streaming, audio
+  and gameplay entities remain (terrain, splats, water and map effects are in).
 - **Phase 4/5 gates remain open:** networking is not integrated with a game
   state, and the generated module glue/UI are not yet connected to the real
   Python scripts.
@@ -246,14 +257,14 @@ cargo run -p m2-client                     # Bevy window + Python host
 ## 8. Next steps
 
 1. ~~Run the differential suites for the merged networking, world, effects and
-   UI code~~ — done, see the results table above. Remaining: the `@NNNN`
-   code-page token in `m2-ui-core` (3 of 30 random seeds).
+   UI code~~ — done, see the results table above; the `@NNNN` code-page token
+   now matches C++ and `m2-ui-core` passes in full.
 2. ~~Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
-   then run the character skinning walkthrough~~ — model/motion and SpeedTree
-   are in and the skinning walkthrough passes; the effect (`.mse`) viewer is
-   still missing.
+   then run the character skinning walkthrough~~ — done; the effect (`.mse`)
+   viewer is in and shares its draw adapter with the map effects.
 3. Connect world/effect outputs to Bevy rendering and build the fly-camera map
-   parity gate.
+   parity gate. Terrain (LOD 0), splats and map effects are already drawn; next
+   are LOD 1/2, quadtree culling, water detail, sky/fog and 3×3 streaming.
 4. Connect `m2-net` to the client state and implement the headless login/play
    bot gate.
 5. Wire `m2-modgen` output to the C ABI and `m2-ui-core` to Bevy, then reach

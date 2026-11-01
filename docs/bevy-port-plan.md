@@ -1,7 +1,7 @@
 # Porting m2rusty to Bevy (Rust)
 
-Status: active migration. Phases 0 and 1 are complete. Foundations for phases
-2–5 have been merged; their integration and acceptance gates remain open. See
+Status: active migration. Phases 0–2 are complete. Foundations for phases 3–5
+have been merged; their integration and acceptance gates remain open. See
 [`rust_port.md`](../rust_port.md) for current implementation status and findings.
 
 ## 1. What we are porting
@@ -157,7 +157,7 @@ headless boot test `cargo test -p m2-script`. Run everything from
   the existing `test_eterpack`, `test_pack_formats`, `test_image` and
   `test_dxt_invariants` cases.
 
-### Phase 2: Asset viewer in Bevy (4–6 weeks)
+### Phase 2: Asset viewer in Bevy (4–6 weeks) — done
 - `m2-assets`: a `pack://` `AssetSource` over `m2-formats`, plus loaders for
   textures (DDS/TGA/JPG), gr2 → `Mesh` + `SkinnedMesh` + `AnimationClip`,
   spt → meshes, effect files.

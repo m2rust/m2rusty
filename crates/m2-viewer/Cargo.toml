@@ -1,6 +1,6 @@
 [package]
 name = "m2-viewer"
-description = "Asset viewer: browse packs, show models, motions, trees (docs/bevy-port-plan.md, phase 2)"
+description = "Asset viewer: browse packs, show models, motions, trees and effects (docs/bevy-port-plan.md, phase 2)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
