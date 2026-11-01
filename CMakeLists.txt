@@ -18,6 +18,13 @@ option(M2_UNITY_BUILD "Build every target as unity (jumbo) sources" OFF)
 set(CMAKE_UNITY_BUILD ${M2_UNITY_BUILD})
 set(CMAKE_UNITY_BUILD_BATCH_SIZE 16 CACHE STRING "Sources per unity translation unit")
 
+# Shared C ABI over the Python host, linked by the Rust client
+# (crates/m2-script). Every static library it pulls in must then be PIC.
+option(M2_BUILD_PYTHON_ABI "Build the neoeter_python_abi shared library" OFF)
+if(M2_BUILD_PYTHON_ABI)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 set(NEOETER_STANDALONE OFF CACHE BOOL "" FORCE)
 set(NEOETER_PYTHON_STANDALONE OFF CACHE BOOL "" FORCE)
 set(CLIENT_STANDALONE OFF CACHE BOOL "" FORCE)

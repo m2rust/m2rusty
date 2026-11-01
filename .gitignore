@@ -3,3 +3,8 @@ result
 result-*
 .cache/
 compile_commands.json
+
+# Cargo
+target/
+
+bin/

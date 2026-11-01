@@ -23,7 +23,12 @@ if(NEOETER_PYTHON_STANDALONE)
     set(BUILD_TESTING ${BUILD_TESTING_SAVED} CACHE BOOL "" FORCE)
 endif()
 
-foreach(_package IN ITEMS host bindings)
+set(_packages host bindings)
+if(M2_BUILD_PYTHON_ABI)
+    list(APPEND _packages abi)
+endif()
+
+foreach(_package IN LISTS _packages)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/${_package}/CMakeLists.txt")
         add_subdirectory("src/${_package}" "${CMAKE_BINARY_DIR}/src/${_package}")
     else()

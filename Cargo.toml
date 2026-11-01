@@ -1,0 +1,25 @@
+# Rust port of the client (docs/bevy-port-plan.md). Lives next to the CMake
+# build; crates/m2-script builds the C++ Python host through CMake.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+publish = false
+
+[workspace.dependencies]
+# Pinned for the whole port; upgrades are a deliberate, separate change.
+bevy = "=0.20.1"
+cmake = "0.1.58"
+
+m2-script = { path = "crates/m2-script" }
+
+# Bevy is slow unoptimised; optimise dependencies even in dev builds.
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1

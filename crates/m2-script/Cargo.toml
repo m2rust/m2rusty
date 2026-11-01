@@ -1,0 +1,12 @@
+[package]
+name = "m2-script"
+description = "Bridge to the C++ Python 2.7 host (neoeter_python_abi)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+# Lets dependents' build scripts read DEP_NEOETER_PYTHON_ABI_LIB_DIR.
+links = "neoeter_python_abi"
+
+[build-dependencies]
+cmake.workspace = true
