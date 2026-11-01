@@ -10,15 +10,15 @@ class CReferenceObject
     void AddReferenceOnly();
     void Release();
 
-    int GetReferenceCount();
+    int GetReferenceCount() const;
 
-    bool canDestroy();
+    bool canDestroy() const;
 
   protected:
     virtual void OnConstruct();
     virtual void OnSelfDestruct();
 
   private:
-    int m_refCount;
-    bool m_destructed;
+    int m_refCount = 0;
+    bool m_destructed = false;
 };

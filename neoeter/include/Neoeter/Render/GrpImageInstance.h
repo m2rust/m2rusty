@@ -11,7 +11,6 @@ class CGraphicImageInstance
     static DWORD Type();
     BOOL IsType(DWORD dwType);
 
-  public:
     CGraphicImageInstance();
     virtual ~CGraphicImageInstance();
 
@@ -43,7 +42,6 @@ class CGraphicImageInstance
 
     virtual BOOL OnIsType(DWORD dwType);
 
-  protected:
     D3DXCOLOR m_DiffuseColor;
     D3DXVECTOR2 m_v2Position;
 

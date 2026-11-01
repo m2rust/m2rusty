@@ -7,12 +7,8 @@ class CInstanceBase;
 class IAbstractPlayer : public TAbstractSingleton<IAbstractPlayer>
 {
   public:
-    IAbstractPlayer()
-    {
-    }
-    virtual ~IAbstractPlayer()
-    {
-    }
+    IAbstractPlayer() = default;
+    ~IAbstractPlayer() override = default;
 
     virtual DWORD GetMainCharacterIndex() = 0;
     virtual void SetMainCharacterIndex(int iIndex) = 0;
@@ -35,7 +31,7 @@ class IAbstractPlayer : public TAbstractSingleton<IAbstractPlayer>
     virtual void SetItemCount(TItemPos itemPos, BYTE byCount) = 0;
     virtual void SetItemMetinSocket(TItemPos itemPos, DWORD dwMetinSocketIndex, DWORD dwMetinNumber) = 0;
     virtual void SetItemAttribute(TItemPos itemPos, DWORD dwAttrIndex, BYTE byType, short sValue) = 0;
-#if defined(GAIDEN)
+#ifdef GAIDEN
     virtual void SetItemUnbindTime(DWORD dwItemSlotIndex, DWORD dwUnbindSecondsLeft) = 0;
 #endif
 

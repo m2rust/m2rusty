@@ -4,9 +4,13 @@
    it would have to take circular links and sharing into account. */
 
 #include <Neoeter/Python/Host/StdAfx.h>
+#include <math.h>
 #include <sys/stat.h>
 #include <python2.7/longintrepr.h>
 #include <python2.7/marshal.h>
+
+#include <algorithm>
+#include <print>
 
 /* High water mark to determine when the marshalled object is dangerously deep
  * and risks coring the interpreter.  When the object stack gets this deep,
@@ -41,7 +45,7 @@ typedef struct
     char *end;
 } WFILE;
 
-typedef WFILE RFILE; /* Same struct with different invariants */
+using RFILE = WFILE; /* Same struct with different invariants */
 
 #define rs_byte(p) (((p)->ptr != (p)->end) ? (unsigned char)*(p)->ptr++ : EOF)
 
@@ -49,10 +53,9 @@ typedef WFILE RFILE; /* Same struct with different invariants */
 
 static int r_string(char *s, int n, RFILE *p)
 {
-    if (p->fp != NULL)
+    if (p->fp != nullptr)
         return fread(s, 1, n, p->fp);
-    if (p->end - p->ptr < n)
-        n = p->end - p->ptr;
+    n = std::min<long>(p->end - p->ptr, n);
     memcpy(s, p->ptr, n);
     p->ptr += n;
     return n;
@@ -60,9 +63,9 @@ static int r_string(char *s, int n, RFILE *p)
 
 static int r_short(RFILE *p)
 {
-    register short x;
-    x = (short)r_byte(p);
-    x |= (short)r_byte(p) << 8;
+    register short x = 0;
+    x = static_cast<short> r_byte(p);
+    x |= static_cast<short> r_byte(p) << 8;
     /* Sign-extension, in case short greater than 16 bits */
     x |= -(x & 0x8000);
     return x;
@@ -70,21 +73,21 @@ static int r_short(RFILE *p)
 
 static long r_long(RFILE *p)
 {
-    register long x;
+    register long x = 0;
     register FILE *fp = p->fp;
     if (fp)
     {
         x = getc(fp);
-        x |= (long)getc(fp) << 8;
-        x |= (long)getc(fp) << 16;
-        x |= (long)getc(fp) << 24;
+        x |= static_cast<long>(getc(fp)) << 8;
+        x |= static_cast<long>(getc(fp)) << 16;
+        x |= static_cast<long>(getc(fp)) << 24;
     }
     else
     {
         x = rs_byte(p);
-        x |= (long)rs_byte(p) << 8;
-        x |= (long)rs_byte(p) << 16;
-        x |= (long)rs_byte(p) << 24;
+        x |= static_cast<long> rs_byte(p) << 8;
+        x |= static_cast<long> rs_byte(p) << 16;
+        x |= static_cast<long> rs_byte(p) << 24;
     }
 #if SIZEOF_LONG > 4
     /* Sign extension for 64-bit machines */
@@ -102,10 +105,10 @@ static long r_long(RFILE *p)
 */
 static PyObject *r_long64(RFILE *p)
 {
-    long lo4 = r_long(p);
-    long hi4 = r_long(p);
+    long const lo4 = r_long(p);
+    long const hi4 = r_long(p);
 #if SIZEOF_LONG > 4
-    long x = (hi4 << 32) | (lo4 & 0xFFFFFFFFL);
+    long const x = (hi4 << 32) | (lo4 & 0xFFFFFFFFL);
     return PyInt_FromLong(x);
 #else
     unsigned char buf[8];
@@ -127,18 +130,20 @@ static PyObject *r_long64(RFILE *p)
 
 static PyObject *r_object(RFILE *p)
 {
-    PyObject *v, *v2;
-    long i, n;
-    int type = r_byte(p);
+    PyObject *v = nullptr;
+    PyObject *v2 = nullptr;
+    long i = 0;
+    long n = 0;
+    int const type = r_byte(p);
 
     switch (type)
     {
     case EOF:
         PyErr_SetString(PyExc_EOFError, "EOF read where object expected");
-        return NULL;
+        return nullptr;
 
     case TYPE_NULL:
-        return NULL;
+        return nullptr;
 
     case TYPE_NONE:
         Py_INCREF(Py_None);
@@ -159,27 +164,27 @@ static PyObject *r_object(RFILE *p)
         return r_long64(p);
 
     case TYPE_LONG: {
-        int size;
-        PyLongObject *ob;
+        int size = 0;
+        PyLongObject *ob = nullptr;
         n = r_long(p);
         size = n < 0 ? -n : n;
         ob = _PyLong_New(size);
-        if (ob == NULL)
-            return NULL;
+        if (ob == nullptr)
+            return nullptr;
         ob->ob_size = n;
         for (i = 0; i < size; i++)
-            ob->ob_digit[i] = (short)r_short(p);
-        return (PyObject *)ob;
+            ob->ob_digit[i] = static_cast<short>(r_short(p));
+        return reinterpret_cast<PyObject *>(ob);
     }
 
     case TYPE_FLOAT: {
         char buf[256];
-        double dx;
+        double dx = NAN;
         n = r_byte(p);
-        if (r_string(buf, (int)n, p) != n)
+        if (r_string(buf, static_cast<int>(n), p) != n)
         {
             PyErr_SetString(PyExc_EOFError, "EOF read where object expected");
-            return NULL;
+            return nullptr;
         }
         buf[n] = '\0';
         PyFPE_START_PROTECT("atof", return 0) dx = atof(buf);
@@ -191,18 +196,18 @@ static PyObject *r_object(RFILE *p)
         char buf[256];
         Py_complex c;
         n = r_byte(p);
-        if (r_string(buf, (int)n, p) != n)
+        if (r_string(buf, static_cast<int>(n), p) != n)
         {
             PyErr_SetString(PyExc_EOFError, "EOF read where object expected");
-            return NULL;
+            return nullptr;
         }
         buf[n] = '\0';
         PyFPE_START_PROTECT("atof", return 0) c.real = atof(buf);
         PyFPE_END_PROTECT(c) n = r_byte(p);
-        if (r_string(buf, (int)n, p) != n)
+        if (r_string(buf, static_cast<int>(n), p) != n)
         {
             PyErr_SetString(PyExc_EOFError, "EOF read where object expected");
-            return NULL;
+            return nullptr;
         }
         buf[n] = '\0';
         PyFPE_START_PROTECT("atof", return 0) c.imag = atof(buf);
@@ -215,15 +220,15 @@ static PyObject *r_object(RFILE *p)
         if (n < 0)
         {
             PyErr_SetString(PyExc_ValueError, "bad marshal data");
-            return NULL;
+            return nullptr;
         }
-        v = PyString_FromStringAndSize((char *)NULL, n);
-        if (v != NULL)
+        v = PyString_FromStringAndSize((char *)nullptr, n);
+        if (v != nullptr)
         {
-            if (r_string(PyString_AS_STRING(v), (int)n, p) != n)
+            if (r_string(PyString_AS_STRING(v), static_cast<int>(n), p) != n)
             {
                 Py_DECREF(v);
-                v = NULL;
+                v = nullptr;
                 PyErr_SetString(PyExc_EOFError, "EOF read where object expected");
             }
         }
@@ -231,24 +236,24 @@ static PyObject *r_object(RFILE *p)
 
 #ifdef Py_USING_UNICODE
     case TYPE_UNICODE: {
-        char *buffer;
+        char *buffer = nullptr;
 
         n = r_long(p);
         if (n < 0)
         {
             PyErr_SetString(PyExc_ValueError, "bad marshal data");
-            return NULL;
+            return nullptr;
         }
         buffer = PyMem_NEW(char, n);
-        if (buffer == NULL)
+        if (buffer == nullptr)
             return PyErr_NoMemory();
-        if (r_string(buffer, (int)n, p) != n)
+        if (r_string(buffer, static_cast<int>(n), p) != n)
         {
             PyMem_DEL(buffer);
             PyErr_SetString(PyExc_EOFError, "EOF read where object expected");
-            return NULL;
+            return nullptr;
         }
-        v = PyUnicode_DecodeUTF8(buffer, n, NULL);
+        v = PyUnicode_DecodeUTF8(buffer, n, nullptr);
         PyMem_DEL(buffer);
         return v;
     }
@@ -259,18 +264,18 @@ static PyObject *r_object(RFILE *p)
         if (n < 0)
         {
             PyErr_SetString(PyExc_ValueError, "bad marshal data");
-            return NULL;
+            return nullptr;
         }
-        v = PyTuple_New((int)n);
-        if (v == NULL)
+        v = PyTuple_New(static_cast<int>(n));
+        if (v == nullptr)
             return v;
         for (i = 0; i < n; i++)
         {
             v2 = r_object(p);
-            if (v2 == NULL)
+            if (v2 == nullptr)
             {
                 Py_DECREF(v);
-                v = NULL;
+                v = nullptr;
                 break;
             }
             PyTuple_SET_ITEM(v, (int)i, v2);
@@ -282,36 +287,37 @@ static PyObject *r_object(RFILE *p)
         if (n < 0)
         {
             PyErr_SetString(PyExc_ValueError, "bad marshal data");
-            return NULL;
+            return nullptr;
         }
-        v = PyList_New((int)n);
-        if (v == NULL)
+        v = PyList_New(static_cast<int>(n));
+        if (v == nullptr)
             return v;
         for (i = 0; i < n; i++)
         {
             v2 = r_object(p);
-            if (v2 == NULL)
+            if (v2 == nullptr)
             {
                 Py_DECREF(v);
-                v = NULL;
+                v = nullptr;
                 break;
             }
-            PyList_SetItem(v, (int)i, v2);
+            PyList_SetItem(v, static_cast<int>(i), v2);
         }
         return v;
 
     case TYPE_DICT:
         v = PyDict_New();
-        if (v == NULL)
-            return NULL;
+        if (v == nullptr)
+            return nullptr;
         for (;;)
         {
-            PyObject *key, *val;
+            PyObject *key = nullptr;
+            PyObject *val = nullptr;
             key = r_object(p);
-            if (key == NULL)
+            if (key == nullptr)
                 break; /* XXX Assume TYPE_NULL, not an error */
             val = r_object(p);
-            if (val != NULL)
+            if (val != nullptr)
                 PyDict_SetItem(v, key, val);
             Py_DECREF(key);
             Py_XDECREF(val);
@@ -323,24 +329,24 @@ static PyObject *r_object(RFILE *p)
         {
             PyErr_SetString(PyExc_RuntimeError, "cannot unmarshal code objects in "
                                                 "restricted execution mode");
-            return NULL;
+            return nullptr;
         }
         else
         {
-            int argcount = r_short(p);
-            int nlocals = r_short(p);
-            int stacksize = r_short(p);
-            int flags = r_short(p);
-            PyObject *code = NULL;
-            PyObject *consts = NULL;
-            PyObject *names = NULL;
-            PyObject *varnames = NULL;
-            PyObject *freevars = NULL;
-            PyObject *cellvars = NULL;
-            PyObject *filename = NULL;
-            PyObject *name = NULL;
+            int const argcount = r_short(p);
+            int const nlocals = r_short(p);
+            int const stacksize = r_short(p);
+            int const flags = r_short(p);
+            PyObject *code = nullptr;
+            PyObject *consts = nullptr;
+            PyObject *names = nullptr;
+            PyObject *varnames = nullptr;
+            PyObject *freevars = nullptr;
+            PyObject *cellvars = nullptr;
+            PyObject *filename = nullptr;
+            PyObject *name = nullptr;
             int firstlineno = 0;
-            PyObject *lnotab = NULL;
+            PyObject *lnotab = nullptr;
 
             code = r_object(p);
             if (code)
@@ -365,11 +371,14 @@ static PyObject *r_object(RFILE *p)
 
             if (!PyErr_Occurred())
             {
-                v = (PyObject *)PyCode_New(argcount, nlocals, stacksize, flags, code, consts, names, varnames, freevars,
-                                           cellvars, filename, name, firstlineno, lnotab);
+                v = reinterpret_cast<PyObject *>(PyCode_New(argcount, nlocals, stacksize, flags, code, consts, names,
+                                                            varnames, freevars, cellvars, filename, name, firstlineno,
+                                                            lnotab));
             }
             else
-                v = NULL;
+            {
+                v = nullptr;
+            }
             Py_XDECREF(code);
             Py_XDECREF(consts);
             Py_XDECREF(names);
@@ -386,7 +395,7 @@ static PyObject *r_object(RFILE *p)
         /* Bogus data got written, which isn't ideal.
            This will let you keep working and recover. */
         PyErr_SetString(PyExc_ValueError, "bad marshal data");
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -407,11 +416,12 @@ long _PyMarshal_ReadLongFromFile(FILE *fp)
 /* Return size of file in bytes; < 0 if unknown. */
 static off_t getfilesize(FILE *fp)
 {
-    struct stat st;
+    struct stat st{};
     if (fstat(fileno(fp), &st) != 0)
+    {
         return -1;
-    else
-        return st.st_size;
+    }
+    return st.st_size;
 }
 
 /* If we can get the size of the file up-front, and it's reasonably small,
@@ -428,27 +438,31 @@ PyObject *_PyMarshal_ReadLastObjectFromFile(FILE *fp)
 #define SMALL_FILE_LIMIT (1L << 14)
 #define REASONABLE_FILE_LIMIT (1L << 18)
 
-    off_t filesize;
+    off_t filesize = 0;
 
     if (PyErr_Occurred())
     {
-        fprintf(stderr, "XXX rd_object called with exception set\n");
-        return NULL;
+        std::println(stderr, "XXX rd_object called with exception set");
+        return nullptr;
     }
 
     filesize = getfilesize(fp);
     if (filesize > 0)
     {
         char buf[SMALL_FILE_LIMIT];
-        char *pBuf = NULL;
+        char *pBuf = nullptr;
         if (filesize <= SMALL_FILE_LIMIT)
-            pBuf = buf;
-        else if (filesize <= REASONABLE_FILE_LIMIT)
-            pBuf = (char *)PyMem_MALLOC(filesize);
-        if (pBuf != NULL)
         {
-            PyObject *v;
-            size_t n = fread(pBuf, 1, filesize, fp);
+            pBuf = buf;
+        }
+        else if (filesize <= REASONABLE_FILE_LIMIT)
+        {
+            pBuf = static_cast<char *> PyMem_MALLOC(filesize);
+        }
+        if (pBuf != nullptr)
+        {
+            PyObject *v = nullptr;
+            size_t const n = fread(pBuf, 1, filesize, fp);
             v = PyMarshal_ReadObjectFromString(pBuf, n);
             if (pBuf != buf)
                 PyMem_FREE(pBuf);
@@ -469,8 +483,8 @@ PyObject *_PyMarshal_ReadObjectFromFile(FILE *fp)
     RFILE rf;
     if (PyErr_Occurred())
     {
-        fprintf(stderr, "XXX rd_object called with exception set\n");
-        return NULL;
+        std::println(stderr, "XXX rd_object called with exception set");
+        return nullptr;
     }
     rf.fp = fp;
     return r_object(&rf);
@@ -481,11 +495,11 @@ PyObject *_PyMarshal_ReadObjectFromString(char *str, int len)
     RFILE rf;
     if (PyErr_Occurred())
     {
-        fprintf(stderr, "XXX rds_object called with exception set\n");
-        return NULL;
+        std::println(stderr, "XXX rds_object called with exception set");
+        return nullptr;
     }
-    rf.fp = NULL;
-    rf.str = NULL;
+    rf.fp = nullptr;
+    rf.str = nullptr;
     rf.ptr = str;
     rf.end = str + len;
     return r_object(&rf);

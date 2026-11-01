@@ -4,13 +4,15 @@
 
 #include <Neoeter/Render/NetAddress.h>
 
+#include <utility>
+
 #pragma pack(push)
 #pragma pack(1)
 
-typedef unsigned char ServerStateChecker_Header;
-typedef unsigned long ServerStateChecker_Key;
-typedef unsigned long ServerStateChecker_Index;
-typedef unsigned char ServerStateChecker_State;
+using ServerStateChecker_Header = unsigned char;
+using ServerStateChecker_Key = unsigned long;
+using ServerStateChecker_Index = unsigned long;
+using ServerStateChecker_State = unsigned char;
 
 #pragma pack(pop)
 
@@ -22,7 +24,7 @@ CServerStateChecker::CServerStateChecker()
 CServerStateChecker::~CServerStateChecker()
 {
     Initialize();
-    m_poWnd = NULL;
+    m_poWnd = nullptr;
 }
 
 void CServerStateChecker::Create(PyObject *poWnd)
@@ -49,7 +51,7 @@ void CServerStateChecker::Request()
 
     if (!m_kStream.Connect(m_lstChannel.begin()->c_szAddr, m_lstChannel.begin()->uPort))
     {
-        for (std::list<TChannel>::const_iterator it = m_lstChannel.begin(); it != m_lstChannel.end(); ++it)
+        for (auto it = m_lstChannel.begin(); it != m_lstChannel.end(); ++it)
         {
             PyCallClassMemberFunc(m_poWnd, "NotifyChannelState", Py_BuildValue("(ii)", it->uServerIndex, 0));
         }
@@ -62,7 +64,7 @@ void CServerStateChecker::Request()
     BYTE bHeader = HEADER_CG_STATE_CHECKER;
     if (!m_kStream.Send(sizeof(bHeader), &bHeader))
     {
-        for (std::list<TChannel>::const_iterator it = m_lstChannel.begin(); it != m_lstChannel.end(); ++it)
+        for (auto it = m_lstChannel.begin(); it != m_lstChannel.end(); ++it)
         {
             PyCallClassMemberFunc(m_poWnd, "NotifyChannelState", Py_BuildValue("(ii)", it->uServerIndex, 0));
         }
@@ -75,7 +77,7 @@ void CServerStateChecker::Update()
 {
     m_kStream.Process();
 
-    BYTE bHeader;
+    BYTE bHeader = 0;
     if (!m_kStream.Recv(sizeof(bHeader), &bHeader))
     {
         return;
@@ -84,7 +86,7 @@ void CServerStateChecker::Update()
     {
         return;
     }
-    int nSize;
+    int nSize = 0;
     if (!m_kStream.Recv(sizeof(nSize), &nSize))
     {
         return;
@@ -96,7 +98,7 @@ void CServerStateChecker::Update()
         {
             return;
         }
-        for (std::list<TChannel>::const_iterator it = m_lstChannel.begin(); it != m_lstChannel.end(); ++it)
+        for (auto it = m_lstChannel.begin(); it != m_lstChannel.end(); ++it)
         {
             if (channelStatus.nPort == it->uPort)
             {

@@ -10,7 +10,7 @@ void CGrannyModelInstance::CopyMotion(CGrannyModelInstance *pModelInstance, bool
     if (m_pgrnCtrl)
         GrannyFreeControl(m_pgrnCtrl);
 
-    float localTime = GetLocalTime();
+    float const localTime = GetLocalTime();
     m_pgrnAni = pModelInstance->m_pgrnAni;
     m_pgrnCtrl = GrannyPlayControlledAnimation(localTime, m_pgrnAni, m_pgrnModelInstance);
 
@@ -30,7 +30,7 @@ void CGrannyModelInstance::CopyMotion(CGrannyModelInstance *pModelInstance, bool
     if (bIsFreeSourceControl)
     {
         GrannyFreeControl(pModelInstance->m_pgrnCtrl);
-        pModelInstance->m_pgrnCtrl = NULL;
+        pModelInstance->m_pgrnCtrl = nullptr;
     }
 }
 
@@ -57,7 +57,7 @@ void CGrannyModelInstance::SetMotionPointer(const CGrannyMotion *pMotion, float 
     if (!pgrnModelInstance)
         return;
 
-    float localTime = GetLocalTime();
+    float const localTime = GetLocalTime();
 
     bool isFirst = false;
     if (m_pgrnCtrl)
@@ -124,8 +124,8 @@ void CGrannyModelInstance::ChangeMotionPointer(const CGrannyMotion *pMotion, int
 
     // 보간 되는 앞부분을 스킵 하기 위해 LocalTime 을 어느 정도 무시한다. -
     // [levites]
-    float fSkipTime = 0.3f;
-    float localTime = GetLocalTime() - fSkipTime;
+    float const fSkipTime = 0.3f;
+    float const localTime = GetLocalTime() - fSkipTime;
 
     if (m_pgrnCtrl)
     {
@@ -154,6 +154,6 @@ void CGrannyModelInstance::SetMotionAtEnd()
         return;
 
     // Tracef("%f\n", endingTime);
-    float endingTime = GrannyGetControlLocalDuration(m_pgrnCtrl);
+    float const endingTime = GrannyGetControlLocalDuration(m_pgrnCtrl);
     GrannySetControlRawLocalClock(m_pgrnCtrl, endingTime);
 }

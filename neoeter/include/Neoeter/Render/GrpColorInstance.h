@@ -21,7 +21,6 @@ class CGraphicColorInstance
   protected:
     DWORD GetCurrentTime();
 
-  protected:
     CGraphicColor m_srcColor;
     CGraphicColor m_dstColor;
     CGraphicColor m_curColor;
@@ -30,4 +29,4 @@ class CGraphicColorInstance
     DWORD m_blendTime;
 };
 
-typedef CDynamicPool<CGraphicColorInstance> TGraphicColorInstancePool;
+using TGraphicColorInstancePool = CDynamicPool<CGraphicColorInstance>;

@@ -68,25 +68,25 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
 
     enum ECursorShape
     {
-        CURSOR_SHAPE_NORMAL,
-        CURSOR_SHAPE_ATTACK,
-        CURSOR_SHAPE_TARGET,
-        CURSOR_SHAPE_TALK,
-        CURSOR_SHAPE_CANT_GO,
-        CURSOR_SHAPE_PICK,
+        CURSOR_SHAPE_NORMAL = 0,
+        CURSOR_SHAPE_ATTACK = 1,
+        CURSOR_SHAPE_TARGET = 2,
+        CURSOR_SHAPE_TALK = 3,
+        CURSOR_SHAPE_CANT_GO = 4,
+        CURSOR_SHAPE_PICK = 5,
 
-        CURSOR_SHAPE_DOOR,
-        CURSOR_SHAPE_CHAIR,
-        CURSOR_SHAPE_MAGIC, // Magic
-        CURSOR_SHAPE_BUY,   // Buy
-        CURSOR_SHAPE_SELL,  // Sell
+        CURSOR_SHAPE_DOOR = 6,
+        CURSOR_SHAPE_CHAIR = 7,
+        CURSOR_SHAPE_MAGIC = 8, // Magic
+        CURSOR_SHAPE_BUY = 9,   // Buy
+        CURSOR_SHAPE_SELL = 10, // Sell
 
-        CURSOR_SHAPE_CAMERA_ROTATE, // Camera Rotate
-        CURSOR_SHAPE_HSIZE,         // Horizontal Size
-        CURSOR_SHAPE_VSIZE,         // Vertical Size
-        CURSOR_SHAPE_HVSIZE,        // Horizontal & Vertical Size
+        CURSOR_SHAPE_CAMERA_ROTATE = 11, // Camera Rotate
+        CURSOR_SHAPE_HSIZE = 12,         // Horizontal Size
+        CURSOR_SHAPE_VSIZE = 13,         // Vertical Size
+        CURSOR_SHAPE_HVSIZE = 14,        // Horizontal & Vertical Size
 
-        CURSOR_SHAPE_COUNT,
+        CURSOR_SHAPE_COUNT = 15,
 
         // 안정적인 네이밍 변환을 위한 임시 enumerate
         NORMAL = CURSOR_SHAPE_NORMAL,
@@ -122,34 +122,31 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
 
     struct SCameraSpeed
     {
-        float m_fUpDir;
-        float m_fViewDir;
-        float m_fCrossDir;
+        float m_fUpDir = 0.0f;
+        float m_fViewDir = 0.0f;
+        float m_fCrossDir = 0.0f;
 
-        SCameraSpeed() : m_fUpDir(0.0f), m_fViewDir(0.0f), m_fCrossDir(0.0f)
+        SCameraSpeed()
         {
         }
     };
 
-  public:
     CPythonApplication();
-    virtual ~CPythonApplication();
+    ~CPythonApplication() override;
 
-  public:
     void ShowWebPage(const char *c_szURL, const RECT &c_rcWebPage);
     void MoveWebPage(const RECT &c_rcWebPage);
     void HideWebPage();
 
     bool IsWebPageMode();
 
-  public:
     void NotifyHack(const char *c_szFormat, ...);
     void GetInfo(UINT eInfo, std::string *pstInfo);
-    void GetMousePosition(POINT *ppt);
+    void GetMousePosition(POINT *ppt) override;
 
     static CPythonApplication &Instance()
     {
-        assert(ms_pInstance != NULL);
+        assert(ms_pInstance != nullptr);
         return *ms_pInstance;
     }
 
@@ -161,7 +158,7 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
 
     void SetMinFog(float fMinFog);
     void SetFrameSkip(bool isEnable);
-    void SkipRenderBuffering(DWORD dwSleepMSec);
+    void SkipRenderBuffering(DWORD dwSleepMSec) override;
 
     bool Create(PyObject *poSelf, const char *c_szName, int width, int height, int Windowed);
     bool CreateDevice(int width, int height, int Windowed, int bit = 32, int frequency = 0);
@@ -181,22 +178,22 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
 
     BOOL SetCursorNum(int iCursorNum);
     void SetCursorVisible(BOOL bFlag, bool bLiarCursorOn = false);
-    BOOL GetCursorVisible();
-    bool GetLiarCursorOn();
+    BOOL GetCursorVisible() const;
+    bool GetLiarCursorOn() const;
     void SetCursorMode(int iMode);
-    int GetCursorMode();
-    int GetCursorNum()
+    int GetCursorMode() const;
+    int GetCursorNum() const
     {
         return m_iCursorNum;
     }
 
     void SetMouseHandler(PyObject *poMouseHandler);
 
-    int GetWidth();
-    int GetHeight();
+    int GetWidth() const;
+    int GetHeight() const;
 
     void SetGlobalCenterPosition(LONG x, LONG y);
-    void SetCenterPosition(float fx, float fy, float fz);
+    void SetCenterPosition(float fx, float fy, float fz) override;
     void GetCenterPosition(TPixelPosition *pPixelPosition);
     void SetCamera(float Distance, float Pitch, float Rotation, float fDestinationHeight);
     void GetCamera(float *Distance, float *Pitch, float *Rotation, float *DestinationHeight);
@@ -214,41 +211,41 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     float GetPitch();
 
     void SetFPS(int iFPS);
-    void SetServerTime(time_t tTime);
-    time_t GetServerTime();
-    time_t GetServerTimeStamp();
-    float GetGlobalTime();
-    float GetGlobalElapsedTime();
+    void SetServerTime(time_t tTime) override;
+    time_t GetServerTime() const;
+    time_t GetServerTimeStamp() const;
+    float GetGlobalTime() override;
+    float GetGlobalElapsedTime() override;
 
-    float GetFaceSpeed()
+    float GetFaceSpeed() const
     {
         return m_fFaceSpd;
     }
-    float GetAveRenderTime()
+    float GetAveRenderTime() const
     {
         return m_fAveRenderTime;
     }
-    DWORD GetCurRenderTime()
+    DWORD GetCurRenderTime() const
     {
         return m_dwCurRenderTime;
     }
-    DWORD GetCurUpdateTime()
+    DWORD GetCurUpdateTime() const
     {
         return m_dwCurUpdateTime;
     }
-    DWORD GetUpdateFPS()
+    DWORD GetUpdateFPS() const
     {
         return m_dwUpdateFPS;
     }
-    DWORD GetRenderFPS()
+    DWORD GetRenderFPS() const
     {
         return m_dwRenderFPS;
     }
-    DWORD GetLoad()
+    DWORD GetLoad() const
     {
         return m_dwLoad;
     }
-    DWORD GetFaceCount()
+    DWORD GetFaceCount() const
     {
         return m_dwFaceCount;
     }
@@ -256,24 +253,24 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     void SetConnectData(const char *c_szIP, int iPort);
     void GetConnectData(std::string &rstIP, int &riPort);
 
-    void RunIMEUpdate();
-    void RunIMETabEvent();
-    void RunIMEReturnEvent();
+    void RunIMEUpdate() override;
+    void RunIMETabEvent() override;
+    void RunIMEReturnEvent() override;
     void RunPressExitKey();
 
-    void RunIMEChangeCodePage();
-    void RunIMEOpenCandidateListEvent();
-    void RunIMECloseCandidateListEvent();
-    void RunIMEOpenReadingWndEvent();
-    void RunIMECloseReadingWndEvent();
+    void RunIMEChangeCodePage() override;
+    void RunIMEOpenCandidateListEvent() override;
+    void RunIMECloseCandidateListEvent() override;
+    void RunIMEOpenReadingWndEvent() override;
+    void RunIMECloseReadingWndEvent() override;
 
     void EnableSpecialCameraMode();
     void SetCameraSpeed(int iPercentage);
 
     bool IsLockCurrentCamera();
-    void SetEventCamera(const SCameraSetting &c_rCameraSetting);
-    void BlendEventCamera(const SCameraSetting &c_rCameraSetting, float fBlendTime);
-    void SetDefaultCamera();
+    void SetEventCamera(const SCameraSetting &c_rCameraSetting) override;
+    void BlendEventCamera(const SCameraSetting &c_rCameraSetting, float fBlendTime) override;
+    void SetDefaultCamera() override;
 
     void SetCameraSetting(const SCameraSetting &c_rCameraSetting);
     void GetCameraSetting(SCameraSetting *pCameraSetting);
@@ -282,30 +279,28 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
 
     void SetForceSightRange(int iRange);
 
-  public:
     int OnLogoOpen(char *szName);
     int OnLogoUpdate();
     void OnLogoRender();
     void OnLogoClose();
 
   protected:
-    IGraphBuilder *m_pGraphBuilder;   // Graph Builder
-    IBaseFilter *m_pFilterSG;         // Sample Grabber 필터
-    ISampleGrabber *m_pSampleGrabber; // 영상 이미지 캡처를 위한 샘플 그래버
-    IMediaControl *m_pMediaCtrl;      // Media Control
-    IMediaEventEx *m_pMediaEvent;     // Media Event
-    IVideoWindow *m_pVideoWnd;        // Video Window
-    IBasicVideo *m_pBasicVideo;
-    BYTE *m_pCaptureBuffer;           // 영상 이미지를 캡처한 버퍼
-    LONG m_lBufferSize;               // Video 버퍼 크기 변수
-    CGraphicImageTexture *m_pLogoTex; // 출력할 텍스쳐
-    bool m_bLogoError;                // 영상 읽기 상태
-    bool m_bLogoPlay;
+    IGraphBuilder *m_pGraphBuilder = nullptr;   // Graph Builder
+    IBaseFilter *m_pFilterSG = nullptr;         // Sample Grabber 필터
+    ISampleGrabber *m_pSampleGrabber = nullptr; // 영상 이미지 캡처를 위한 샘플 그래버
+    IMediaControl *m_pMediaCtrl = nullptr;      // Media Control
+    IMediaEventEx *m_pMediaEvent = nullptr;     // Media Event
+    IVideoWindow *m_pVideoWnd = nullptr;        // Video Window
+    IBasicVideo *m_pBasicVideo = nullptr;
+    BYTE *m_pCaptureBuffer = nullptr;           // 영상 이미지를 캡처한 버퍼
+    LONG m_lBufferSize = 0;                     // Video 버퍼 크기 변수
+    CGraphicImageTexture *m_pLogoTex = nullptr; // 출력할 텍스쳐
+    bool m_bLogoError = false;                  // 영상 읽기 상태
+    bool m_bLogoPlay = false;
 
-    int m_nLeft, m_nRight, m_nTop, m_nBottom;
+    int m_nLeft = 0, m_nRight = 0, m_nTop = 0, m_nBottom = 0;
 
-  protected:
-    LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam) override;
 
     void OnCameraUpdate();
 
@@ -325,8 +320,8 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     void OnMouseRightButtonDown(int x, int y);
     void OnMouseRightButtonUp(int x, int y);
     void OnSizeChange(int width, int height);
-    void OnKeyDown(int iIndex);
-    void OnKeyUp(int iIndex);
+    void OnKeyDown(int iIndex) override;
+    void OnKeyUp(int iIndex) override;
     void OnIMEKeyDown(int iIndex);
 
     int CheckDeviceState();
@@ -338,7 +333,6 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     void __SetFullScreenWindow(HWND hWnd, DWORD dwWidth, DWORD dwHeight, DWORD dwBPP);
     void __MinimizeFullScreenWindow(HWND hWnd, DWORD dwWidth, DWORD dwHeight);
 
-  protected:
     CTimer m_timer;
 
     CLightManager m_LightManager;
@@ -389,21 +383,20 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     D3DXVECTOR3 m_v3CenterPosition;
 
     unsigned int m_iFPS;
-    float m_fAveRenderTime;
-    DWORD m_dwCurRenderTime;
-    DWORD m_dwCurUpdateTime;
-    DWORD m_dwLoad;
+    float m_fAveRenderTime = 0.0f;
+    DWORD m_dwCurRenderTime = 0U;
+    DWORD m_dwCurUpdateTime = 0U;
+    DWORD m_dwLoad = 0U;
     DWORD m_dwWidth;
     DWORD m_dwHeight;
 
-  protected:
     // Time
-    DWORD m_dwLastIdleTime;
+    DWORD m_dwLastIdleTime = 0;
     DWORD m_dwStartLocalTime;
     time_t m_tServerTime;
     time_t m_tLocalStartTime;
-    float m_fGlobalTime;
-    float m_fGlobalElapsedTime;
+    float m_fGlobalTime = 0.0f;
+    float m_fGlobalElapsedTime = 0.0f;
 
     /////////////////////////////////////////////////////////////
     // Camera
@@ -436,22 +429,22 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     DWORD m_dwFaceAccCount;
     DWORD m_dwFaceAccTime;
 
-    DWORD m_dwUpdateFPS;
-    DWORD m_dwRenderFPS;
-    DWORD m_dwFaceCount;
+    DWORD m_dwUpdateFPS = 0;
+    DWORD m_dwRenderFPS = 0;
+    DWORD m_dwFaceCount = 0;
 
-    DWORD m_dwLButtonDownTime;
-    DWORD m_dwLButtonUpTime;
+    DWORD m_dwLButtonDownTime = 0;
+    DWORD m_dwLButtonUpTime = 0U;
 
-    typedef std::map<int, HANDLE> TCursorHandleMap;
+    using TCursorHandleMap = std::map<int, HANDLE>;
     TCursorHandleMap m_CursorHandleMap;
-    HANDLE m_hCurrentCursor;
+    HANDLE m_hCurrentCursor = nullptr;
 
-    BOOL m_bCursorVisible;
-    bool m_bLiarCursorOn;
-    int m_iCursorMode;
-    bool m_isWindowed;
-    bool m_isFrameSkipDisable;
+    BOOL m_bCursorVisible = TRUE;
+    bool m_bLiarCursorOn = false;
+    int m_iCursorMode = CURSOR_MODE_HARDWARE;
+    bool m_isWindowed = false;
+    bool m_isFrameSkipDisable = false;
 
     // Connect Data
     std::string m_strIP;
@@ -463,11 +456,10 @@ class CPythonApplication : public CMSApplication, public CInputKeyboard, public 
     bool m_isActivateWnd;
     BOOL m_isWindowFullScreenEnable;
 
-    DWORD m_dwStickyKeysFlag;
-    DWORD m_dwBufSleepSkipTime;
+    DWORD m_dwStickyKeysFlag = 0U;
+    DWORD m_dwBufSleepSkipTime = 0U;
     int m_iForceSightRange;
 
-  protected:
     int m_iCursorNum;
     int m_iContinuousCursorNum;
 };

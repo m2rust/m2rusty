@@ -13,9 +13,11 @@
 #include <Neoeter/Render/IME.h>
 #include <Neoeter/Platform/Base/Utils.h>
 
-#if defined(OPENMT2_SDL_WINDOW)
+#ifdef OPENMT2_SDL_WINDOW
 
 #include <SDL2/SDL.h>
+
+#include <utility>
 
 bool CIME::ms_bInitialized = false;
 bool CIME::ms_bDisableIMECompletely = false;
@@ -79,16 +81,18 @@ static bool IsUtf8Continuation(unsigned char c)
 static size_t Utf8Length(const std::string &s)
 {
     size_t n = 0;
-    for (unsigned char c : s)
+    for (unsigned char const c : s)
+    {
         if (!IsUtf8Continuation(c))
             ++n;
+    }
     return n;
 }
 
 // Decodes one code point at s[i], advancing i. Invalid bytes map to U+FFFD.
 static wchar_t DecodeUtf8(const std::string &s, size_t &i)
 {
-    const unsigned char c = (unsigned char)s[i++];
+    const auto c = static_cast<unsigned char>(s[i++]);
     int extra = 0;
     unsigned int cp = c;
     if (c >= 0xF0)
@@ -107,19 +111,20 @@ static wchar_t DecodeUtf8(const std::string &s, size_t &i)
         cp = c & 0x1F;
     }
     else if (c >= 0x80)
+    {
         return 0xFFFD;
+    }
     for (; extra > 0; --extra)
     {
-        if (i >= s.size() || !IsUtf8Continuation((unsigned char)s[i]))
+        if (i >= s.size() || !IsUtf8Continuation(static_cast<unsigned char>(s[i])))
             return 0xFFFD;
-        cp = (cp << 6) | ((unsigned char)s[i++] & 0x3F);
+        cp = (cp << 6) | (static_cast<unsigned char>(s[i++]) & 0x3F);
     }
-    return (wchar_t)cp;
+    return static_cast<wchar_t>(cp);
 }
 
 CIME::CIME()
-    : m_hOrgIMC(nullptr), m_max(IMESTR_MAXLEN), m_userMax(IMESTR_MAXLEN), m_bOnlyNumberMode(false),
-      m_bEnablePaste(true), m_bUseDefaultIME(false)
+
 {
     ms_pSdlInstance = this;
 }
@@ -174,15 +179,15 @@ void CIME::SetText(const char *c_szText, int len)
 {
     if (!c_szText)
         return;
-    m_stText.assign(c_szText, len < 0 ? strlen(c_szText) : (size_t)len);
-    ms_curpos = (int)m_stText.size();
+    m_stText.assign(c_szText, len < 0 ? strlen(c_szText) : static_cast<size_t>(len));
+    ms_curpos = static_cast<int>(m_stText.size());
     ms_lastpos = ms_curpos;
 }
 
 int CIME::GetText(std::string &rstrText, bool /*addCodePage*/)
 {
     rstrText.append(m_stText);
-    return (int)m_stText.size();
+    return static_cast<int>(m_stText.size());
 }
 
 const char *CIME::GetCodePageText()
@@ -191,7 +196,7 @@ const char *CIME::GetCodePageText()
 }
 int CIME::GetCodePage()
 {
-    return (int)ms_uOutputCodePage;
+    return static_cast<int>(ms_uOutputCodePage);
 }
 
 int CIME::GetCandidateCount()
@@ -202,7 +207,7 @@ int CIME::GetCandidatePageCount()
 {
     return 0;
 }
-int CIME::GetCandidate(DWORD, std::string &)
+int CIME::GetCandidate(DWORD /*unused*/, std::string & /*unused*/)
 {
     return 0;
 }
@@ -210,7 +215,7 @@ int CIME::GetCandidateSelection()
 {
     return 0;
 }
-int CIME::GetReading(std::string &)
+int CIME::GetReading(std::string & /*unused*/)
 {
     return 0;
 }
@@ -271,9 +276,11 @@ void CIME::SetStringMode()
 
 bool CIME::__IsWritable(wchar_t key)
 {
-    for (wchar_t except : m_exceptKey)
+    for (wchar_t const except : m_exceptKey)
+    {
         if (except == key)
             return false;
+    }
     return true;
 }
 
@@ -301,12 +308,12 @@ void CIME::EnablePaste(bool bFlag)
     m_bEnablePaste = bFlag;
 }
 
-void CIME::PasteString(const char *str)
+void CIME::PasteString(const char *str) const
 {
     if (!m_bEnablePaste || !str)
         return;
     m_stText.append(str);
-    ms_curpos = ms_lastpos = (int)m_stText.size();
+    ms_curpos = ms_lastpos = static_cast<int>(m_stText.size());
 }
 
 void CIME::FinalizeString(bool /*bSend*/)
@@ -352,32 +359,32 @@ void CIME::ChangeInputLanguageWorker()
 {
 }
 
-LRESULT CIME::WMInputLanguage(HWND, UINT, WPARAM, LPARAM)
+LRESULT CIME::WMInputLanguage(HWND /*unused*/, UINT /*unused*/, WPARAM /*unused*/, LPARAM /*unused*/)
 {
     return 0;
 }
-LRESULT CIME::WMStartComposition(HWND, UINT, WPARAM, LPARAM)
+LRESULT CIME::WMStartComposition(HWND /*unused*/, UINT /*unused*/, WPARAM /*unused*/, LPARAM /*unused*/)
 {
     return 0;
 }
-LRESULT CIME::WMComposition(HWND, UINT, WPARAM, LPARAM)
+LRESULT CIME::WMComposition(HWND /*unused*/, UINT /*unused*/, WPARAM /*unused*/, LPARAM /*unused*/)
 {
     return 0;
 }
-LRESULT CIME::WMEndComposition(HWND, UINT, WPARAM, LPARAM)
+LRESULT CIME::WMEndComposition(HWND /*unused*/, UINT /*unused*/, WPARAM /*unused*/, LPARAM /*unused*/)
 {
     return 0;
 }
-LRESULT CIME::WMNotify(HWND, UINT, WPARAM, LPARAM)
+LRESULT CIME::WMNotify(HWND /*unused*/, UINT /*unused*/, WPARAM /*unused*/, LPARAM /*unused*/)
 {
     return 0;
 }
-LRESULT CIME::WMChar(HWND, UINT, WPARAM wParam, LPARAM lParam)
+LRESULT CIME::WMChar(HWND /*unused*/, UINT /*unused*/, WPARAM wParam, LPARAM lParam)
 {
     // Printable characters arrive as committed UTF-8 through SDL_TEXTINPUT
     // (OnSDLTextInput). WM_CHAR is still used for editing keys and the
     // OnWM_CHAR control path (return/tab/escape).
-    const unsigned char c = (unsigned char)(wParam & 0xff);
+    const auto c = static_cast<unsigned char>(wParam & 0xff);
     if (c == 8 || c == 127)
     {
         if (!ms_bCaptureInput)
@@ -407,21 +414,21 @@ void CIME::IncCurPos()
 {
     if (ms_curpos < ms_lastpos)
         ++ms_curpos;
-    while (ms_curpos < ms_lastpos && IsUtf8Continuation((unsigned char)m_stText[ms_curpos]))
+    while (ms_curpos < ms_lastpos && IsUtf8Continuation(static_cast<unsigned char>(m_stText[ms_curpos])))
         ++ms_curpos;
 }
 void CIME::DecCurPos()
 {
     if (ms_curpos > 0)
         --ms_curpos;
-    while (ms_curpos > 0 && IsUtf8Continuation((unsigned char)m_stText[ms_curpos]))
+    while (ms_curpos > 0 && IsUtf8Continuation(static_cast<unsigned char>(m_stText[ms_curpos])))
         --ms_curpos;
 }
 void CIME::SetCurPos(int offset)
 {
     // As on Windows: out of range (EditLine passes -1 on focus) means the end.
     // In range, offset is a rendered character index, not a byte offset.
-    ms_lastpos = (int)m_stText.size();
+    ms_lastpos = static_cast<int>(m_stText.size());
     if (offset < 0)
     {
         ms_curpos = ms_lastpos;
@@ -431,21 +438,21 @@ void CIME::SetCurPos(int offset)
     for (int n = 0; n < offset && pos < m_stText.size(); ++n)
     {
         ++pos;
-        while (pos < m_stText.size() && IsUtf8Continuation((unsigned char)m_stText[pos]))
+        while (pos < m_stText.size() && IsUtf8Continuation(static_cast<unsigned char>(m_stText[pos])))
             ++pos;
     }
-    ms_curpos = (int)pos;
+    ms_curpos = static_cast<int>(pos);
 }
 void CIME::DelCurPos()
 {
     // Delete key semantics: remove the character at the cursor, not before it.
     if (ms_curpos < ms_lastpos)
     {
-        size_t end = (size_t)ms_curpos + 1;
-        while (end < m_stText.size() && IsUtf8Continuation((unsigned char)m_stText[end]))
+        size_t end = static_cast<size_t>(ms_curpos) + 1;
+        while (end < m_stText.size() && IsUtf8Continuation(static_cast<unsigned char>(m_stText[end])))
             ++end;
         m_stText.erase(ms_curpos, end - ms_curpos);
-        ms_lastpos = (int)m_stText.size();
+        ms_lastpos = static_cast<int>(m_stText.size());
     }
 }
 
@@ -469,37 +476,37 @@ void CIME::OnChar(wchar_t c)
         return;
     if (!__IsWritable(c))
         return;
-    m_stText.push_back((char)c);
-    ms_curpos = ms_lastpos = (int)m_stText.size();
+    m_stText.push_back(static_cast<char>(c));
+    ms_curpos = ms_lastpos = static_cast<int>(m_stText.size());
 }
 
-UINT CIME::GetCodePageFromLang(LANGID)
+UINT CIME::GetCodePageFromLang(LANGID /*unused*/)
 {
     return 65001;
 }
-void CIME::ResultProcess(HIMC)
+void CIME::ResultProcess(HIMC /*unused*/)
 {
 }
-void CIME::CompositionProcessBuilding(HIMC)
+void CIME::CompositionProcessBuilding(HIMC /*unused*/)
 {
 }
-void CIME::CompositionProcess(HIMC)
+void CIME::CompositionProcess(HIMC /*unused*/)
 {
 }
-void CIME::AttributeProcess(HIMC)
+void CIME::AttributeProcess(HIMC /*unused*/)
 {
 }
-void CIME::CandidateProcess(HIMC)
+void CIME::CandidateProcess(HIMC /*unused*/)
 {
 }
-void CIME::ReadingProcess(HIMC)
+void CIME::ReadingProcess(HIMC /*unused*/)
 {
 }
-bool CIME::IsMax(const wchar_t *, int)
+bool CIME::IsMax(const wchar_t * /*unused*/, int /*unused*/)
 {
     return false;
 }
-DWORD CIME::GetImeId(UINT)
+DWORD CIME::GetImeId(UINT /*unused*/)
 {
     return 0;
 }
@@ -514,7 +521,7 @@ void CIME::SetupImeApi()
 void CIME::OnSDLTextEditing(const char *utf8, int start, int length)
 {
     m_stComposition = utf8 ? utf8 : "";
-    ms_compLen = (int)m_stComposition.size();
+    ms_compLen = static_cast<int>(m_stComposition.size());
     ms_ulbegin = start;
     ms_ulend = start + length;
     if (ms_pEvent)
@@ -536,8 +543,8 @@ void CIME::OnSDLTextInput(const char *utf8)
 
     CIME *ime = ms_pSdlInstance;
     size_t maxChars = IMESTR_MAXLEN;
-    if (ime && ime->m_max > 0 && (size_t)ime->m_max < maxChars)
-        maxChars = (size_t)ime->m_max;
+    if (ime && ime->m_max > 0 && static_cast<size_t>(ime->m_max) < maxChars)
+        maxChars = static_cast<size_t>(ime->m_max);
 
     const std::string text = utf8;
     std::string insert;
@@ -559,11 +566,11 @@ void CIME::OnSDLTextInput(const char *utf8)
     if (insert.empty())
         return;
 
-    if (ms_curpos < 0 || ms_curpos > (int)m_stText.size())
-        ms_curpos = (int)m_stText.size();
-    m_stText.insert((size_t)ms_curpos, insert);
-    ms_curpos += (int)insert.size();
-    ms_lastpos = (int)m_stText.size();
+    if (ms_curpos < 0 || ms_curpos > static_cast<int>(m_stText.size()))
+        ms_curpos = static_cast<int>(m_stText.size());
+    m_stText.insert(static_cast<size_t>(ms_curpos), insert);
+    ms_curpos += static_cast<int>(insert.size());
+    ms_lastpos = static_cast<int>(m_stText.size());
     if (ms_pEvent)
         ms_pEvent->OnUpdate();
 }

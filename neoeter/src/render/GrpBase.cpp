@@ -27,9 +27,9 @@ D3D_CDisplayModeAutoDetector CGraphicBase::ms_kD3DDetector;
 HWND CGraphicBase::ms_hWnd;
 HDC CGraphicBase::ms_hDC;
 
-LPDIRECT3D9 CGraphicBase::ms_lpd3d = NULL;
-LPDIRECT3DDEVICE9 CGraphicBase::ms_lpd3dDevice = NULL;
-ID3DXMatrixStack *CGraphicBase::ms_lpd3dMatStack = NULL;
+LPDIRECT3D9 CGraphicBase::ms_lpd3d = nullptr;
+LPDIRECT3DDEVICE9 CGraphicBase::ms_lpd3dDevice = nullptr;
+ID3DXMatrixStack *CGraphicBase::ms_lpd3dMatStack = nullptr;
 D3DPRESENT_PARAMETERS CGraphicBase::ms_d3dPresentParameter;
 D3DVIEWPORT9 CGraphicBase::ms_Viewport;
 
@@ -93,8 +93,8 @@ std::vector<TIndex>		CGraphicBase::ms_fillRectIdxVector;
 std::vector<TIndex>		CGraphicBase::ms_fillCubeIdxVector;
 */
 
-LPD3DXMESH CGraphicBase::ms_lpSphereMesh = NULL;
-LPD3DXMESH CGraphicBase::ms_lpCylinderMesh = NULL;
+LPD3DXMESH CGraphicBase::ms_lpSphereMesh = nullptr;
+LPD3DXMESH CGraphicBase::ms_lpCylinderMesh = nullptr;
 
 LPDIRECT3DVERTEXBUFFER9 CGraphicBase::ms_alpd3dPDTVB[PDT_VERTEXBUFFER_NUM];
 
@@ -122,10 +122,7 @@ bool CGraphicBase::IsFastTNL()
 
 bool CGraphicBase::IsTLVertexClipping()
 {
-    if (ms_d3dCaps.PrimitiveMiscCaps & D3DPMISCCAPS_CLIPTLVERTS)
-        return true;
-
-    return false;
+    return (ms_d3dCaps.PrimitiveMiscCaps & D3DPMISCCAPS_CLIPTLVERTS) != 0;
 }
 
 void CGraphicBase::GetBackBufferSize(UINT *puWidth, UINT *puHeight)
@@ -144,7 +141,7 @@ void CGraphicBase::SetDefaultIndexBuffer(UINT eDefIB)
 
 bool CGraphicBase::SetPDTStream(SPDTVertex *pVertices, UINT uVtxCount)
 {
-    return SetPDTStream((SPDTVertexRaw *)pVertices, uVtxCount);
+    return SetPDTStream(reinterpret_cast<SPDTVertexRaw *>(pVertices), uVtxCount);
 }
 
 bool CGraphicBase::SetPDTStream(SPDTVertexRaw *pSrcVertices, UINT uVtxCount)
@@ -164,10 +161,10 @@ bool CGraphicBase::SetPDTStream(SPDTVertexRaw *pSrcVertices, UINT uVtxCount)
     if (uVtxCount >= PDT_VERTEX_NUM)
         return false;
 
-    TPDTVertex *pDstVertices;
+    TPDTVertex *pDstVertices = nullptr;
     if (FAILED(plpd3dFillRectVB->Lock(0, sizeof(TPDTVertex) * uVtxCount, (void **)&pDstVertices, D3DLOCK_DISCARD)))
     {
-        STATEMANAGER.SetStreamSource(0, NULL, 0);
+        STATEMANAGER.SetStreamSource(0, nullptr, 0);
         return false;
     }
 
@@ -182,12 +179,12 @@ bool CGraphicBase::SetPDTStream(SPDTVertexRaw *pSrcVertices, UINT uVtxCount)
 
 DWORD CGraphicBase::GetAvailableTextureMemory()
 {
-    assert(ms_lpd3dDevice != NULL && "CGraphicBase::GetAvailableTextureMemory - D3DDevice is EMPTY");
+    assert(ms_lpd3dDevice != nullptr && "CGraphicBase::GetAvailableTextureMemory - D3DDevice is EMPTY");
 
     static DWORD s_dwNextUpdateTime = 0;
     static DWORD s_dwTexMemSize = 0; // ms_lpd3dDevice->GetAvailableTextureMem();
 
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
     if (s_dwNextUpdateTime < dwCurTime)
     {
         s_dwNextUpdateTime = dwCurTime + 5000;
@@ -210,9 +207,9 @@ const D3DXMATRIX &CGraphicBase::GetIdentityMatrix()
 void CGraphicBase::SetEyeCamera(float xEye, float yEye, float zEye, float xCenter, float yCenter, float zCenter,
                                 float xUp, float yUp, float zUp)
 {
-    D3DXVECTOR3 vectorEye(xEye, yEye, zEye);
-    D3DXVECTOR3 vectorCenter(xCenter, yCenter, zCenter);
-    D3DXVECTOR3 vectorUp(xUp, yUp, zUp);
+    D3DXVECTOR3 const vectorEye(xEye, yEye, zEye);
+    D3DXVECTOR3 const vectorCenter(xCenter, yCenter, zCenter);
+    D3DXVECTOR3 const vectorUp(xUp, yUp, zUp);
 
     //	CCameraManager::Instance().SetCurrentCamera(CCameraManager::DEFAULT_PERSPECTIVE_CAMERA);
     CCameraManager::Instance().GetCurrentCamera()->SetViewParams(vectorEye, vectorCenter, vectorUp);
@@ -222,7 +219,7 @@ void CGraphicBase::SetEyeCamera(float xEye, float yEye, float zEye, float xCente
 void CGraphicBase::SetSimpleCamera(float x, float y, float z, float pitch, float roll)
 {
     CCamera *pCamera = CCameraManager::Instance().GetCurrentCamera();
-    D3DXVECTOR3 vectorEye(x, y, z);
+    D3DXVECTOR3 const vectorEye(x, y, z);
 
     pCamera->SetViewParams(D3DXVECTOR3(0.0f, y, 0.0f), D3DXVECTOR3(0.0f, 0.0f, 0.0f), D3DXVECTOR3(0.0f, 0.0f, 1.0f));
     pCamera->RotateEyeAroundTarget(pitch, roll);
@@ -260,9 +257,9 @@ void CGraphicBase::SetPositionCamera(float fx, float fy, float fz, float distanc
     {
         if (ms_iWavingPower > 0)
         {
-            fx += float(rand() % ms_iWavingPower) / 10.0f;
-            fy += float(rand() % ms_iWavingPower) / 10.0f;
-            fz += float(rand() % ms_iWavingPower) / 10.0f;
+            fx += static_cast<float>(rand() % ms_iWavingPower) / 10.0f;
+            fy += static_cast<float>(rand() % ms_iWavingPower) / 10.0f;
+            fz += static_cast<float>(rand() % ms_iWavingPower) / 10.0f;
         }
     }
 
@@ -334,7 +331,7 @@ void CGraphicBase::UpdateViewMatrix()
     ms_matView = pkCamera->GetViewMatrix();
     STATEMANAGER.SetTransform(D3DTS_VIEW, &ms_matView);
 
-    D3DXMatrixInverse(&ms_matInverseView, NULL, &ms_matView);
+    D3DXMatrixInverse(&ms_matInverseView, nullptr, &ms_matView);
     ms_matInverseViewYAxis._11 = ms_matInverseView._11;
     ms_matInverseViewYAxis._12 = ms_matInverseView._12;
     ms_matInverseViewYAxis._21 = ms_matInverseView._21;
@@ -373,13 +370,13 @@ void CGraphicBase::GetCameraPosition(float *px, float *py, float *pz)
 
 void CGraphicBase::GetMatrix(D3DXMATRIX *pRetMatrix) const
 {
-    assert(ms_lpd3dMatStack != NULL);
+    assert(ms_lpd3dMatStack != nullptr);
     *pRetMatrix = *ms_lpd3dMatStack->GetTop();
 }
 
 const D3DXMATRIX *CGraphicBase::GetMatrixPointer() const
 {
-    assert(ms_lpd3dMatStack != NULL);
+    assert(ms_lpd3dMatStack != nullptr);
     return ms_lpd3dMatStack->GetTop();
 }
 
@@ -455,9 +452,10 @@ void CGraphicBase::PopMatrix()
 
 DWORD CGraphicBase::GetColor(float r, float g, float b, float a)
 {
-    BYTE argb[4] = {(BYTE)(255.0f * b), (BYTE)(255.0f * g), (BYTE)(255.0f * r), (BYTE)(255.0f * a)};
+    BYTE argb[4] = {static_cast<BYTE>(255.0f * b), static_cast<BYTE>(255.0f * g), static_cast<BYTE>(255.0f * r),
+                    static_cast<BYTE>(255.0f * a)};
 
-    return *((DWORD *)argb);
+    return *(reinterpret_cast<DWORD *>(argb));
 }
 
 void CGraphicBase::InitScreenEffect()
@@ -470,13 +468,13 @@ void CGraphicBase::InitScreenEffect()
 
 void CGraphicBase::SetScreenEffectWaving(float fDuringTime, int iPower)
 {
-    ms_dwWavingEndTime = CTimer::Instance().GetCurrentMillisecond() + long(fDuringTime * 1000.0f);
+    ms_dwWavingEndTime = CTimer::Instance().GetCurrentMillisecond() + static_cast<long>(fDuringTime * 1000.0f);
     ms_iWavingPower = iPower;
 }
 
 void CGraphicBase::SetScreenEffectFlashing(float fDuringTime, const D3DXCOLOR &c_rColor)
 {
-    ms_dwFlashingEndTime = CTimer::Instance().GetCurrentMillisecond() + long(fDuringTime * 1000.0f);
+    ms_dwFlashingEndTime = CTimer::Instance().GetCurrentMillisecond() + static_cast<long>(fDuringTime * 1000.0f);
     ms_FlashingColor = c_rColor;
 }
 
@@ -495,10 +493,6 @@ HRESULT CGraphicBase::GetLastResult()
     return ms_hLastResult;
 }
 
-CGraphicBase::CGraphicBase()
-{
-}
+CGraphicBase::CGraphicBase() = default;
 
-CGraphicBase::~CGraphicBase()
-{
-}
+CGraphicBase::~CGraphicBase() = default;

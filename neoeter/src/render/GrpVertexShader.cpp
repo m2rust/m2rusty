@@ -16,7 +16,7 @@ CVertexShader::~CVertexShader()
 
 void CVertexShader::Initialize()
 {
-    m_handle = 0;
+    m_handle = nullptr;
 }
 
 void CVertexShader::Destroy()
@@ -24,7 +24,7 @@ void CVertexShader::Destroy()
     if (m_handle)
     {
         m_handle->Release();
-        m_handle = 0;
+        m_handle = nullptr;
     }
 }
 
@@ -32,9 +32,9 @@ bool CVertexShader::CreateFromDiskFile(const char *c_szFileName, const DWORD *c_
 {
     Destroy();
 
-    LPD3DXBUFFER lpd3dxShaderBuffer;
-    LPD3DXBUFFER lpd3dxErrorBuffer;
-    if (FAILED(D3DXAssembleShaderFromFile(c_szFileName, 0, NULL, 0, &lpd3dxShaderBuffer, &lpd3dxErrorBuffer)))
+    LPD3DXBUFFER lpd3dxShaderBuffer = nullptr;
+    LPD3DXBUFFER lpd3dxErrorBuffer = nullptr;
+    if (FAILED(D3DXAssembleShaderFromFile(c_szFileName, nullptr, nullptr, 0, &lpd3dxShaderBuffer, &lpd3dxErrorBuffer)))
         return false;
 
     if (FAILED(ms_lpd3dDevice->CreateVertexShader((const DWORD *)lpd3dxShaderBuffer->GetBufferPointer(), &m_handle)))

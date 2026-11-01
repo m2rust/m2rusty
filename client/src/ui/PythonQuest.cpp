@@ -1,6 +1,8 @@
 #include <Client/UI/StdAfx.h>
 #include <Client/UI/PythonQuest.h>
 
+#include <algorithm>
+
 void CPythonQuest::RegisterQuestInstance(const SQuestInstance &c_rQuestInstance)
 {
     DeleteQuestInstance(c_rQuestInstance.dwIndex);
@@ -9,7 +11,7 @@ void CPythonQuest::RegisterQuestInstance(const SQuestInstance &c_rQuestInstance)
     /////
 
     SQuestInstance &rQuestInstance = *m_QuestInstanceContainer.rbegin();
-    rQuestInstance.iStartTime = int(CTimer::Instance().GetCurrentSecond());
+    rQuestInstance.iStartTime = static_cast<int>(CTimer::Instance().GetCurrentSecond());
 }
 
 struct FQuestInstanceCompare
@@ -18,7 +20,7 @@ struct FQuestInstanceCompare
     FQuestInstanceCompare(DWORD dwIndex) : dwSearchIndex(dwIndex)
     {
     }
-    bool operator()(const CPythonQuest::SQuestInstance &rQuestInstance)
+    bool operator()(const CPythonQuest::SQuestInstance &rQuestInstance) const
     {
         return dwSearchIndex == rQuestInstance.dwIndex;
     }
@@ -26,8 +28,7 @@ struct FQuestInstanceCompare
 
 void CPythonQuest::DeleteQuestInstance(DWORD dwIndex)
 {
-    TQuestInstanceContainer::iterator itor =
-        std::find_if(m_QuestInstanceContainer.begin(), m_QuestInstanceContainer.end(), FQuestInstanceCompare(dwIndex));
+    auto itor = std::ranges::find_if(m_QuestInstanceContainer, FQuestInstanceCompare(dwIndex));
     if (itor == m_QuestInstanceContainer.end())
         return;
 
@@ -36,26 +37,25 @@ void CPythonQuest::DeleteQuestInstance(DWORD dwIndex)
 
 bool CPythonQuest::IsQuest(DWORD dwIndex)
 {
-    TQuestInstanceContainer::iterator itor =
-        std::find_if(m_QuestInstanceContainer.begin(), m_QuestInstanceContainer.end(), FQuestInstanceCompare(dwIndex));
+    auto itor = std::ranges::find_if(m_QuestInstanceContainer, FQuestInstanceCompare(dwIndex));
     return itor != m_QuestInstanceContainer.end();
 }
 
 void CPythonQuest::MakeQuest(DWORD dwIndex)
 {
     DeleteQuestInstance(dwIndex);
-    m_QuestInstanceContainer.push_back(SQuestInstance());
+    m_QuestInstanceContainer.emplace_back();
 
     /////
 
     SQuestInstance &rQuestInstance = *m_QuestInstanceContainer.rbegin();
     rQuestInstance.dwIndex = dwIndex;
-    rQuestInstance.iStartTime = int(CTimer::Instance().GetCurrentSecond());
+    rQuestInstance.iStartTime = static_cast<int>(CTimer::Instance().GetCurrentSecond());
 }
 
 void CPythonQuest::SetQuestTitle(DWORD dwIndex, const char *c_szTitle)
 {
-    SQuestInstance *pQuestInstance;
+    SQuestInstance *pQuestInstance = nullptr;
     if (!__GetQuestInstancePtr(dwIndex, &pQuestInstance))
         return;
 
@@ -64,7 +64,7 @@ void CPythonQuest::SetQuestTitle(DWORD dwIndex, const char *c_szTitle)
 
 void CPythonQuest::SetQuestClockName(DWORD dwIndex, const char *c_szClockName)
 {
-    SQuestInstance *pQuestInstance;
+    SQuestInstance *pQuestInstance = nullptr;
     if (!__GetQuestInstancePtr(dwIndex, &pQuestInstance))
         return;
 
@@ -73,7 +73,7 @@ void CPythonQuest::SetQuestClockName(DWORD dwIndex, const char *c_szClockName)
 
 void CPythonQuest::SetQuestCounterName(DWORD dwIndex, const char *c_szCounterName)
 {
-    SQuestInstance *pQuestInstance;
+    SQuestInstance *pQuestInstance = nullptr;
     if (!__GetQuestInstancePtr(dwIndex, &pQuestInstance))
         return;
 
@@ -82,17 +82,17 @@ void CPythonQuest::SetQuestCounterName(DWORD dwIndex, const char *c_szCounterNam
 
 void CPythonQuest::SetQuestClockValue(DWORD dwIndex, int iClockValue)
 {
-    SQuestInstance *pQuestInstance;
+    SQuestInstance *pQuestInstance = nullptr;
     if (!__GetQuestInstancePtr(dwIndex, &pQuestInstance))
         return;
 
     pQuestInstance->iClockValue = iClockValue;
-    pQuestInstance->iStartTime = int(CTimer::Instance().GetCurrentSecond());
+    pQuestInstance->iStartTime = static_cast<int>(CTimer::Instance().GetCurrentSecond());
 }
 
 void CPythonQuest::SetQuestCounterValue(DWORD dwIndex, int iCounterValue)
 {
-    SQuestInstance *pQuestInstance;
+    SQuestInstance *pQuestInstance = nullptr;
     if (!__GetQuestInstancePtr(dwIndex, &pQuestInstance))
         return;
 
@@ -101,7 +101,7 @@ void CPythonQuest::SetQuestCounterValue(DWORD dwIndex, int iCounterValue)
 
 void CPythonQuest::SetQuestIconFileName(DWORD dwIndex, const char *c_szIconFileName)
 {
-    SQuestInstance *pQuestInstance;
+    SQuestInstance *pQuestInstance = nullptr;
     if (!__GetQuestInstancePtr(dwIndex, &pQuestInstance))
         return;
 
@@ -125,8 +125,7 @@ bool CPythonQuest::GetQuestInstancePtr(DWORD dwArrayIndex, SQuestInstance **ppQu
 
 bool CPythonQuest::__GetQuestInstancePtr(DWORD dwQuestIndex, SQuestInstance **ppQuestInstance)
 {
-    TQuestInstanceContainer::iterator itor = std::find_if(
-        m_QuestInstanceContainer.begin(), m_QuestInstanceContainer.end(), FQuestInstanceCompare(dwQuestIndex));
+    auto itor = std::ranges::find_if(m_QuestInstanceContainer, FQuestInstanceCompare(dwQuestIndex));
     if (itor == m_QuestInstanceContainer.end())
         return false;
 
@@ -182,27 +181,27 @@ PyObject *questGetQuestCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *questGetQuestData(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BadArgument();
 
-    CPythonQuest::SQuestInstance *pQuestInstance;
+    CPythonQuest::SQuestInstance *pQuestInstance = nullptr;
     if (!CPythonQuest::Instance().GetQuestInstancePtr(iIndex, &pQuestInstance))
         return Py_BuildException("Failed to find quest by index %d", iIndex);
 
-    CGraphicImage *pImage = NULL;
+    CGraphicImage *pImage = nullptr;
     if (!pQuestInstance->strIconFileName.empty())
     {
         std::string strIconFileName;
         strIconFileName = "d:/ymir work/ui/game/quest/questicon/";
-        strIconFileName += pQuestInstance->strIconFileName.c_str();
+        strIconFileName += pQuestInstance->strIconFileName;
         pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer(strIconFileName.c_str());
     }
     else
     {
         {
             // 비어있을 경우 디폴트 이미지를 넣는다.
-            std::string strIconFileName = "season1/icon/scroll_open.tga";
+            std::string const strIconFileName = "season1/icon/scroll_open.tga";
             pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer(strIconFileName.c_str());
         }
     }
@@ -213,11 +212,11 @@ PyObject *questGetQuestData(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *questGetQuestIndex(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BadArgument();
 
-    CPythonQuest::SQuestInstance *pQuestInstance;
+    CPythonQuest::SQuestInstance *pQuestInstance = nullptr;
     if (!CPythonQuest::Instance().GetQuestInstancePtr(iIndex, &pQuestInstance))
         return Py_BuildException("Failed to find quest by index %d", iIndex);
 
@@ -226,11 +225,11 @@ PyObject *questGetQuestIndex(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *questGetQuestLastTime(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BadArgument();
 
-    CPythonQuest::SQuestInstance *pQuestInstance;
+    CPythonQuest::SQuestInstance *pQuestInstance = nullptr;
     if (!CPythonQuest::Instance().GetQuestInstancePtr(iIndex, &pQuestInstance))
         return Py_BuildException("Failed to find quest by index %d", iIndex);
 
@@ -238,8 +237,8 @@ PyObject *questGetQuestLastTime(PyObject *poSelf, PyObject *poArgs)
 
     if (pQuestInstance->iClockValue >= 0)
     {
-        iLastTime =
-            (pQuestInstance->iStartTime + pQuestInstance->iClockValue) - int(CTimer::Instance().GetCurrentSecond());
+        iLastTime = (pQuestInstance->iStartTime + pQuestInstance->iClockValue) -
+                    static_cast<int>(CTimer::Instance().GetCurrentSecond());
     }
 
     // 시간 증가 처리 코드
@@ -266,7 +265,7 @@ void initquest()
         {"GetQuestIndex", questGetQuestIndex, METH_VARARGS},
         {"GetQuestLastTime", questGetQuestLastTime, METH_VARARGS},
         {"Clear", questClear, METH_VARARGS},
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("quest", s_methods);

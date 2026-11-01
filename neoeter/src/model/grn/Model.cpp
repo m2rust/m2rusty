@@ -16,7 +16,7 @@ const CGrannyModel::TMeshNode *CGrannyModel::GetMeshNodeList(CGrannyMesh::EType 
 CGrannyMesh *CGrannyModel::GetMeshPointer(int iMesh)
 {
     assert(CheckMeshIndex(iMesh));
-    assert(m_meshs != NULL);
+    assert(m_meshs != nullptr);
 
     return m_meshs + iMesh;
 }
@@ -24,7 +24,7 @@ CGrannyMesh *CGrannyModel::GetMeshPointer(int iMesh)
 const CGrannyMesh *CGrannyModel::GetMeshPointer(int iMesh) const
 {
     assert(CheckMeshIndex(iMesh));
-    assert(m_meshs != NULL);
+    assert(m_meshs != nullptr);
 
     return m_meshs + iMesh;
 }
@@ -37,13 +37,13 @@ bool CGrannyModel::CanDeformPNTVertices() const
 void CGrannyModel::DeformPNTVertices(void *dstBaseVertices, D3DXMATRIX *boneMatrices,
                                      const std::vector<granny_mesh_binding *> &c_rvct_pgrnMeshBinding) const
 {
-    int meshCount = GetMeshCount();
+    int const meshCount = GetMeshCount();
 
     for (int iMesh = 0; iMesh < meshCount; ++iMesh)
     {
         assert(iMesh < c_rvct_pgrnMeshBinding.size());
 
-        CGrannyMesh &rMesh = m_meshs[iMesh];
+        CGrannyMesh const &rMesh = m_meshs[iMesh];
         if (rMesh.CanDeformPNTVertices())
             rMesh.DeformPNTVertices(dstBaseVertices, boneMatrices, c_rvct_pgrnMeshBinding[iMesh]);
     }
@@ -109,12 +109,12 @@ bool CGrannyModel::LoadPNTVertices()
     if (m_rigidVtxCount <= 0)
         return true;
 
-    assert(m_meshs != NULL);
+    assert(m_meshs != nullptr);
 
     if (!m_pntVtxBuf.Create(m_rigidVtxCount, m_dwFvF, D3DUSAGE_WRITEONLY, D3DPOOL_MANAGED))
         return false;
 
-    void *vertices;
+    void *vertices = nullptr;
     if (!m_pntVtxBuf.Lock(&vertices))
         return false;
 
@@ -137,14 +137,14 @@ bool CGrannyModel::LoadIndices()
     if (!m_idxBuf.Create(m_idxCount, D3DFMT_INDEX16))
         return false;
 
-    void *indices;
+    void *indices = nullptr;
 
-    if (!m_idxBuf.Lock((void **)&indices))
+    if (!m_idxBuf.Lock((&indices)))
         return false;
 
     for (int m = 0; m < m_pgrnModel->MeshBindingCount; ++m)
     {
-        CGrannyMesh &rMesh = m_meshs[m];
+        CGrannyMesh const &rMesh = m_meshs[m];
         rMesh.LoadIndices(indices);
     }
 
@@ -154,8 +154,8 @@ bool CGrannyModel::LoadIndices()
 
 bool CGrannyModel::LoadMeshs()
 {
-    assert(m_meshs == NULL);
-    assert(m_pgrnModel != NULL);
+    assert(m_meshs == nullptr);
+    assert(m_pgrnModel != nullptr);
 
     if (m_pgrnModel->MeshBindingCount <= 0) // 메쉬가 없는 모델
         return true;
@@ -169,9 +169,9 @@ bool CGrannyModel::LoadMeshs()
 
     int diffusePNTMeshNodeCount = 0;
     int blendPNTMeshNodeCount = 0;
-    int blendPNT2MeshNodeCount = 0;
+    int const blendPNT2MeshNodeCount = 0;
 
-    int meshCount = GetMeshCount();
+    int const meshCount = GetMeshCount();
     m_meshs = new CGrannyMesh[meshCount];
 
     m_dwFvF = 0;
@@ -198,26 +198,34 @@ bool CGrannyModel::LoadMeshs()
         }
         m_bHaveBlendThing |= rMesh.HaveBlendThing();
 
-        granny_int32x grni32xTypeCount = GrannyGetTotalTypeSize(pgrnMesh->PrimaryVertexData->VertexType) / 32;
+        granny_int32x const grni32xTypeCount = GrannyGetTotalTypeSize(pgrnMesh->PrimaryVertexData->VertexType) / 32;
         int i = 0;
         while (i < grni32xTypeCount && pgrnMesh->PrimaryVertexData->VertexType[i].Type != GrannyEndMember)
         {
-            if (NULL == pgrnMesh->PrimaryVertexData->VertexType[i].Name ||
+            if (nullptr == pgrnMesh->PrimaryVertexData->VertexType[i].Name ||
                 0 == strlen(pgrnMesh->PrimaryVertexData->VertexType[i].Name))
             {
                 ++i;
                 continue;
             }
             if (0 == strcmp(pgrnMesh->PrimaryVertexData->VertexType[i].Name, GrannyVertexPositionName))
+            {
                 m_dwFvF |= D3DFVF_XYZ;
+            }
             else if (0 == strcmp(pgrnMesh->PrimaryVertexData->VertexType[i].Name, GrannyVertexNormalName))
+            {
                 m_dwFvF |= D3DFVF_NORMAL;
+            }
             else if (0 ==
                      strcmp(pgrnMesh->PrimaryVertexData->VertexType[i].Name, GrannyVertexTextureCoordinatesName "0"))
+            {
                 m_dwFvF |= D3DFVF_TEX1;
+            }
             else if (0 ==
                      strcmp(pgrnMesh->PrimaryVertexData->VertexType[i].Name, GrannyVertexTextureCoordinatesName "1"))
+            {
                 m_dwFvF |= D3DFVF_TEX2;
+            }
             ++i;
         }
 
@@ -236,10 +244,11 @@ bool CGrannyModel::LoadMeshs()
 
     for (int n = 0; n < meshCount; ++n)
     {
-        CGrannyMesh &rMesh = m_meshs[n];
+        CGrannyMesh const &rMesh = m_meshs[n];
         granny_mesh *pgrnMesh = m_pgrnModel->MeshBindings[n].Mesh;
 
-        CGrannyMesh::EType eMeshType = GrannyMeshIsRigid(pgrnMesh) ? CGrannyMesh::TYPE_RIGID : CGrannyMesh::TYPE_DEFORM;
+        CGrannyMesh::EType const eMeshType =
+            GrannyMeshIsRigid(pgrnMesh) ? CGrannyMesh::TYPE_RIGID : CGrannyMesh::TYPE_DEFORM;
 
         if (rMesh.GetTriGroupNodeList(CGrannyMaterial::TYPE_DIFFUSE_PNT))
             AppendMeshNode(eMeshType, CGrannyMaterial::TYPE_DIFFUSE_PNT, n);
@@ -308,7 +317,7 @@ bool CGrannyModel::CreateFromGrannyModelPointer(granny_model *pgrnModel)
     return true;
 }
 
-int CGrannyModel::GetIdxCount()
+int CGrannyModel::GetIdxCount() const
 {
     return m_idxCount;
 }
@@ -316,14 +325,18 @@ int CGrannyModel::GetIdxCount()
 bool CGrannyModel::CreateDeviceObjects()
 {
     if (m_rigidVtxCount > 0)
+    {
         if (!m_pntVtxBuf.CreateDeviceObjects())
             return false;
+    }
 
     if (m_idxCount > 0)
+    {
         if (!m_idxBuf.CreateDeviceObjects())
             return false;
+    }
 
-    int meshCount = GetMeshCount();
+    int const meshCount = GetMeshCount();
 
     for (int i = 0; i < meshCount; ++i)
     {
@@ -342,21 +355,16 @@ void CGrannyModel::DestroyDeviceObjects()
 
 bool CGrannyModel::IsEmpty() const
 {
-    if (m_pgrnModel)
-        return false;
-
-    return true;
+    return m_pgrnModel == nullptr;
 }
 
 void CGrannyModel::Destroy()
 {
     m_kMtrlPal.Clear();
 
-    if (m_meshNodes)
-        delete[] m_meshNodes;
+    delete[] m_meshNodes;
 
-    if (m_meshs)
-        delete[] m_meshs;
+    delete[] m_meshs;
 
     m_pntVtxBuf.Destroy();
     m_idxBuf.Destroy();
@@ -369,7 +377,7 @@ bool CGrannyModel::__LoadVertices()
     if (m_rigidVtxCount <= 0)
         return true;
 
-    assert(m_meshs != NULL);
+    assert(m_meshs != nullptr);
 
     //	assert((m_dwFvF & (D3DFVF_XYZ|D3DFVF_NORMAL|D3DFVF_TEX1)) == m_dwFvF);
 
@@ -378,7 +386,7 @@ bool CGrannyModel::__LoadVertices()
     if (!m_pntVtxBuf.Create(m_rigidVtxCount, m_dwFvF, D3DUSAGE_WRITEONLY, D3DPOOL_MANAGED))
         return false;
 
-    void *vertices;
+    void *vertices = nullptr;
     if (!m_pntVtxBuf.Lock(&vertices))
         return false;
 
@@ -396,9 +404,9 @@ void CGrannyModel::Initialize()
 {
     memset(m_meshNodeLists, 0, sizeof(m_meshNodeLists));
 
-    m_pgrnModel = NULL;
-    m_meshs = NULL;
-    m_meshNodes = NULL;
+    m_pgrnModel = nullptr;
+    m_meshs = nullptr;
+    m_meshNodes = nullptr;
 
     m_meshNodeSize = 0;
     m_meshNodeCapacity = 0;

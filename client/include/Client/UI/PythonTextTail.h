@@ -8,34 +8,34 @@
 class CPythonTextTail : public CSingleton<CPythonTextTail>
 {
   public:
-    typedef struct STextTail
+    using TTextTail = struct STextTail
     {
-        CGraphicTextInstance *pTextInstance;
-        CGraphicTextInstance *pOwnerTextInstance;
+        CGraphicTextInstance *pTextInstance = nullptr;
+        CGraphicTextInstance *pOwnerTextInstance = nullptr;
 
-        CGraphicMarkInstance *pMarkInstance;
-        CGraphicTextInstance *pGuildNameTextInstance;
+        CGraphicMarkInstance *pMarkInstance = nullptr;
+        CGraphicTextInstance *pGuildNameTextInstance = nullptr;
 
-        CGraphicTextInstance *pTitleTextInstance;
-        CGraphicTextInstance *pLevelTextInstance;
+        CGraphicTextInstance *pTitleTextInstance = nullptr;
+        CGraphicTextInstance *pLevelTextInstance = nullptr;
 
         // Todo : 이건 전부 VID로 바꾸도록 한다.
         //        도중 캐릭터가 없어질 경우 튕길 가능성이 있음
-        CGraphicObjectInstance *pOwner;
+        CGraphicObjectInstance *pOwner = nullptr;
 
-        DWORD dwVirtualID;
+        DWORD dwVirtualID = 0U;
 
-        float x, y, z;
-        float fDistanceFromPlayer;
+        float x = 0.0F, y = 0.0F, z = 0.0F;
+        float fDistanceFromPlayer = 0.0F;
         D3DXCOLOR Color;
-        BOOL bNameFlag; // 이름도 함께 켤것인지의 플래그
+        BOOL bNameFlag = 0; // 이름도 함께 켤것인지의 플래그
 
-        float xStart, yStart;
-        float xEnd, yEnd;
+        float xStart = 0.0F, yStart = 0.0F;
+        float xEnd = 0.0F, yEnd = 0.0F;
 
-        DWORD LivingTime;
+        DWORD LivingTime = 0U;
 
-        float fHeight;
+        float fHeight = 0.0F;
 
         STextTail()
         {
@@ -43,15 +43,14 @@ class CPythonTextTail : public CSingleton<CPythonTextTail>
         virtual ~STextTail()
         {
         }
-    } TTextTail;
+    };
 
-    typedef std::map<DWORD, TTextTail *> TTextTailMap;
-    typedef std::list<TTextTail *> TTextTailList;
-    typedef TTextTailMap TChatTailMap;
+    using TTextTailMap = std::map<DWORD, TTextTail *>;
+    using TTextTailList = std::list<TTextTail *>;
+    using TChatTailMap = TTextTailMap;
 
-  public:
-    CPythonTextTail(void);
-    virtual ~CPythonTextTail(void);
+    CPythonTextTail();
+    ~CPythonTextTail() override;
 
     void GetInfo(std::string *pstInfo);
 
@@ -104,7 +103,6 @@ class CPythonTextTail : public CSingleton<CPythonTextTail>
 
     bool isIn(TTextTail *pSource, TTextTail *pTarget);
 
-  protected:
     TTextTailMap m_CharacterTextTailMap;
     TTextTailMap m_ItemTextTailMap;
     TChatTailMap m_ChatTailMap;

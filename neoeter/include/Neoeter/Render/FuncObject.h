@@ -8,14 +8,12 @@ template <typename T> class CFuncObject
         Clear();
     }
 
-    virtual ~CFuncObject()
-    {
-    }
+    virtual ~CFuncObject() = default;
 
     void Clear()
     {
-        m_pSelfObject = NULL;
-        m_pFuncObject = NULL;
+        m_pSelfObject = nullptr;
+        m_pFuncObject = nullptr;
     }
 
     void Set(T *pSelfObject, void (T::*pFuncObject)())
@@ -26,10 +24,10 @@ template <typename T> class CFuncObject
 
     bool IsEmpty()
     {
-        if (m_pSelfObject != NULL)
+        if (m_pSelfObject != nullptr)
             return false;
 
-        if (m_pFuncObject != NULL)
+        if (m_pFuncObject != nullptr)
             return false;
 
         return true;
@@ -38,8 +36,10 @@ template <typename T> class CFuncObject
     void Run()
     {
         if (m_pSelfObject)
+        {
             if (m_pFuncObject)
                 (m_pSelfObject->*m_pFuncObject)();
+        }
     }
 
   protected:

@@ -6,7 +6,7 @@ class CDynamicVertexBuffer : public CGraphicVertexBuffer
 {
   public:
     CDynamicVertexBuffer();
-    virtual ~CDynamicVertexBuffer();
+    ~CDynamicVertexBuffer() override;
 
     bool Create(int vtxCount, int fvf);
 

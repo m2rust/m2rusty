@@ -30,12 +30,13 @@ LPVOID CSoundData::Get()
         ReadFromDisk();
 
     if (m_flag & FLAG_DATA_SIZE)
-        return ((S32 *)m_data + 1);
-    else
-        return (m_data);
+    {
+        return (static_cast<S32 *>(m_data) + 1);
+    }
+    return (m_data);
 }
 
-ULONG CSoundData::GetSize()
+ULONG CSoundData::GetSize() const
 {
     return m_size;
 }
@@ -47,7 +48,7 @@ void CSoundData::Release()
     m_dwAccessTime = ELTimer_GetMSec();
 }
 
-DWORD CSoundData::GetPlayTime()
+DWORD CSoundData::GetPlayTime() const
 {
     return m_dwPlayTime;
 }
@@ -57,7 +58,7 @@ void CSoundData::SetPlayTime(DWORD dwPlayTime)
     m_dwPlayTime = dwPlayTime;
 }
 
-DWORD CSoundData::GetAccessTime()
+DWORD CSoundData::GetAccessTime() const
 {
     return m_dwAccessTime;
 }
@@ -69,19 +70,19 @@ bool CSoundData::ReadFromDisk()
     LARGE_INTEGER start;
     QueryPerformanceCounter(&start);
 
-    U32 *s = (U32 *)AIL_file_read(m_filename, FILE_READ_WITH_SIZE);
+    U32 *s = static_cast<U32 *>(AIL_file_read(m_filename, FILE_READ_WITH_SIZE));
 
-    if (s == NULL)
+    if (s == nullptr)
         return false;
 
-    S32 type = AIL_file_type(s + 1, s[0]);
-    AILSOUNDINFO info;
+    S32 const type = AIL_file_type(s + 1, s[0]);
+    AILSOUNDINFO info{};
 
     switch (type)
     {
     case AILFILETYPE_PCM_WAV: {
         m_data = s;
-        m_size = *((S32 *)s);
+        m_size = *(reinterpret_cast<S32 *>(s));
         m_flag |= FLAG_DATA_SIZE;
     }
     break;
@@ -90,13 +91,14 @@ bool CSoundData::ReadFromDisk()
     {
         AIL_WAV_info(s + 1, &info);
         AIL_decompress_ADPCM(&info, &m_data,
-                             (U32 *)&m_size); // ULONG == U32 width on LLP64
+                             static_cast<U32 *>(&m_size)); // ULONG == U32 width on LLP64
         AIL_mem_free_lock(s);
     }
     break;
 
     case AILFILETYPE_MPEG_L3_AUDIO: {
-        AIL_decompress_ASI(s + 1, *((S32 *)s), m_filename, &m_data, (U32 *)&m_size, 0); // LLP64: ULONG vs U32
+        AIL_decompress_ASI(s + 1, *(reinterpret_cast<S32 *>(s)), m_filename, &m_data, static_cast<U32 *>(&m_size),
+                           0); // LLP64: ULONG vs U32
         AIL_mem_free_lock(s);
     }
     break;
@@ -134,7 +136,7 @@ int CSoundData::GetEmptySlotIndex()
 
 U32 AILCALLBACK CSoundData::open_callback(char const *filename, U32 *file_handle)
 {
-    int iIndex = GetEmptySlotIndex();
+    int const iIndex = GetEmptySlotIndex();
 
     if (-1 == iIndex)
         return 0;
@@ -171,7 +173,7 @@ U32 AILCALLBACK CSoundData::read_callback(U32 file_handle, void *buffer, U32 byt
     if (!isSlotIndex(file_handle))
         return 0;
 
-    ms_SoundFile[file_handle].read((char *)buffer, bytes);
+    ms_SoundFile[file_handle].read(static_cast<char *>(buffer), bytes);
     return static_cast<U32>(ms_SoundFile[file_handle].gcount());
 }
 
@@ -181,8 +183,8 @@ void CSoundData::SetPackMode()
     // changed.
     AIL_set_file_callbacks(open_callback, close_callback, seek_callback, read_callback);
 
-    for (int i = 0; i < SOUND_FILE_MAX_NUM; ++i)
-        ms_isSoundFile[i] = false;
+    for (bool &i : ms_isSoundFile)
+        i = false;
 }
 
 void CSoundData::Destroy()
@@ -190,13 +192,12 @@ void CSoundData::Destroy()
     if (m_data)
     {
         AIL_mem_free_lock(m_data);
-        m_data = NULL;
+        m_data = nullptr;
     }
 }
 
-CSoundData::CSoundData()
-    : m_iRefCount(0), m_dwAccessTime(ELTimer_GetMSec()), m_dwPlayTime(0), m_size(0), m_data(NULL), m_flag(0),
-      m_assigned(false)
+CSoundData::CSoundData() : m_dwAccessTime(ELTimer_GetMSec()), m_data(nullptr)
+
 {
     m_filename[0] = '\0';
 }

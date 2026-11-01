@@ -16,9 +16,7 @@ class CRay
         m_v3End = m_v3Start + fRayRange * m_v3Direction;
     }
 
-    CRay()
-    {
-    }
+    CRay() = default;
 
     void SetStartPoint(const D3DXVECTOR3 &v3Start)
     {
@@ -65,5 +63,5 @@ class CRay
     D3DXVECTOR3 m_v3Start;
     D3DXVECTOR3 m_v3End;
     D3DXVECTOR3 m_v3Direction;
-    float m_fRayRange;
+    float m_fRayRange = 0.0F;
 };

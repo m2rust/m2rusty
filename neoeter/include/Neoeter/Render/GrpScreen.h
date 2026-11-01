@@ -7,13 +7,13 @@ class CScreen : public CGraphicCollisionObject
 {
   public:
     CScreen();
-    virtual ~CScreen();
+    ~CScreen() override;
 
     void ClearDepthBuffer();
     void Clear();
     bool Begin();
     void End();
-    void Show(HWND hWnd = NULL);
+    void Show(HWND hWnd = nullptr);
     void Show(RECT *pSrcRect);
     void Show(RECT *pSrcRect, HWND hWnd);
 

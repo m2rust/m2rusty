@@ -2,7 +2,7 @@
 
 #include "StdAfx.h"
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 int MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr,
                         int cchWideChar);
 

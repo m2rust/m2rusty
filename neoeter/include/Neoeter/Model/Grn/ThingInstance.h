@@ -10,7 +10,7 @@ const int DONTUSEVALUE = -1;
 class CGraphicThingInstance : public CGraphicObjectInstance
 {
   public:
-    typedef struct SModelThingSet
+    using TModelThingSet = struct SModelThingSet
     {
         void Clear()
         {
@@ -18,20 +18,19 @@ class CGraphicThingInstance : public CGraphicObjectInstance
         }
 
         std::vector<CGraphicThing::TRef *> m_pLODThingRefVector;
-    } TModelThingSet;
+    };
 
-  public:
     enum
     {
         ID = THING_OBJECT
     };
-    int GetType() const
+    int GetType() const override
     {
         return ID;
     }
 
     CGraphicThingInstance();
-    virtual ~CGraphicThingInstance();
+    ~CGraphicThingInstance() override;
 
     void DeformNoSkin();
 
@@ -43,7 +42,7 @@ class CGraphicThingInstance : public CGraphicObjectInstance
 
     bool Picking(const D3DXVECTOR3 &v, const D3DXVECTOR3 &dir, float &out_x, float &out_y);
 
-    void OnInitialize();
+    void OnInitialize() override;
 
     bool CreateDeviceObjects();
     void DestroyDeviceObjects();
@@ -80,10 +79,10 @@ class CGraphicThingInstance : public CGraphicObjectInstance
     void SetSpecularInfo(UINT ePart, const char *c_szMtrlName, BOOL bEnable, float fPower);
 
     void __SetLocalTime(float fLocalTime); // Only Used by Tools
-    float GetLastLocalTime();
-    float GetLocalTime();
-    float GetSecondElapsed();
-    float GetAverageSecondElapsed();
+    float GetLastLocalTime() const;
+    float GetLocalTime() const;
+    float GetSecondElapsed() const;
+    float GetAverageSecondElapsed() const;
 
     BYTE GetLODLevel(DWORD dwModelInstance);
     float GetHeight();
@@ -99,7 +98,6 @@ class CGraphicThingInstance : public CGraphicObjectInstance
 
     void ReloadTexture();
 
-  public:
     CGraphicThing *GetBaseThingPtr();
 
     bool SetMotion(DWORD dwMotionKey, float blendTime = 0.0f, int loopCount = 0, float speedRatio = 1.0f);
@@ -112,31 +110,29 @@ class CGraphicThingInstance : public CGraphicObjectInstance
     void UpdateTransform(D3DXMATRIX *pMatrix, float fSecondsElapsed = 0.0f, int iModelInstanceIndex = 0);
     void ProjectShadow(const CGraphicShadowTexture &c_rShadowTexture);
 
-  public:
     void BuildBoundingSphere();
     void BuildBoundingAABB();
     virtual void CalculateBBox();
-    virtual bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius);
+    bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius) override;
     virtual bool GetBoundingAABB(D3DXVECTOR3 &v3Min, D3DXVECTOR3 &v3Max);
 
   protected:
-    void OnClear();
-    void OnDeform();
-    void OnUpdate();
-    void OnRender();
-    void OnBlendRender();
-    void OnRenderToShadowMap();
-    void OnRenderShadow();
-    void OnRenderPCBlocker();
+    void OnClear() override;
+    void OnDeform() override;
+    void OnUpdate() override;
+    void OnRender() override;
+    void OnBlendRender() override;
+    void OnRenderToShadowMap() override;
+    void OnRenderShadow() override;
+    void OnRenderPCBlocker() override;
 
-  protected:
-    bool m_bUpdated;
-    float m_fLastLocalTime;
-    float m_fLocalTime;
-    float m_fDelay;
-    float m_fSecondElapsed;
-    float m_fAverageSecondElapsed;
-    float m_fRadius;
+    bool m_bUpdated = false;
+    float m_fLastLocalTime = 0.0F;
+    float m_fLocalTime = 0.0F;
+    float m_fDelay = 0.0F;
+    float m_fSecondElapsed = 0.0F;
+    float m_fAverageSecondElapsed = 0.0F;
+    float m_fRadius = 0.0F;
     D3DXVECTOR3 m_v3Center;
     D3DXVECTOR3 m_v3Min, m_v3Max;
 
@@ -144,17 +140,16 @@ class CGraphicThingInstance : public CGraphicObjectInstance
     std::vector<TModelThingSet> m_modelThingSetVector;
     std::map<DWORD, CGraphicThing::TRef *> m_roMotionThingMap;
 
-  protected:
-    virtual void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector);
-    virtual void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance);
-    virtual bool OnGetObjectHeight(float fX, float fY, float *pfHeight);
+    void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector) override;
+    void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance) override;
+    bool OnGetObjectHeight(float fX, float fY, float *pfHeight) override;
 
   public:
     static void CreateSystem(UINT uCapacity);
     static void DestroySystem();
 
     static CGraphicThingInstance *New();
-    static void Delete(CGraphicThingInstance *pkInst);
+    static void Delete(CGraphicThingInstance *pkThingInst);
 
     static CDynamicPool<CGraphicThingInstance> ms_kPool;
 

@@ -21,17 +21,17 @@ class CEaseOutInterpolation
 
     BOOL Setup(float fStart, float fEnd, float fTime);
     void Interpolate(float fElapsedTime);
-    BOOL isPlaying();
+    BOOL isPlaying() const;
 
-    float GetValue();
-    float GetChangingValue();
+    float GetValue() const;
+    float GetChangingValue() const;
 
   protected:
-    float m_fRemainingTime;
-    float m_fValue;
-    float m_fSpeed;
-    float m_fAcceleration;
+    float m_fRemainingTime = 0.0F;
+    float m_fValue = 0.0F;
+    float m_fSpeed = 0.0F;
+    float m_fAcceleration = 0.0F;
 
-    float m_fStartValue;
-    float m_fLastValue;
+    float m_fStartValue = 0.0F;
+    float m_fLastValue = 0.0F;
 };

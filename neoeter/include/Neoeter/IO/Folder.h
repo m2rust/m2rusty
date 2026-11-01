@@ -10,8 +10,8 @@ class Folder : public FileProvider
 {
   protected:
     std::string folderPath;
-    std::set<std::string> fileList = {};
-    std::map<std::string, std::string> realPathMap = {};
+    std::set<std::string> fileList;
+    std::map<std::string, std::string> realPathMap;
 
   public:
     Folder(const std::string &folderPath);

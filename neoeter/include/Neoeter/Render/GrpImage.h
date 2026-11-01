@@ -8,17 +8,15 @@
 class CGraphicImage : public CResource
 {
   public:
-    typedef CRef<CGraphicImage> TRef;
+    using TRef = CRef<CGraphicImage>;
 
-  public:
     static TType Type();
 
-  public:
     CGraphicImage(const char *c_szFileName, DWORD dwFilter = D3DX_FILTER_LINEAR);
-    virtual ~CGraphicImage();
+    ~CGraphicImage() override;
 
-    virtual bool CreateDeviceObjects();
-    virtual void DestroyDeviceObjects();
+    bool CreateDeviceObjects() override;
+    void DestroyDeviceObjects() override;
 
     int GetWidth() const;
     int GetHeight() const;
@@ -29,15 +27,14 @@ class CGraphicImage : public CResource
     CGraphicTexture *GetTexturePointer();
 
   protected:
-    bool OnLoad(int iSize, const void *c_pvBuf);
+    bool OnLoad(int iSize, const void *c_pvBuf) override;
 
-    void OnClear();
-    bool OnIsEmpty() const;
-    bool OnIsType(TType type);
+    void OnClear() override;
+    bool OnIsEmpty() const override;
+    bool OnIsType(TType type) override;
 
-  protected:
     CGraphicImageTexture m_imageTexture;
-    RECT m_rect;
+    RECT m_rect{};
     DWORD m_dwFilter;
 };
 

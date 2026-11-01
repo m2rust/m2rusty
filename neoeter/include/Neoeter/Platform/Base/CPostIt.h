@@ -27,18 +27,18 @@ class CPostIt
     /**
      * @brief	CPostIt destructor
      */
-    ~CPostIt(void);
+    ~CPostIt();
 
     /**
      * @brief	CPostIt class에서 보유하고 있는 데이타를 클립보드에 저장한다.
      */
-    BOOL Flush(void);
+    BOOL Flush();
 
     /**
      * @brief	CPostIt class에서 보유하고 있는 데이타 및 클립보드에 있는
      * 내용을 지운다.
      */
-    void Empty(void);
+    void Empty();
 
     /**
      * @brief	데이타를 읽어온다.
@@ -47,14 +47,14 @@ class CPostIt
      * @param [in]	lpszData	: 불러올 데이타의 버퍼
      * @param [in]	nSize		: lpszData 버퍼의 최대사이즈
      */
-    BOOL Get(LPCSTR lpszKeyName, LPSTR lpszData, DWORD nSize);
+    BOOL Get(LPCSTR lpszKeyName, LPSTR lpBuffer, DWORD nSize);
 
     /**
      * @brief	저장할 데이타를 넣는다.
      * @param [in]	lpBuffer	: 저장할 데이타. "KEY=DATA" 식의 내용을
      * 넣는다.
      */
-    BOOL Set(LPCSTR lpszData);
+    BOOL Set(LPCSTR lpBuffer);
 
     /**
      * @brief	저장할 데이타를 넣는다.
@@ -63,7 +63,7 @@ class CPostIt
      * @param [in]	lpszData	: 저장할 데이타. "DATA" 식의 내용을
      * 넣는다.
      */
-    BOOL Set(LPCSTR lpszKeyName, LPCSTR lpszData);
+    BOOL Set(LPCSTR lpszKeyName, LPCSTR lpBuffer);
 
     /**
      * @brief	저장할 데이타(DWORD)를 넣는다.
@@ -83,11 +83,10 @@ class CPostIt
 
   protected:
     BOOL Init(LPCSTR szAppName);
-    void Destroy(void);
+    void Destroy();
 
-  protected:
-    BOOL m_bModified;
-    CHAR m_szClipFormatName[_MAX_PATH];
+    BOOL m_bModified = FALSE;
+    CHAR m_szClipFormatName[_MAX_PATH]{};
     _CPostItMemoryBlock *m_pMemoryBlock;
 };
 

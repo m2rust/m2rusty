@@ -39,7 +39,7 @@ ViewState Frustum::ViewVolumeTest(const Vector3d &c_v3Center, const float c_fRad
     D3DXVECTOR3 center = c_v3Center;
     // center.y *=-1;
 
-    int i;
+    int i = 0;
 
     float distance[count];
     for (i = 0; i < count; i++)
@@ -72,21 +72,21 @@ void Frustum::BuildViewFrustum(D3DXMATRIX &mat)
     m_plane[4] = D3DXPLANE(mat._14 + mat._12, mat._24 + mat._22, mat._34 + mat._32, mat._44 + mat._42);
     m_plane[5] = D3DXPLANE(mat._14 - mat._12, mat._24 - mat._22, mat._34 - mat._32, mat._44 - mat._42);
 
-    for (int i = 0; i < 6; i++)
-        D3DXPlaneNormalize(&m_plane[i], &m_plane[i]);
+    for (auto &i : m_plane)
+        D3DXPlaneNormalize(&i, &i);
 }
 
 void Frustum::BuildViewFrustum2(D3DXMATRIX &mat, float fNear, float fFar, float fFov, float fAspect,
                                 const D3DXVECTOR3 &vCamera, const D3DXVECTOR3 &vLook)
 {
-    float fViewLen = fFar - fNear;
-    float fH = fViewLen * tan(fFov * 0.5f);
-    float fW = fH * fAspect;
-    D3DXVECTOR3 P(0.0f, 0.0f, fNear + fViewLen * 0.5f);
-    D3DXVECTOR3 Q(fW, fH, fViewLen);
+    float const fViewLen = fFar - fNear;
+    float const fH = fViewLen * tan(fFov * 0.5f);
+    float const fW = fH * fAspect;
+    D3DXVECTOR3 const P(0.0f, 0.0f, fNear + (fViewLen * 0.5f));
+    D3DXVECTOR3 const Q(fW, fH, fViewLen);
     D3DXVECTOR3 PQ = P - Q;
     m_fRadius = D3DXVec3Length(&PQ);
-    m_v3Center = vCamera + vLook * (fNear + fViewLen * 0.5f);
+    m_v3Center = vCamera + vLook * (fNear + (fViewLen * 0.5f));
     BuildViewFrustum(mat);
     m_bUsingSphere = true;
 }

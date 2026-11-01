@@ -2,6 +2,7 @@
 #include <Neoeter/Effect/ParticleSystemData.h>
 #include <Neoeter/Effect/EffectUpdateDecorator.h>
 #include <Neoeter/Effect/ParticleInstance.h>
+#include <math.h>
 
 CDynamicPool<CParticleSystemData> CParticleSystemData::ms_kPool;
 
@@ -33,7 +34,7 @@ CParticleProperty *CParticleSystemData::GetParticlePropertyPointer()
 BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
 {
     {
-        CTextFileLoader::CGotoChild GotoChild(&rTextFileLoader, "emitterproperty");
+        CTextFileLoader::CGotoChild const GotoChild(&rTextFileLoader, "emitterproperty");
 
         if (!rTextFileLoader.GetTokenDoubleWord("maxemissioncount", &m_EmitterProperty.m_dwMaxEmissionCount))
             return FALSE;
@@ -145,7 +146,7 @@ BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
     }
 
     {
-        CTextFileLoader::CGotoChild GotoChild(&rTextFileLoader, "particleproperty");
+        CTextFileLoader::CGotoChild const GotoChild(&rTextFileLoader, "particleproperty");
 
         if (!rTextFileLoader.GetTokenByte("srcblendtype", &m_ParticleProperty.m_bySrcBlendType))
         {
@@ -189,7 +190,7 @@ BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
                                              &m_ParticleProperty.m_bTexAniRandomStartFrameFlag))
             return FALSE;
 
-        float fGravity;
+        float fGravity = NAN;
 
         if (rTextFileLoader.GetTokenFloat("gravity", &fGravity))
         {
@@ -203,7 +204,7 @@ BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
             m_ParticleProperty.m_TimeEventGravity.clear();
         }
 
-        float fAirResistance;
+        float fAirResistance = NAN;
         if (rTextFileLoader.GetTokenFloat("airresistance", &fAirResistance))
         {
             TTimeEventTypeFloat f;
@@ -249,7 +250,7 @@ BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
         m_ParticleProperty.m_TimeEventColor.clear();
         {
             std::set<float> times;
-            int i;
+            int i = 0;
             for (i = 0; i < TimeEventR.size(); i++)
                 times.insert(TimeEventR[i].m_fTime);
             for (i = 0; i < TimeEventG.size(); i++)
@@ -261,8 +262,11 @@ BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
             std::set<float>::iterator it;
             for (it = times.begin(); it != times.end(); ++it)
             {
-                float fTime = *it;
-                float fR, fG, fB, fA;
+                float const fTime = *it;
+                float fR = NAN;
+                float fG = NAN;
+                float fB = NAN;
+                float fA = NAN;
                 GetTimeEventBlendValue<float>(fTime, TimeEventR, &fR);
                 GetTimeEventBlendValue<float>(fTime, TimeEventG, &fG);
                 GetTimeEventBlendValue<float>(fTime, TimeEventB, &fB);
@@ -283,14 +287,14 @@ BOOL CParticleSystemData::OnLoadScript(CTextFileLoader &rTextFileLoader)
         if (!GetTokenTimeEventFloat(rTextFileLoader, "timeeventrotation", &m_ParticleProperty.m_TimeEventRotation))
             return FALSE;
 
-        CTokenVector *pTextureVector;
+        CTokenVector *pTextureVector = nullptr;
 
         if (!rTextFileLoader.GetTokenVector("texturefiles", &pTextureVector))
             return FALSE;
 
-        for (DWORD i = 0; i < pTextureVector->size(); ++i)
+        for (const auto &i : *pTextureVector)
         {
-            std::string strTextureFileName = pTextureVector->at(i).c_str();
+            std::string strTextureFileName = i;
 
             if (!IsGlobalFileName(strTextureFileName.c_str()))
                 strTextureFileName = GetOnlyPathName(rTextFileLoader.GetFileName()) + strTextureFileName;
@@ -426,9 +430,5 @@ void CParticleSystemData::BuildDecorator(CParticleInstance *pInstance)
     pInstance->m_pDecorator = pInstance->m_pDecorator->AddChainFront(new CHeaderDecorator);
 }
 
-CParticleSystemData::CParticleSystemData()
-{
-}
-CParticleSystemData::~CParticleSystemData()
-{
-}
+CParticleSystemData::CParticleSystemData() = default;
+CParticleSystemData::~CParticleSystemData() = default;

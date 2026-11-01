@@ -18,8 +18,8 @@ void CMapOutdoor::LoadWaterTexture()
 
 void CMapOutdoor::UnloadWaterTexture()
 {
-    for (int i = 0; i < 30; ++i)
-        m_WaterInstances[i].Destroy();
+    for (auto &m_WaterInstance : m_WaterInstances)
+        m_WaterInstance.Destroy();
 }
 
 void CMapOutdoor::RenderWater()
@@ -61,7 +61,7 @@ void CMapOutdoor::RenderWater()
     STATEMANAGER.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
 
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(1, nullptr);
     STATEMANAGER.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
     STATEMANAGER.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 
@@ -81,9 +81,13 @@ void CMapOutdoor::RenderWater()
         s_dwBlendtime = random_range(1000, 3000);
 
         if (s_fWaterHeightEnd == 0)
+        {
             s_fWaterHeightEnd = -random_range(0, 15);
+        }
         else
+        {
             s_fWaterHeightEnd = 0;
+        }
 
         s_fWaterHeightBegin = s_fWaterHeightCurrent;
         s_dwLastHeightChangeTime = CTimer::Instance().GetCurrentMillisecond();
@@ -91,15 +95,15 @@ void CMapOutdoor::RenderWater()
 
     s_fWaterHeightCurrent =
         s_fWaterHeightBegin +
-        (s_fWaterHeightEnd - s_fWaterHeightBegin) *
-            (float)((CTimer::Instance().GetCurrentMillisecond() - s_dwLastHeightChangeTime) / (float)s_dwBlendtime);
+        ((s_fWaterHeightEnd - s_fWaterHeightBegin) *
+         ((CTimer::Instance().GetCurrentMillisecond() - s_dwLastHeightChangeTime) / static_cast<float>(s_dwBlendtime)));
     m_matWorldForCommonUse._43 = s_fWaterHeightCurrent;
 
     m_matWorldForCommonUse._41 = 0.0f;
     m_matWorldForCommonUse._42 = 0.0f;
     STATEMANAGER.SetTransform(D3DTS_WORLD, &m_matWorldForCommonUse);
 
-    float fFogDistance = __GetFogDistance();
+    float const fFogDistance = __GetFogDistance();
 
     std::vector<std::pair<float, long>>::iterator i;
 
@@ -109,7 +113,7 @@ void CMapOutdoor::RenderWater()
             DrawWater(i->second);
     }
 
-    STATEMANAGER.SetTexture(0, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
     STATEMANAGER.SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
 
     for (i = m_PatchVector.begin(); i != m_PatchVector.end(); ++i)
@@ -142,7 +146,7 @@ void CMapOutdoor::RenderWater()
 
 void CMapOutdoor::DrawWater(long patchnum)
 {
-    assert(NULL != m_pTerrainPatchProxyList);
+    assert(nullptr != m_pTerrainPatchProxyList);
     if (!m_pTerrainPatchProxyList)
         return;
 
@@ -161,7 +165,7 @@ void CMapOutdoor::DrawWater(long patchnum)
     if (!pkVB->GetD3DVertexBuffer())
         return;
 
-    UINT uPriCount = rkTerrainPatchProxy.GetWaterFaceCount();
+    UINT const uPriCount = rkTerrainPatchProxy.GetWaterFaceCount();
     if (!uPriCount)
         return;
 

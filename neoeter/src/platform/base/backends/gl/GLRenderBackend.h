@@ -11,9 +11,7 @@
 
 #include <vector>
 
-namespace eterbase
-{
-namespace gl
+namespace eterbase::gl
 {
 
 class GLRenderBackend final : public IRenderBackend
@@ -72,5 +70,4 @@ class GLRenderBackend final : public IRenderBackend
     mutable RenderCaps m_caps{};
 };
 
-} // namespace gl
-} // namespace eterbase
+} // namespace eterbase::gl

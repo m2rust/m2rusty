@@ -57,14 +57,14 @@ typedef struct
 typedef struct
 {
     /* Public Settings */
-    float PageUVLength;
-    long SquaresPerTexture; /* Heightfield squares per texture (128 texels) */
-    long SplatTilesX;       /* Number of splat textures across map */
-    long SplatTilesY;       /* Number of splat textures down map */
-    long DisableWrapping;
-    long DisableShadow;
-    long ShadowMode;
-    long OutsideVisible;
+    float PageUVLength = 0.0F;
+    long SquaresPerTexture = 0L; /* Heightfield squares per texture (128 texels) */
+    long SplatTilesX = 0L;       /* Number of splat textures across map */
+    long SplatTilesY = 0L;       /* Number of splat textures down map */
+    long DisableWrapping = 0L;
+    long DisableShadow = 0L;
+    long ShadowMode = 0L;
+    long OutsideVisible = 0L;
     D3DXVECTOR3 SunLocation;
 } TTerrainGlobals;
 

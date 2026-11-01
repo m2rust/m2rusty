@@ -4,7 +4,7 @@
 
 void CTextBar::__SetFont(int fontSize, bool isBold)
 {
-    int iCodePage = GetDefaultCodePage();
+    int const iCodePage = GetDefaultCodePage();
 
     LOGFONT logFont;
 
@@ -15,9 +15,13 @@ void CTextBar::__SetFont(int fontSize, bool isBold)
     logFont.lfOrientation = 0;
 
     if (isBold)
+    {
         logFont.lfWeight = FW_BOLD;
+    }
     else
+    {
         logFont.lfWeight = FW_NORMAL;
+    }
 
     logFont.lfItalic = FALSE;
     logFont.lfUnderline = FALSE;
@@ -31,7 +35,7 @@ void CTextBar::__SetFont(int fontSize, bool isBold)
     m_hFont = CreateFontIndirect(&logFont);
 
     HDC hdc = m_dib.GetDCHandle();
-    m_hOldFont = (HFONT)SelectObject(hdc, m_hFont);
+    m_hOldFont = static_cast<HFONT>(SelectObject(hdc, m_hFont));
 }
 
 void CTextBar::SetTextColor(int r, int g, int b)
@@ -59,11 +63,8 @@ void CTextBar::OnCreate()
     __SetFont(m_fontSize, m_isBold);
 }
 
-CTextBar::CTextBar(int fontSize, bool isBold)
+CTextBar::CTextBar(int fontSize, bool isBold) : m_hOldFont(nullptr), m_fontSize(fontSize), m_isBold(isBold)
 {
-    m_hOldFont = NULL;
-    m_fontSize = fontSize;
-    m_isBold = isBold;
 }
 
 CTextBar::~CTextBar()

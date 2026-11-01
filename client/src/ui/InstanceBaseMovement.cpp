@@ -53,10 +53,7 @@ bool CInstanceBase::NEW_CanMoveToDestPixelPosition(const TPixelPosition &c_rkPPo
     TPixelPosition kPPosCur;
     NEW_GetPixelPosition(&kPPosCur);
 
-    if (kPPosCur.x == c_rkPPosDst.x && kPPosCur.y == c_rkPPosDst.y)
-        return false;
-
-    return true;
+    return !(kPPosCur.x == c_rkPPosDst.x && kPPosCur.y == c_rkPPosDst.y);
 }
 
 float CInstanceBase_GetDegreeFromPosition(float x, float y)
@@ -75,8 +72,8 @@ float CInstanceBase_GetDegreeFromPosition(float x, float y)
 
 float CInstanceBase::NEW_GetAdvancingRotationFromDirPixelPosition(const TPixelPosition &c_rkPPosDir)
 {
-    float fDirRot = CInstanceBase_GetDegreeFromPosition(c_rkPPosDir.x, -c_rkPPosDir.y);
-    float fClampDirRot = ClampDegree(fDirRot);
+    float const fDirRot = CInstanceBase_GetDegreeFromPosition(c_rkPPosDir.x, -c_rkPPosDir.y);
+    float const fClampDirRot = ClampDegree(fDirRot);
 
     return fClampDirRot;
 }
@@ -98,11 +95,11 @@ float CInstanceBase::NEW_GetAdvancingRotationFromPixelPosition(const TPixelPosit
 
 void CInstanceBase::NEW_SetAdvancingRotationFromDirPixelPosition(const TPixelPosition &c_rkPPosDir)
 {
-    float fClampDirRot = NEW_GetAdvancingRotationFromDirPixelPosition(c_rkPPosDir);
+    float const fClampDirRot = NEW_GetAdvancingRotationFromDirPixelPosition(c_rkPPosDir);
     m_GraphicThingInstance.SetAdvancingRotation(fClampDirRot);
 
-    float fCurRot = m_GraphicThingInstance.GetRotation();
-    float fAdvRot = m_GraphicThingInstance.GetAdvancingRotation();
+    float const fCurRot = m_GraphicThingInstance.GetRotation();
+    float const fAdvRot = m_GraphicThingInstance.GetAdvancingRotation();
 
     m_iRotatingDirection = GetRotatingDirection(fCurRot, fAdvRot);
 }
@@ -132,12 +129,16 @@ bool CInstanceBase::NEW_SetAdvancingRotationFromDestPixelPosition(const TPixelPo
 
 void CInstanceBase::SetAdvancingRotation(float fRotation)
 {
-    float frotDifference = GetDegreeDifference(GetRotation(), fRotation);
+    float const frotDifference = GetDegreeDifference(GetRotation(), fRotation);
 
     if (frotDifference > 45.0f)
+    {
         m_fRotSpd = m_fMaxRotSpd;
+    }
     else
+    {
         m_fRotSpd = m_fMaxRotSpd * 5 / 12;
+    }
 
     m_GraphicThingInstance.SetAdvancingRotation(ClampDegree(fRotation));
     m_iRotatingDirection =
@@ -224,7 +225,7 @@ BOOL CInstanceBase::IsActingEmotion()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-BOOL CInstanceBase::IsGoing()
+BOOL CInstanceBase::IsGoing() const
 {
     return m_isGoing;
 }
@@ -241,7 +242,7 @@ bool CInstanceBase::NEW_MoveToDestPixelPositionDirection(const TPixelPosition &c
 {
     TPixelPosition kPPosCur;
     NEW_GetPixelPosition(&kPPosCur);
-    float fDstRot = NEW_GetAdvancingRotationFromPixelPosition(kPPosCur, c_rkPPosDst);
+    float const fDstRot = NEW_GetAdvancingRotationFromPixelPosition(kPPosCur, c_rkPPosDst);
 
     return NEW_Goto(c_rkPPosDst, fDstRot);
 }

@@ -47,7 +47,7 @@ BOOL CAttributeData::GetHeightDataPointer(DWORD dwIndex, const THeightData **c_p
     return TRUE;
 }
 
-float CAttributeData::GetMaximizeRadius()
+float CAttributeData::GetMaximizeRadius() const
 {
     return m_fMaximizeRadius;
 }
@@ -72,11 +72,11 @@ bool CAttributeData::OnLoad(int /*iSize*/, const void *c_pvBuf)
     char szHeader[c_iAttributeDataFileHeaderLength + 1];
     memcpy(szHeader, c_pbBuf, c_iAttributeDataFileHeaderLength + 1);
     c_pbBuf += c_iAttributeDataFileHeaderLength + 1;
-    if (strcmp(szHeader, c_szAttributeDataFileHeader))
+    if (strcmp(szHeader, c_szAttributeDataFileHeader) != 0)
         return FALSE;
 
-    DWORD dwCollisionDataCount;
-    DWORD dwHeightDataCount;
+    DWORD dwCollisionDataCount = 0;
+    DWORD dwHeightDataCount = 0;
     memcpy(&dwCollisionDataCount, c_pbBuf, sizeof(DWORD));
     c_pbBuf += sizeof(DWORD);
     memcpy(&dwHeightDataCount, c_pbBuf, sizeof(DWORD));
@@ -135,7 +135,7 @@ bool CAttributeData::OnLoad(int /*iSize*/, const void *c_pvBuf)
         memcpy(rHeightData.szName, c_pbBuf, 32);
         c_pbBuf += 32;
 
-        DWORD dwPrimitiveCount;
+        DWORD dwPrimitiveCount = 0;
         memcpy(&dwPrimitiveCount, c_pbBuf, sizeof(DWORD));
         c_pbBuf += sizeof(DWORD);
 
@@ -145,11 +145,11 @@ bool CAttributeData::OnLoad(int /*iSize*/, const void *c_pvBuf)
         c_pbBuf += dwPrimitiveCount * sizeof(D3DXVECTOR3);
 
         // Getting Maximize Radius
-        for (DWORD k = 0; k < rHeightData.v3VertexVector.size(); ++k)
+        for (auto &k : rHeightData.v3VertexVector)
         {
-            m_fMaximizeRadius = fMAX(m_fMaximizeRadius, fabs(rHeightData.v3VertexVector[k].x) + 50.0f);
-            m_fMaximizeRadius = fMAX(m_fMaximizeRadius, fabs(rHeightData.v3VertexVector[k].y) + 50.0f);
-            m_fMaximizeRadius = fMAX(m_fMaximizeRadius, fabs(rHeightData.v3VertexVector[k].z) + 50.0f);
+            m_fMaximizeRadius = fMAX(m_fMaximizeRadius, fabs(k.x) + 50.0f);
+            m_fMaximizeRadius = fMAX(m_fMaximizeRadius, fabs(k.y) + 50.0f);
+            m_fMaximizeRadius = fMAX(m_fMaximizeRadius, fabs(k.z) + 50.0f);
         }
         // Getting Maximize Radius
     }
@@ -183,7 +183,7 @@ bool CAttributeData::OnIsType(TType type)
 
 CAttributeData::TType CAttributeData::Type()
 {
-    static TType s_type = StringToType("CAttributeData");
+    static TType const s_type = StringToType("CAttributeData");
     return s_type;
 }
 
@@ -192,11 +192,8 @@ void CAttributeData::OnSelfDestruct()
     Clear();
 }
 
-CAttributeData::CAttributeData(const char *c_szFileName) : CResource(c_szFileName)
+CAttributeData::CAttributeData(const char *c_szFileName) : CResource(c_szFileName), m_fMaximizeRadius(0.0f)
 {
-    m_fMaximizeRadius = 0.0f;
 }
 
-CAttributeData::~CAttributeData()
-{
-}
+CAttributeData::~CAttributeData() = default;

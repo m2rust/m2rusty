@@ -14,9 +14,11 @@ bool CPythonNonPlayer::LoadNonPlayerData(const char *c_szFileName)
     if (!CEterPackManager::Instance().Get(c_szFileName, data))
         return false;
 
-    DWORD dwFourCC, dwElements, dwDataSize;
+    DWORD dwFourCC = 0;
+    DWORD dwElements = 0;
+    DWORD dwDataSize = 0;
 
-    data.read((char *)&dwFourCC, sizeof(DWORD));
+    data.read(reinterpret_cast<char *>(&dwFourCC), sizeof(DWORD));
     if (!data)
         return false;
 
@@ -26,17 +28,17 @@ bool CPythonNonPlayer::LoadNonPlayerData(const char *c_szFileName)
         return false;
     }
 
-    data.read((char *)&dwElements, sizeof(DWORD));
+    data.read(reinterpret_cast<char *>(&dwElements), sizeof(DWORD));
     if (!data)
         return false;
 
-    data.read((char *)&dwDataSize, sizeof(DWORD));
+    data.read(reinterpret_cast<char *>(&dwDataSize), sizeof(DWORD));
     if (!data)
         return false;
 
     auto pbData = std::make_shared<std::vector<BYTE>>(dwDataSize);
 
-    data.read((char *)pbData->data(), pbData->size());
+    data.read(reinterpret_cast<char *>(pbData->data()), pbData->size());
     if (!data)
         return false;
 
@@ -55,10 +57,10 @@ bool CPythonNonPlayer::LoadNonPlayerData(const char *c_szFileName)
         return false;
     }
 
-    TMobTable *pTable = (TMobTable *)zObj.GetBuffer();
+    auto *pTable = reinterpret_cast<TMobTable *>(zObj.GetBuffer());
     for (DWORD i = 0; i < dwElements; ++i, ++pTable)
     {
-        TMobTable *pNonPlayerData = new TMobTable;
+        auto *pNonPlayerData = new TMobTable;
 
         memcpy(pNonPlayerData, pTable, sizeof(TMobTable));
 
@@ -99,10 +101,10 @@ bool CPythonNonPlayer::GetInstanceType(DWORD dwVnum, BYTE *pbType)
 
 const CPythonNonPlayer::TMobTable *CPythonNonPlayer::GetTable(DWORD dwVnum)
 {
-    TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.find(dwVnum);
+    auto itor = m_NonPlayerDataMap.find(dwVnum);
 
     if (itor == m_NonPlayerDataMap.end())
-        return NULL;
+        return nullptr;
 
     return itor->second;
 }
@@ -125,14 +127,14 @@ BYTE CPythonNonPlayer::GetEventTypeByVID(DWORD dwVID)
 {
     CInstanceBase *pInstance = CPythonCharacterManager::Instance().GetInstancePtr(dwVID);
 
-    if (NULL == pInstance)
+    if (nullptr == pInstance)
     {
         // Tracef("CPythonNonPlayer::GetEventTypeByVID - There is no Virtual
         // Number\n");
         return ON_CLICK_EVENT_NONE;
     }
 
-    WORD dwVnum = pInstance->GetVirtualNumber();
+    WORD const dwVnum = pInstance->GetVirtualNumber();
     return GetEventType(dwVnum);
 }
 
@@ -187,9 +189,9 @@ void CPythonNonPlayer::Clear()
 
 void CPythonNonPlayer::Destroy()
 {
-    for (TNonPlayerDataMap::iterator itor = m_NonPlayerDataMap.begin(); itor != m_NonPlayerDataMap.end(); ++itor)
+    for (auto &itor : m_NonPlayerDataMap)
     {
-        delete itor->second;
+        delete itor.second;
     }
     m_NonPlayerDataMap.clear();
 }
@@ -199,7 +201,7 @@ CPythonNonPlayer::CPythonNonPlayer()
     Clear();
 }
 
-CPythonNonPlayer::~CPythonNonPlayer(void)
+CPythonNonPlayer::~CPythonNonPlayer()
 {
     Destroy();
 }

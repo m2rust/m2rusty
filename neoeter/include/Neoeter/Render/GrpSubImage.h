@@ -5,17 +5,15 @@
 class CGraphicSubImage : public CGraphicImage
 {
   public:
-    typedef CRef<CGraphicImage> TRef;
+    using TRef = CRef<CGraphicImage>;
 
-  public:
     static TType Type();
     static char m_SearchPath[256];
 
-  public:
     CGraphicSubImage(const char *c_szFileName);
-    virtual ~CGraphicSubImage();
+    ~CGraphicSubImage() override;
 
-    bool CreateDeviceObjects();
+    bool CreateDeviceObjects() override;
 
     bool SetImageFileName(const char *c_szFileName);
 
@@ -28,11 +26,10 @@ class CGraphicSubImage : public CGraphicImage
   protected:
     void SetImagePointer(CGraphicImage *pImage);
 
-    bool OnLoad(int iSize, const void *c_pvBuf);
-    void OnClear();
-    bool OnIsEmpty() const;
-    bool OnIsType(TType type);
+    bool OnLoad(int iSize, const void *c_pvBuf) override;
+    void OnClear() override;
+    bool OnIsEmpty() const override;
+    bool OnIsType(TType type) override;
 
-  protected:
     CGraphicImage::TRef m_roImage;
 };

@@ -5,13 +5,13 @@
 #include <vector>
 #include "SoundData.h"
 
-typedef struct SProvider
+using TProvider = struct SProvider
 {
     char *name;
     HPROVIDER hProvider;
-} TProvider;
+};
 
-typedef std::map<DWORD, CSoundData *> TSoundDataMap;
+using TSoundDataMap = std::map<DWORD, CSoundData *>;
 
 class CSoundBase
 {

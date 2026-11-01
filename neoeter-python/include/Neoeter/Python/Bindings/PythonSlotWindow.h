@@ -33,7 +33,6 @@ class CSlotWindow : public CWindow
   public:
     static DWORD Type();
 
-  public:
     class CSlotButton;
     class CCoverButton;
     class CCoolTimeFinishEffect;
@@ -41,7 +40,7 @@ class CSlotWindow : public CWindow
     friend class CSlotButton;
     friend class CCoverButton;
 
-    typedef struct SSlot
+    using TSlot = struct SSlot
     {
         DWORD dwState;
         DWORD dwSlotNumber;
@@ -76,13 +75,12 @@ class CSlotWindow : public CWindow
         CSlotButton *pSlotButton;
         CImageBox *pSignImage;
         CAniImageBox *pFinishCoolTimeEffect;
-    } TSlot;
-    typedef std::list<TSlot> TSlotList;
-    typedef TSlotList::iterator TSlotListIterator;
+    };
+    using TSlotList = std::list<TSlot>;
+    using TSlotListIterator = TSlotList::iterator;
 
-  public:
     CSlotWindow(PyObject *ppyObject);
-    virtual ~CSlotWindow();
+    ~CSlotWindow() override;
 
     void Destroy();
 
@@ -170,14 +168,14 @@ class CSlotWindow : public CWindow
     void __DestroyBaseImage();
 
     // Event
-    void OnUpdate();
-    void OnRender();
-    BOOL OnMouseLeftButtonDown();
-    BOOL OnMouseLeftButtonUp();
-    BOOL OnMouseRightButtonDown();
-    BOOL OnMouseLeftButtonDoubleClick();
-    void OnMouseOverOut();
-    void OnMouseOver();
+    void OnUpdate() override;
+    void OnRender() override;
+    BOOL OnMouseLeftButtonDown() override;
+    BOOL OnMouseLeftButtonUp() override;
+    BOOL OnMouseRightButtonDown() override;
+    BOOL OnMouseLeftButtonDoubleClick() override;
+    void OnMouseOverOut() override;
+    void OnMouseOver() override;
     void RenderSlotBaseImage();
     void RenderLockedSlot();
     virtual void OnRenderPickingSlot();
@@ -198,21 +196,20 @@ class CSlotWindow : public CWindow
     virtual void OnRefreshSlot();
 
     // ETC
-    BOOL OnIsType(DWORD dwType);
+    BOOL OnIsType(DWORD dwType) override;
 
-  protected:
-    DWORD m_dwSlotType;
-    DWORD m_dwSlotStyle;
+    DWORD m_dwSlotType = 0U;
+    DWORD m_dwSlotStyle = 0U;
     std::list<DWORD> m_dwSelectedSlotIndexList;
     TSlotList m_SlotList;
-    DWORD m_dwToolTipSlotNumber;
+    DWORD m_dwToolTipSlotNumber = 0U;
 
-    BOOL m_isUseMode;
-    BOOL m_isUsableItem;
+    BOOL m_isUseMode = 0;
+    BOOL m_isUsableItem = 0;
 
-    CGraphicImageInstance *m_pBaseImageInstance;
-    CImageBox *m_pToggleSlotImage;
-    CAniImageBox *m_pSlotActiveEffect;
+    CGraphicImageInstance *m_pBaseImageInstance = nullptr;
+    CImageBox *m_pToggleSlotImage = nullptr;
+    CAniImageBox *m_pSlotActiveEffect = nullptr;
     std::deque<DWORD> m_ReserveDestroyEffectDeque;
 };
 }; // namespace UI

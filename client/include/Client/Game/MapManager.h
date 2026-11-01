@@ -13,7 +13,7 @@ class CMapManager : public CScreen, public IPhysicsWorld
 {
   public:
     CMapManager();
-    virtual ~CMapManager();
+    ~CMapManager() override;
 
     bool IsMapOutdoor();
     CMapOutdoor &GetMapOutdoorRef();
@@ -38,7 +38,7 @@ class CMapManager : public CScreen, public IPhysicsWorld
     bool IsMapReady();
 
     virtual bool LoadMap(const std::string &c_rstrMapName, float x, float y, float z);
-    bool UnloadMap(const std::string c_strMapName);
+    bool UnloadMap(const std::string &c_strMapName);
 
     bool UpdateMap(float fx, float fy, float fz);
     void UpdateAroundAmbience(float fx, float fy, float fz);
@@ -78,7 +78,7 @@ class CMapManager : public CScreen, public IPhysicsWorld
     DWORD GetShadowMapColor(float fx, float fy);
 
     // VICITM_COLLISION_TEST
-    virtual bool isPhysicalCollision(const D3DXVECTOR3 &c_rvCheckPosition);
+    bool isPhysicalCollision(const D3DXVECTOR3 &c_rvCheckPosition) override;
     // VICITM_COLLISION_TEST_END
 
     bool isAttrOn(float fX, float fY, BYTE byAttr);
@@ -95,7 +95,6 @@ class CMapManager : public CScreen, public IPhysicsWorld
     void DeleteEnvironmentData(TEnvironmentData *pEnvironmentData);
     BOOL LoadEnvironmentData(const char *c_szFileName, TEnvironmentData *pEnvironmentData);
 
-  protected:
     CPropertyManager m_PropertyManager;
 
     //////////////////////////////////////////////////////////////////////////
@@ -119,45 +118,39 @@ class CMapManager : public CScreen, public IPhysicsWorld
 
     void GetBaseXY(DWORD *pdwBaseX, DWORD *pdwBaseY);
 
-  public:
     void SetTransparentTree(bool bTransparenTree);
 
-  public:
     typedef struct
     {
         std::string m_strName;
-        DWORD m_dwBaseX;
-        DWORD m_dwBaseY;
-        DWORD m_dwSizeX;
-        DWORD m_dwSizeY;
-        DWORD m_dwEndX;
-        DWORD m_dwEndY;
+        DWORD m_dwBaseX = 0U;
+        DWORD m_dwBaseY = 0U;
+        DWORD m_dwSizeX = 0U;
+        DWORD m_dwSizeY = 0U;
+        DWORD m_dwEndX = 0U;
+        DWORD m_dwEndY = 0U;
     } TMapInfo;
-    typedef std::vector<TMapInfo> TMapInfoVector;
-    typedef TMapInfoVector::iterator TMapInfoVectorIterator;
+    using TMapInfoVector = std::vector<TMapInfo>;
+    using TMapInfoVectorIterator = TMapInfoVector::iterator;
 
   protected:
     TMapInfoVector m_kVct_kMapInfo;
 
     bool m_isSoftwareTilingEnableReserved;
 
-  protected:
     void __LoadMapInfoVector();
 
-  protected:
     struct FFindMapName
     {
         std::string strNametoFind;
-        FFindMapName(const std::string &c_rMapName)
+        FFindMapName(const std::string &c_rMapName) : strNametoFind(c_rMapName)
         {
-            strNametoFind = c_rMapName;
+
             stl_lowers(strNametoFind);
         }
-        bool operator()(TMapInfo &rMapInfo)
+        bool operator()(TMapInfo &rMapInfo) const
         {
-            if (rMapInfo.m_strName == strNametoFind)
-                return true;
-            return false;
+            return rMapInfo.m_strName == strNametoFind;
         }
     };
 

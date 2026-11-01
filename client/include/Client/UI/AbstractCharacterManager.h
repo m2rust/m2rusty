@@ -7,12 +7,8 @@ class CInstanceBase;
 class IAbstractCharacterManager : public TAbstractSingleton<IAbstractCharacterManager>
 {
   public:
-    IAbstractCharacterManager()
-    {
-    }
-    virtual ~IAbstractCharacterManager()
-    {
-    }
+    IAbstractCharacterManager() = default;
+    ~IAbstractCharacterManager() override = default;
 
     virtual void Destroy() = 0;
     virtual CInstanceBase *GetInstancePtr(DWORD dwVID) = 0;

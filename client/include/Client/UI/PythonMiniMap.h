@@ -15,30 +15,29 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
     };
     enum
     {
-        TYPE_OPC,
-        TYPE_OPCPVP,
-        TYPE_OPCPVPSELF,
-        TYPE_NPC,
-        TYPE_MONSTER,
-        TYPE_WARP,
-        TYPE_WAYPOINT,
-        TYPE_PARTY,
-        TYPE_EMPIRE,
+        TYPE_OPC = 0,
+        TYPE_OPCPVP = 1,
+        TYPE_OPCPVPSELF = 2,
+        TYPE_NPC = 3,
+        TYPE_MONSTER = 4,
+        TYPE_WARP = 5,
+        TYPE_WAYPOINT = 6,
+        TYPE_PARTY = 7,
+        TYPE_EMPIRE = 8,
         TYPE_EMPIRE_END = TYPE_EMPIRE + EMPIRE_NUM,
-        TYPE_TARGET,
-        TYPE_COUNT,
+        TYPE_TARGET = 13,
+        TYPE_COUNT = 14,
     };
 
-  public:
     CPythonMiniMap();
-    virtual ~CPythonMiniMap();
+    ~CPythonMiniMap() override;
 
     void Destroy();
     bool Create();
 
-    bool IsAtlas();
-    bool CanShow();
-    bool CanShowAtlas();
+    bool IsAtlas() const;
+    bool CanShow() const;
+    bool CanShowAtlas() const;
 
     void SetMiniMapSize(float fWidth, float fHeight);
     void SetScale(float fScale);
@@ -54,7 +53,7 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
     void Hide();
 
     bool GetPickedInstanceInfo(float fScreenX, float fScreenY, std::string &rReturnName, float *pReturnPosX,
-                               float *pReturnPosY, DWORD *pdwTextColor);
+                               float *pReturnPosY, DWORD *pdwTextColor) const;
 
     // Atlas
     bool LoadAtlas();
@@ -65,7 +64,7 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
 
     bool GetAtlasInfo(float fScreenX, float fScreenY, std::string &rReturnString, float *pReturnPosX,
                       float *pReturnPosY, DWORD *pdwTextColor, DWORD *pdwGuildID);
-    bool GetAtlasSize(float *pfSizeX, float *pfSizeY);
+    bool GetAtlasSize(float *pfSizeX, float *pfSizeY) const;
 
     void AddObserver(DWORD dwVID, float fSrcX, float fSrcY);
     void MoveObserver(DWORD dwVID, float fDstX, float fDstY);
@@ -108,21 +107,20 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
     void __RenderMiniWayPointMark(int ixCenter, int iyCenter);
     void __RenderTargetMark(int ixCenter, int iyCenter);
 
-    void __GlobalPositionToAtlasPosition(long lx, long ly, float *pfx, float *pfy);
+    void __GlobalPositionToAtlasPosition(long lx, long ly, float *pfx, float *pfy) const;
 
-  protected:
     // Atlas
     typedef struct
     {
-        BYTE m_byType;
-        DWORD m_dwID; // For WayPoint
-        float m_fX;
-        float m_fY;
-        float m_fScreenX;
-        float m_fScreenY;
-        float m_fMiniMapX;
-        float m_fMiniMapY;
-        DWORD m_dwChrVID;
+        BYTE m_byType = 0U;
+        DWORD m_dwID = 0U; // For WayPoint
+        float m_fX = 0.0F;
+        float m_fY = 0.0F;
+        float m_fScreenX = 0.0F;
+        float m_fScreenY = 0.0F;
+        float m_fMiniMapX = 0.0F;
+        float m_fMiniMapY = 0.0F;
+        DWORD m_dwChrVID = 0U;
         std::string m_strText;
     } TAtlasMarkInfo;
 
@@ -158,32 +156,30 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
         UINT m_eNameColor;
     } TMarkPosition;
 
-    typedef std::vector<TMarkPosition> TInstanceMarkPositionVector;
-    typedef TInstanceMarkPositionVector::iterator TInstancePositionVectorIterator;
+    using TInstanceMarkPositionVector = std::vector<TMarkPosition>;
+    using TInstancePositionVectorIterator = TInstanceMarkPositionVector::iterator;
 
-  protected:
     bool __GetWayPoint(DWORD dwID, TAtlasMarkInfo **ppkInfo);
-    void __UpdateWayPoint(TAtlasMarkInfo *pkInfo, int ix, int iy);
+    void __UpdateWayPoint(TAtlasMarkInfo *pkInfo, int ix, int iy) const;
 
-  protected:
-    float m_fWidth;
-    float m_fHeight;
+    float m_fWidth = 0.0F;
+    float m_fHeight = 0.0F;
 
-    float m_fScale;
+    float m_fScale = 0.0F;
 
-    float m_fCenterX;
-    float m_fCenterY;
+    float m_fCenterX = 0.0F;
+    float m_fCenterY = 0.0F;
 
-    float m_fCenterCellX;
-    float m_fCenterCellY;
+    float m_fCenterCellX = 0.0F;
+    float m_fCenterCellY = 0.0F;
 
-    float m_fScreenX;
-    float m_fScreenY;
+    float m_fScreenX = 0.0F;
+    float m_fScreenY = 0.0F;
 
-    float m_fMiniMapRadius;
+    float m_fMiniMapRadius = 0.0F;
 
     // 맵 그림...
-    LPDIRECT3DTEXTURE9 m_lpMiniMapTexture[AROUND_AREA_NUM];
+    LPDIRECT3DTEXTURE9 m_lpMiniMapTexture[AROUND_AREA_NUM]{};
 
     // 미니맵 커버
     CGraphicImageInstance m_MiniMapFilterGraphicImageInstance;
@@ -200,8 +196,8 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
     TInstanceMarkPositionVector m_WarpPositionVector;
     std::map<DWORD, SObserver> m_kMap_dwVID_kObserver;
 
-    bool m_bAtlas;
-    bool m_bShow;
+    bool m_bAtlas = false;
+    bool m_bShow = false;
 
     CGraphicVertexBuffer m_VertexBuffer;
     CGraphicIndexBuffer m_IndexBuffer;
@@ -210,27 +206,27 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
     D3DXMATRIX m_matWorld;
     D3DXMATRIX m_matMiniMapCover;
 
-    bool m_bShowAtlas;
+    bool m_bShowAtlas = false;
     CGraphicImageInstance m_AtlasImageInstance;
     D3DXMATRIX m_matWorldAtlas;
     CGraphicExpandedImageInstance m_AtlasPlayerMark;
 
-    float m_fAtlasScreenX;
-    float m_fAtlasScreenY;
+    float m_fAtlasScreenX = 0.0F;
+    float m_fAtlasScreenY = 0.0F;
 
-    DWORD m_dwAtlasBaseX;
-    DWORD m_dwAtlasBaseY;
+    DWORD m_dwAtlasBaseX = 0U;
+    DWORD m_dwAtlasBaseY = 0U;
 
-    float m_fAtlasMaxX;
-    float m_fAtlasMaxY;
+    float m_fAtlasMaxX = 0.0F;
+    float m_fAtlasMaxY = 0.0F;
 
-    float m_fAtlasImageSizeX;
-    float m_fAtlasImageSizeY;
+    float m_fAtlasImageSizeX = 0.0F;
+    float m_fAtlasImageSizeY = 0.0F;
 
-    typedef std::vector<TAtlasMarkInfo> TAtlasMarkInfoVector;
-    typedef TAtlasMarkInfoVector::iterator TAtlasMarkInfoVectorIterator;
-    typedef std::vector<TGuildAreaInfo> TGuildAreaInfoVector;
-    typedef TGuildAreaInfoVector::iterator TGuildAreaInfoVectorIterator;
+    using TAtlasMarkInfoVector = std::vector<TAtlasMarkInfo>;
+    using TAtlasMarkInfoVectorIterator = TAtlasMarkInfoVector::iterator;
+    using TGuildAreaInfoVector = std::vector<TGuildAreaInfo>;
+    using TGuildAreaInfoVectorIterator = TGuildAreaInfoVector::iterator;
     TAtlasMarkInfoVectorIterator m_AtlasMarkInfoVectorIterator;
     TAtlasMarkInfoVector m_AtlasNPCInfoVector;
     TAtlasMarkInfoVector m_AtlasWarpInfoVector;
@@ -247,9 +243,9 @@ class CPythonMiniMap : public CScreen, public CSingleton<CPythonMiniMap>
     struct TSignalPoint
     {
         D3DXVECTOR2 v2Pos;
-        unsigned int id;
+        unsigned int id = 0U;
     };
     std::vector<TSignalPoint> m_SignalPointVector;
 
-    PyObject *m_poHandler;
+    PyObject *m_poHandler = nullptr;
 };

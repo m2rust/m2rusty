@@ -3,15 +3,16 @@
 #include <Neoeter/Platform/Base/Debug.h>
 #include <Neoeter/Platform/Base/MappedFile.h>
 
-#if !defined(_WIN32)
+#ifndef _WIN32
+#include <algorithm>
 #include <cerrno>
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
 
 CMappedFile::CMappedFile()
-    : m_pbBufLinkData(NULL), m_dwBufLinkSize(0), m_pbAppendResultDataBlock(NULL), m_dwAppendResultDataSize(0),
-      m_seekPosition(0), m_hFM(NULL), m_dataOffset(0), m_mapSize(0), m_lpMapData(NULL), m_lpData(NULL), m_pLZObj(NULL)
+    : m_pbBufLinkData(nullptr), m_pbAppendResultDataBlock(nullptr), m_hFM(nullptr), m_lpMapData(nullptr),
+      m_lpData(nullptr), m_pLZObj(nullptr)
 {
 }
 
@@ -31,7 +32,7 @@ BOOL CMappedFile::Create(const char *filename, const void **dest, int offset, in
     if (!CMappedFile::Create(filename))
         return FALSE;
 
-    int ret = Map(dest, offset, size);
+    int const ret = Map(dest, offset, size);
     return (ret) > 0;
 }
 
@@ -48,7 +49,7 @@ void CMappedFile::Link(DWORD dwBufSize, const void *c_pvBufData)
 
 void CMappedFile::BindLZObject(CLZObject *pLZObj)
 {
-    assert(m_pLZObj == NULL);
+    assert(m_pLZObj == nullptr);
     m_pLZObj = pLZObj;
 
     Link(m_pLZObj->GetSize(), m_pLZObj->GetBuffer());
@@ -56,7 +57,7 @@ void CMappedFile::BindLZObject(CLZObject *pLZObj)
 
 void CMappedFile::BindLZObjectWithBufferedSize(CLZObject *pLZObj)
 {
-    assert(m_pLZObj == NULL);
+    assert(m_pLZObj == nullptr);
     m_pLZObj = pLZObj;
 
     Link(m_pLZObj->GetBufferSize(), m_pLZObj->GetBuffer());
@@ -64,10 +65,8 @@ void CMappedFile::BindLZObjectWithBufferedSize(CLZObject *pLZObj)
 
 BYTE *CMappedFile::AppendDataBlock(const void *pBlock, DWORD dwBlockSize)
 {
-    if (m_pbAppendResultDataBlock)
-    {
-        delete[] m_pbAppendResultDataBlock;
-    }
+
+    delete[] m_pbAppendResultDataBlock;
 
     // realloc
     m_dwAppendResultDataSize = m_dwBufLinkSize + dwBlockSize;
@@ -87,16 +86,16 @@ void CMappedFile::Destroy()
     if (m_pLZObj) // 압축된 데이터가 이 포인터로 연결 된다
     {
         delete m_pLZObj;
-        m_pLZObj = NULL;
+        m_pLZObj = nullptr;
     }
 
-    if (NULL != m_lpMapData)
+    if (nullptr != m_lpMapData)
     {
         Unmap(m_lpMapData);
-        m_lpMapData = NULL;
+        m_lpMapData = nullptr;
     }
 
-#if defined(_WIN32)
+#ifdef _WIN32
     if (NULL != m_hFM)
     {
         CloseHandle(m_hFM);
@@ -107,12 +106,12 @@ void CMappedFile::Destroy()
     if (m_pbAppendResultDataBlock)
     {
         delete[] m_pbAppendResultDataBlock;
-        m_pbAppendResultDataBlock = NULL;
+        m_pbAppendResultDataBlock = nullptr;
     }
 
     m_dwAppendResultDataSize = 0;
 
-    m_pbBufLinkData = NULL;
+    m_pbBufLinkData = nullptr;
     m_dwBufLinkSize = 0;
 
     m_seekPosition = 0;
@@ -127,8 +126,7 @@ int CMappedFile::Seek(DWORD offset, int iSeekType)
     switch (iSeekType)
     {
     case SEEK_TYPE_BEGIN:
-        if (offset > m_dwSize)
-            offset = m_dwSize;
+        offset = std::min(offset, m_dwSize);
 
         m_seekPosition = offset;
         break;
@@ -150,14 +148,18 @@ int CMappedFile::Map(const void **dest, int offset, int size)
     m_dataOffset = offset;
 
     if (size == 0)
+    {
         m_mapSize = m_dwSize;
+    }
     else
+    {
         m_mapSize = size;
+    }
 
     if (m_dataOffset + m_mapSize > m_dwSize)
         return 0;
 
-#if defined(_WIN32)
+#ifdef _WIN32
     SYSTEM_INFO SysInfo;
     GetSystemInfo(&SysInfo);
     DWORD dwSysGran = SysInfo.dwAllocationGranularity;
@@ -192,12 +194,12 @@ int CMappedFile::Map(const void **dest, int offset, int size)
     if (pageSize <= 0)
         pageSize = 4096;
 
-    DWORD dwFileMapStart = (m_dataOffset / (DWORD)pageSize) * (DWORD)pageSize;
-    DWORD dwMapViewSize = (m_dataOffset % (DWORD)pageSize) + m_mapSize;
-    int iViewDelta = m_dataOffset - dwFileMapStart;
+    DWORD const dwFileMapStart = (m_dataOffset / static_cast<DWORD>(pageSize)) * static_cast<DWORD>(pageSize);
+    DWORD const dwMapViewSize = (m_dataOffset % static_cast<DWORD>(pageSize)) + m_mapSize;
+    int const iViewDelta = m_dataOffset - dwFileMapStart;
 
-    int fd = (int)(intptr_t)m_hFile;
-    void *mapped = mmap(NULL, dwMapViewSize, PROT_READ, MAP_SHARED, fd, (off_t)dwFileMapStart);
+    int const fd = static_cast<int>((intptr_t)m_hFile);
+    void *mapped = mmap(nullptr, dwMapViewSize, PROT_READ, MAP_SHARED, fd, static_cast<off_t>(dwFileMapStart));
     if (mapped == MAP_FAILED)
     {
         TraceError("CMappedFile::Map mmap failed: %s", strerror(errno));
@@ -205,10 +207,10 @@ int CMappedFile::Map(const void **dest, int offset, int size)
     }
 
     m_lpMapData = mapped;
-    m_lpData = (char *)m_lpMapData + iViewDelta;
+    m_lpData = static_cast<char *>(m_lpMapData) + iViewDelta;
 #endif
 
-    *dest = (char *)m_lpData;
+    *dest = static_cast<char *>(m_lpData);
     m_seekPosition = 0;
 
     Link(m_mapSize, m_lpData);
@@ -221,12 +223,12 @@ BYTE *CMappedFile::GetCurrentSeekPoint()
     return m_pbBufLinkData + m_seekPosition;
 }
 
-DWORD CMappedFile::Size()
+DWORD CMappedFile::Size() const
 {
     return m_dwBufLinkSize;
 }
 
-DWORD CMappedFile::GetPosition()
+DWORD CMappedFile::GetPosition() const
 {
     return m_dataOffset;
 }
@@ -241,14 +243,14 @@ BOOL CMappedFile::Read(void *dest, int bytes)
     return TRUE;
 }
 
-DWORD CMappedFile::GetSeekPosition(void)
+DWORD CMappedFile::GetSeekPosition() const
 {
     return m_seekPosition;
 }
 
 void CMappedFile::Unmap(LPCVOID data)
 {
-#if defined(_WIN32)
+#ifdef _WIN32
     UnmapViewOfFile(data);
 #else
     if (m_lpMapData)
@@ -256,9 +258,9 @@ void CMappedFile::Unmap(LPCVOID data)
         long pageSize = sysconf(_SC_PAGE_SIZE);
         if (pageSize <= 0)
             pageSize = 4096;
-        DWORD dwMapViewSize = (m_dataOffset % (DWORD)pageSize) + m_mapSize;
+        DWORD const dwMapViewSize = (m_dataOffset % static_cast<DWORD>(pageSize)) + m_mapSize;
         munmap(m_lpMapData, dwMapViewSize);
-        m_lpMapData = NULL;
+        m_lpMapData = nullptr;
     }
 #endif
 }

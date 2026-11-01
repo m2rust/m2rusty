@@ -13,8 +13,8 @@ class CGraphicDib
     void TextOut(int ix, int iy, const char *c_szText);
     void Put(HDC hDC, int x, int y);
 
-    int GetWidth();
-    int GetHeight();
+    int GetWidth() const;
+    int GetHeight() const;
 
     void *GetPointer();
 
@@ -23,13 +23,12 @@ class CGraphicDib
   protected:
     void Initialize();
 
-  protected:
-    HDC m_hDC;
-    HBITMAP m_hBmp;
-    BITMAPINFO m_bmi;
+    HDC m_hDC = nullptr;
+    HBITMAP m_hBmp = nullptr;
+    BITMAPINFO m_bmi{};
 
-    int m_width;
-    int m_height;
+    int m_width = 0;
+    int m_height = 0;
 
-    void *m_pvBuf;
+    void *m_pvBuf = nullptr;
 };

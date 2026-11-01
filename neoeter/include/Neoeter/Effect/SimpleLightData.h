@@ -14,40 +14,39 @@ class CLightData : public CEffectElementBase
 
   public:
     CLightData();
-    virtual ~CLightData();
+    ~CLightData() override;
 
     void GetRange(float fTime, float &rRange);
-    float GetDuration();
-    BOOL isLoop()
+    float GetDuration() const;
+    BOOL isLoop() const
     {
         return m_bLoopFlag;
     }
-    int GetLoopCount()
+    int GetLoopCount() const
     {
         return m_iLoopCount;
     }
     void InitializeLight(D3DLIGHT9 &light);
 
   protected:
-    void OnClear();
-    bool OnIsData();
+    void OnClear() override;
+    bool OnIsData() override;
 
-    BOOL OnLoadScript(CTextFileLoader &rTextFileLoader);
+    BOOL OnLoadScript(CTextFileLoader &rTextFileLoader) override;
 
-  protected:
-    float m_fMaxRange;
-    float m_fDuration;
+    float m_fMaxRange = 0.0F;
+    float m_fDuration = 0.0F;
     TTimeEventTableFloat m_TimeEventTableRange;
 
     D3DXCOLOR m_cAmbient;
     D3DXCOLOR m_cDiffuse;
 
-    BOOL m_bLoopFlag;
-    int m_iLoopCount;
+    BOOL m_bLoopFlag = 0;
+    int m_iLoopCount = 0;
 
-    float m_fAttenuation0;
-    float m_fAttenuation1;
-    float m_fAttenuation2;
+    float m_fAttenuation0 = 0.0F;
+    float m_fAttenuation1 = 0.0F;
+    float m_fAttenuation2 = 0.0F;
 
   public:
     static void DestroySystem();

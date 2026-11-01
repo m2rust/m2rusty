@@ -13,14 +13,14 @@ inline const BYTE *GetKey_20050304Myevan()
     volatile static DWORD s_adwKey[1938];
 
     volatile DWORD seed = 1491971513;
-    for (UINT i = 0; i < BYTE(seed); i++)
+    for (UINT i = 0; i < static_cast<BYTE>(seed); i++)
     {
         seed ^= 2148941891;
         seed += 3592385981;
         s_adwKey[i] = seed;
     }
 
-    return (const BYTE *)s_adwKey;
+    return reinterpret_cast<const BYTE *>(const_cast<DWORD *>(s_adwKey));
 }
 
 // #include <eterCrypt.h>
@@ -30,8 +30,8 @@ void CAccountConnector::__BuildClientKey_20050304Myevan()
     const BYTE *c_pszKey = GetKey_20050304Myevan();
     memcpy(g_adwEncryptKey, c_pszKey + 157, 16);
 
-    for (DWORD i = 0; i < 4; ++i)
-        g_adwEncryptKey[i] = random();
+    for (unsigned int &i : g_adwEncryptKey)
+        i = random();
 
     // LLP64: DWORD is unsigned long on Windows x64, TEA takes uint32_t.
     tea_encrypt(reinterpret_cast<uint32_t *>(g_adwDecryptKey), reinterpret_cast<const uint32_t *>(g_adwEncryptKey),
@@ -43,7 +43,7 @@ void CAccountConnector::__BuildClientKey_20050304Myevan()
 
 PyObject *packExist(PyObject *poSelf, PyObject *poArgs)
 {
-    char *strFileName;
+    char *strFileName = nullptr;
 
     if (!PyTuple_GetString(poArgs, 0, &strFileName))
         return Py_BuildException();
@@ -53,7 +53,7 @@ PyObject *packExist(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *packGet(PyObject *poSelf, PyObject *poArgs)
 {
-    char *strFileName;
+    char *strFileName = nullptr;
 
     if (!PyTuple_GetString(poArgs, 0, &strFileName))
         return Py_BuildException();
@@ -78,7 +78,7 @@ void initpack()
     static PyMethodDef s_methods[] = {
         {"Exist", packExist, METH_VARARGS},
         {"Get", packGet, METH_VARARGS},
-        {NULL, NULL},
+        {nullptr, nullptr},
     };
 
     Py_InitModule("pack", s_methods);

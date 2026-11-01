@@ -19,7 +19,7 @@ int GetTextTag(const wchar_t *src, int maxLen, int &tagLen, std::wstring &extraI
         extraInfo.assign(++cur, 8);
         return TEXT_TAG_COLOR;
     }
-    else if (*cur == L'|') // ||는 |로 표시한다.
+    if (*cur == L'|') // ||는 |로 표시한다.
     {
         tagLen = 2;
         return TEXT_TAG_TAG;
@@ -45,7 +45,7 @@ int GetTextTag(const wchar_t *src, int maxLen, int &tagLen, std::wstring &extraI
 
 std::wstring GetTextTagOutputString(const wchar_t *src, int src_len)
 {
-    int len;
+    int len = 0;
     std::wstring dst;
     std::wstring extraInfo;
     int output_len = 0;
@@ -53,7 +53,7 @@ std::wstring GetTextTagOutputString(const wchar_t *src, int src_len)
 
     for (int i = 0; i < src_len;)
     {
-        int tag = GetTextTag(&src[i], src_len - i, len, extraInfo);
+        int const tag = GetTextTag(&src[i], src_len - i, len, extraInfo);
 
         if (tag == TEXT_TAG_PLAIN || tag == TEXT_TAG_TAG)
         {
@@ -64,9 +64,13 @@ std::wstring GetTextTagOutputString(const wchar_t *src, int src_len)
             }
         }
         else if (tag == TEXT_TAG_HYPERLINK_START)
+        {
             hyperlinkStep = 1;
+        }
         else if (tag == TEXT_TAG_HYPERLINK_END)
+        {
             hyperlinkStep = 0;
+        }
 
         i += len;
     }
@@ -75,7 +79,7 @@ std::wstring GetTextTagOutputString(const wchar_t *src, int src_len)
 
 int GetTextTagInternalPosFromRenderPos(const wchar_t *src, int src_len, int offset)
 {
-    int len;
+    int len = 0;
     std::wstring dst;
     std::wstring extraInfo;
     int output_len = 0;
@@ -85,7 +89,7 @@ int GetTextTagInternalPosFromRenderPos(const wchar_t *src, int src_len, int offs
 
     for (int i = 0; i < src_len;)
     {
-        int tag = GetTextTag(&src[i], src_len - i, len, extraInfo);
+        int const tag = GetTextTag(&src[i], src_len - i, len, extraInfo);
 
         if (tag == TEXT_TAG_COLOR)
         {
@@ -111,9 +115,13 @@ int GetTextTagInternalPosFromRenderPos(const wchar_t *src, int src_len, int offs
             }
         }
         else if (tag == TEXT_TAG_HYPERLINK_START)
+        {
             hyperlinkStep = 1;
+        }
         else if (tag == TEXT_TAG_HYPERLINK_END)
+        {
             hyperlinkStep = 0;
+        }
 
         i += len;
     }
@@ -123,14 +131,14 @@ int GetTextTagInternalPosFromRenderPos(const wchar_t *src, int src_len, int offs
 
 int GetTextTagOutputLen(const wchar_t *src, int src_len)
 {
-    int len;
+    int len = 0;
     std::wstring extraInfo;
     int output_len = 0;
     int hyperlinkStep = 0;
 
     for (int i = 0; i < src_len;)
     {
-        int tag = GetTextTag(&src[i], src_len - i, len, extraInfo);
+        int const tag = GetTextTag(&src[i], src_len - i, len, extraInfo);
 
         if (tag == TEXT_TAG_PLAIN || tag == TEXT_TAG_TAG)
         {
@@ -138,9 +146,13 @@ int GetTextTagOutputLen(const wchar_t *src, int src_len)
                 ++output_len;
         }
         else if (tag == TEXT_TAG_HYPERLINK_START)
+        {
             hyperlinkStep = 1;
+        }
         else if (tag == TEXT_TAG_HYPERLINK_END)
+        {
             hyperlinkStep = 0;
+        }
 
         i += len;
     }
@@ -178,7 +190,7 @@ int FindColorTagStartPosition(const wchar_t *src, int src_len)
         return (src_len); // 못찾으면 전부;;
     }
     // ||의 경우
-    else if (*cur == L'|' && *(cur - 1) == L'|')
+    if (*cur == L'|' && *(cur - 1) == L'|')
         return 1;
 
     return 0;
@@ -203,7 +215,9 @@ int FindColorTagEndPosition(const wchar_t *src, int src_len)
         }
     }
     else if (src_len >= 2 && *cur == L'|' && *(cur + 1) == L'|')
+    {
         return 1;
+    }
 
     return 0;
 }

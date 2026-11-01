@@ -16,12 +16,11 @@ class CEffectManager : public CScreen, public CSingleton<CEffectManager>
         EFFECT_TYPE_MAX_NUM = 4,
     };
 
-    typedef std::map<DWORD, CEffectData *> TEffectDataMap;
-    typedef std::map<DWORD, CEffectInstance *> TEffectInstanceMap;
+    using TEffectDataMap = std::map<DWORD, CEffectData *>;
+    using TEffectInstanceMap = std::map<DWORD, CEffectInstance *>;
 
-  public:
     CEffectManager();
-    virtual ~CEffectManager();
+    ~CEffectManager() override;
 
     void Destroy();
 
@@ -76,11 +75,10 @@ class CEffectManager : public CScreen, public CSingleton<CEffectManager>
     void __DestroyEffectCacheMap();
     void __DestroyEffectDataMap();
 
-  protected:
-    bool m_isDisableSortRendering;
+    bool m_isDisableSortRendering = false;
     TEffectDataMap m_kEftDataMap;
     TEffectInstanceMap m_kEftInstMap;
     TEffectInstanceMap m_kEftCacheMap;
 
-    CEffectInstance *m_pSelectedEffectInstance;
+    CEffectInstance *m_pSelectedEffectInstance = nullptr;
 };

@@ -2,7 +2,7 @@
 #include <Client/UI/PythonIME.h>
 #include <Client/UI/AbstractApplication.h>
 
-CPythonIME::CPythonIME() : CIME()
+CPythonIME::CPythonIME()
 {
     ms_pEvent = this;
 }
@@ -69,7 +69,7 @@ void CPythonIME::OnEscape()
 
 bool CPythonIME::OnWM_CHAR(WPARAM wParam, LPARAM lParam)
 {
-    unsigned char c = (unsigned char)(wParam & 0xff);
+    auto c = static_cast<unsigned char>(wParam & 0xff);
 
     switch (c)
     {
@@ -78,14 +78,14 @@ bool CPythonIME::OnWM_CHAR(WPARAM wParam, LPARAM lParam)
         return true;
 
     case VK_TAB:
-        if (ms_bCaptureInput == false)
-            return 0;
+        if (!ms_bCaptureInput)
+            return false;
         OnTab();
         return true;
 
     case VK_ESCAPE:
-        if (ms_bCaptureInput == false)
-            return 0;
+        if (!ms_bCaptureInput)
+            return false;
         OnEscape();
         return true;
     }

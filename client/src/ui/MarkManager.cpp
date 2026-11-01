@@ -2,6 +2,8 @@
 #include <Client/UI/MarkManager.h>
 
 #include <Neoeter/Platform/Base/CRC32.h>
+
+#include <print>
 #define sys_err TraceError
 #define sys_log // (n, format, ...) Tracenf(format, __VA_ARGS__)
 #define thecore_memcpy memcpy
@@ -29,8 +31,8 @@ CGuildMarkManager::CGuildMarkManager()
 
 CGuildMarkManager::~CGuildMarkManager()
 {
-    for (std::map<DWORD, CGuildMarkImage *>::iterator it = m_mapIdx_Image.begin(); it != m_mapIdx_Image.end(); ++it)
-        __DeleteImage(it->second);
+    for (auto &it : m_mapIdx_Image)
+        __DeleteImage(it.second);
 
     m_mapIdx_Image.clear();
 }
@@ -61,8 +63,8 @@ bool CGuildMarkManager::LoadMarkIndex()
     if (!fp)
         return false;
 
-    DWORD guildID;
-    DWORD markID;
+    DWORD guildID = 0;
+    DWORD markID = 0;
 
     char line[256];
 
@@ -91,8 +93,8 @@ bool CGuildMarkManager::SaveMarkIndex()
         return false;
     }
 
-    for (std::map<DWORD, DWORD>::iterator it = m_mapGID_MarkID.begin(); it != m_mapGID_MarkID.end(); ++it)
-        fprintf(fp, "%d %d\n", it->first, it->second);
+    for (auto &it : m_mapGID_MarkID)
+        std::println(fp, "{} {}", it.first, it.second);
 
     fclose(fp);
     sys_log(0, "MarkManager::SaveMarkData: index count %d", m_mapGID_MarkID.size());
@@ -104,17 +106,19 @@ void CGuildMarkManager::LoadMarkImages()
     bool isMarkExists[MAX_IMAGE_COUNT];
     memset(isMarkExists, 0, sizeof(isMarkExists));
 
-    for (std::map<DWORD, DWORD>::iterator it = m_mapGID_MarkID.begin(); it != m_mapGID_MarkID.end(); ++it)
+    for (auto &it : m_mapGID_MarkID)
     {
-        DWORD markID = it->second;
+        DWORD const markID = it.second;
 
         if (markID < MAX_IMAGE_COUNT * CGuildMarkImage::MARK_TOTAL_COUNT)
             isMarkExists[markID / CGuildMarkImage::MARK_TOTAL_COUNT] = true;
     }
 
     for (DWORD i = 0; i < MAX_IMAGE_COUNT; ++i)
+    {
         if (isMarkExists[i])
             __GetImage(i);
+    }
 }
 
 void CGuildMarkManager::SaveMarkImage(DWORD imgIdx)
@@ -122,13 +126,15 @@ void CGuildMarkManager::SaveMarkImage(DWORD imgIdx)
     std::string path;
 
     if (GetMarkImageFilename(imgIdx, path))
+    {
         if (!__GetImage(imgIdx)->Save(path.c_str()))
             sys_err("%s Save failed\n", path.c_str());
+    }
 }
 
 CGuildMarkImage *CGuildMarkManager::__GetImage(DWORD imgIdx)
 {
-    std::map<DWORD, CGuildMarkImage *>::iterator it = m_mapIdx_Image.find(imgIdx);
+    auto it = m_mapIdx_Image.find(imgIdx);
 
     if (it == m_mapIdx_Image.end())
     {
@@ -141,11 +147,12 @@ CGuildMarkImage *CGuildMarkManager::__GetImage(DWORD imgIdx)
             pkImage->Load(imagePath.c_str());
             return pkImage;
         }
-        else
-            return NULL;
+        return nullptr;
     }
     else
+    {
         return it->second;
+    }
 }
 
 bool CGuildMarkManager::AddMarkIDByGuildID(DWORD guildID, DWORD markID)
@@ -161,7 +168,7 @@ bool CGuildMarkManager::AddMarkIDByGuildID(DWORD guildID, DWORD markID)
 
 DWORD CGuildMarkManager::GetMarkID(DWORD guildID)
 {
-    std::map<DWORD, DWORD>::iterator it = m_mapGID_MarkID.find(guildID);
+    auto it = m_mapGID_MarkID.find(guildID);
 
     if (it == m_mapGID_MarkID.end())
         return INVALID_MARK_ID;
@@ -171,14 +178,14 @@ DWORD CGuildMarkManager::GetMarkID(DWORD guildID)
 
 DWORD CGuildMarkManager::__AllocMarkID(DWORD guildID)
 {
-    std::set<DWORD>::iterator it = m_setFreeMarkID.lower_bound(0);
+    auto it = m_setFreeMarkID.lower_bound(0);
 
     if (it == m_setFreeMarkID.end())
         return INVALID_MARK_ID;
 
-    DWORD markID = *it;
+    DWORD const markID = *it;
 
-    DWORD imgIdx = markID / CGuildMarkImage::MARK_TOTAL_COUNT;
+    DWORD const imgIdx = markID / CGuildMarkImage::MARK_TOTAL_COUNT;
     CGuildMarkImage *pkImage = __GetImage(imgIdx); // 이미지가 없다면 만들기 위해
 
     if (pkImage && AddMarkIDByGuildID(guildID, markID))
@@ -200,19 +207,19 @@ DWORD CGuildMarkManager::GetMarkCount() const
 // SERVER
 void CGuildMarkManager::CopyMarkIdx(char *pcBuf) const
 {
-    WORD *pwBuf = (WORD *)pcBuf;
+    WORD *pwBuf = reinterpret_cast<WORD *>(pcBuf);
 
-    for (std::map<DWORD, DWORD>::const_iterator it = m_mapGID_MarkID.begin(); it != m_mapGID_MarkID.end(); ++it)
+    for (auto it : m_mapGID_MarkID)
     {
-        *(pwBuf++) = it->first;  // guild id
-        *(pwBuf++) = it->second; // mark id
+        *(pwBuf++) = it.first;  // guild id
+        *(pwBuf++) = it.second; // mark id
     }
 }
 
 // SERVER
 DWORD CGuildMarkManager::SaveMark(DWORD guildID, BYTE *pbMarkImage)
 {
-    DWORD idMark;
+    DWORD idMark = 0;
 
     if ((idMark = GetMarkID(guildID)) == INVALID_MARK_ID)
     {
@@ -221,18 +228,19 @@ DWORD CGuildMarkManager::SaveMark(DWORD guildID, BYTE *pbMarkImage)
             sys_err("CGuildMarkManager: cannot alloc mark id %u", guildID);
             return false;
         }
-        else
-            sys_log(0, "SaveMark: mark id alloc %u", idMark);
+        sys_log(0, "SaveMark: mark id alloc %u", idMark);
     }
     else
+    {
         sys_log(0, "SaveMark: mark id found %u", idMark);
+    }
 
     DWORD imgIdx = (idMark / CGuildMarkImage::MARK_TOTAL_COUNT);
     CGuildMarkImage *pkImage = __GetImage(imgIdx);
 
     if (pkImage)
     {
-        printf("imgidx %u ", imgIdx);
+        std::print("imgidx {} ", imgIdx);
 
         std::string pathImage;
         GetMarkImageFilename(imgIdx, pathImage);
@@ -247,14 +255,14 @@ DWORD CGuildMarkManager::SaveMark(DWORD guildID, BYTE *pbMarkImage)
 // SERVER
 void CGuildMarkManager::DeleteMark(DWORD guildID)
 {
-    std::map<DWORD, DWORD>::iterator it = m_mapGID_MarkID.find(guildID);
+    auto it = m_mapGID_MarkID.find(guildID);
 
     if (it == m_mapGID_MarkID.end())
         return;
 
-    CGuildMarkImage *pkImage;
+    CGuildMarkImage *pkImage = nullptr;
 
-    if ((pkImage = __GetImage(it->second / CGuildMarkImage::MARK_TOTAL_COUNT)) != NULL)
+    if ((pkImage = __GetImage(it->second / CGuildMarkImage::MARK_TOTAL_COUNT)) != nullptr)
         pkImage->DeleteMark(it->second % CGuildMarkImage::MARK_TOTAL_COUNT);
 
     m_mapGID_MarkID.erase(it);
@@ -270,7 +278,7 @@ void CGuildMarkManager::GetDiffBlocks(DWORD imgIdx, const DWORD *crcList,
     mapDiffBlocks.clear();
 
     // 클라이언트에서 서버에 없는 이미지를 요청할 수는 없다.
-    if (m_mapIdx_Image.end() == m_mapIdx_Image.find(imgIdx))
+    if (!m_mapIdx_Image.contains(imgIdx))
     {
         sys_err("invalid idx %u", imgIdx);
         return;
@@ -297,7 +305,7 @@ bool CGuildMarkManager::SaveBlockFromCompressedData(DWORD imgIdx, DWORD posBlock
 bool CGuildMarkManager::GetBlockCRCList(DWORD imgIdx, DWORD *crcList)
 {
     // 클라이언트에서 서버에 없는 이미지를 요청할 수는 없다.
-    if (m_mapIdx_Image.end() == m_mapIdx_Image.find(imgIdx))
+    if (!m_mapIdx_Image.contains(imgIdx))
     {
         sys_err("invalid idx %u", imgIdx);
         return false;
@@ -316,10 +324,10 @@ bool CGuildMarkManager::GetBlockCRCList(DWORD imgIdx, DWORD *crcList)
 ///////////////////////////////////////////////////////////////////////////////////////
 const CGuildMarkManager::TGuildSymbol *CGuildMarkManager::GetGuildSymbol(DWORD guildID)
 {
-    std::map<DWORD, TGuildSymbol>::iterator it = m_mapSymbol.find(guildID);
+    auto it = m_mapSymbol.find(guildID);
 
     if (it == m_mapSymbol.end())
-        return NULL;
+        return nullptr;
 
     return &it->second;
 }
@@ -329,23 +337,25 @@ bool CGuildMarkManager::LoadSymbol(const char *filename)
     FILE *fp = fopen(filename, "rb");
 
     if (!fp)
+    {
         return true;
+    }
     else
     {
-        DWORD symbolCount;
+        DWORD symbolCount = 0;
         fread(&symbolCount, 4, 1, fp);
 
         for (DWORD i = 0; i < symbolCount; i++)
         {
-            DWORD guildID;
-            DWORD dwSize;
+            DWORD guildID = 0;
+            DWORD dwSize = 0;
             fread(&guildID, 4, 1, fp);
             fread(&dwSize, 4, 1, fp);
 
             TGuildSymbol gs;
             gs.raw.resize(dwSize);
-            fread(&gs.raw[0], 1, dwSize, fp);
-            gs.crc = GetCRC32(reinterpret_cast<const char *>(&gs.raw[0]), dwSize);
+            fread(gs.raw.data(), 1, dwSize, fp);
+            gs.crc = GetCRC32(reinterpret_cast<const char *>(gs.raw.data()), dwSize);
             m_mapSymbol.insert(std::make_pair(guildID, gs));
         }
     }
@@ -366,13 +376,13 @@ void CGuildMarkManager::SaveSymbol(const char *filename)
     DWORD symbolCount = m_mapSymbol.size();
     fwrite(&symbolCount, 4, 1, fp);
 
-    for (std::map<DWORD, TGuildSymbol>::iterator it = m_mapSymbol.begin(); it != m_mapSymbol.end(); ++it)
+    for (auto &it : m_mapSymbol)
     {
-        DWORD guildID = it->first;
-        DWORD dwSize = it->second.raw.size();
+        DWORD guildID = it.first;
+        DWORD dwSize = it.second.raw.size();
         fwrite(&guildID, 4, 1, fp);
         fwrite(&dwSize, 4, 1, fp);
-        fwrite(&it->second.raw[0], 1, dwSize, fp);
+        fwrite(it.second.raw.data(), 1, dwSize, fp);
     }
 
     fclose(fp);
@@ -382,7 +392,7 @@ void CGuildMarkManager::UploadSymbol(DWORD guildID, int iSize, const BYTE *pbyDa
 {
     sys_log(0, "GuildSymbolUpload guildID %lu Size %d", guildID, iSize);
 
-    if (m_mapSymbol.find(guildID) == m_mapSymbol.end())
+    if (!m_mapSymbol.contains(guildID))
         m_mapSymbol.insert(std::make_pair(guildID, TGuildSymbol()));
 
     TGuildSymbol &rSymbol = m_mapSymbol[guildID];

@@ -8,6 +8,7 @@
 #include <SDL2/SDL.h>
 #include <Platform/GLCompat.h>
 #include <Neoeter/Render/MSWindow.h>
+#include <math.h>
 
 DWORD CScreen::ms_diffuseColor = 0xffffffff;
 DWORD CScreen::ms_clearColor = 0L;
@@ -22,15 +23,16 @@ void CScreen::RenderLine3d(float sx, float sy, float sz, float ex, float ey, flo
     if (GRAPHICS_CAPS_CAN_NOT_DRAW_LINE)
         return;
 
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
-    SPDTVertexRaw vertices[2] = {{sx, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, {ex, ey, ez, ms_diffuseColor, 0.0f, 0.0f}};
+    SPDTVertexRaw vertices[2] = {{.px = sx, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+                                 {.px = ex, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}};
 
     // 2004.11.18.myevan.DrawIndexPrimitiveUP -> DynamicVertexBuffer
     if (SetPDTStream(vertices, 2))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawPrimitive(D3DPT_LINELIST, 0, 1);
     }
@@ -41,27 +43,27 @@ void CScreen::RenderBox3d(float sx, float sy, float sz, float ex, float ey, floa
     if (GRAPHICS_CAPS_CAN_NOT_DRAW_LINE)
         return;
 
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
     SPDTVertexRaw vertices[8] = {
-        {sx, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, // 0
-        {ex, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, // 1
+        {.px = sx, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}, // 0
+        {.px = ex, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}, // 1
 
-        {sx, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, // 0
-        {sx, ey, ez, ms_diffuseColor, 0.0f, 0.0f}, // 2
+        {.px = sx, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}, // 0
+        {.px = sx, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}, // 2
 
-        {ex, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, // 1
-        {ex, ey, ez, ms_diffuseColor, 0.0f, 0.0f}, // 3
+        {.px = ex, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}, // 1
+        {.px = ex, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f}, // 3
 
-        {sx, ey, ez, ms_diffuseColor, 0.0f, 0.0f},       // 2
-        {ex + 1.0f, ey, ez, ms_diffuseColor, 0.0f, 0.0f} // 3, (x가 1증가된 3)
+        {.px = sx, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},       // 2
+        {.px = ex + 1.0f, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f} // 3, (x가 1증가된 3)
     };
 
     // 2004.11.18.myevan.DrawIndexPrimitiveUP -> DynamicVertexBuffer
     if (SetPDTStream(vertices, 8))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawPrimitive(D3DPT_LINELIST, 0, 4);
     }
@@ -69,19 +71,19 @@ void CScreen::RenderBox3d(float sx, float sy, float sz, float ex, float ey, floa
 
 void CScreen::RenderBar3d(float sx, float sy, float sz, float ex, float ey, float ez)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
     SPDTVertexRaw vertices[4] = {
-        {sx, sy, sz, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, ey, ez, ms_diffuseColor, 0.0f, 0.0f},
-        {ex, sy, sz, ms_diffuseColor, 0.0f, 0.0f},
-        {ex, ey, ez, ms_diffuseColor, 0.0f, 0.0f},
+        {.px = sx, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
     };
 
     if (SetPDTStream(vertices, 4))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
     }
@@ -89,19 +91,39 @@ void CScreen::RenderBar3d(float sx, float sy, float sz, float ex, float ey, floa
 
 void CScreen::RenderBar3d(const D3DXVECTOR3 *c_pv3Positions)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
     SPDTVertexRaw vertices[4] = {
-        {c_pv3Positions[0].x, c_pv3Positions[0].y, c_pv3Positions[0].z, ms_diffuseColor, 0.0f, 0.0f},
-        {c_pv3Positions[2].x, c_pv3Positions[2].y, c_pv3Positions[2].z, ms_diffuseColor, 0.0f, 0.0f},
-        {c_pv3Positions[1].x, c_pv3Positions[1].y, c_pv3Positions[1].z, ms_diffuseColor, 0.0f, 0.0f},
-        {c_pv3Positions[3].x, c_pv3Positions[3].y, c_pv3Positions[3].z, ms_diffuseColor, 0.0f, 0.0f},
+        {.px = c_pv3Positions[0].x,
+         .py = c_pv3Positions[0].y,
+         .pz = c_pv3Positions[0].z,
+         .diffuse = ms_diffuseColor,
+         .u = 0.0f,
+         .v = 0.0f},
+        {.px = c_pv3Positions[2].x,
+         .py = c_pv3Positions[2].y,
+         .pz = c_pv3Positions[2].z,
+         .diffuse = ms_diffuseColor,
+         .u = 0.0f,
+         .v = 0.0f},
+        {.px = c_pv3Positions[1].x,
+         .py = c_pv3Positions[1].y,
+         .pz = c_pv3Positions[1].z,
+         .diffuse = ms_diffuseColor,
+         .u = 0.0f,
+         .v = 0.0f},
+        {.px = c_pv3Positions[3].x,
+         .py = c_pv3Positions[3].y,
+         .pz = c_pv3Positions[3].z,
+         .diffuse = ms_diffuseColor,
+         .u = 0.0f,
+         .v = 0.0f},
     };
 
     if (SetPDTStream(vertices, 4))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
     }
@@ -110,23 +132,23 @@ void CScreen::RenderBar3d(const D3DXVECTOR3 *c_pv3Positions)
 void CScreen::RenderGradationBar3d(float sx, float sy, float sz, float ex, float ey, float ez, DWORD dwStartColor,
                                    DWORD dwEndColor)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
     if (sx == ex)
         return;
     if (sy == ey)
         return;
 
     SPDTVertexRaw vertices[4] = {
-        {sx, sy, sz, dwStartColor, 0.0f, 0.0f},
-        {sx, ey, ez, dwEndColor, 0.0f, 0.0f},
-        {ex, sy, sz, dwStartColor, 0.0f, 0.0f},
-        {ex, ey, ez, dwEndColor, 0.0f, 0.0f},
+        {.px = sx, .py = sy, .pz = sz, .diffuse = dwStartColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = ey, .pz = ez, .diffuse = dwEndColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = sy, .pz = sz, .diffuse = dwStartColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = ey, .pz = ez, .diffuse = dwEndColor, .u = 0.0f, .v = 0.0f},
     };
 
     if (SetPDTStream(vertices, 4))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
     }
@@ -135,16 +157,20 @@ void CScreen::RenderGradationBar3d(float sx, float sy, float sz, float ex, float
 void CScreen::RenderLineCube(float sx, float sy, float sz, float ex, float ey, float ez)
 {
     SPDTVertexRaw vertices[8] = {
-        {sx, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, {ex, sy, sz, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, ey, sz, ms_diffuseColor, 0.0f, 0.0f}, {ex, ey, sz, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, sy, ez, ms_diffuseColor, 0.0f, 0.0f}, {ex, sy, ez, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, ey, ez, ms_diffuseColor, 0.0f, 0.0f}, {ex, ey, ez, ms_diffuseColor, 0.0f, 0.0f},
+        {.px = sx, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = ey, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = ey, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = sy, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = sy, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
     };
 
     if (SetPDTStream(vertices, 8))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.SetTransform(D3DTS_WORLD, ms_lpd3dMatStack->GetTop());
         SetDefaultIndexBuffer(DEFAULT_IB_LINE_CUBE);
@@ -156,16 +182,20 @@ void CScreen::RenderLineCube(float sx, float sy, float sz, float ex, float ey, f
 void CScreen::RenderCube(float sx, float sy, float sz, float ex, float ey, float ez)
 {
     SPDTVertexRaw vertices[8] = {
-        {sx, sy, sz, ms_diffuseColor, 0.0f, 0.0f}, {ex, sy, sz, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, ey, sz, ms_diffuseColor, 0.0f, 0.0f}, {ex, ey, sz, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, sy, ez, ms_diffuseColor, 0.0f, 0.0f}, {ex, sy, ez, ms_diffuseColor, 0.0f, 0.0f},
-        {sx, ey, ez, ms_diffuseColor, 0.0f, 0.0f}, {ex, ey, ez, ms_diffuseColor, 0.0f, 0.0f},
+        {.px = sx, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = sy, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = ey, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = ey, .pz = sz, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = sy, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = sy, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = sx, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
+        {.px = ex, .py = ey, .pz = ez, .diffuse = ms_diffuseColor, .u = 0.0f, .v = 0.0f},
     };
 
     if (SetPDTStream(vertices, 8))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.SetTransform(D3DTS_WORLD, ms_lpd3dMatStack->GetTop());
 
@@ -176,7 +206,7 @@ void CScreen::RenderCube(float sx, float sy, float sz, float ex, float ey, float
 
 void CScreen::RenderCube(float sx, float sy, float sz, float ex, float ey, float ez, D3DXMATRIX matRotation)
 {
-    D3DXVECTOR3 v3Center = D3DXVECTOR3((sx + ex) * 0.5f, (sy + ey) * 0.5f, (sz + ez) * 0.5f);
+    D3DXVECTOR3 const v3Center = D3DXVECTOR3((sx + ex) * 0.5f, (sy + ey) * 0.5f, (sz + ez) * 0.5f);
     D3DXVECTOR3 v3Vertex[8] = {
         D3DXVECTOR3(sx, sy, sz), D3DXVECTOR3(ex, sy, sz), D3DXVECTOR3(sx, ey, sz), D3DXVECTOR3(ex, ey, sz),
         D3DXVECTOR3(sx, sy, ez), D3DXVECTOR3(ex, sy, ez), D3DXVECTOR3(sx, ey, ez), D3DXVECTOR3(ex, ey, ez),
@@ -198,8 +228,8 @@ void CScreen::RenderCube(float sx, float sy, float sz, float ex, float ey, float
 
     if (SetPDTStream(vertices, 8))
     {
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.SetTransform(D3DTS_WORLD, ms_lpd3dMatStack->GetTop());
 
@@ -231,21 +261,24 @@ void CScreen::RenderGradationBar2d(float sx, float sy, float ex, float ey, DWORD
 
 void CScreen::RenderCircle2d(float fx, float fy, float fz, float fRadius, int iStep)
 {
-    int count;
-    float theta, delta;
-    float x, y, z;
+    int count = 0;
+    float theta = NAN;
+    float delta = NAN;
+    float x = NAN;
+    float y = NAN;
+    float z = NAN;
     std::vector<D3DXVECTOR3> pts;
 
     pts.clear();
     pts.resize(iStep);
 
     theta = 0.0;
-    delta = 2 * D3DX_PI / float(iStep);
+    delta = 2 * std::numbers::pi_v<float> / static_cast<float>(iStep);
 
     for (count = 0; count < iStep; count++)
     {
-        x = fx + fRadius * cosf(theta);
-        y = fy + fRadius * sinf(theta);
+        x = fx + (fRadius * cosf(theta));
+        y = fy + (fRadius * sinf(theta));
         z = fz;
 
         pts[count] = D3DXVECTOR3(x, y, z);
@@ -261,15 +294,16 @@ void CScreen::RenderCircle2d(float fx, float fy, float fz, float fRadius, int iS
 
 void CScreen::RenderCircle3d(float fx, float fy, float fz, float fRadius, int iStep)
 {
-    int count;
-    float theta, delta;
+    int count = 0;
+    float theta = NAN;
+    float delta = NAN;
     std::vector<D3DXVECTOR3> pts;
 
     pts.clear();
     pts.resize(iStep);
 
     theta = 0.0;
-    delta = 2 * D3DX_PI / float(iStep);
+    delta = 2 * std::numbers::pi_v<float> / static_cast<float>(iStep);
 
     const D3DXMATRIX &c_rmatInvView = CCameraManager::Instance().GetCurrentCamera()->GetBillboardMatrix();
 
@@ -292,7 +326,7 @@ void CScreen::RenderCircle3d(float fx, float fy, float fz, float fRadius, int iS
 class CD3DXMeshRenderingOption : public CScreen
 {
   public:
-    DWORD m_dwVS;
+    DWORD m_dwVS = 0U;
 
     CD3DXMeshRenderingOption(D3DFILLMODE d3dFillMode, const D3DXMATRIX &c_rmatWorld)
     {
@@ -304,11 +338,11 @@ class CD3DXMeshRenderingOption : public CScreen
         STATEMANAGER.SetRenderState(D3DRS_FILLMODE, d3dFillMode);
         STATEMANAGER.SaveTransform(D3DTS_WORLD, &c_rmatWorld);
 
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
     }
 
-    virtual ~CD3DXMeshRenderingOption()
+    ~CD3DXMeshRenderingOption() override
     {
         ms_lpd3dDevice->SetFVF(m_dwVS);
 
@@ -337,9 +371,9 @@ void CScreen::RenderD3DXMesh(LPD3DXMESH lpMesh, const D3DXMATRIX *c_pmatWorld, f
         matWorld *= *c_pmatWorld;
     }
 
-    CD3DXMeshRenderingOption SetRenderingOption(d3dFillMode, matWorld);
-    LPDIRECT3DINDEXBUFFER9 lpIndexBuffer;
-    LPDIRECT3DVERTEXBUFFER9 lpVertexBuffer;
+    CD3DXMeshRenderingOption const SetRenderingOption(d3dFillMode, matWorld);
+    LPDIRECT3DINDEXBUFFER9 lpIndexBuffer = nullptr;
+    LPDIRECT3DVERTEXBUFFER9 lpVertexBuffer = nullptr;
     lpMesh->GetIndexBuffer(&lpIndexBuffer);
     lpMesh->GetVertexBuffer(&lpVertexBuffer);
     STATEMANAGER.SetFVF(lpMesh->GetFVF());
@@ -362,7 +396,7 @@ void CScreen::RenderCylinder(const D3DXMATRIX *c_pmatWorld, float fx, float fy, 
 
 void CScreen::RenderTextureBox(float sx, float sy, float ex, float ey, float z, float su, float sv, float eu, float ev)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
     TPDTVertex vertices[4];
 
@@ -397,7 +431,7 @@ void CScreen::RenderTextureBox(float sx, float sy, float ex, float ey, float z, 
 
 void CScreen::RenderBillboard(D3DXVECTOR3 *Position, D3DXCOLOR &Color)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
     TPDTVertex vertices[4];
     vertices[0].position = TPosition(Position[0].x, Position[0].y, Position[0].z);
@@ -429,7 +463,8 @@ void CScreen::RenderBillboard(D3DXVECTOR3 *Position, D3DXCOLOR &Color)
 void CScreen::DrawMinorGrid(float xMin, float yMin, float xMax, float yMax, float xminorStep, float yminorStep,
                             float zPos)
 {
-    float x, y;
+    float x = NAN;
+    float y = NAN;
 
     for (y = yMin; y <= yMax; y += yminorStep)
         RenderLine2d(xMin, y, xMax, y, zPos);
@@ -448,7 +483,8 @@ void CScreen::DrawGrid(float xMin, float yMin, float xMax, float yMax, float xma
     xmajorStep *= xminorStep;
     ymajorStep *= yminorStep;
 
-    float x, y;
+    float x = NAN;
+    float y = NAN;
 
     SetDiffuseColor(0.5f, 0.5f, 0.5f);
     DrawMinorGrid(xMin, yMin, xMax, yMax, xminorStep, yminorStep, zPos);
@@ -478,14 +514,14 @@ void CScreen::SetCursorPosition(int x, int y, int hres, int vres)
     v.y = (((2.0f * y) / vres) - 1) / ms_matProj._22;
     v.z = 1.0f;
 
-    D3DXMATRIX matViewInverse = ms_matInverseView;
+    D3DXMATRIX const matViewInverse = ms_matInverseView;
     // D3DXMatrixInverse(&matViewInverse, NULL, &ms_matView);
 
-    ms_vtPickRayDir.x = v.x * matViewInverse._11 + v.y * matViewInverse._21 + v.z * matViewInverse._31;
+    ms_vtPickRayDir.x = (v.x * matViewInverse._11) + (v.y * matViewInverse._21) + (v.z * matViewInverse._31);
 
-    ms_vtPickRayDir.y = v.x * matViewInverse._12 + v.y * matViewInverse._22 + v.z * matViewInverse._32;
+    ms_vtPickRayDir.y = (v.x * matViewInverse._12) + (v.y * matViewInverse._22) + (v.z * matViewInverse._32);
 
-    ms_vtPickRayDir.z = v.x * matViewInverse._13 + v.y * matViewInverse._23 + v.z * matViewInverse._33;
+    ms_vtPickRayDir.z = (v.x * matViewInverse._13) + (v.y * matViewInverse._23) + (v.z * matViewInverse._33);
 
     ms_vtPickRayOrig.x = matViewInverse._41;
     ms_vtPickRayOrig.y = matViewInverse._42;
@@ -510,7 +546,7 @@ bool CScreen::GetCursorPosition(float *px, float *py, float *pz)
 
 bool CScreen::GetCursorXYPosition(float *px, float *py)
 {
-    D3DXVECTOR3 v3Eye = CCameraManager::Instance().GetCurrentCamera()->GetEye();
+    D3DXVECTOR3 const v3Eye = CCameraManager::Instance().GetCurrentCamera()->GetEye();
 
     TPosition posVertices[4];
     posVertices[0] = TPosition(v3Eye.x - 90000000.0f, v3Eye.y + 90000000.0f, 0.0f);
@@ -522,15 +558,17 @@ bool CScreen::GetCursorXYPosition(float *px, float *py)
         0, 2, 1, 2, 3, 1,
     };
 
-    float u, v, t;
+    float u = NAN;
+    float v = NAN;
+    float t = NAN;
     for (int i = 0; i < 2; ++i)
     {
-        if (IntersectTriangle(ms_vtPickRayOrig, ms_vtPickRayDir, posVertices[sc_awFillRectIndices[i * 3 + 0]],
-                              posVertices[sc_awFillRectIndices[i * 3 + 1]],
-                              posVertices[sc_awFillRectIndices[i * 3 + 2]], &u, &v, &t))
+        if (IntersectTriangle(ms_vtPickRayOrig, ms_vtPickRayDir, posVertices[sc_awFillRectIndices[(i * 3) + 0]],
+                              posVertices[sc_awFillRectIndices[(i * 3) + 1]],
+                              posVertices[sc_awFillRectIndices[(i * 3) + 2]], &u, &v, &t))
         {
-            *px = ms_vtPickRayOrig.x + ms_vtPickRayDir.x * t;
-            *py = ms_vtPickRayOrig.y + ms_vtPickRayDir.y * t;
+            *px = ms_vtPickRayOrig.x + (ms_vtPickRayDir.x * t);
+            *py = ms_vtPickRayOrig.y + (ms_vtPickRayDir.y * t);
             return true;
         }
     }
@@ -539,7 +577,7 @@ bool CScreen::GetCursorXYPosition(float *px, float *py)
 
 bool CScreen::GetCursorZPosition(float *pz)
 {
-    D3DXVECTOR3 v3Eye = CCameraManager::Instance().GetCurrentCamera()->GetEye();
+    D3DXVECTOR3 const v3Eye = CCameraManager::Instance().GetCurrentCamera()->GetEye();
 
     TPosition posVertices[4];
     posVertices[0] = TPosition(v3Eye.x - 90000000.0f, 0.0f, v3Eye.z + 90000000.0f);
@@ -551,14 +589,16 @@ bool CScreen::GetCursorZPosition(float *pz)
         0, 2, 1, 2, 3, 1,
     };
 
-    float u, v, t;
+    float u = NAN;
+    float v = NAN;
+    float t = NAN;
     for (int i = 0; i < 2; ++i)
     {
-        if (IntersectTriangle(ms_vtPickRayOrig, ms_vtPickRayDir, posVertices[sc_awFillRectIndices[i * 3 + 0]],
-                              posVertices[sc_awFillRectIndices[i * 3 + 1]],
-                              posVertices[sc_awFillRectIndices[i * 3 + 2]], &u, &v, &t))
+        if (IntersectTriangle(ms_vtPickRayOrig, ms_vtPickRayDir, posVertices[sc_awFillRectIndices[(i * 3) + 0]],
+                              posVertices[sc_awFillRectIndices[(i * 3) + 1]],
+                              posVertices[sc_awFillRectIndices[(i * 3) + 2]], &u, &v, &t))
         {
-            *pz = ms_vtPickRayOrig.z + ms_vtPickRayDir.z * t;
+            *pz = ms_vtPickRayOrig.z + (ms_vtPickRayDir.z * t);
             return true;
         }
     }
@@ -567,9 +607,9 @@ bool CScreen::GetCursorZPosition(float *pz)
 
 void CScreen::GetPickingPosition(float t, float *x, float *y, float *z)
 {
-    *x = ms_vtPickRayOrig.x + ms_vtPickRayDir.x * t;
-    *y = ms_vtPickRayOrig.y + ms_vtPickRayDir.y * t;
-    *z = ms_vtPickRayOrig.z + ms_vtPickRayDir.z * t;
+    *x = ms_vtPickRayOrig.x + (ms_vtPickRayDir.x * t);
+    *y = ms_vtPickRayOrig.y + (ms_vtPickRayDir.y * t);
+    *z = ms_vtPickRayOrig.z + (ms_vtPickRayDir.z * t);
 }
 
 void CScreen::SetDiffuseColor(DWORD diffuseColor)
@@ -599,18 +639,19 @@ void CScreen::SetClearStencil(DWORD stencil)
 
 void CScreen::ClearDepthBuffer()
 {
-    assert(ms_lpd3dDevice != NULL);
-    ms_lpd3dDevice->Clear(0L, NULL, D3DCLEAR_ZBUFFER, ms_clearColor, ms_clearDepth, ms_clearStencil);
-#if defined(OPENMT2_RENDERER_GL)
+    assert(ms_lpd3dDevice != nullptr);
+    ms_lpd3dDevice->Clear(0L, nullptr, D3DCLEAR_ZBUFFER, ms_clearColor, ms_clearDepth, ms_clearStencil);
+#ifdef OPENMT2_RENDERER_GL
     glClear(GL_DEPTH_BUFFER_BIT);
 #endif
 }
 
 void CScreen::Clear()
 {
-    assert(ms_lpd3dDevice != NULL);
-    ms_lpd3dDevice->Clear(0L, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, ms_clearColor, ms_clearDepth, ms_clearStencil);
-#if defined(OPENMT2_RENDERER_GL)
+    assert(ms_lpd3dDevice != nullptr);
+    ms_lpd3dDevice->Clear(0L, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, ms_clearColor, ms_clearDepth,
+                          ms_clearStencil);
+#ifdef OPENMT2_RENDERER_GL
     glClearColor(((ms_clearColor >> 16) & 0xFF) / 255.0f, ((ms_clearColor >> 8) & 0xFF) / 255.0f,
                  (ms_clearColor & 0xFF) / 255.0f, ((ms_clearColor >> 24) & 0xFF) / 255.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -623,7 +664,7 @@ BOOL CScreen::IsLostDevice()
         return TRUE;
 
     IDirect3DDevice9 &rkD3DDev = *ms_lpd3dDevice;
-    HRESULT hrTestCooperativeLevel = rkD3DDev.TestCooperativeLevel();
+    HRESULT const hrTestCooperativeLevel = rkD3DDev.TestCooperativeLevel();
     if (FAILED(hrTestCooperativeLevel))
         return TRUE;
 
@@ -635,13 +676,13 @@ BOOL CScreen::RestoreDevice()
     if (!ms_lpd3dDevice)
         return FALSE;
 
-    UINT iD3DAdapterInfo = ms_iD3DAdapterInfo;
+    UINT const iD3DAdapterInfo = ms_iD3DAdapterInfo;
     IDirect3D9 &rkD3D = *ms_lpd3d;
     IDirect3DDevice9 &rkD3DDev = *ms_lpd3dDevice;
     D3DPRESENT_PARAMETERS &rkD3DPP = ms_d3dPresentParameter;
     D3D_CDisplayModeAutoDetector &rkD3DDetector = ms_kD3DDetector;
 
-    HRESULT hrTestCooperativeLevel = rkD3DDev.TestCooperativeLevel();
+    HRESULT const hrTestCooperativeLevel = rkD3DDev.TestCooperativeLevel();
 
     if (FAILED(hrTestCooperativeLevel))
     {
@@ -664,7 +705,7 @@ BOOL CScreen::RestoreDevice()
 
             rkD3DPP.BackBufferFormat = rkD3DDMDesktop.Format;
 
-            HRESULT hrReset = rkD3DDev.Reset(&rkD3DPP);
+            HRESULT const hrReset = rkD3DDev.Reset(&rkD3DPP);
 
             if (FAILED(hrReset))
             {
@@ -680,7 +721,7 @@ BOOL CScreen::RestoreDevice()
 
 bool CScreen::Begin()
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
     ResetFaceCount();
 
     if (!STATEMANAGER.BeginScene())
@@ -707,30 +748,30 @@ extern RECT g_rcBrowser;
 
 void CScreen::Show(HWND hWnd)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
 
     if (g_isBrowserMode)
     {
-        RECT rcTop = {0, 0, (LONG)ms_d3dPresentParameter.BackBufferWidth, g_rcBrowser.top};
-        RECT rcBottom = {0, g_rcBrowser.bottom, (LONG)ms_d3dPresentParameter.BackBufferWidth,
-                         (LONG)ms_d3dPresentParameter.BackBufferHeight};
-        RECT rcLeft = {0, g_rcBrowser.top, g_rcBrowser.left, g_rcBrowser.bottom};
-        RECT rcRight = {g_rcBrowser.right, g_rcBrowser.top, (LONG)ms_d3dPresentParameter.BackBufferWidth,
-                        g_rcBrowser.bottom};
+        RECT const rcTop = {0, 0, static_cast<LONG>(ms_d3dPresentParameter.BackBufferWidth), g_rcBrowser.top};
+        RECT const rcBottom = {0, g_rcBrowser.bottom, static_cast<LONG>(ms_d3dPresentParameter.BackBufferWidth),
+                               static_cast<LONG>(ms_d3dPresentParameter.BackBufferHeight)};
+        RECT const rcLeft = {0, g_rcBrowser.top, g_rcBrowser.left, g_rcBrowser.bottom};
+        RECT const rcRight = {g_rcBrowser.right, g_rcBrowser.top,
+                              static_cast<LONG>(ms_d3dPresentParameter.BackBufferWidth), g_rcBrowser.bottom};
 
-        ms_lpd3dDevice->Present(&rcTop, &rcTop, hWnd, NULL);
-        ms_lpd3dDevice->Present(&rcBottom, &rcBottom, hWnd, NULL);
-        ms_lpd3dDevice->Present(&rcLeft, &rcLeft, hWnd, NULL);
-        ms_lpd3dDevice->Present(&rcRight, &rcRight, hWnd, NULL);
+        ms_lpd3dDevice->Present(&rcTop, &rcTop, hWnd, nullptr);
+        ms_lpd3dDevice->Present(&rcBottom, &rcBottom, hWnd, nullptr);
+        ms_lpd3dDevice->Present(&rcLeft, &rcLeft, hWnd, nullptr);
+        ms_lpd3dDevice->Present(&rcRight, &rcRight, hWnd, nullptr);
     }
     else
     {
-        HRESULT hr = ms_lpd3dDevice->Present(NULL, NULL, hWnd, NULL);
+        HRESULT const hr = ms_lpd3dDevice->Present(nullptr, nullptr, hWnd, nullptr);
         if (D3DERR_DEVICELOST == hr)
             RestoreDevice();
     }
 
-#if defined(OPENMT2_SDL_WINDOW)
+#ifdef OPENMT2_SDL_WINDOW
     if (CMSWindow::ms_pSDLWindow)
     {
         SDL_GL_SwapWindow(CMSWindow::ms_pSDLWindow);
@@ -740,9 +781,9 @@ void CScreen::Show(HWND hWnd)
 
 void CScreen::Show(RECT *pSrcRect)
 {
-    assert(ms_lpd3dDevice != NULL);
-    ms_lpd3dDevice->Present(pSrcRect, NULL, NULL, NULL);
-#if defined(OPENMT2_SDL_WINDOW)
+    assert(ms_lpd3dDevice != nullptr);
+    ms_lpd3dDevice->Present(pSrcRect, nullptr, nullptr, nullptr);
+#ifdef OPENMT2_SDL_WINDOW
     if (CMSWindow::ms_pSDLWindow)
     {
         SDL_GL_SwapWindow(CMSWindow::ms_pSDLWindow);
@@ -752,9 +793,9 @@ void CScreen::Show(RECT *pSrcRect)
 
 void CScreen::Show(RECT *pSrcRect, HWND hWnd)
 {
-    assert(ms_lpd3dDevice != NULL);
-    ms_lpd3dDevice->Present(pSrcRect, NULL, hWnd, NULL);
-#if defined(OPENMT2_SDL_WINDOW)
+    assert(ms_lpd3dDevice != nullptr);
+    ms_lpd3dDevice->Present(pSrcRect, nullptr, hWnd, nullptr);
+#ifdef OPENMT2_SDL_WINDOW
     if (CMSWindow::ms_pSDLRenderer)
     {
         SDL_RenderPresent(CMSWindow::ms_pSDLRenderer);
@@ -800,7 +841,7 @@ void CScreen::UnprojectPosition(float x, float y, float z, float *pfX, float *pf
 
 void CScreen::SetColorOperation()
 {
-    STATEMANAGER.SetTexture(0, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
@@ -810,7 +851,7 @@ void CScreen::SetColorOperation()
 
 void CScreen::SetDiffuseOperation()
 {
-    STATEMANAGER.SetTexture(0, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
@@ -821,7 +862,7 @@ void CScreen::SetDiffuseOperation()
 
 void CScreen::SetBlendOperation()
 {
-    STATEMANAGER.SetTexture(0, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_CURRENT);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
@@ -834,8 +875,8 @@ void CScreen::SetBlendOperation()
 
 void CScreen::SetOneColorOperation(D3DXCOLOR &rColor)
 {
-    STATEMANAGER.SetTexture(0, NULL);
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
+    STATEMANAGER.SetTexture(1, nullptr);
 
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, rColor);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TFACTOR);
@@ -855,13 +896,9 @@ void CScreen::Identity()
     STATEMANAGER.SetTransform(D3DTS_WORLD, &ms_matIdentity);
 }
 
-CScreen::CScreen()
-{
-}
+CScreen::CScreen() = default;
 
-CScreen::~CScreen()
-{
-}
+CScreen::~CScreen() = default;
 // void BuildViewFrustum() {
 // ms_frustum.BuildViewFrustum(ms_matView*ms_matProj); }
 

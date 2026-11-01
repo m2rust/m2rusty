@@ -2,22 +2,23 @@
 #include <Client/UI/PythonChat.h>
 #include <Client/UI/PythonItem.h>
 #include <Client/Game/ItemManager.h>
+#include <math.h>
 
 PyObject *chatSetChatColor(PyObject *poSelf, PyObject *poArgs)
 {
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iType))
         return Py_BuildException();
 
-    int r;
+    int r = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &r))
         return Py_BuildException();
 
-    int g;
+    int g = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &g))
         return Py_BuildException();
 
-    int b;
+    int b = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &b))
         return Py_BuildException();
 
@@ -39,7 +40,7 @@ PyObject *chatClose(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatCreateChatSet(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -48,7 +49,7 @@ PyObject *chatCreateChatSet(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatUpdate(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -58,7 +59,7 @@ PyObject *chatUpdate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatRender(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -68,10 +69,10 @@ PyObject *chatRender(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetBoardState(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int iState;
+    int iState = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iState))
         return Py_BuildException();
 
@@ -82,13 +83,13 @@ PyObject *chatSetBoardState(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ix))
         return Py_BuildException();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iy))
         return Py_BuildException();
 
@@ -99,10 +100,10 @@ PyObject *chatSetPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetHeight(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int iHeight;
+    int iHeight = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iHeight))
         return Py_BuildException();
 
@@ -113,10 +114,10 @@ PyObject *chatSetHeight(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetStep(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int iStep;
+    int iStep = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iStep))
         return Py_BuildException();
 
@@ -127,10 +128,10 @@ PyObject *chatSetStep(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatToggleChatMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
 
@@ -141,10 +142,10 @@ PyObject *chatToggleChatMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatEnableChatMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
 
@@ -155,10 +156,10 @@ PyObject *chatEnableChatMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatDisableChatMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
 
@@ -169,10 +170,10 @@ PyObject *chatDisableChatMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetEndPos(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
-    float fPos;
+    float fPos = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fPos))
         return Py_BuildException();
 
@@ -183,7 +184,7 @@ PyObject *chatSetEndPos(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatGetLineCount(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -192,7 +193,7 @@ PyObject *chatGetLineCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatGetVisibleLineCount(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -201,7 +202,7 @@ PyObject *chatGetVisibleLineCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatGetLineStep(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -210,11 +211,11 @@ PyObject *chatGetLineStep(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatAppendChat(PyObject *poSelf, PyObject *poArgs)
 {
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iType))
         return Py_BuildException();
 
-    char *szChat;
+    char *szChat = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szChat))
         return Py_BuildException();
 
@@ -225,15 +226,15 @@ PyObject *chatAppendChat(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatAppendChatWithDelay(PyObject *poSelf, PyObject *poArgs)
 {
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iType))
         return Py_BuildException();
 
-    char *szChat;
+    char *szChat = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szChat))
         return Py_BuildException();
 
-    int iDelay;
+    int iDelay = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iDelay))
         return Py_BuildException();
 
@@ -244,7 +245,7 @@ PyObject *chatAppendChatWithDelay(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatArrangeShowingChat(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
@@ -255,7 +256,7 @@ PyObject *chatArrangeShowingChat(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatIgnoreCharacter(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
@@ -266,7 +267,7 @@ PyObject *chatIgnoreCharacter(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatIsIgnoreCharacter(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
@@ -277,7 +278,7 @@ PyObject *chatIsIgnoreCharacter(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatCreateWhisper(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
@@ -288,15 +289,15 @@ PyObject *chatCreateWhisper(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatAppendWhisper(PyObject *poSelf, PyObject *poArgs)
 {
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iType))
         return Py_BuildException();
 
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szName))
         return Py_BuildException();
 
-    char *szChat;
+    char *szChat = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szChat))
         return Py_BuildException();
 
@@ -306,19 +307,19 @@ PyObject *chatAppendWhisper(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatRenderWhisper(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fx))
         return Py_BuildException();
 
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fy))
         return Py_BuildException();
 
-    CWhisper *pWhisper;
+    CWhisper *pWhisper = nullptr;
     if (CPythonChat::Instance().GetWhisper(szName, &pWhisper))
     {
         pWhisper->Render(fx, fy);
@@ -329,19 +330,19 @@ PyObject *chatRenderWhisper(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetWhisperBoxSize(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
-    float fWidth;
+    float fWidth = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fWidth))
         return Py_BuildException();
 
-    float fHeight;
+    float fHeight = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fHeight))
         return Py_BuildException();
 
-    CWhisper *pWhisper;
+    CWhisper *pWhisper = nullptr;
     if (CPythonChat::Instance().GetWhisper(szName, &pWhisper))
     {
         pWhisper->SetBoxSize(fWidth, fHeight);
@@ -352,15 +353,15 @@ PyObject *chatSetWhisperBoxSize(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatSetWhisperPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
-    float fPosition;
+    float fPosition = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fPosition))
         return Py_BuildException();
 
-    CWhisper *pWhisper;
+    CWhisper *pWhisper = nullptr;
     if (CPythonChat::Instance().GetWhisper(szName, &pWhisper))
     {
         pWhisper->SetPosition(fPosition);
@@ -371,7 +372,7 @@ PyObject *chatSetWhisperPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatClearWhisper(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
@@ -382,7 +383,7 @@ PyObject *chatClearWhisper(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatInitWhisper(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *poInterface;
+    PyObject *poInterface = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &poInterface))
         return Py_BuildException();
 
@@ -392,29 +393,29 @@ PyObject *chatInitWhisper(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chatGetLinkFromHyperlink(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szHyperlink;
+    char *szHyperlink = nullptr;
 
     if (!PyTuple_GetString(poArgs, 0, &szHyperlink))
         return Py_BuildException();
 
-    std::string stHyperlink(szHyperlink);
+    std::string const stHyperlink(szHyperlink);
     std::vector<std::string> results;
 
     split_string(stHyperlink, ":", results, false);
 
     // item:vnum:flag:socket0:socket1:socket2
-    if (0 == results[0].compare("item"))
+    if ("item" == results[0])
     {
         if (results.size() < 6)
             return Py_BuildValue("s", "");
 
-        CItemData *pItemData = NULL;
+        CItemData *pItemData = nullptr;
 
         if (CItemManager::Instance().GetItemDataPointer(htoi(results[1].c_str()), &pItemData))
         {
             char buf[1024] = {0};
             char itemlink[256];
-            int len;
+            int len = 0;
             bool isAttr = false;
 
             len = snprintf(itemlink, sizeof(itemlink), "item:%x:%x:%x:%x:%x", htoi(results[1].c_str()),
@@ -432,10 +433,14 @@ PyObject *chatGetLinkFromHyperlink(PyObject *poSelf, PyObject *poArgs)
             }
 
             if (isAttr)
+            {
                 //"item:번호:플래그:소켓0:소켓1:소켓2"
                 snprintf(buf, sizeof(buf), "|cffffc700|H%s|h[%s]|h|r", itemlink, pItemData->GetName());
+            }
             else
+            {
                 snprintf(buf, sizeof(buf), "|cfff1e6c0|H%s|h[%s]|h|r", itemlink, pItemData->GetName());
+            }
 
             return Py_BuildValue("s", buf);
         }
@@ -489,7 +494,7 @@ void initChat()
         // Link
         {"GetLinkFromHyperlink", chatGetLinkFromHyperlink, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("chat", s_methods);

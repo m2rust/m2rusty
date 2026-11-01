@@ -7,8 +7,8 @@
 
 const int c_iFastestSendingCount = 3;
 const int c_iSlowestSendingCount = 3;
-const float c_fFastestSendingDelay = 1.0f / float(c_iFastestSendingCount);
-const float c_fSlowestSendingDelay = 1.0f / float(c_iSlowestSendingCount);
+const float c_fFastestSendingDelay = 1.0f / static_cast<float>(c_iFastestSendingCount);
+const float c_fSlowestSendingDelay = 1.0f / static_cast<float>(c_iSlowestSendingCount);
 const float c_fRotatingStepTime = 0.5f;
 
 const float c_fComboDistance = 250.0f;
@@ -18,8 +18,10 @@ DWORD CPythonPlayer::__GetPickableDistance()
 {
     CInstanceBase *pkInstMain = NEW_GetMainActorPtr();
     if (pkInstMain)
+    {
         if (pkInstMain->IsMountingHorse())
             return 500;
+    }
 
     return 300;
 }
@@ -33,7 +35,7 @@ void CPythonPlayer::PickCloseMoney()
     TPixelPosition kPPosMain;
     pkInstMain->NEW_GetPixelPosition(&kPPosMain);
 
-    DWORD dwItemID;
+    DWORD dwItemID = 0;
     CPythonItem &rkItem = CPythonItem::Instance();
     if (!rkItem.GetCloseMoney(kPPosMain, &dwItemID, __GetPickableDistance()))
         return;
@@ -50,7 +52,7 @@ void CPythonPlayer::PickCloseItem()
     TPixelPosition kPPosMain;
     pkInstMain->NEW_GetPixelPosition(&kPPosMain);
 
-    DWORD dwItemID;
+    DWORD dwItemID = 0;
     CPythonItem &rkItem = CPythonItem::Instance();
     if (!rkItem.GetCloseItem(kPPosMain, &dwItemID, __GetPickableDistance()))
         return;
@@ -68,7 +70,7 @@ bool CPythonPlayer::__IsSameTargetVID(DWORD dwVID)
     return dwVID == __GetTargetVID();
 }
 
-DWORD CPythonPlayer::__GetTargetVID()
+DWORD CPythonPlayer::__GetTargetVID() const
 {
     return m_dwTargetVID;
 }
@@ -120,7 +122,7 @@ void CPythonPlayer::SetTarget(DWORD dwVID, BOOL bForceChange)
         return;
     }
 
-    DWORD dwCurrentTime = CTimer::Instance().GetCurrentMillisecond();
+    DWORD const dwCurrentTime = CTimer::Instance().GetCurrentMillisecond();
 
     if (__IsSameTargetVID(dwVID))
     {
@@ -183,7 +185,7 @@ void CPythonPlayer::SetTarget(DWORD dwVID, BOOL bForceChange)
 
 bool CPythonPlayer::__ChangeTargetToPickedInstance()
 {
-    DWORD dwVID;
+    DWORD dwVID = 0;
     if (!CPythonCharacterManager::Instance().OLD_GetPickedInstanceVID(&dwVID))
         return false;
 
@@ -202,15 +204,15 @@ CInstanceBase *CPythonPlayer::__GetSkillTargetInstancePtr(CPythonSkill::TSkillDa
 CInstanceBase *CPythonPlayer::__GetDeadTargetInstancePtr()
 {
     if (!__IsTarget())
-        return NULL;
+        return nullptr;
 
     CInstanceBase *pkInstTarget = __GetTargetActorPtr();
 
     if (!pkInstTarget)
-        return NULL;
+        return nullptr;
 
     if (!pkInstTarget->IsDead())
-        return NULL;
+        return nullptr;
 
     return pkInstTarget;
 }
@@ -218,15 +220,15 @@ CInstanceBase *CPythonPlayer::__GetDeadTargetInstancePtr()
 CInstanceBase *CPythonPlayer::__GetAliveTargetInstancePtr()
 {
     if (!__IsTarget())
-        return NULL;
+        return nullptr;
 
     CInstanceBase *pkInstTarget = __GetTargetActorPtr();
 
     if (!pkInstTarget)
-        return NULL;
+        return nullptr;
 
     if (pkInstTarget->IsDead())
-        return NULL;
+        return nullptr;
 
     return pkInstTarget;
 }
@@ -283,8 +285,10 @@ void CPythonPlayer::__OnClickActor(CInstanceBase &rkInstMain, DWORD dwPickedActo
     // 2005.01.28.myevan
     // 초급말 상태에서는 공격이 안되나 NPC 클릭이되어야함
     if (rkInstMain.IsAttackableInstance(*pkInstVictim))
+    {
         if (!__CanAttack())
             return;
+    }
 
     if (!rkInstMain.NEW_IsClickableDistanceDestInstance(rkInstVictim))
     {
@@ -298,7 +302,6 @@ void CPythonPlayer::__OnClickActor(CInstanceBase &rkInstMain, DWORD dwPickedActo
     }
 
     rkInstMain.NEW_Stop();
-    return;
 }
 
 void CPythonPlayer::__OnPressActor(CInstanceBase &rkInstMain, DWORD dwPickedActorID, bool isAuto)
@@ -341,8 +344,10 @@ void CPythonPlayer::__OnPressActor(CInstanceBase &rkInstMain, DWORD dwPickedActo
     if (rkInstMain.IsBowMode())
     {
         if (rkInstMain.IsAttackableInstance(rkInstVictim))
+        {
             if (!__CanShot(rkInstMain, rkInstVictim))
                 return;
+        }
     }
 
     if (!rkInstMain.NEW_IsClickableDistanceDestInstance(rkInstVictim))
@@ -363,7 +368,7 @@ void CPythonPlayer::__OnPressActor(CInstanceBase &rkInstMain, DWORD dwPickedActo
 
 void CPythonPlayer::__OnPressItem(CInstanceBase &rkInstMain, DWORD dwPickedItemID)
 {
-    static DWORD s_dwLastPickItemID = 0;
+    static DWORD const s_dwLastPickItemID = 0;
 
     if (s_dwLastPickItemID == dwPickedItemID)
     {
@@ -404,9 +409,10 @@ void CPythonPlayer::SetMovableGroundDistance(float fDistance)
     MOVABLE_GROUND_DISTANCE = fDistance;
 }
 
-bool CPythonPlayer::__IsMovableGroundDistance(CInstanceBase &rkInstMain, const TPixelPosition &c_rkPPosPickedGround)
+bool CPythonPlayer::__IsMovableGroundDistance(CInstanceBase &rkInstMain,
+                                              const TPixelPosition &c_rkPPosPickedGround) const
 {
-    float fDistance = rkInstMain.NEW_GetDistanceFromDestPixelPosition(c_rkPPosPickedGround);
+    float const fDistance = rkInstMain.NEW_GetDistanceFromDestPixelPosition(c_rkPPosPickedGround);
 
     if (fDistance < MOVABLE_GROUND_DISTANCE)
         return false;
@@ -453,13 +459,15 @@ bool CPythonPlayer::NEW_MoveToDirection(float fDirRot)
         return false;
 
     if (pkInstMain->isLock())
+    {
         if (!pkInstMain->IsUsingMovingSkill())
             return true;
+    }
 
     CCamera *pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
     if (pkCmrCur)
     {
-        float fCmrCurRot = CameraRotationToCharacterRotation(pkCmrCur->GetRoll());
+        float const fCmrCurRot = CameraRotationToCharacterRotation(pkCmrCur->GetRoll());
 
         // 현재
         if (m_isCmrRot)
@@ -470,13 +478,17 @@ bool CPythonPlayer::NEW_MoveToDirection(float fDirRot)
 
             float fRotRat = fSigDirRot;
             if (fRotRat > 90.0f)
+            {
                 fRotRat = (180.0f - fRotRat);
+            }
             else if (fRotRat < -90.0f)
+            {
                 fRotRat = (-180.0f - fRotRat);
+            }
 
-            float fElapsedTime = CPythonApplication::Instance().GetGlobalElapsedTime();
+            float const fElapsedTime = CPythonApplication::Instance().GetGlobalElapsedTime();
 
-            float fRotDeg = -m_fCmrRotSpd * fElapsedTime * fRotRat / 90.0f;
+            float const fRotDeg = -m_fCmrRotSpd * fElapsedTime * fRotRat / 90.0f;
             pkCmrCur->Roll(fRotDeg);
         }
 
@@ -535,9 +547,11 @@ void CPythonPlayer::NEW_Fishing()
     {
         if (pkInstMain->CanFishing())
         {
-            int irot;
+            int irot = 0;
             if (pkInstMain->GetFishingRot(&irot))
+            {
                 CPythonNetworkStream::Instance().SendFishingPacket(irot);
+            }
             else
             {
                 PyCallClassMemberFunc(m_ppyGameWindow, "OnFishingWrongPlace", Py_BuildValue("()"));
@@ -603,7 +617,7 @@ void CPythonPlayer::NEW_Attack()
         CCamera *pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
         if (pkCmrCur)
         {
-            float fCmrCurRot = CameraRotationToCharacterRotation(pkCmrCur->GetRoll());
+            float const fCmrCurRot = CameraRotationToCharacterRotation(pkCmrCur->GetRoll());
 
             fDirRot = fmod(360.0f + fCmrCurRot + fDirRot, 360.0f);
         }
@@ -772,40 +786,52 @@ void CPythonPlayer::NEW_GetMultiKeyDirRotation(bool isLeft, bool isRight, bool i
     float fScrY = 0.0f;
 
     if (isLeft)
+    {
         fScrX = 0.0f;
+    }
     else if (isRight)
+    {
         fScrX = 1.0f;
+    }
     else
+    {
         fScrX = 0.5f;
+    }
 
     if (isUp)
+    {
         fScrY = 0.0f;
+    }
     else if (isDown)
+    {
         fScrY = 1.0f;
+    }
     else
+    {
         fScrY = 0.5f;
+    }
 
     NEW_GetMouseDirRotation(fScrX, fScrY, pfDirRot);
 }
 
 void CPythonPlayer::NEW_GetMouseDirRotation(float fScrX, float fScrY, float *pfDirRot)
 {
-    long lWidth = UI::CWindowManager::Instance().GetScreenWidth();
-    long lHeight = UI::CWindowManager::Instance().GetScreenHeight();
-    int nScrPosX = lWidth * fScrX;
-    int nScrPosY = lHeight * fScrY;
-    int nScrWidth = lWidth;
-    int nScrHeight = lHeight;
-    int nScrCenterX = nScrWidth / 2;
-    int nScrCenterY = nScrHeight / 2;
+    long const lWidth = UI::CWindowManager::Instance().GetScreenWidth();
+    long const lHeight = UI::CWindowManager::Instance().GetScreenHeight();
+    int const nScrPosX = lWidth * fScrX;
+    int const nScrPosY = lHeight * fScrY;
+    int const nScrWidth = lWidth;
+    int const nScrHeight = lHeight;
+    int const nScrCenterX = nScrWidth / 2;
+    int const nScrCenterY = nScrHeight / 2;
 
-    float finputRotation = GetDegreeFromPosition(nScrPosX, nScrPosY, nScrCenterX, nScrCenterY);
+    float const finputRotation = GetDegreeFromPosition(nScrPosX, nScrPosY, nScrCenterX, nScrCenterY);
     *pfDirRot = finputRotation;
 }
 
 float CPythonPlayer::GetDegreeFromPosition(int ix, int iy, int iHalfWidth, int iHalfHeight)
 {
-    D3DXVECTOR3 vtDir(float(ix - iHalfWidth), float(iy - iHalfHeight), 0.0f);
+    D3DXVECTOR3 vtDir(static_cast<float>(ix - iHalfWidth), static_cast<float>(iy - iHalfHeight), 0.0f);
     D3DXVec3Normalize(&vtDir, &vtDir);
 
     D3DXVECTOR3 vtStan(0, -1, 0);

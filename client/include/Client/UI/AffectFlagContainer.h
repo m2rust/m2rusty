@@ -6,12 +6,11 @@ class CAffectFlagContainer
     enum
     {
         BIT_SIZE = 64,
-        BYTE_SIZE = BIT_SIZE / 8 + (1 * ((BIT_SIZE & 7) ? 1 : 0)),
+        BYTE_SIZE = (BIT_SIZE / 8) + (1 * ((BIT_SIZE & 7) ? 1 : 0)),
     };
 
-  public:
     CAffectFlagContainer();
-    ~CAffectFlagContainer();
+    ~CAffectFlagContainer() = default;
 
     void Clear();
     void CopyInstance(const CAffectFlagContainer &c_rkAffectContainer);
@@ -23,7 +22,7 @@ class CAffectFlagContainer
     void ConvertToPosition(unsigned *uRetX, unsigned *uRetY) const;
 
   private:
-    typedef unsigned char Element;
+    using Element = unsigned char;
 
-    Element m_aElement[BYTE_SIZE];
+    Element m_aElement[BYTE_SIZE]{};
 };

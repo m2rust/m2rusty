@@ -7,7 +7,7 @@ class CPythonIME : public IIMEEventSink, public CIME, public CSingleton<CPythonI
 {
   public:
     CPythonIME();
-    virtual ~CPythonIME();
+    ~CPythonIME() override;
 
     void MoveLeft();
     void MoveRight();
@@ -23,11 +23,11 @@ class CPythonIME : public IIMEEventSink, public CIME, public CSingleton<CPythonI
     virtual void OnReturn();
     virtual void OnEscape();
 
-    virtual bool OnWM_CHAR(WPARAM wParam, LPARAM lParam);
-    virtual void OnUpdate();
-    virtual void OnChangeCodePage();
-    virtual void OnOpenCandidateList();
-    virtual void OnCloseCandidateList();
-    virtual void OnOpenReadingWnd();
-    virtual void OnCloseReadingWnd();
+    bool OnWM_CHAR(WPARAM wParam, LPARAM lParam) override;
+    void OnUpdate() override;
+    void OnChangeCodePage() override;
+    void OnOpenCandidateList() override;
+    void OnCloseCandidateList() override;
+    void OnOpenReadingWnd() override;
+    void OnCloseReadingWnd() override;
 };

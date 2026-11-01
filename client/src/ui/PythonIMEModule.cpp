@@ -28,7 +28,7 @@ PyObject *imeDisableCaptureInput(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeSetMax(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMax;
+    int iMax = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMax))
         return Py_BuildException();
 
@@ -38,7 +38,7 @@ PyObject *imeSetMax(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeSetUserMax(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMax;
+    int iMax = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMax))
         return Py_BuildException();
 
@@ -48,7 +48,7 @@ PyObject *imeSetUserMax(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeSetText(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szText;
+    char *szText = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szText))
         return Py_BuildException();
 
@@ -58,12 +58,12 @@ PyObject *imeSetText(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeGetText(PyObject *poSelf, PyObject *poArgs)
 {
-    int bCodePage;
+    int bCodePage = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &bCodePage))
         bCodePage = 0;
 
     std::string strText;
-    CPythonIME::Instance().GetText(strText, bCodePage ? true : false);
+    CPythonIME::Instance().GetText(strText, bCodePage != 0);
     return Py_BuildValue("s", strText.c_str());
 }
 
@@ -79,12 +79,12 @@ PyObject *imeGetCandidateCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeGetCandidate(PyObject *poSelf, PyObject *poArgs)
 {
-    int index;
+    int index = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &index))
         return Py_BuildException();
 
     std::string strText;
-    int iLength = CPythonIME::Instance().GetCandidate(index, strText);
+    int const iLength = CPythonIME::Instance().GetCandidate(index, strText);
     return Py_BuildValue("si", strText.c_str(), iLength);
 }
 
@@ -119,7 +119,7 @@ PyObject *imeDisableIME(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeSetInputMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int mode;
+    int mode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &mode))
         return Py_BuildException();
 
@@ -135,7 +135,7 @@ PyObject *imeSetNumberMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeAddExceptKey(PyObject *poSelf, PyObject *poArgs)
 {
-    int key;
+    int key = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &key))
         return Py_BuildException();
 
@@ -188,7 +188,7 @@ PyObject *imeMoveEnd(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeSetCursorPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iPosition;
+    int iPosition = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iPosition))
         return Py_BuildException();
 
@@ -212,17 +212,17 @@ PyObject *imePasteTextFromClipBoard(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imeEnablePaste(PyObject *poSelf, PyObject *poArgs)
 {
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iFlag))
         return Py_BuildException();
 
-    CPythonIME::Instance().EnablePaste(iFlag ? true : false);
+    CPythonIME::Instance().EnablePaste(iFlag != 0);
     return Py_BuildNone();
 }
 
 PyObject *imePasteString(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szText;
+    char *szText = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szText))
         return Py_BuildException();
     CPythonIME::Instance().PasteString(szText);
@@ -231,13 +231,13 @@ PyObject *imePasteString(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *imePasteBackspace(PyObject *poSelf, PyObject *poArgs)
 {
-    CPythonIME::Instance().WMChar(NULL, WM_CHAR, 0x08, NULL);
+    CPythonIME::Instance().WMChar(nullptr, WM_CHAR, 0x08, NULL);
     return Py_BuildNone();
 }
 
 PyObject *imePasteReturn(PyObject *poSelf, PyObject *poArgs)
 {
-    CPythonIME::Instance().WMChar(NULL, WM_CHAR, 0x0D, NULL);
+    CPythonIME::Instance().WMChar(nullptr, WM_CHAR, 0x0D, NULL);
     return Py_BuildNone();
 }
 
@@ -281,7 +281,7 @@ void initime()
         {"PasteTextFromClipBoard", imePasteTextFromClipBoard, METH_VARARGS},
         {"EnablePaste", imeEnablePaste, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     Py_InitModule("ime", s_methods);

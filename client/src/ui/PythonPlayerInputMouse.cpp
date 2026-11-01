@@ -3,6 +3,7 @@
 #include <Client/UI/PythonApplication.h>
 
 #include <Neoeter/Render/Camera.h>
+#include <math.h>
 
 void CPythonPlayer::NEW_SetMouseMoveState(int eMBS)
 {
@@ -22,18 +23,18 @@ void CPythonPlayer::NEW_SetMouseMoveState(int eMBS)
 
 bool CPythonPlayer::NEW_MoveToMouseScreenDirection()
 {
-    UI::CWindowManager &rkWndMgr = UI::CWindowManager::Instance();
+    UI::CWindowManager const &rkWndMgr = UI::CWindowManager::Instance();
 
-    long lMouseX;
-    long lMouseY;
+    long lMouseX = 0;
+    long lMouseY = 0;
     rkWndMgr.GetMousePosition(lMouseX, lMouseY);
 
-    long lScrWidth = rkWndMgr.GetScreenWidth();
-    long lScrHeight = rkWndMgr.GetScreenHeight();
-    float fMouseX = lMouseX / float(lScrWidth);
-    float fMouseY = lMouseY / float(lScrHeight);
+    long const lScrWidth = rkWndMgr.GetScreenWidth();
+    long const lScrHeight = rkWndMgr.GetScreenHeight();
+    float const fMouseX = lMouseX / static_cast<float>(lScrWidth);
+    float const fMouseY = lMouseY / static_cast<float>(lScrHeight);
 
-    float fDirRot;
+    float fDirRot = NAN;
     NEW_GetMouseDirRotation(fMouseX, fMouseY, &fDirRot);
 
     return NEW_MoveToDirection(fDirRot);
@@ -49,10 +50,10 @@ void CPythonPlayer::NEW_SetMouseCameraState(int eMBS)
     {
         if (MBS_PRESS == eMBS)
         {
-            UI::CWindowManager &rkWndMgr = UI::CWindowManager::Instance();
+            UI::CWindowManager const &rkWndMgr = UI::CWindowManager::Instance();
 
-            long lMouseX;
-            long lMouseY;
+            long lMouseX = 0;
+            long lMouseY = 0;
             rkWndMgr.GetMousePosition(lMouseX, lMouseY);
 
             pkCmrCur->BeginDrag(lMouseX, lMouseY);
@@ -66,7 +67,7 @@ void CPythonPlayer::NEW_SetMouseCameraState(int eMBS)
         }
         else if (MBS_CLICK == eMBS)
         {
-            bool isCameraDrag = pkCmrCur->EndDrag();
+            bool const isCameraDrag = pkCmrCur->EndDrag();
 
             if (!rkBG.IsMapReady())
                 return;
@@ -79,7 +80,7 @@ void CPythonPlayer::NEW_SetMouseCameraState(int eMBS)
             {
                 __ChangeTargetToPickedInstance();
 
-                CInstanceBase *pkInstPicked;
+                CInstanceBase *pkInstPicked = nullptr;
                 if (__GetPickedActorPtr(&pkInstPicked))
                 {
                     OpenCharacterMenu(pkInstPicked->GetVirtualID());
@@ -131,13 +132,13 @@ void CPythonPlayer::NEW_SetMouseSmartState(int eMBS, bool isAuto)
 
 void CPythonPlayer::__OnPressSmart(CInstanceBase &rkInstMain, bool isAuto)
 {
-    DWORD dwPickedItemID;
-    DWORD dwPickedActorID;
+    DWORD dwPickedItemID = 0;
+    DWORD dwPickedActorID = 0;
     TPixelPosition kPPosPickedGround;
 
-    bool isPickedItemID = __GetPickedItemID(&dwPickedItemID);
-    bool isPickedActorID = __GetPickedActorID(&dwPickedActorID);
-    bool isPickedGroundPos = __GetPickedGroundPos(&kPPosPickedGround);
+    bool const isPickedItemID = __GetPickedItemID(&dwPickedItemID);
+    bool const isPickedActorID = __GetPickedActorID(&dwPickedActorID);
+    bool const isPickedGroundPos = __GetPickedGroundPos(&kPPosPickedGround);
 
     if (isPickedItemID)
     {
@@ -159,8 +160,8 @@ void CPythonPlayer::__OnPressSmart(CInstanceBase &rkInstMain, bool isAuto)
 
 void CPythonPlayer::__OnClickSmart(CInstanceBase &rkInstMain, bool isAuto)
 {
-    DWORD dwPickedItemID;
-    DWORD dwPickedActorID;
+    DWORD dwPickedItemID = 0;
+    DWORD dwPickedActorID = 0;
     TPixelPosition kPPosPickedGround;
     if (__GetPickedItemID(&dwPickedItemID))
     {
@@ -227,7 +228,7 @@ bool CPythonPlayer::NEW_SetMouseState(int eMBT, int eMBS)
     if (eMBT >= MBT_NUM)
         return false;
 
-    int eMBF = m_aeMBFButton[eMBT];
+    int const eMBF = m_aeMBFButton[eMBT];
     switch (eMBF)
     {
     case MBF_MOVE:
@@ -299,7 +300,7 @@ void CPythonPlayer::NEW_RefreshMouseWalkingDirection()
                 TPixelPosition kPPosCur;
                 pkInstMain->NEW_GetPixelPosition(&kPPosCur);
 
-                float fCurRot = pkInstMain->GetRotation();
+                float const fCurRot = pkInstMain->GetRotation();
                 rkNetStream.SendCharacterStatePacket(kPPosCur, fCurRot, CInstanceBase::FUNC_WAIT, 0);
                 SendClickItemPacket(m_dwIIDReserved);
 
@@ -327,11 +328,13 @@ void CPythonPlayer::NEW_RefreshMouseWalkingDirection()
 
     case MODE_CLICK_POSITION: {
         if (!pkInstMain->isLock())
+        {
             if (NEW_IsEmptyReservedDelayTime(CPythonApplication::Instance().GetGlobalElapsedTime()))
             {
                 pkInstMain->NEW_MoveToDestPixelPositionDirection(m_kPPosReserved);
                 __ClearReservedAction();
             }
+        }
         break;
     }
 
@@ -349,7 +352,7 @@ void CPythonPlayer::NEW_RefreshMouseWalkingDirection()
                                      // 바운드 스피어를 고려해야함
             }
 
-            if (fDistance < float(m_dwSkillRangeReserved))
+            if (fDistance < static_cast<float>(m_dwSkillRangeReserved))
             {
                 // 접근 도중 Target 이 바뀌어 있을 수도 있다 - [levites]
                 SetTarget(m_dwVIDReserved);

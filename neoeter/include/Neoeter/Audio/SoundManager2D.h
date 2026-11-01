@@ -13,7 +13,7 @@ class CSoundManager2D : public CSoundBase
     };
 
     CSoundManager2D();
-    virtual ~CSoundManager2D();
+    ~CSoundManager2D() override;
 
     bool Initialize();
     void Destroy();

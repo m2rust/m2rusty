@@ -7,7 +7,7 @@ namespace UI
 class CWindow
 {
   public:
-    typedef std::list<CWindow *> TWindowContainer;
+    using TWindowContainer = std::list<CWindow *>;
 
     static DWORD Type();
     BOOL IsType(DWORD dwType);
@@ -42,7 +42,6 @@ class CWindow
         FLAG_RTL = (1 << 11), // Right-to-left
     };
 
-  public:
     CWindow(PyObject *ppyObject);
     virtual ~CWindow();
 
@@ -59,11 +58,11 @@ class CWindow
         return m_strName.c_str();
     }
     void SetSize(long width, long height);
-    long GetWidth()
+    long GetWidth() const
     {
         return m_lWidth;
     }
-    long GetHeight()
+    long GetHeight() const
     {
         return m_lHeight;
     }
@@ -71,12 +70,12 @@ class CWindow
     void SetHorizontalAlign(DWORD dwAlign);
     void SetVerticalAlign(DWORD dwAlign);
     void SetPosition(long x, long y);
-    void GetPosition(long *plx, long *ply);
-    long GetPositionX(void) const
+    void GetPosition(long *plx, long *ply) const;
+    long GetPositionX() const
     {
         return m_x;
     }
-    long GetPositionY(void) const
+    long GetPositionY() const
     {
         return m_y;
     }
@@ -84,8 +83,8 @@ class CWindow
     {
         return m_rect;
     }
-    void GetLocalPosition(long &rlx, long &rly);
-    void GetMouseLocalPosition(long &rlx, long &rly);
+    void GetLocalPosition(long &rlx, long &rly) const;
+    void GetMouseLocalPosition(long &rlx, long &rly) const;
     long UpdateRect();
 
     RECT &GetLimitBias()
@@ -99,7 +98,7 @@ class CWindow
 
     void Show();
     void Hide();
-    bool IsShow()
+    bool IsShow() const
     {
         return m_bShow;
     }
@@ -107,11 +106,11 @@ class CWindow
 
     bool HasParent()
     {
-        return m_pParent ? true : false;
+        return m_pParent != nullptr;
     }
     bool HasChild()
     {
-        return m_pChildList.empty() ? false : true;
+        return !m_pChildList.empty();
     }
     int GetChildCount()
     {
@@ -124,7 +123,7 @@ class CWindow
     void DeleteChild(CWindow *pWin);
     void SetTop(CWindow *pWin);
 
-    bool IsIn(long x, long y);
+    bool IsIn(long x, long y) const;
     bool IsIn();
     CWindow *PickWindow(long x, long y);
     CWindow *PickTopWindow(long x,
@@ -141,9 +140,9 @@ class CWindow
     {
         REMOVE_BIT(m_dwFlag, flag);
     }
-    bool IsFlag(DWORD flag)
+    bool IsFlag(DWORD flag) const
     {
-        return (m_dwFlag & flag) ? true : false;
+        return (m_dwFlag & flag) != 0;
     }
     /////////////////////////////////////
 
@@ -219,22 +218,22 @@ class CWindow
 
     EHorizontalAlign m_HorizontalAlign;
     EVerticalAlign m_VerticalAlign;
-    long m_x, m_y;            // X,Y 상대좌표
-    long m_lWidth, m_lHeight; // 크기
-    RECT m_rect;              // Global 좌표
-    RECT m_limitBiasRect;     // limit bias 값
+    long m_x = 0, m_y = 0;            // X,Y 상대좌표
+    long m_lWidth = 0, m_lHeight = 0; // 크기
+    RECT m_rect{};                    // Global 좌표
+    RECT m_limitBiasRect{};           // limit bias 값
 
-    bool m_bMovable;
-    bool m_bShow;
+    bool m_bMovable = false;
+    bool m_bShow = false;
 
-    DWORD m_dwFlag;
+    DWORD m_dwFlag = 0;
 
     PyObject *m_poHandler;
 
     CWindow *m_pParent;
     TWindowContainer m_pChildList;
 
-    BOOL m_isUpdatingChildren;
+    BOOL m_isUpdatingChildren = FALSE;
     TWindowContainer m_pReserveChildList;
 
 #ifdef _DEBUG
@@ -249,11 +248,9 @@ class CLayer : public CWindow
     CLayer(PyObject *ppyObject) : CWindow(ppyObject)
     {
     }
-    virtual ~CLayer()
-    {
-    }
+    ~CLayer() override = default;
 
-    BOOL IsWindow()
+    BOOL IsWindow() override
     {
         return FALSE;
     }
@@ -263,45 +260,42 @@ class CBox : public CWindow
 {
   public:
     CBox(PyObject *ppyObject);
-    virtual ~CBox();
+    ~CBox() override;
 
-    void SetColor(DWORD dwColor);
-
-  protected:
-    void OnRender();
+    void SetColor(DWORD dwColor) override;
 
   protected:
-    DWORD m_dwColor;
+    void OnRender() override;
+
+    DWORD m_dwColor = 0xff000000;
 };
 
 class CBar : public CWindow
 {
   public:
     CBar(PyObject *ppyObject);
-    virtual ~CBar();
+    ~CBar() override;
 
-    void SetColor(DWORD dwColor);
-
-  protected:
-    void OnRender();
+    void SetColor(DWORD dwColor) override;
 
   protected:
-    DWORD m_dwColor;
+    void OnRender() override;
+
+    DWORD m_dwColor = 0xff000000;
 };
 
 class CLine : public CWindow
 {
   public:
     CLine(PyObject *ppyObject);
-    virtual ~CLine();
+    ~CLine() override;
 
-    void SetColor(DWORD dwColor);
-
-  protected:
-    void OnRender();
+    void SetColor(DWORD dwColor) override;
 
   protected:
-    DWORD m_dwColor;
+    void OnRender() override;
+
+    DWORD m_dwColor = 0xff000000;
 };
 
 class CBar3D : public CWindow
@@ -309,16 +303,14 @@ class CBar3D : public CWindow
   public:
     static DWORD Type();
 
-  public:
     CBar3D(PyObject *ppyObject);
-    virtual ~CBar3D();
+    ~CBar3D() override;
 
     void SetColor(DWORD dwLeft, DWORD dwRight, DWORD dwCenter);
 
   protected:
-    void OnRender();
+    void OnRender() override;
 
-  protected:
     DWORD m_dwLeftColor;
     DWORD m_dwRightColor;
     DWORD m_dwCenterColor;
@@ -329,7 +321,7 @@ class CTextLine : public CWindow
 {
   public:
     CTextLine(PyObject *ppyObject);
-    virtual ~CTextLine();
+    ~CTextLine() override;
 
     void SetMax(int iMax);
     void SetHorizontalAlign(int iType);
@@ -352,13 +344,12 @@ class CTextLine : public CWindow
     void GetTextSize(int *pnWidth, int *pnHeight);
 
   protected:
-    void OnUpdate();
-    void OnRender();
-    void OnChangePosition();
+    void OnUpdate() override;
+    void OnRender() override;
+    void OnChangePosition() override;
 
     virtual void OnSetText(const char *c_szText);
 
-  protected:
     CGraphicTextInstance m_TextInstance;
 };
 
@@ -367,7 +358,7 @@ class CNumberLine : public CWindow
   public:
     CNumberLine(PyObject *ppyObject);
     CNumberLine(CWindow *pParent);
-    virtual ~CNumberLine();
+    ~CNumberLine() override;
 
     void SetPath(const char *c_szPath);
     void SetHorizontalAlign(int iType);
@@ -375,10 +366,9 @@ class CNumberLine : public CWindow
 
   protected:
     void ClearNumber();
-    void OnRender();
-    void OnChangePosition();
+    void OnRender() override;
+    void OnChangePosition() override;
 
-  protected:
     std::string m_strPath;
     std::string m_strNumber;
     std::vector<CGraphicImageInstance *> m_ImageInstanceVector;
@@ -392,7 +382,7 @@ class CImageBox : public CWindow
 {
   public:
     CImageBox(PyObject *ppyObject);
-    virtual ~CImageBox();
+    ~CImageBox() override;
 
     BOOL LoadImage(const char *c_szFileName);
     void SetDiffuseColor(float fr, float fg, float fb, float fa);
@@ -404,18 +394,17 @@ class CImageBox : public CWindow
     virtual void OnCreateInstance();
     virtual void OnDestroyInstance();
 
-    virtual void OnUpdate();
-    virtual void OnRender();
-    void OnChangePosition();
+    void OnUpdate() override;
+    void OnRender() override;
+    void OnChangePosition() override;
 
-  protected:
     CGraphicImageInstance *m_pImageInstance;
 };
 class CMarkBox : public CWindow
 {
   public:
     CMarkBox(PyObject *ppyObject);
-    virtual ~CMarkBox();
+    ~CMarkBox() override;
 
     void LoadImage(const char *c_szFilename);
     void SetDiffuseColor(float fr, float fg, float fb, float fa);
@@ -426,11 +415,10 @@ class CMarkBox : public CWindow
     virtual void OnCreateInstance();
     virtual void OnDestroyInstance();
 
-    virtual void OnUpdate();
-    virtual void OnRender();
-    void OnChangePosition();
+    void OnUpdate() override;
+    void OnRender() override;
+    void OnChangePosition() override;
 
-  protected:
     CGraphicMarkInstance *m_pMarkInstance;
 };
 class CExpandedImageBox : public CImageBox
@@ -438,9 +426,8 @@ class CExpandedImageBox : public CImageBox
   public:
     static DWORD Type();
 
-  public:
     CExpandedImageBox(PyObject *ppyObject);
-    virtual ~CExpandedImageBox();
+    ~CExpandedImageBox() override;
 
     void SetScale(float fx, float fy);
     void SetOrigin(float fx, float fy);
@@ -449,22 +436,21 @@ class CExpandedImageBox : public CImageBox
     void SetRenderingMode(int iMode);
 
   protected:
-    void OnCreateInstance();
-    void OnDestroyInstance();
+    void OnCreateInstance() override;
+    void OnDestroyInstance() override;
 
-    virtual void OnUpdate();
-    virtual void OnRender();
+    void OnUpdate() override;
+    void OnRender() override;
 
-    BOOL OnIsType(DWORD dwType);
+    BOOL OnIsType(DWORD dwType) override;
 };
 class CAniImageBox : public CWindow
 {
   public:
     static DWORD Type();
 
-  public:
     CAniImageBox(PyObject *ppyObject);
-    virtual ~CAniImageBox();
+    ~CAniImageBox() override;
 
     void SetDelay(int iDelay);
     void AppendImage(const char *c_szFileName);
@@ -474,17 +460,16 @@ class CAniImageBox : public CWindow
     void ResetFrame();
 
   protected:
-    void OnUpdate();
-    void OnRender();
-    void OnChangePosition();
+    void OnUpdate() override;
+    void OnRender() override;
+    void OnChangePosition() override;
     virtual void OnEndFrame();
 
-    BOOL OnIsType(DWORD dwType);
+    BOOL OnIsType(DWORD dwType) override;
 
-  protected:
-    BYTE m_bycurDelay;
-    BYTE m_byDelay;
-    BYTE m_bycurIndex;
+    BYTE m_bycurDelay = 0;
+    BYTE m_byDelay = 4;
+    BYTE m_bycurIndex = 0;
     std::vector<CGraphicExpandedImageInstance *> m_ImageVector;
 };
 
@@ -493,7 +478,7 @@ class CButton : public CWindow
 {
   public:
     CButton(PyObject *ppyObject);
-    virtual ~CButton();
+    ~CButton() override;
 
     BOOL SetUpVisual(const char *c_szFileName);
     BOOL SetOverVisual(const char *c_szFileName);
@@ -513,28 +498,27 @@ class CButton : public CWindow
     void Over();
     void Down();
 
-    BOOL IsDisable();
-    BOOL IsPressed();
+    BOOL IsDisable() const;
+    BOOL IsPressed() const;
 
   protected:
-    void OnUpdate();
-    void OnRender();
-    void OnChangePosition();
+    void OnUpdate() override;
+    void OnRender() override;
+    void OnChangePosition() override;
 
-    BOOL OnMouseLeftButtonDown();
-    BOOL OnMouseLeftButtonDoubleClick();
-    BOOL OnMouseLeftButtonUp();
-    void OnMouseOverIn();
-    void OnMouseOverOut();
+    BOOL OnMouseLeftButtonDown() override;
+    BOOL OnMouseLeftButtonDoubleClick() override;
+    BOOL OnMouseLeftButtonUp() override;
+    void OnMouseOverIn() override;
+    void OnMouseOverOut() override;
 
-    BOOL IsEnable();
+    BOOL IsEnable() const;
 
     void SetCurrentVisual(CGraphicImageInstance *pVisual);
 
-  protected:
-    BOOL m_bEnable;
-    BOOL m_isPressed;
-    BOOL m_isFlash;
+    BOOL m_bEnable = TRUE;
+    BOOL m_isPressed = FALSE;
+    BOOL m_isFlash = FALSE;
     CGraphicImageInstance *m_pcurVisual;
     CGraphicImageInstance m_upVisual;
     CGraphicImageInstance m_overVisual;
@@ -545,41 +529,40 @@ class CRadioButton : public CButton
 {
   public:
     CRadioButton(PyObject *ppyObject);
-    virtual ~CRadioButton();
+    ~CRadioButton() override;
 
   protected:
-    BOOL OnMouseLeftButtonDown();
-    BOOL OnMouseLeftButtonUp();
-    void OnMouseOverIn();
-    void OnMouseOverOut();
+    BOOL OnMouseLeftButtonDown() override;
+    BOOL OnMouseLeftButtonUp() override;
+    void OnMouseOverIn() override;
+    void OnMouseOverOut() override;
 };
 class CToggleButton : public CButton
 {
   public:
     CToggleButton(PyObject *ppyObject);
-    virtual ~CToggleButton();
+    ~CToggleButton() override;
 
   protected:
-    BOOL OnMouseLeftButtonDown();
-    BOOL OnMouseLeftButtonUp();
-    void OnMouseOverIn();
-    void OnMouseOverOut();
+    BOOL OnMouseLeftButtonDown() override;
+    BOOL OnMouseLeftButtonUp() override;
+    void OnMouseOverIn() override;
+    void OnMouseOverOut() override;
 };
 class CDragButton : public CButton
 {
   public:
     CDragButton(PyObject *ppyObject);
-    virtual ~CDragButton();
+    ~CDragButton() override;
 
     void SetRestrictMovementArea(int ix, int iy, int iwidth, int iheight);
 
   protected:
-    void OnChangePosition();
-    void OnMouseOverIn();
-    void OnMouseOverOut();
+    void OnChangePosition() override;
+    void OnMouseOverIn() override;
+    void OnMouseOverOut() override;
 
-  protected:
-    RECT m_restrictArea;
+    RECT m_restrictArea{};
 };
 }; // namespace UI
 

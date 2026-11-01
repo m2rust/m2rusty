@@ -9,17 +9,13 @@ class IActorInstance : public CGraphicThingInstance
     {
         ID = ACTOR_OBJECT
     };
-    int GetType() const
+    int GetType() const override
     {
         return ID;
     }
 
-    IActorInstance()
-    {
-    }
-    virtual ~IActorInstance()
-    {
-    }
+    IActorInstance() = default;
+    ~IActorInstance() override = default;
     virtual bool TestCollisionWithDynamicSphere(const CDynamicSphereInstance &dsi) = 0;
     virtual DWORD GetVirtualID() = 0;
 };

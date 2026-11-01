@@ -3,6 +3,8 @@
 
 #include <Neoeter/Render/TextFileLoader.h>
 
+#include <print>
+
 void PrintfTabs(FILE *File, int iTabCount, const char *c_szString, ...)
 {
     va_list args;
@@ -13,7 +15,7 @@ void PrintfTabs(FILE *File, int iTabCount, const char *c_szString, ...)
     va_end(args);
 
     for (int i = 0; i < iTabCount; ++i)
-        fprintf(File, "    ");
+        std::print(File, "    ");
 
     fprintf(File, szBuf);
 }
@@ -54,7 +56,7 @@ bool LoadMultipleTextData(const char *c_szFileName, CTokenVectorMap &rstTokenVec
     if (!CEterPackManager::Instance().Get(c_szFileName, modelData))
         return false;
 
-    DWORD i;
+    DWORD i = 0;
     CTokenVector stTokenVector;
 
     textFileLoader.Bind(modelData->size(), modelData->data());
@@ -67,12 +69,12 @@ bool LoadMultipleTextData(const char *c_szFileName, CTokenVectorMap &rstTokenVec
         stl_lowers(stTokenVector[0]);
 
         // Start or End
-        if (0 == stTokenVector[0].compare("start"))
+        if ("start" == stTokenVector[0])
         {
             CTokenVector stSubTokenVector;
 
             stl_lowers(stTokenVector[1]);
-            std::string key = stTokenVector[1];
+            std::string const key = stTokenVector[1];
             stTokenVector.clear();
 
             for (i = i + 1; i < textFileLoader.GetLineCount(); ++i)
@@ -82,14 +84,14 @@ bool LoadMultipleTextData(const char *c_szFileName, CTokenVectorMap &rstTokenVec
 
                 stl_lowers(stSubTokenVector[0]);
 
-                if (0 == stSubTokenVector[0].compare("end"))
+                if ("end" == stSubTokenVector[0])
                 {
                     break;
                 }
 
-                for (DWORD j = 0; j < stSubTokenVector.size(); ++j)
+                for (const auto &j : stSubTokenVector)
                 {
-                    stTokenVector.push_back(stSubTokenVector[j]);
+                    stTokenVector.push_back(j);
                 }
             }
 
@@ -97,7 +99,7 @@ bool LoadMultipleTextData(const char *c_szFileName, CTokenVectorMap &rstTokenVec
         }
         else
         {
-            std::string key = stTokenVector[0];
+            std::string const key = stTokenVector[0];
             stTokenVector.erase(stTokenVector.begin());
             rstTokenVectorMap.insert(CTokenVectorMap::value_type(key, stTokenVector));
         }
@@ -111,10 +113,11 @@ D3DXVECTOR3 TokenToVector(CTokenVector &rVector)
     if (3 != rVector.size())
     {
         assert(!"Size of token vector which will be converted to vector is not 3");
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+        return {0.0f, 0.0f, 0.0f};
     }
 
-    return D3DXVECTOR3(atof(rVector[0].c_str()), atof(rVector[1].c_str()), atof(rVector[2].c_str()));
+    return {static_cast<float>(atof(rVector[0].c_str())), static_cast<float>(atof(rVector[1].c_str())),
+            static_cast<float>(atof(rVector[2].c_str()))};
 }
 
 D3DXCOLOR TokenToColor(CTokenVector &rVector)
@@ -122,16 +125,16 @@ D3DXCOLOR TokenToColor(CTokenVector &rVector)
     if (4 != rVector.size())
     {
         assert(!"Size of token vector which will be converted to color is not 4");
-        return D3DXCOLOR(1.0f, 1.0f, 1.0f, 1.0f);
+        return {1.0f, 1.0f, 1.0f, 1.0f};
     }
 
-    return D3DXCOLOR(atof(rVector[0].c_str()), atof(rVector[1].c_str()), atof(rVector[2].c_str()),
-                     atof(rVector[3].c_str()));
+    return {static_cast<float>(atof(rVector[0].c_str())), static_cast<float>(atof(rVector[1].c_str())),
+            static_cast<float>(atof(rVector[2].c_str())), static_cast<float>(atof(rVector[3].c_str()))};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-static std::string gs_fontFace = "";
+static std::string gs_fontFace;
 static DWORD gs_codePage = 0;
 
 int CALLBACK EnumFontFamExProc(CONST LOGFONT *plogFont, CONST TEXTMETRIC * /*textMetric*/, DWORD /*dwWord*/,
@@ -248,23 +251,23 @@ const char *GetFontFaceFromCodePage(WORD codePage)
 
     const char *fontFace = GetFontFaceFromCodePage9x(codePage);
 
-    HDC hDC = GetDC(NULL);
+    HDC hDC = GetDC(nullptr);
 
-    if (EnumFontFamiliesEx(hDC, &logFont, (FONTENUMPROC)EnumFontFamExProc, (LPARAM)fontFace, 0) == 0)
+    if (EnumFontFamiliesEx(hDC, &logFont, static_cast<FONTENUMPROC>(EnumFontFamExProc), (LPARAM)fontFace, 0) == 0)
     {
-        ReleaseDC(NULL, hDC);
+        ReleaseDC(nullptr, hDC);
         return fontFace;
     }
 
     fontFace = GetFontFaceFromCodePageNT(codePage);
 
-    if (EnumFontFamiliesEx(hDC, &logFont, (FONTENUMPROC)EnumFontFamExProc, (LPARAM)fontFace, 0) == 0)
+    if (EnumFontFamiliesEx(hDC, &logFont, static_cast<FONTENUMPROC>(EnumFontFamExProc), (LPARAM)fontFace, 0) == 0)
     {
-        ReleaseDC(NULL, hDC);
+        ReleaseDC(nullptr, hDC);
         return fontFace;
     }
 
-    ReleaseDC(NULL, hDC);
+    ReleaseDC(nullptr, hDC);
 
     return GetDefaultFontFace();
 }
@@ -278,7 +281,7 @@ bool SetDefaultCodePage(DWORD codePage)
 {
     gs_codePage = codePage;
 
-    std::string fontFace = GetFontFaceFromCodePage(codePage);
+    std::string const fontFace = GetFontFaceFromCodePage(codePage);
     if (fontFace.empty())
         return false;
 
@@ -314,8 +317,11 @@ void __strcat1(char *str, int i)
 
 void base64_decode(const char *str, char *resultStr)
 {
-    int nCount = 0, i = 0, r, result;
-    int length = strlen(str);
+    int nCount = 0;
+    int i = 0;
+    int r = 0;
+    int result = 0;
+    int const length = strlen(str);
     char szDest[5] = "";
 
     strcpy(resultStr, "");
@@ -330,9 +336,13 @@ void base64_decode(const char *str, char *resultStr)
             if (result != -2)
             {
                 if (result != -1)
+                {
                     szDest[i++] = result;
+                }
                 else
+                {
                     szDest[i++] = '@'; // It's end  (64번은 디코딩시 사용되지 않기 때문)
+                }
             }
         }
 
@@ -345,24 +355,21 @@ void base64_decode(const char *str, char *resultStr)
                     __strcat1(resultStr, (szDest[0] << 2));
                     break;
                 } // exit while loop
-                else
-                    __strcat1(resultStr,
-                              (szDest[0] << 2 | szDest[1] >> 4)); // 1 Byte
+                __strcat1(resultStr,
+                          (szDest[0] << 2 | szDest[1] >> 4)); // 1 Byte
                 if (szDest[2] == '@')
                 {
                     __strcat1(resultStr, (szDest[1] << 4));
                     break;
                 }
-                else
-                    __strcat1(resultStr,
-                              (szDest[1] << 4 | szDest[2] >> 2)); // 2 Byte
+                __strcat1(resultStr,
+                          (szDest[1] << 4 | szDest[2] >> 2)); // 2 Byte
                 if (szDest[3] == '@')
                 {
                     __strcat1(resultStr, (szDest[2] << 6));
                     break;
                 }
-                else
-                    __strcat1(resultStr, (szDest[2] << 6 | szDest[3])); // 3 Byte
+                __strcat1(resultStr, (szDest[2] << 6 | szDest[3])); // 3 Byte
             }
             else
             {
@@ -378,9 +385,9 @@ void base64_decode(const char *str, char *resultStr)
 
     for (i = 0; i < strlen(resultStr); i++)
     {
-        char c = resultStr[i];
-        int xor_val = i + 5;
-        resultStr[i] = char(c ^ xor_val);
+        char const c = resultStr[i];
+        int const xor_val = i + 5;
+        resultStr[i] = static_cast<char>(c ^ xor_val);
     }
     // E
 }

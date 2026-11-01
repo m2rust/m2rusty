@@ -15,6 +15,7 @@ struct INPUTCONTEXT;
 class IIMEEventSink
 {
   public:
+    virtual ~IIMEEventSink() = default;
     virtual bool OnWM_CHAR(WPARAM wParam, LPARAM lParam) = 0;
     virtual void OnUpdate() = 0;
 
@@ -39,12 +40,11 @@ class CIME
         MAX_CANDIDATE_LENGTH = 256
     };
 
-  public:
     CIME();
     virtual ~CIME();
 
     bool Initialize(HWND hWnd);
-    void Uninitialize(void);
+    void Uninitialize();
 
     static void Clear();
 
@@ -84,7 +84,7 @@ class CIME
 
     void PasteTextFromClipBoard();
     void EnablePaste(bool bFlag);
-    void PasteString(const char *str);
+    void PasteString(const char *str) const;
     static void FinalizeString(bool bSend = false);
 
     void UseDefaultIME();
@@ -118,7 +118,6 @@ class CIME
     void SetCurPos(int offset);
     void DelCurPos();
 
-  protected:
     static void CheckInputLocale();
     static void CheckToggleState();
     static void SetSupportLevel(DWORD dwImeLevel);
@@ -149,17 +148,16 @@ class CIME
     static UINT(WINAPI *_GetReadingString)(HIMC, UINT, LPWSTR, PINT, BOOL *, PUINT);
     static BOOL(WINAPI *_ShowReadingWindow)(HIMC, BOOL);
 
-  protected:
-    HIMC m_hOrgIMC;
-    int m_max;
-    int m_userMax;
+    HIMC m_hOrgIMC = nullptr;
+    int m_max = IMESTR_MAXLEN;
+    int m_userMax = IMESTR_MAXLEN;
 
-    BOOL m_bOnlyNumberMode;
+    BOOL m_bOnlyNumberMode = false;
 
     std::vector<wchar_t> m_exceptKey;
 
-    bool m_bEnablePaste;
-    bool m_bUseDefaultIME;
+    bool m_bEnablePaste = true;
+    bool m_bUseDefaultIME = false;
 
   public:
     static bool ms_bInitialized;
@@ -205,7 +203,7 @@ class CIME
 
     static IIMEEventSink *ms_pEvent;
 
-    wchar_t m_wszComposition[IMESTR_MAXLEN];
+    wchar_t m_wszComposition[IMESTR_MAXLEN]{};
     static wchar_t m_wText[IMESTR_MAXLEN];
 
     // SDL text input buffer (T1.6): UTF-8 text and the current composition.

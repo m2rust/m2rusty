@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_AREALOADERTHREAD_H__E43FBE42_42F4_4F0E_B9DA_D7B7C5EA0753__INCLUDED_)
+#ifndef AFX_AREALOADERTHREAD_H__E43FBE42_42F4_4F0E_B9DA_D7B7C5EA0753__INCLUDED_
 #define AFX_AREALOADERTHREAD_H__E43FBE42_42F4_4F0E_B9DA_D7B7C5EA0753__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -25,7 +25,7 @@ class TEMP_CAreaLoaderThread
 
     void Request(CTerrain *pTerrain);
 
-    bool Fetch(CTerrain **ppTerrian);
+    bool Fetch(CTerrain **ppTerrain);
 
     void Request(CArea *pArea);
 
@@ -48,7 +48,7 @@ class TEMP_CAreaLoaderThread
 
   private:
     void *m_pArg;
-    unsigned m_uThreadID;
+    unsigned m_uThreadID = 0;
 
   protected:
     UINT Setup();
@@ -70,9 +70,9 @@ class TEMP_CAreaLoaderThread
     std::deque<CArea *> m_pAreaCompleteDeque;
     Mutex m_AreaCompleteMutex;
 
-    HANDLE m_hSemaphore;
-    int m_iRestSemCount;
-    bool m_bShutdowned;
+    HANDLE m_hSemaphore = nullptr;
+    int m_iRestSemCount = 0;
+    bool m_bShutdowned = false;
 };
 
 #endif // !defined(AFX_AREALOADERTHREAD_H__E43FBE42_42F4_4F0E_B9DA_D7B7C5EA0753__INCLUDED_)

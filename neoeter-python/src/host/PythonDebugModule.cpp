@@ -1,11 +1,9 @@
 #include <Neoeter/Python/Host/StdAfx.h>
 
-extern IPythonExceptionSender *g_pkExceptionSender;
-
 PyObject *dbgLogBox(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szMsg;
-    char *szCaption;
+    char *szMsg = nullptr;
+    char *szCaption = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szMsg))
         return Py_BuildException();
     if (!PyTuple_GetString(poArgs, 1, &szCaption))
@@ -21,7 +19,7 @@ PyObject *dbgLogBox(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *dbgTrace(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szMsg;
+    char *szMsg = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szMsg))
         return Py_BuildException();
 
@@ -31,7 +29,7 @@ PyObject *dbgTrace(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *dbgTracen(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szMsg;
+    char *szMsg = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szMsg))
         return Py_BuildException();
 
@@ -41,7 +39,7 @@ PyObject *dbgTracen(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *dbgTraceError(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szMsg;
+    char *szMsg = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szMsg))
         return Py_BuildException();
 
@@ -51,7 +49,7 @@ PyObject *dbgTraceError(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *dbgRegisterExceptionString(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szMsg;
+    char *szMsg = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szMsg))
         return Py_BuildException();
 
@@ -69,7 +67,7 @@ void initdbg()
         {"Tracen", dbgTracen, METH_VARARGS},
         {"TraceError", dbgTraceError, METH_VARARGS},
         {"RegisterExceptionString", dbgRegisterExceptionString, METH_VARARGS},
-        {NULL, NULL},
+        {nullptr, nullptr},
     };
 
     Py_InitModule("dbg", s_methods);

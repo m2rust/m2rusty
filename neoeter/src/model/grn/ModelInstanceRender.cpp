@@ -149,8 +149,8 @@ void CGrannyModelInstance::RenderWithoutTexture()
         return;
 
     STATEMANAGER.SetFVF(ms_pntVS);
-    STATEMANAGER.SetTexture(0, NULL);
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
+    STATEMANAGER.SetTexture(1, nullptr);
 
     LPDIRECT3DVERTEXBUFFER9 lpd3dDeformPNTVtxBuf = __GetDeformableD3DVertexBufferPtr();
     LPDIRECT3DVERTEXBUFFER9 lpd3dRigidPNTVtxBuf = m_pModel->GetPNTD3DVertexBuffer();
@@ -180,24 +180,24 @@ void CGrannyModelInstance::RenderWithoutTexture()
 void CGrannyModelInstance::RenderMeshNodeListWithOneTexture(CGrannyMesh::EType eMeshType,
                                                             CGrannyMaterial::EType eMtrlType)
 {
-    assert(m_pModel != NULL);
+    assert(m_pModel != nullptr);
 
     LPDIRECT3DINDEXBUFFER9 lpd3dIdxBuf = m_pModel->GetD3DIndexBuffer();
-    assert(lpd3dIdxBuf != NULL);
+    assert(lpd3dIdxBuf != nullptr);
 
     const CGrannyModel::TMeshNode *pMeshNode = m_pModel->GetMeshNodeList(eMeshType, eMtrlType);
 
     while (pMeshNode)
     {
         const CGrannyMesh *pMesh = pMeshNode->pMesh;
-        int vtxMeshBasePos = pMesh->GetVertexBasePosition();
+        int const vtxMeshBasePos = pMesh->GetVertexBasePosition();
 
         STATEMANAGER.SetIndices(lpd3dIdxBuf, vtxMeshBasePos);
         STATEMANAGER.SetTransform(D3DTS_WORLD, &m_meshMatrices[pMeshNode->iMesh]);
 
         /////
         const CGrannyMesh::TTriGroupNode *pTriGroupNode = pMesh->GetTriGroupNodeList(eMtrlType);
-        int vtxCount = pMesh->GetVertexCount();
+        int const vtxCount = pMesh->GetVertexCount();
         while (pTriGroupNode)
         {
             ms_faceCount += pTriGroupNode->triCount;
@@ -220,24 +220,24 @@ void CGrannyModelInstance::RenderMeshNodeListWithOneTexture(CGrannyMesh::EType e
 void CGrannyModelInstance::RenderMeshNodeListWithTwoTexture(CGrannyMesh::EType eMeshType,
                                                             CGrannyMaterial::EType eMtrlType)
 {
-    assert(m_pModel != NULL);
+    assert(m_pModel != nullptr);
 
     LPDIRECT3DINDEXBUFFER9 lpd3dIdxBuf = m_pModel->GetD3DIndexBuffer();
-    assert(lpd3dIdxBuf != NULL);
+    assert(lpd3dIdxBuf != nullptr);
 
     const CGrannyModel::TMeshNode *pMeshNode = m_pModel->GetMeshNodeList(eMeshType, eMtrlType);
 
     while (pMeshNode)
     {
         const CGrannyMesh *pMesh = pMeshNode->pMesh;
-        int vtxMeshBasePos = pMesh->GetVertexBasePosition();
+        int const vtxMeshBasePos = pMesh->GetVertexBasePosition();
 
         STATEMANAGER.SetIndices(lpd3dIdxBuf, vtxMeshBasePos);
         STATEMANAGER.SetTransform(D3DTS_WORLD, &m_meshMatrices[pMeshNode->iMesh]);
 
         /////
         const CGrannyMesh::TTriGroupNode *pTriGroupNode = pMesh->GetTriGroupNodeList(eMtrlType);
-        int vtxCount = pMesh->GetVertexCount();
+        int const vtxCount = pMesh->GetVertexCount();
         while (pTriGroupNode)
         {
             ms_faceCount += pTriGroupNode->triCount;
@@ -259,24 +259,24 @@ void CGrannyModelInstance::RenderMeshNodeListWithTwoTexture(CGrannyMesh::EType e
 void CGrannyModelInstance::RenderMeshNodeListWithoutTexture(CGrannyMesh::EType eMeshType,
                                                             CGrannyMaterial::EType eMtrlType)
 {
-    assert(m_pModel != NULL);
+    assert(m_pModel != nullptr);
 
     LPDIRECT3DINDEXBUFFER9 lpd3dIdxBuf = m_pModel->GetD3DIndexBuffer();
-    assert(lpd3dIdxBuf != NULL);
+    assert(lpd3dIdxBuf != nullptr);
 
     const CGrannyModel::TMeshNode *pMeshNode = m_pModel->GetMeshNodeList(eMeshType, eMtrlType);
 
     while (pMeshNode)
     {
         const CGrannyMesh *pMesh = pMeshNode->pMesh;
-        int vtxMeshBasePos = pMesh->GetVertexBasePosition();
+        int const vtxMeshBasePos = pMesh->GetVertexBasePosition();
 
         STATEMANAGER.SetIndices(lpd3dIdxBuf, vtxMeshBasePos);
         STATEMANAGER.SetTransform(D3DTS_WORLD, &m_meshMatrices[pMeshNode->iMesh]);
 
         /////
         const CGrannyMesh::TTriGroupNode *pTriGroupNode = pMesh->GetTriGroupNodeList(eMtrlType);
-        int vtxCount = pMesh->GetVertexCount();
+        int const vtxCount = pMesh->GetVertexCount();
 
         while (pTriGroupNode)
         {

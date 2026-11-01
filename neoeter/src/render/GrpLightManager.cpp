@@ -4,18 +4,16 @@
 
 #include <Neoeter/Render/GrpLightManager.h>
 #include <Neoeter/Render/StateManager.h>
+#include <math.h>
 
 float CLightBase::ms_fCurTime = 0.0f;
 
-CLightManager::CLightManager()
+CLightManager::CLightManager() : m_dwLimitLightCount(LIGHT_LIMIT_DEFAULT)
 {
     m_v3CenterPosition = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
-    m_dwLimitLightCount = LIGHT_LIMIT_DEFAULT;
 }
 
-CLightManager::~CLightManager()
-{
-}
+CLightManager::~CLightManager() = default;
 
 void CLightManager::Destroy()
 {
@@ -35,7 +33,7 @@ void CLightManager::Initialize()
 void CLightManager::RegisterLight(ELightType /*LightType*/, TLightID *poutLightID, D3DLIGHT9 &LightData)
 {
     CLight *pLight = m_LightPool.Alloc();
-    TLightID ID = NewLightID();
+    TLightID const ID = NewLightID();
     pLight->SetParameter(ID, LightData);
     m_LightMap[ID] = pLight;
     *poutLightID = ID;
@@ -43,7 +41,7 @@ void CLightManager::RegisterLight(ELightType /*LightType*/, TLightID *poutLightI
 
 void CLightManager::DeleteLight(TLightID LightID)
 {
-    TLightMap::iterator itor = m_LightMap.find(LightID);
+    auto itor = m_LightMap.find(LightID);
 
     if (m_LightMap.end() == itor)
     {
@@ -63,12 +61,12 @@ void CLightManager::DeleteLight(TLightID LightID)
 
 CLight *CLightManager::GetLight(TLightID LightID)
 {
-    TLightMap::iterator itor = m_LightMap.find(LightID);
+    auto itor = m_LightMap.find(LightID);
 
     if (m_LightMap.end() == itor)
     {
         assert(!"CLightManager::SetLightData - Failed to find light ID!");
-        return NULL;
+        return nullptr;
     }
 
     return itor->second;
@@ -109,20 +107,20 @@ void CLightManager::FlushLight()
     //		 다시 Flush 하는 식으로 최적화 할 수 있다. - [levites]
 
     // light들의 거리를 추출해 정렬한다.
-    TLightMap::iterator itor = m_LightMap.begin();
+    auto itor = m_LightMap.begin();
 
     for (; itor != m_LightMap.end(); ++itor)
     {
         CLight *pLight = itor->second;
 
-        D3DXVECTOR3 v3LightPos(pLight->GetPosition());
+        D3DXVECTOR3 const v3LightPos(pLight->GetPosition());
         D3DXVECTOR3 v3Distance(v3LightPos - m_v3CenterPosition);
         pLight->SetDistance(D3DXVec3Length(&v3Distance));
         m_LightSortVector.push_back(pLight);
     }
 
     // quick sort lights
-    std::sort(m_LightSortVector.begin(), m_LightSortVector.end(), LightComp());
+    std::ranges::sort(m_LightSortVector, LightComp());
 
     // NOTE - 거리로 정렬된 라이트를 Limit 갯수 만큼 제한해서 켜준다.
     STATEMANAGER.SaveRenderState(D3DRS_LIGHTING, TRUE);
@@ -146,7 +144,7 @@ TLightID CLightManager::NewLightID()
 {
     if (!m_NonUsingLightIDDeque.empty())
     {
-        TLightID id = m_NonUsingLightIDDeque.back();
+        TLightID const id = m_NonUsingLightIDDeque.back();
         m_NonUsingLightIDDeque.pop_back();
         return (id);
     }
@@ -273,13 +271,13 @@ void CLight::SetDistance(float fDistance)
 
 void CLight::BlendDiffuseColor(const D3DXCOLOR &c_rColor, float fBlendTime, float fDelayTime)
 {
-    D3DXCOLOR Color(m_d3dLight.Diffuse);
+    D3DXCOLOR const Color(m_d3dLight.Diffuse);
     m_DiffuseColorTransitor.SetTransition(Color, c_rColor, ms_fCurTime + fDelayTime, fBlendTime);
 }
 
 void CLight::BlendAmbientColor(const D3DXCOLOR &c_rColor, float fBlendTime, float fDelayTime)
 {
-    D3DXCOLOR Color(m_d3dLight.Ambient);
+    D3DXCOLOR const Color(m_d3dLight.Ambient);
     m_AmbientColorTransitor.SetTransition(Color, c_rColor, ms_fCurTime + fDelayTime, fBlendTime);
 }
 
@@ -330,7 +328,7 @@ void CLight::Update()
         }
         else
         {
-            float fRange;
+            float fRange = NAN;
             m_RangeTransitor.GetValue(ms_fCurTime, &fRange);
             SetRange(fRange);
         }

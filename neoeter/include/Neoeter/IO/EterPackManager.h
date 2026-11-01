@@ -17,7 +17,7 @@
 
 #if __has_include(<Neoeter/Platform/Base/Singleton.h>)
 #include <Neoeter/Platform/Base/Singleton.h>
-#elif !defined(__INC_ETERLIB_SINGLETON_H__)
+#elifndef __INC_ETERLIB_SINGLETON_H__
 #define __INC_ETERLIB_SINGLETON_H__
 #include <cassert>
 #include <cstdint>
@@ -76,17 +76,16 @@ class CEterPackManager : public CSingleton<CEterPackManager>
         SEARCH_PACK_FIRST
     };
 
-    typedef std::list<std::shared_ptr<FileProvider>> TEterPackList;
-    typedef std::unordered_map<std::string, std::shared_ptr<FileProvider>> TEterPackMap;
-    typedef std::unordered_map<std::string, std::shared_ptr<FileProvider>> TFileMap;
-    typedef std::shared_ptr<std::vector<char>> TPackDataPtr;
+    using TEterPackList = std::list<std::shared_ptr<FileProvider>>;
+    using TEterPackMap = std::unordered_map<std::string, std::shared_ptr<FileProvider>>;
+    using TFileMap = std::unordered_map<std::string, std::shared_ptr<FileProvider>>;
+    using TPackDataPtr = std::shared_ptr<std::vector<char>>;
 
-  public:
     CEterPackManager();
-    virtual ~CEterPackManager();
+    ~CEterPackManager() override;
 
     void SetSearchMode(bool bPackFirst);
-    int GetSearchMode();
+    int GetSearchMode() const;
 
     bool Get(const std::string &fileName, TPackDataPtr &dataPtr);
     bool Get(const std::string &fileName, std::stringstream &dataStream);
@@ -105,11 +104,10 @@ class CEterPackManager : public CSingleton<CEterPackManager>
     bool GetFromPack(const std::string &fileName, TPackDataPtr &dataPtr);
     bool GetFromFile(const std::string &fileName, TPackDataPtr &dataPtr);
 
-  protected:
-    int m_iSearchMode;
+    int m_iSearchMode = SEARCH_FILE_FIRST;
 
     TFileMap m_FileMap;
     TEterPackMap m_PackMap;
 
-    CRITICAL_SECTION m_csFinder;
+    CRITICAL_SECTION m_csFinder{};
 };

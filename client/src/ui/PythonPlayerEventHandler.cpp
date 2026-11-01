@@ -10,9 +10,7 @@ CPythonPlayerEventHandler &CPythonPlayerEventHandler::GetSingleton()
     return s_kPlayerEventHandler;
 }
 
-CPythonPlayerEventHandler::~CPythonPlayerEventHandler()
-{
-}
+CPythonPlayerEventHandler::~CPythonPlayerEventHandler() = default;
 
 void CPythonPlayerEventHandler::OnClearAffects()
 {
@@ -37,16 +35,16 @@ void CPythonPlayerEventHandler::OnSyncing(const SState &c_rkState)
 
 void CPythonPlayerEventHandler::OnWaiting(const SState &c_rkState)
 {
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
     if (m_dwNextWaitingNotifyTime > dwCurTime)
         return;
 
     m_dwNextWaitingNotifyTime = dwCurTime + 100;
 
     const TPixelPosition &c_rkPPosCurWaiting = c_rkState.kPPosSelf;
-    float dx = m_kPPosPrevWaiting.x - c_rkPPosCurWaiting.x;
-    float dy = m_kPPosPrevWaiting.y - c_rkPPosCurWaiting.y;
-    float len = sqrt(dx * dx + dy * dy);
+    float const dx = m_kPPosPrevWaiting.x - c_rkPPosCurWaiting.x;
+    float const dy = m_kPPosPrevWaiting.y - c_rkPPosCurWaiting.y;
+    float const len = sqrt((dx * dx) + (dy * dy));
 
     if (len < 1.0f)
         return;
@@ -61,7 +59,7 @@ void CPythonPlayerEventHandler::OnWaiting(const SState &c_rkState)
 
 void CPythonPlayerEventHandler::OnMoving(const SState &c_rkState)
 {
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
     if (m_dwNextMovingNotifyTime > dwCurTime)
         return;
 
@@ -75,7 +73,7 @@ void CPythonPlayerEventHandler::OnMoving(const SState &c_rkState)
 
 void CPythonPlayerEventHandler::OnMove(const SState &c_rkState)
 {
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
     m_dwNextWaitingNotifyTime = dwCurTime + 100;
     m_dwNextMovingNotifyTime = dwCurTime + 300;
 
@@ -135,7 +133,7 @@ void CPythonPlayerEventHandler::OnChangeShape()
 
 void CPythonPlayerEventHandler::OnHit(UINT uSkill, CActorInstance &rkActorVictim, BOOL isSendPacket)
 {
-    DWORD dwVIDVictim = rkActorVictim.GetVirtualID();
+    DWORD const dwVIDVictim = rkActorVictim.GetVirtualID();
 
     // Update Target
     CPythonPlayer::Instance().SetTarget(dwVIDVictim, FALSE);
@@ -181,10 +179,10 @@ void CPythonPlayerEventHandler::OnHit(UINT uSkill, CActorInstance &rkActorVictim
 
     const TPixelPosition &kPPosLast = rkActorVictim.NEW_GetLastPixelPositionRef();
 
-    SVictim kVictim;
+    SVictim kVictim{};
     kVictim.m_dwVID = dwVIDVictim;
-    kVictim.m_lPixelX = long(kPPosLast.x);
-    kVictim.m_lPixelY = long(kPPosLast.y);
+    kVictim.m_lPixelX = static_cast<long>(kPPosLast.x);
+    kVictim.m_lPixelY = static_cast<long>(kPPosLast.y);
 
     rkActorVictim.TEMP_Push(kVictim.m_lPixelX, kVictim.m_lPixelY);
 
@@ -197,14 +195,14 @@ void CPythonPlayerEventHandler::FlushVictimList()
         return;
 
     // #0000682: [M2EU] 대진각 스킬 사용시 튕김
-    unsigned int SYNC_POSITION_COUNT_LIMIT = 16;
-    unsigned int uiVictimCount = m_kVctkVictim.size();
+    unsigned int const SYNC_POSITION_COUNT_LIMIT = 16;
+    unsigned int const uiVictimCount = m_kVctkVictim.size();
 
     CPythonNetworkStream &rkStream = CPythonNetworkStream::Instance();
 
     TPacketCGSyncPosition kPacketSyncPos;
     kPacketSyncPos.bHeader = HEADER_CG_SYNC_POSITION;
-    kPacketSyncPos.wSize = sizeof(kPacketSyncPos) + sizeof(TPacketCGSyncPositionElement) * uiVictimCount;
+    kPacketSyncPos.wSize = sizeof(kPacketSyncPos) + (sizeof(TPacketCGSyncPositionElement) * uiVictimCount);
 
     rkStream.Send(sizeof(kPacketSyncPos), &kPacketSyncPos);
 
@@ -219,10 +217,8 @@ void CPythonPlayerEventHandler::FlushVictimList()
 }
 
 CPythonPlayerEventHandler::CPythonPlayerEventHandler()
+    : m_dwPrevComboIndex(0), m_dwNextMovingNotifyTime(0), m_dwNextWaitingNotifyTime(0)
 {
-    m_dwPrevComboIndex = 0;
-    m_dwNextMovingNotifyTime = 0;
-    m_dwNextWaitingNotifyTime = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

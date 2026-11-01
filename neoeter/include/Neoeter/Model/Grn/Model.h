@@ -8,16 +8,15 @@
 class CGrannyModel : public CReferenceObject
 {
   public:
-    typedef struct SMeshNode
+    using TMeshNode = struct SMeshNode
     {
         int iMesh;
         const CGrannyMesh *pMesh;
         SMeshNode *pNextMeshNode;
-    } TMeshNode;
+    };
 
-  public:
     CGrannyModel();
-    virtual ~CGrannyModel();
+    ~CGrannyModel() override;
 
     bool IsEmpty() const;
     bool CreateFromGrannyModelPointer(granny_model *pgrnModel);
@@ -33,7 +32,7 @@ class CGrannyModel : public CReferenceObject
     void DeformPNTVertices(void *dstBaseVertices, D3DXMATRIX *boneMatrices,
                            const std::vector<granny_mesh_binding *> &c_rvct_pgrnMeshBinding) const;
 
-    int GetIdxCount();
+    int GetIdxCount() const;
     int GetMeshCount() const;
     CGrannyMesh *GetMeshPointer(int iMesh);
     granny_model *GetGrannyModelPointer();
@@ -59,36 +58,35 @@ class CGrannyModel : public CReferenceObject
     BOOL CheckMeshIndex(int iIndex) const;
     void AppendMeshNode(CGrannyMesh::EType eMeshType, CGrannyMaterial::EType eMtrlType, int iMesh);
 
-  protected:
     // Granny Data
-    granny_model *m_pgrnModel;
+    granny_model *m_pgrnModel = nullptr;
 
     // Static Data
-    CGrannyMesh *m_meshs;
+    CGrannyMesh *m_meshs = nullptr;
 
     CGraphicVertexBuffer m_pntVtxBuf; // for rigid mesh
     CGraphicIndexBuffer m_idxBuf;
 
-    TMeshNode *m_meshNodes;
-    TMeshNode *m_meshNodeLists[CGrannyMesh::TYPE_MAX_NUM][CGrannyMaterial::TYPE_MAX_NUM];
+    TMeshNode *m_meshNodes = nullptr;
+    TMeshNode *m_meshNodeLists[CGrannyMesh::TYPE_MAX_NUM][CGrannyMaterial::TYPE_MAX_NUM]{};
 
-    int m_deformVtxCount;
-    int m_rigidVtxCount;
-    int m_vtxCount;
-    int m_idxCount;
+    int m_deformVtxCount = 0;
+    int m_rigidVtxCount = 0;
+    int m_vtxCount = 0;
+    int m_idxCount = 0;
 
-    int m_meshNodeSize;
-    int m_meshNodeCapacity;
+    int m_meshNodeSize = 0;
+    int m_meshNodeCapacity = 0;
 
-    bool m_canDeformPNVertices;
+    bool m_canDeformPNVertices = false;
 
     CGrannyMaterialPalette m_kMtrlPal;
 
   private:
-    bool m_bHaveBlendThing;
+    bool m_bHaveBlendThing = false;
 
   public:
-    bool HaveBlendThing()
+    bool HaveBlendThing() const
     {
         return m_bHaveBlendThing;
     }
@@ -98,8 +96,7 @@ class CGrannyModel : public CReferenceObject
   protected:
     bool __LoadVertices();
 
-  protected:
-    DWORD m_dwFvF;
+    DWORD m_dwFvF = 0U;
     // New members to support PNT2 type models
     //////////////////////////////////////////////////////////////////////////
 };

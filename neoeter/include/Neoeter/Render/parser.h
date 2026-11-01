@@ -6,17 +6,13 @@
 
 namespace script
 {
-typedef struct SArgumet
+using TArg = struct SArgumet
 {
-    SArgumet(const std::string &c_stName, const std::string &c_stValue)
+    SArgumet(const std::string &c_stName, const std::string &c_stValue) : strName(c_stName), strValue(c_stValue)
     {
-        strName = c_stName;
-        strValue = c_stValue;
     }
-    SArgumet(const SArgumet &c_arg)
+    SArgumet(const SArgumet &c_arg) : strName(c_arg.strName), strValue(c_arg.strValue)
     {
-        strName = c_arg.strName;
-        strValue = c_arg.strValue;
     }
     void operator=(const SArgumet &c_arg)
     {
@@ -25,11 +21,11 @@ typedef struct SArgumet
     }
     std::string strName;
     std::string strValue;
-} TArg;
+};
 
-typedef std::list<TArg> TArgList;
+using TArgList = std::list<TArg>;
 
-typedef struct SCmd
+using TCmd = struct SCmd
 {
     std::string name;
     TArgList argList;
@@ -37,17 +33,15 @@ typedef struct SCmd
     SCmd()
     {
     }
-    SCmd(const SCmd &c_cmd)
+    SCmd(const SCmd &c_cmd) : name(c_cmd.name), argList(c_cmd.argList)
     {
-        name = c_cmd.name;
-        argList = c_cmd.argList;
     }
     void operator=(const SCmd &c_cmd)
     {
         name = c_cmd.name;
         argList = c_cmd.argList;
     }
-} TCmd;
+};
 
 class Group
 {
@@ -55,7 +49,6 @@ class Group
     Group();
     ~Group();
 
-  public:
     /** 스트링으로 부터 스크립트 그룹을 만든다.
      *
      * 실패하면 GetError 메소드로 확인할 수 있다.
@@ -84,8 +77,8 @@ class Group
     std::string &GetError();
 
   private:
-    void SetError(const char *str);
-    bool GetArg(const char *c_atr_base, int arg_len, TArgList &argList);
+    void SetError(const char *c_pszError);
+    bool GetArg(const char *c_arg_base, int arg_len, TArgList &argList);
 
     std::string m_stError;
     std::list<TCmd> m_cmdList;

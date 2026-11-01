@@ -31,9 +31,8 @@ class CAttributeInstance
     void SetGlobalMatrix(const D3DXMATRIX &c_rmatGlobal);
     void SetGlobalPosition(const D3DXVECTOR3 &c_rv3Position);
 
-  protected:
-    float m_fCollisionRadius;
-    float m_fHeightRadius;
+    float m_fCollisionRadius = 0.0F;
+    float m_fHeightRadius = 0.0F;
 
     D3DXMATRIX m_matGlobal;
 

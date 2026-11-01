@@ -11,22 +11,22 @@ class CLightInstance : public CEffectElementBaseInstance
     friend class CLightData;
 
     CLightInstance();
-    virtual ~CLightInstance();
+    ~CLightInstance() override;
 
   protected:
-    void OnSetDataPointer(CEffectElementBase *pElement);
+    void OnSetDataPointer(CEffectElementBase *pElement) override;
 
-    void OnInitialize();
-    void OnDestroy();
+    void OnInitialize() override;
+    void OnDestroy() override;
 
-    bool OnUpdate(float fElapsedTime);
-    void OnRender();
+    bool OnUpdate(float fElapsedTime) override;
+    void OnRender() override;
 
-    DWORD m_LightID;
-    CLightData *m_pData;
-    DWORD m_dwRangeIndex;
+    DWORD m_LightID = 0U;
+    CLightData *m_pData = nullptr;
+    DWORD m_dwRangeIndex = 0U;
 
-    DWORD m_iLoopCount;
+    DWORD m_iLoopCount = 0U;
 
   public:
     static void DestroySystem();

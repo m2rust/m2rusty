@@ -5,12 +5,8 @@ class CPythonQuest : public CSingleton<CPythonQuest>
   public:
     struct SQuestInstance
     {
-        SQuestInstance()
+        SQuestInstance() : dwIndex(0), iClockValue(0), iCounterValue(0), iStartTime(0)
         {
-            dwIndex = 0;
-            iClockValue = 0;
-            iCounterValue = 0;
-            iStartTime = 0;
         }
 
         DWORD dwIndex;
@@ -26,11 +22,10 @@ class CPythonQuest : public CSingleton<CPythonQuest>
 
         int iStartTime;
     };
-    typedef std::vector<SQuestInstance> TQuestInstanceContainer;
+    using TQuestInstanceContainer = std::vector<SQuestInstance>;
 
-  public:
     CPythonQuest();
-    virtual ~CPythonQuest();
+    ~CPythonQuest() override;
 
     void Clear();
 
@@ -54,6 +49,5 @@ class CPythonQuest : public CSingleton<CPythonQuest>
     void __Initialize();
     bool __GetQuestInstancePtr(DWORD dwQuestIndex, SQuestInstance **ppQuestInstance);
 
-  protected:
     TQuestInstanceContainer m_QuestInstanceContainer;
 };

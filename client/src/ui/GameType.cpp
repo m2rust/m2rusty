@@ -9,14 +9,14 @@ std::string g_strGuildSymbolPathName = "mark/10/";
 // DEFAULT_FONT
 static std::string gs_strDefaultFontName = "\xB1\xBC\xB8\xB2\xC3\xBC:12.fnt";
 static std::string gs_strDefaultItalicFontName = "\xB1\xBC\xB8\xB2\xC3\xBC:12i.fnt";
-static CResource *gs_pkDefaultFont = NULL;
-static CResource *gs_pkDefaultItalicFont = NULL;
+static CResource *gs_pkDefaultFont = nullptr;
+static CResource *gs_pkDefaultItalicFont = nullptr;
 
 static bool gs_isReloadDefaultFont = false;
 
 void DefaultFont_Startup()
 {
-    gs_pkDefaultFont = NULL;
+    gs_pkDefaultFont = nullptr;
 }
 
 void DefaultFont_Cleanup()
@@ -107,7 +107,8 @@ BYTE c_aSlotTypeToInvenType[SLOT_TYPE_MAX] = {
 BYTE SlotTypeToInvenType(BYTE bSlotType)
 {
     if (bSlotType >= SLOT_TYPE_MAX)
+    {
         return RESERVED_WINDOW;
-    else
-        return c_aSlotTypeToInvenType[bSlotType];
+    }
+    return c_aSlotTypeToInvenType[bSlotType];
 }

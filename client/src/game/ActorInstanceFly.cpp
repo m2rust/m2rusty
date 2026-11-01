@@ -35,7 +35,7 @@ bool CActorInstance::__IsFlyTargetPC()
     if (!IsFlyTargetObject())
         return false;
 
-    CActorInstance *pFlyInstance = (CActorInstance *)m_kFlyTarget.GetFlyTarget();
+    auto *pFlyInstance = (CActorInstance *)m_kFlyTarget.GetFlyTarget();
     if (pFlyInstance->IsPC())
         return true;
 
@@ -47,7 +47,7 @@ bool CActorInstance::__IsSameFlyTarget(CActorInstance *pInstance)
     if (!IsFlyTargetObject())
         return false;
 
-    CActorInstance *pFlyInstance = (CActorInstance *)m_kFlyTarget.GetFlyTarget();
+    auto *pFlyInstance = (CActorInstance *)m_kFlyTarget.GetFlyTarget();
     if (pInstance == pFlyInstance)
         return true;
 
@@ -58,7 +58,7 @@ D3DXVECTOR3 CActorInstance::__GetFlyTargetPosition()
 {
     if (!m_kFlyTarget.IsValidTarget())
     {
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+        return {0.0f, 0.0f, 0.0f};
     }
 
     return m_kFlyTarget.GetFlyTargetPosition();
@@ -87,9 +87,13 @@ void CActorInstance::LookAtFlyTarget()
 void CActorInstance::AddFlyTarget(const CFlyTarget &cr_FlyTarget)
 {
     if (m_kFlyTarget.IsValidTarget())
+    {
         m_kQue_kFlyTarget.push_back(cr_FlyTarget);
+    }
     else
+    {
         SetFlyTarget(cr_FlyTarget);
+    }
 }
 
 void CActorInstance::SetFlyTarget(const CFlyTarget &cr_FlyTarget)
@@ -99,7 +103,7 @@ void CActorInstance::SetFlyTarget(const CFlyTarget &cr_FlyTarget)
 
 void CActorInstance::ClearFlyEventHandler()
 {
-    m_pFlyEventHandler = 0;
+    m_pFlyEventHandler = nullptr;
 }
 
 void CActorInstance::SetFlyEventHandler(IFlyEventHandler *pHandler)
@@ -110,8 +114,5 @@ void CActorInstance::SetFlyEventHandler(IFlyEventHandler *pHandler)
 // 2004. 07. 07. [levites] - 스킬 사용중 타겟이 바뀌는 문제 해결을 위한 코드
 bool CActorInstance::CanChangeTarget()
 {
-    if (__IsNeedFlyTargetMotion())
-        return false;
-
-    return true;
+    return !__IsNeedFlyTargetMotion();
 }

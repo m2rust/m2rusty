@@ -10,7 +10,7 @@ class CNetDatagramReceiver
 
     void Clear();
     BOOL Bind(DWORD dwAddress, WORD wPortIndex);
-    BOOL isBind();
+    BOOL isBind() const;
 
     BOOL Process();
     BOOL Recv(void *pBuffer, int iSize);
@@ -19,15 +19,15 @@ class CNetDatagramReceiver
     void SetRecvBufferSize(int recvBufSize);
 
   protected:
-    BOOL m_isBind;
+    BOOL m_isBind = 0;
 
-    DWORD m_dwPortIndex;
+    DWORD m_dwPortIndex = 0U;
 
-    SOCKET m_Socket;
-    SOCKADDR_IN m_SockAddr;
+    SOCKET m_Socket = 0;
+    SOCKADDR_IN m_SockAddr{};
 
-    int m_recvBufCurrentPos;
-    int m_recvBufCurrentSize;
+    int m_recvBufCurrentPos = 0;
+    int m_recvBufCurrentSize = 0;
 
     char *m_recvBuf;
     int m_recvBufSize;

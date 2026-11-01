@@ -16,20 +16,19 @@ template <typename T> class CRef
         }
     };
 
-  public:
-    CRef() : m_pObject(NULL)
+    CRef() : m_pObject(nullptr)
     {
     }
 
-    CRef(CReferenceObject *pObject)
+    CRef(CReferenceObject *pObject) : m_pObject(nullptr)
     {
-        m_pObject = NULL;
+
         Initialize(pObject);
     }
 
-    CRef(const CRef &c_rRef)
+    CRef(const CRef &c_rRef) : m_pObject(nullptr)
     {
-        m_pObject = NULL;
+
         Initialize(c_rRef.m_pObject);
     }
 
@@ -53,13 +52,13 @@ template <typename T> class CRef
         if (m_pObject)
         {
             m_pObject->Release();
-            m_pObject = NULL;
+            m_pObject = nullptr;
         }
     }
 
     bool IsNull() const
     {
-        return m_pObject == NULL ? true : false;
+        return m_pObject == nullptr;
     }
 
     void SetPointer(CReferenceObject *pObject)
@@ -82,14 +81,14 @@ template <typename T> class CRef
 
     T *operator->() const
     {
-        assert(m_pObject != NULL);
+        assert(m_pObject != nullptr);
         return static_cast<T *>(m_pObject);
     }
 
   private:
     void Initialize(CReferenceObject *pObject)
     {
-        assert(m_pObject == NULL);
+        assert(m_pObject == nullptr);
 
         m_pObject = pObject;
 
@@ -97,7 +96,6 @@ template <typename T> class CRef
             m_pObject->AddReference();
     }
 
-  private:
     CReferenceObject *m_pObject;
 };
 

@@ -64,10 +64,9 @@ class CImage
   protected:
     void Initialize();
 
-  protected:
-    DWORD *m_pdwColors;
-    int m_width;
-    int m_height;
+    DWORD *m_pdwColors = nullptr;
+    int m_width = 0;
+    int m_height = 0;
 
     std::string m_stFileName;
 };

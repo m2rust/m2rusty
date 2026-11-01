@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 void CPythonNetworkStream::HandShakePhase()
 {
-    TPacketHeader header;
+    TPacketHeader header = 0;
 
     if (!CheckPacket(&header))
         return;
@@ -116,7 +116,7 @@ bool CPythonNetworkStream::RecvHandshakeOKPacket()
     if (!Recv(sizeof(TPacketGCBlank), &kBlankPacket))
         return false;
 
-    DWORD dwDelta = ELTimer_GetMSec() - m_kServerTimeSync.m_dwChangeClientTime;
+    DWORD const dwDelta = ELTimer_GetMSec() - m_kServerTimeSync.m_dwChangeClientTime;
     ELTimer_SetServerMSec(m_kServerTimeSync.m_dwChangeServerTime + dwDelta);
 
     Tracenf("HANDSHAKE OK RECV %u %u", m_kServerTimeSync.m_dwChangeServerTime, dwDelta);

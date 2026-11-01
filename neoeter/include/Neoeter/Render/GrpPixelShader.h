@@ -6,7 +6,7 @@ class CPixelShader : public CGraphicBase
 {
   public:
     CPixelShader();
-    virtual ~CPixelShader();
+    ~CPixelShader() override;
 
     void Destroy();
     bool CreateFromDiskFile(const char *c_szFileName);
@@ -16,6 +16,5 @@ class CPixelShader : public CGraphicBase
   protected:
     void Initialize();
 
-  protected:
-    LPDIRECT3DPIXELSHADER9 m_handle;
+    LPDIRECT3DPIXELSHADER9 m_handle = nullptr;
 };

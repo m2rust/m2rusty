@@ -10,19 +10,20 @@
 #include <Platform/Platform.h>
 #include <Platform/DirectXMathCompat.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
 
-typedef int32_t granny_int32;
-typedef int32_t granny_int32x;
-typedef uint32_t granny_uint32;
-typedef uint16_t granny_uint16;
-typedef uint8_t granny_uint8;
-typedef float granny_real32;
-typedef double granny_real64;
+using granny_int32 = int32_t;
+using granny_int32x = int32_t;
+using granny_uint32 = uint32_t;
+using granny_uint16 = uint16_t;
+using granny_uint8 = uint8_t;
+using granny_real32 = float;
+using granny_real64 = double;
 
 typedef granny_real32 granny_triple[3];
 typedef granny_real32 granny_quad[4];
@@ -48,27 +49,27 @@ enum granny_standard_section_index
 enum granny_member_type
 {
     GrannyEndMember = 0,
-    GrannyInlineMember,
-    GrannyReferenceMember,
-    GrannyReferenceToArrayMember,
-    GrannyArrayOfReferencesMember,
-    GrannyVariantReferenceMember,
-    GrannyUnsupportedMemberType_Remove,
-    GrannyReferenceToVariantArrayMember,
-    GrannyStringMember,
-    GrannyTransformMember,
-    GrannyReal32Member,
-    GrannyInt8Member,
-    GrannyUInt8Member,
-    GrannyBinormalInt8Member,
-    GrannyNormalUInt8Member,
-    GrannyInt16Member,
-    GrannyUInt16Member,
-    GrannyBinormalInt16Member,
-    GrannyNormalUInt16Member,
-    GrannyInt32Member,
-    GrannyUInt32Member,
-    GrannyOnePastLastMemberType,
+    GrannyInlineMember = 1,
+    GrannyReferenceMember = 2,
+    GrannyReferenceToArrayMember = 3,
+    GrannyArrayOfReferencesMember = 4,
+    GrannyVariantReferenceMember = 5,
+    GrannyUnsupportedMemberType_Remove = 6,
+    GrannyReferenceToVariantArrayMember = 7,
+    GrannyStringMember = 8,
+    GrannyTransformMember = 9,
+    GrannyReal32Member = 10,
+    GrannyInt8Member = 11,
+    GrannyUInt8Member = 12,
+    GrannyBinormalInt8Member = 13,
+    GrannyNormalUInt8Member = 14,
+    GrannyInt16Member = 15,
+    GrannyUInt16Member = 16,
+    GrannyBinormalInt16Member = 17,
+    GrannyNormalUInt16Member = 18,
+    GrannyInt32Member = 19,
+    GrannyUInt32Member = 20,
+    GrannyOnePastLastMemberType = 21,
     GrannyBool32Member = GrannyInt32Member
 };
 
@@ -114,19 +115,67 @@ struct granny_pwnt3432_vertex
     granny_real32 UV[2];
 };
 
-inline granny_data_type_definition GrannyPNT332VertexType[4] = {
-    {GrannyReal32Member, GrannyVertexPositionName, nullptr, 3, {0, 0, 0}, 0},
-    {GrannyReal32Member, GrannyVertexNormalName, nullptr, 3, {0, 0, 0}, 0},
-    {GrannyReal32Member, GrannyVertexTextureCoordinatesName "0", nullptr, 2, {0, 0, 0}, 0},
-    {GrannyEndMember, nullptr, nullptr, 0, {0, 0, 0}, 0}};
+inline granny_data_type_definition GrannyPNT332VertexType[4] = {{.Type = GrannyReal32Member,
+                                                                 .Name = GrannyVertexPositionName,
+                                                                 .ReferenceType = nullptr,
+                                                                 .ArrayWidth = 3,
+                                                                 .Extra = {0, 0, 0},
+                                                                 .TraversalID = 0},
+                                                                {.Type = GrannyReal32Member,
+                                                                 .Name = GrannyVertexNormalName,
+                                                                 .ReferenceType = nullptr,
+                                                                 .ArrayWidth = 3,
+                                                                 .Extra = {0, 0, 0},
+                                                                 .TraversalID = 0},
+                                                                {.Type = GrannyReal32Member,
+                                                                 .Name = GrannyVertexTextureCoordinatesName "0",
+                                                                 .ReferenceType = nullptr,
+                                                                 .ArrayWidth = 2,
+                                                                 .Extra = {0, 0, 0},
+                                                                 .TraversalID = 0},
+                                                                {.Type = GrannyEndMember,
+                                                                 .Name = nullptr,
+                                                                 .ReferenceType = nullptr,
+                                                                 .ArrayWidth = 0,
+                                                                 .Extra = {0, 0, 0},
+                                                                 .TraversalID = 0}};
 
-inline granny_data_type_definition GrannyPWNT3432VertexType[6] = {
-    {GrannyReal32Member, GrannyVertexPositionName, nullptr, 3, {0, 0, 0}, 0},
-    {GrannyNormalUInt8Member, GrannyVertexBoneWeightsName, nullptr, 4, {0, 0, 0}, 0},
-    {GrannyUInt8Member, GrannyVertexBoneIndicesName, nullptr, 4, {0, 0, 0}, 0},
-    {GrannyReal32Member, GrannyVertexNormalName, nullptr, 3, {0, 0, 0}, 0},
-    {GrannyReal32Member, GrannyVertexTextureCoordinatesName "0", nullptr, 2, {0, 0, 0}, 0},
-    {GrannyEndMember, nullptr, nullptr, 0, {0, 0, 0}, 0}};
+inline granny_data_type_definition GrannyPWNT3432VertexType[6] = {{.Type = GrannyReal32Member,
+                                                                   .Name = GrannyVertexPositionName,
+                                                                   .ReferenceType = nullptr,
+                                                                   .ArrayWidth = 3,
+                                                                   .Extra = {0, 0, 0},
+                                                                   .TraversalID = 0},
+                                                                  {.Type = GrannyNormalUInt8Member,
+                                                                   .Name = GrannyVertexBoneWeightsName,
+                                                                   .ReferenceType = nullptr,
+                                                                   .ArrayWidth = 4,
+                                                                   .Extra = {0, 0, 0},
+                                                                   .TraversalID = 0},
+                                                                  {.Type = GrannyUInt8Member,
+                                                                   .Name = GrannyVertexBoneIndicesName,
+                                                                   .ReferenceType = nullptr,
+                                                                   .ArrayWidth = 4,
+                                                                   .Extra = {0, 0, 0},
+                                                                   .TraversalID = 0},
+                                                                  {.Type = GrannyReal32Member,
+                                                                   .Name = GrannyVertexNormalName,
+                                                                   .ReferenceType = nullptr,
+                                                                   .ArrayWidth = 3,
+                                                                   .Extra = {0, 0, 0},
+                                                                   .TraversalID = 0},
+                                                                  {.Type = GrannyReal32Member,
+                                                                   .Name = GrannyVertexTextureCoordinatesName "0",
+                                                                   .ReferenceType = nullptr,
+                                                                   .ArrayWidth = 2,
+                                                                   .Extra = {0, 0, 0},
+                                                                   .TraversalID = 0},
+                                                                  {.Type = GrannyEndMember,
+                                                                   .Name = nullptr,
+                                                                   .ReferenceType = nullptr,
+                                                                   .ArrayWidth = 0,
+                                                                   .Extra = {0, 0, 0},
+                                                                   .TraversalID = 0}};
 
 // Transforms & Skeleton
 enum granny_transform_flags
@@ -456,14 +505,14 @@ struct OpenGrannyMemoryEnvelope
 
 struct granny_file
 {
-    bool IsByteReversed;
-    void *Header;
-    granny_int32x SectionCount;
-    void **Sections;
-    bool *Marshalled;
-    void *ConversionBuffer;
-    granny_file_info *FileInfo;
-    bool OwnsFileInfo;
+    bool IsByteReversed = false;
+    void *Header = nullptr;
+    granny_int32x SectionCount = 0;
+    void **Sections = nullptr;
+    bool *Marshalled = nullptr;
+    void *ConversionBuffer = nullptr;
+    granny_file_info *FileInfo = nullptr;
+    bool OwnsFileInfo = false;
     void *InternalData = nullptr;
 };
 
@@ -484,7 +533,7 @@ enum granny_log_message_origin
     GrannyOnePastLastMessageOrigin
 };
 
-typedef void granny_log_function(granny_log_message_type Type, granny_log_message_origin Origin, const char *Error,
+using granny_log_function = void(granny_log_message_type Type, granny_log_message_origin Origin, const char *Error,
                                  void *UserData);
 
 struct granny_log_callback
@@ -513,7 +562,7 @@ inline granny_real32 GrannyGetSecondsElapsed(const granny_system_clock *StartClo
 {
     if (!StartClock || !EndClock)
         return 0.0f;
-    return float(EndClock->Data[0] - StartClock->Data[0]) * 0.001f;
+    return static_cast<float>(EndClock->Data[0] - StartClock->Data[0]) * 0.001f;
 }
 
 // ============================================================================
@@ -522,7 +571,7 @@ inline granny_real32 GrannyGetSecondsElapsed(const granny_system_clock *StartClo
 
 struct granny_local_pose
 {
-    granny_int32 BoneCount;
+    granny_int32 BoneCount = 0;
     std::vector<granny_transform> Transforms;
 };
 
@@ -533,7 +582,7 @@ struct GrannyMatrix4x4Box
 
 struct granny_world_pose
 {
-    granny_int32 BoneCount;
+    granny_int32 BoneCount = 0;
     std::vector<GrannyMatrix4x4Box> World4x4;
     std::vector<GrannyMatrix4x4Box> Composite4x4;
 };
@@ -611,7 +660,7 @@ inline granny_int32x GrannyGetTotalObjectSize(const granny_data_type_definition 
     granny_int32x total = 0;
     for (int i = 0; TypeDef[i].Type != GrannyEndMember; ++i)
     {
-        granny_int32 width = TypeDef[i].ArrayWidth > 0 ? TypeDef[i].ArrayWidth : 1;
+        granny_int32 const width = TypeDef[i].ArrayWidth > 0 ? TypeDef[i].ArrayWidth : 1;
         switch (TypeDef[i].Type)
         {
         case GrannyReal32Member:
@@ -655,11 +704,11 @@ inline granny_int32x GrannyGetTotalTypeSize(const granny_data_type_definition *T
 inline granny_variant GrannyFindMatchingMember(const granny_data_type_definition *TypeDef, void *Object,
                                                const char *FieldName)
 {
-    granny_variant result = {nullptr, nullptr};
+    granny_variant result = {.Type = nullptr, .Object = nullptr};
     if (!TypeDef || !Object || !FieldName)
         return result;
 
-    uint8_t *ptr = static_cast<uint8_t *>(Object);
+    auto *ptr = static_cast<uint8_t *>(Object);
     for (int i = 0; TypeDef[i].Type != GrannyEndMember; ++i)
     {
         if (TypeDef[i].Name && _stricmp(TypeDef[i].Name, FieldName) == 0)
@@ -668,7 +717,7 @@ inline granny_variant GrannyFindMatchingMember(const granny_data_type_definition
             result.Object = ptr;
             return result;
         }
-        granny_int32 width = TypeDef[i].ArrayWidth > 0 ? TypeDef[i].ArrayWidth : 1;
+        granny_int32 const width = TypeDef[i].ArrayWidth > 0 ? TypeDef[i].ArrayWidth : 1;
         ptr += 4 * width;
     }
     return result;
@@ -709,10 +758,10 @@ inline granny_file *GrannyReadEntireFileFromMemory(int MemorySize, void *Memory)
 
     if (static_cast<size_t>(MemorySize) >= sizeof(OpenGrannyMemoryEnvelope))
     {
-        const OpenGrannyMemoryEnvelope *env = static_cast<const OpenGrannyMemoryEnvelope *>(Memory);
+        const auto *env = static_cast<const OpenGrannyMemoryEnvelope *>(Memory);
         if (env->magic == OPEN_GRANNY_MEM_MAGIC && env->fileInfo != nullptr)
         {
-            granny_file *file = new granny_file();
+            auto *file = new granny_file();
             std::memset(file, 0, sizeof(granny_file));
             file->FileInfo = env->fileInfo;
             file->OwnsFileInfo = false;
@@ -726,7 +775,7 @@ inline granny_file *GrannyReadEntireFileFromMemory(int MemorySize, void *Memory)
         return parsedFile;
 
     // Fallback to empty valid file_info container if parsing is not applicable
-    granny_file *file = new granny_file();
+    auto *file = new granny_file();
     std::memset(file, 0, sizeof(granny_file));
     file->FileInfo = new granny_file_info();
     std::memset(file->FileInfo, 0, sizeof(granny_file_info));
@@ -833,7 +882,7 @@ inline void GrannyCopyMeshVertices(const granny_mesh *Mesh, const granny_data_ty
     if (!Mesh || !Mesh->PrimaryVertexData || !Mesh->PrimaryVertexData->Vertices || !DestVertices)
         return;
 
-    granny_int32x count = Mesh->PrimaryVertexData->VertexCount;
+    granny_int32x const count = Mesh->PrimaryVertexData->VertexCount;
     granny_int32x dstStride = GrannyGetTotalObjectSize(VertexType);
     if (dstStride <= 0)
         dstStride = sizeof(granny_pnt332_vertex);
@@ -849,14 +898,14 @@ inline void GrannyCopyMeshVertices(const granny_mesh *Mesh, const granny_data_ty
     }
     else
     {
-        const uint8_t *src = static_cast<const uint8_t *>(Mesh->PrimaryVertexData->Vertices);
-        uint8_t *dst = static_cast<uint8_t *>(DestVertices);
+        const auto *src = static_cast<const uint8_t *>(Mesh->PrimaryVertexData->Vertices);
+        auto *dst = static_cast<uint8_t *>(DestVertices);
         if (srcStride >= 40 && dstStride == sizeof(granny_pnt332_vertex))
         {
             for (int i = 0; i < count; ++i)
             {
-                const granny_pwnt3432_vertex *s = reinterpret_cast<const granny_pwnt3432_vertex *>(src + i * srcStride);
-                granny_pnt332_vertex *d = reinterpret_cast<granny_pnt332_vertex *>(dst + i * dstStride);
+                const auto *s = reinterpret_cast<const granny_pwnt3432_vertex *>(src + (i * srcStride));
+                auto *d = reinterpret_cast<granny_pnt332_vertex *>(dst + (i * dstStride));
                 std::memcpy(d->Position, s->Position, sizeof(float) * 3);
                 std::memcpy(d->Normal, s->Normal, sizeof(float) * 3);
                 std::memcpy(d->UV, s->UV, sizeof(float) * 2);
@@ -864,11 +913,11 @@ inline void GrannyCopyMeshVertices(const granny_mesh *Mesh, const granny_data_ty
         }
         else
         {
-            size_t copyBytes = static_cast<size_t>(srcStride < dstStride ? srcStride : dstStride);
+            auto copyBytes = static_cast<size_t>(srcStride < dstStride ? srcStride : dstStride);
             for (int i = 0; i < count; ++i)
             {
-                std::memset(dst + i * dstStride, 0, static_cast<size_t>(dstStride));
-                std::memcpy(dst + i * dstStride, src + i * srcStride, copyBytes);
+                std::memset(dst + (i * dstStride), 0, static_cast<size_t>(dstStride));
+                std::memcpy(dst + (i * dstStride), src + (i * srcStride), copyBytes);
             }
         }
     }
@@ -889,13 +938,13 @@ inline void GrannyCopyMeshIndices(const granny_mesh *Mesh, granny_int32x BytesPe
         return;
 
     const granny_tri_topology *topo = Mesh->PrimaryTopology;
-    granny_int32x count = GrannyGetMeshIndexCount(Mesh);
+    granny_int32x const count = GrannyGetMeshIndexCount(Mesh);
     if (count <= 0)
         return;
 
     if (BytesPerIndex == 2)
     {
-        uint16_t *dst16 = static_cast<uint16_t *>(DestIndices);
+        auto *dst16 = static_cast<uint16_t *>(DestIndices);
         if (topo->Indices16)
         {
             std::memcpy(dst16, topo->Indices16, static_cast<size_t>(count) * sizeof(uint16_t));
@@ -908,7 +957,7 @@ inline void GrannyCopyMeshIndices(const granny_mesh *Mesh, granny_int32x BytesPe
     }
     else if (BytesPerIndex == 4)
     {
-        uint32_t *dst32 = static_cast<uint32_t *>(DestIndices);
+        auto *dst32 = static_cast<uint32_t *>(DestIndices);
         if (topo->Indices)
         {
             std::memcpy(dst32, topo->Indices, static_cast<size_t>(count) * sizeof(uint32_t));
@@ -958,12 +1007,12 @@ inline bool GrannyFindBoneByName(const granny_skeleton *Skeleton, const char *Bo
 inline granny_mesh_binding *GrannyNewMeshBinding(const granny_mesh *Mesh, const granny_skeleton *FromSkeleton,
                                                  const granny_skeleton *ToSkeleton)
 {
-    granny_mesh_binding *binding = new granny_mesh_binding();
+    auto *binding = new granny_mesh_binding();
     binding->Mesh = Mesh;
     binding->FromSkeleton = FromSkeleton;
     binding->ToSkeleton = ToSkeleton;
 
-    int count = (Mesh && Mesh->BoneBindingCount > 0) ? Mesh->BoneBindingCount : 1;
+    int const count = (Mesh && Mesh->BoneBindingCount > 0) ? Mesh->BoneBindingCount : 1;
     binding->BoneIndices.resize(static_cast<size_t>(count), 0);
 
     if (Mesh && Mesh->BoneBindings && ToSkeleton)
@@ -1019,7 +1068,7 @@ inline void Multiply4x4(granny_matrix_4x4 &out, const granny_matrix_4x4 &a, cons
     {
         for (int c = 0; c < 4; ++c)
         {
-            tmp[r][c] = a[r][0] * b[0][c] + a[r][1] * b[1][c] + a[r][2] * b[2][c] + a[r][3] * b[3][c];
+            tmp[r][c] = (a[r][0] * b[0][c]) + (a[r][1] * b[1][c]) + (a[r][2] * b[2][c]) + (a[r][3] * b[3][c]);
         }
     }
     std::memcpy(out, tmp, sizeof(granny_matrix_4x4));
@@ -1029,7 +1078,10 @@ inline void TransformToMatrix4x4(const granny_transform &t, granny_matrix_4x4 &o
 {
     LoadIdentity4x4(out);
 
-    float qx = 0.0f, qy = 0.0f, qz = 0.0f, qw = 1.0f;
+    float qx = 0.0f;
+    float qy = 0.0f;
+    float qz = 0.0f;
+    float qw = 1.0f;
     if (t.Flags & GrannyHasOrientation)
     {
         qx = t.Orientation[0];
@@ -1039,22 +1091,28 @@ inline void TransformToMatrix4x4(const granny_transform &t, granny_matrix_4x4 &o
     }
 
     // Rotation matrix (row-vector convention matching DirectX / Granny)
-    float xx = qx * qx, yy = qy * qy, zz = qz * qz;
-    float xy = qx * qy, xz = qx * qz, yz = qy * qz;
-    float wx = qw * qx, wy = qw * qy, wz = qw * qz;
+    float const xx = qx * qx;
+    float const yy = qy * qy;
+    float const zz = qz * qz;
+    float const xy = qx * qy;
+    float const xz = qx * qz;
+    float const yz = qy * qz;
+    float const wx = qw * qx;
+    float const wy = qw * qy;
+    float const wz = qw * qz;
 
     float rot[3][3];
-    rot[0][0] = 1.0f - 2.0f * (yy + zz);
+    rot[0][0] = 1.0f - (2.0f * (yy + zz));
     rot[0][1] = 2.0f * (xy + wz);
     rot[0][2] = 2.0f * (xz - wy);
 
     rot[1][0] = 2.0f * (xy - wz);
-    rot[1][1] = 1.0f - 2.0f * (xx + zz);
+    rot[1][1] = 1.0f - (2.0f * (xx + zz));
     rot[1][2] = 2.0f * (yz + wx);
 
     rot[2][0] = 2.0f * (xz + wy);
     rot[2][1] = 2.0f * (yz - wx);
-    rot[2][2] = 1.0f - 2.0f * (xx + yy);
+    rot[2][2] = 1.0f - (2.0f * (xx + yy));
 
     if (t.Flags & GrannyHasScaleShear)
     {
@@ -1062,16 +1120,18 @@ inline void TransformToMatrix4x4(const granny_transform &t, granny_matrix_4x4 &o
         {
             for (int c = 0; c < 3; ++c)
             {
-                out[r][c] =
-                    t.ScaleShear[r][0] * rot[0][c] + t.ScaleShear[r][1] * rot[1][c] + t.ScaleShear[r][2] * rot[2][c];
+                out[r][c] = (t.ScaleShear[r][0] * rot[0][c]) + (t.ScaleShear[r][1] * rot[1][c]) +
+                            (t.ScaleShear[r][2] * rot[2][c]);
             }
         }
     }
     else
     {
         for (int r = 0; r < 3; ++r)
+        {
             for (int c = 0; c < 3; ++c)
                 out[r][c] = rot[r][c];
+        }
     }
 
     if (t.Flags & GrannyHasPosition)
@@ -1127,8 +1187,8 @@ inline void BlendTransform(granny_transform &Dst, const granny_transform &Src, g
 
 inline granny_local_pose *GrannyNewLocalPose(granny_int32x BoneCount)
 {
-    granny_local_pose *pose = new granny_local_pose();
-    int count = BoneCount > 0 ? BoneCount : 1;
+    auto *pose = new granny_local_pose();
+    int const count = BoneCount > 0 ? BoneCount : 1;
     pose->BoneCount = count;
     pose->Transforms.resize(static_cast<size_t>(count));
     for (int i = 0; i < count; ++i)
@@ -1150,8 +1210,8 @@ inline void GrannyFreeLocalPose(granny_local_pose *LocalPose)
 
 inline granny_world_pose *GrannyNewWorldPose(granny_int32x BoneCount)
 {
-    granny_world_pose *pose = new granny_world_pose();
-    int count = BoneCount > 0 ? BoneCount : 1;
+    auto *pose = new granny_world_pose();
+    int const count = BoneCount > 0 ? BoneCount : 1;
     pose->BoneCount = count;
     pose->World4x4.resize(static_cast<size_t>(count));
     pose->Composite4x4.resize(static_cast<size_t>(count));
@@ -1198,15 +1258,17 @@ inline void GrannyBuildWorldPose(const granny_skeleton *Skeleton, granny_int32x 
 
     granny_matrix_4x4 rootOffset;
     if (Offset4x4)
+    {
         std::memcpy(rootOffset, Offset4x4, sizeof(granny_matrix_4x4));
+    }
     else
+    {
         GrannyMathInternal::LoadIdentity4x4(rootOffset);
+    }
 
     int endBone = FirstBone + BoneCount;
-    if (endBone > Skeleton->BoneCount)
-        endBone = Skeleton->BoneCount;
-    if (endBone > Result->BoneCount)
-        endBone = Result->BoneCount;
+    endBone = std::min(endBone, Skeleton->BoneCount);
+    endBone = std::min(endBone, Result->BoneCount);
 
     for (int i = FirstBone; i < endBone; ++i)
     {
@@ -1231,9 +1293,13 @@ inline void GrannyBuildWorldPose(const granny_skeleton *Skeleton, granny_int32x 
         // Check if InverseWorld4x4 is non-zero; otherwise treat as identity
         bool hasInv = false;
         for (int r = 0; r < 4 && !hasInv; ++r)
+        {
             for (int c = 0; c < 4 && !hasInv; ++c)
+            {
                 if (std::fabs(bone.InverseWorld4x4[r][c]) > 1e-6f)
                     hasInv = true;
+            }
+        }
 
         if (hasInv)
         {
@@ -1254,7 +1320,7 @@ inline void GrannyBuildWorldPose(const granny_skeleton *Skeleton, granny_int32x 
 
 inline granny_model_instance *GrannyInstantiateModel(const granny_model *Model)
 {
-    granny_model_instance *inst = new granny_model_instance();
+    auto *inst = new granny_model_instance();
     inst->SourceModel = Model;
     inst->ModelClock = 0.0f;
     return inst;
@@ -1283,7 +1349,7 @@ inline granny_control *GrannyPlayControlledAnimation(granny_real32 StartTime, co
     if (!Animation || !Model)
         return nullptr;
 
-    granny_control *ctrl = new granny_control();
+    auto *ctrl = new granny_control();
     ctrl->Animation = Animation;
     ctrl->StartTime = StartTime;
     ctrl->RawLocalClock = 0.0f;
@@ -1322,7 +1388,7 @@ inline bool GrannyControlIsComplete(const granny_control *Control)
         return true;
     if (Control->LoopCount > 0 && Control->Animation)
     {
-        float totalDuration = Control->Animation->Duration * float(Control->LoopCount);
+        float const totalDuration = Control->Animation->Duration * static_cast<float>(Control->LoopCount);
         if (Control->RawLocalClock >= totalDuration)
             return true;
     }
@@ -1365,7 +1431,7 @@ inline void GrannySetModelClock(granny_model_instance *ModelInstance, granny_rea
 {
     if (!ModelInstance)
         return;
-    granny_real32 dt = NewClock - ModelInstance->ModelClock;
+    granny_real32 const dt = NewClock - ModelInstance->ModelClock;
     ModelInstance->ModelClock = NewClock;
     for (granny_control *ctrl : ModelInstance->Controls)
     {
@@ -1424,8 +1490,8 @@ inline granny_real32 GrannyGetControlDurationLeft(const granny_control *Control)
         return 0.0f;
     if (Control->LoopCount == 0)
         return 1e6f;
-    float total = Control->Animation->Duration * float(Control->LoopCount);
-    float left = total - Control->RawLocalClock;
+    float const total = Control->Animation->Duration * static_cast<float>(Control->LoopCount);
+    float const left = total - Control->RawLocalClock;
     return left > 0.0f ? left : 0.0f;
 }
 
@@ -1475,20 +1541,28 @@ inline granny_real32 GrannyGetControlWeight(const granny_control *Control, grann
 
     if (Control->EaseIn && Control->EaseInEnd > Control->EaseInStart)
     {
-        granny_real32 u = (CurrentTime - Control->EaseInStart) / (Control->EaseInEnd - Control->EaseInStart);
+        granny_real32 const u = (CurrentTime - Control->EaseInStart) / (Control->EaseInEnd - Control->EaseInStart);
         if (u <= 0.0f)
+        {
             Weight = 0.0f;
+        }
         else if (u < 1.0f)
+        {
             Weight *= u * u * (3.0f - 2.0f * u); // smoothstep
+        }
     }
 
     if (Control->EaseOut && Control->EaseOutEnd > Control->EaseOutStart)
     {
-        granny_real32 u = (CurrentTime - Control->EaseOutStart) / (Control->EaseOutEnd - Control->EaseOutStart);
+        granny_real32 const u = (CurrentTime - Control->EaseOutStart) / (Control->EaseOutEnd - Control->EaseOutStart);
         if (u >= 1.0f)
+        {
             Weight = 0.0f;
+        }
         else if (u > 0.0f)
-            Weight *= 1.0f - u * u * (3.0f - 2.0f * u);
+        {
+            Weight *= 1.0f - (u * u * (3.0f - 2.0f * u));
+        }
     }
 
     return Weight > 0.0f ? Weight : 0.0f;
@@ -1640,7 +1714,7 @@ inline void GrannySampleCurveVec3(const granny_curve &curve, float t, float *out
 
     if (t >= curve.Knots[curve.KnotCount - 1])
     {
-        int last = (curve.KnotCount - 1) * 3;
+        int const last = (curve.KnotCount - 1) * 3;
         if (last + 2 < curve.ControlCount)
         {
             outVec3[0] = curve.Controls[last];
@@ -1654,16 +1728,16 @@ inline void GrannySampleCurveVec3(const granny_curve &curve, float t, float *out
     while (k + 1 < curve.KnotCount && t > curve.Knots[k + 1])
         ++k;
 
-    float dt = curve.Knots[k + 1] - curve.Knots[k];
-    float u = (dt > 1e-6f) ? (t - curve.Knots[k]) / dt : 0.0f;
+    float const dt = curve.Knots[k + 1] - curve.Knots[k];
+    float const u = (dt > 1e-6f) ? (t - curve.Knots[k]) / dt : 0.0f;
 
-    int idx0 = k * 3;
-    int idx1 = (k + 1) * 3;
+    int const idx0 = k * 3;
+    int const idx1 = (k + 1) * 3;
     if (idx1 + 2 < curve.ControlCount)
     {
-        outVec3[0] = curve.Controls[idx0 + 0] + u * (curve.Controls[idx1 + 0] - curve.Controls[idx0 + 0]);
-        outVec3[1] = curve.Controls[idx0 + 1] + u * (curve.Controls[idx1 + 1] - curve.Controls[idx0 + 1]);
-        outVec3[2] = curve.Controls[idx0 + 2] + u * (curve.Controls[idx1 + 2] - curve.Controls[idx0 + 2]);
+        outVec3[0] = curve.Controls[idx0 + 0] + (u * (curve.Controls[idx1 + 0] - curve.Controls[idx0 + 0]));
+        outVec3[1] = curve.Controls[idx0 + 1] + (u * (curve.Controls[idx1 + 1] - curve.Controls[idx0 + 1]));
+        outVec3[2] = curve.Controls[idx0 + 2] + (u * (curve.Controls[idx1 + 2] - curve.Controls[idx0 + 2]));
     }
 }
 
@@ -1692,7 +1766,7 @@ inline void GrannySampleCurveQuat(const granny_curve &curve, float t, float *out
 
     if (t >= curve.Knots[curve.KnotCount - 1])
     {
-        int last = (curve.KnotCount - 1) * 4;
+        int const last = (curve.KnotCount - 1) * 4;
         if (last + 3 < curve.ControlCount)
         {
             outQuat[0] = curve.Controls[last];
@@ -1707,11 +1781,11 @@ inline void GrannySampleCurveQuat(const granny_curve &curve, float t, float *out
     while (k + 1 < curve.KnotCount && t > curve.Knots[k + 1])
         ++k;
 
-    float dt = curve.Knots[k + 1] - curve.Knots[k];
-    float u = (dt > 1e-6f) ? (t - curve.Knots[k]) / dt : 0.0f;
+    float const dt = curve.Knots[k + 1] - curve.Knots[k];
+    float const u = (dt > 1e-6f) ? (t - curve.Knots[k]) / dt : 0.0f;
 
-    int idx0 = k * 4;
-    int idx1 = (k + 1) * 4;
+    int const idx0 = k * 4;
+    int const idx1 = (k + 1) * 4;
     if (idx1 + 3 < curve.ControlCount)
     {
         D3DXQUATERNION q0(curve.Controls[idx0], curve.Controls[idx0 + 1], curve.Controls[idx0 + 2],
@@ -1740,7 +1814,7 @@ inline void GrannySampleCurveScaleShear(const granny_curve &curve, float t, floa
 
     if (t >= curve.Knots[curve.KnotCount - 1])
     {
-        int last = (curve.KnotCount - 1) * 9;
+        int const last = (curve.KnotCount - 1) * 9;
         if (last + 8 < curve.ControlCount)
             std::memcpy(outMat3x3, &curve.Controls[last], sizeof(float) * 9);
         return;
@@ -1750,15 +1824,15 @@ inline void GrannySampleCurveScaleShear(const granny_curve &curve, float t, floa
     while (k + 1 < curve.KnotCount && t > curve.Knots[k + 1])
         ++k;
 
-    float dt = curve.Knots[k + 1] - curve.Knots[k];
-    float u = (dt > 1e-6f) ? (t - curve.Knots[k]) / dt : 0.0f;
+    float const dt = curve.Knots[k + 1] - curve.Knots[k];
+    float const u = (dt > 1e-6f) ? (t - curve.Knots[k]) / dt : 0.0f;
 
-    int idx0 = k * 9;
-    int idx1 = (k + 1) * 9;
+    int const idx0 = k * 9;
+    int const idx1 = (k + 1) * 9;
     if (idx1 + 8 < curve.ControlCount)
     {
         for (int i = 0; i < 9; ++i)
-            outMat3x3[i] = curve.Controls[idx0 + i] + u * (curve.Controls[idx1 + i] - curve.Controls[idx0 + i]);
+            outMat3x3[i] = curve.Controls[idx0 + i] + (u * (curve.Controls[idx1 + i] - curve.Controls[idx0 + i]));
     }
 }
 
@@ -1770,13 +1844,10 @@ inline void GrannySampleModelAnimations(const granny_model_instance *ModelInstan
 
     const granny_skeleton *skel = ModelInstance->SourceModel->Skeleton;
 
-    if (FirstBone < 0)
-        FirstBone = 0;
+    FirstBone = std::max(FirstBone, 0);
     int endBone = FirstBone + BoneCount;
-    if (endBone > skel->BoneCount)
-        endBone = skel->BoneCount;
-    if (endBone > Result->BoneCount)
-        endBone = Result->BoneCount;
+    endBone = std::min(endBone, skel->BoneCount);
+    endBone = std::min(endBone, Result->BoneCount);
     if (FirstBone >= endBone)
         return;
 
@@ -1810,9 +1881,13 @@ inline void GrannySampleModelAnimations(const granny_model_instance *ModelInstan
         if (anim->Duration > 0.0f)
         {
             if (ctrl->LoopCount == 0)
+            {
                 animTime = std::fmod(animTime, anim->Duration);
+            }
             else if (animTime > anim->Duration)
+            {
                 animTime = anim->Duration;
+            }
         }
 
         samples.push_back({ctrl, weight, animTime});
@@ -1994,13 +2069,16 @@ inline void GrannyUpdateModelMatrix(const granny_model_instance *ModelInstance, 
         // (corresponds to Metin2 local Z) In ModelMatrix4x4 (row-major D3D): Row
         // 0 (indices 0, 1, 2) is the local X axis Row 1 (indices 4, 5, 6) is the
         // local Y axis Row 2 (indices 8, 9, 10) is the local Z axis
-        float m2_local_x = delta[1];
-        float m2_local_y = delta[0];
-        float m2_local_z = delta[2];
+        float const m2_local_x = delta[1];
+        float const m2_local_y = delta[0];
+        float const m2_local_z = delta[2];
 
-        float dx = m2_local_x * ModelMatrix4x4[0] + m2_local_y * ModelMatrix4x4[4] + m2_local_z * ModelMatrix4x4[8];
-        float dy = m2_local_x * ModelMatrix4x4[1] + m2_local_y * ModelMatrix4x4[5] + m2_local_z * ModelMatrix4x4[9];
-        float dz = m2_local_x * ModelMatrix4x4[2] + m2_local_y * ModelMatrix4x4[6] + m2_local_z * ModelMatrix4x4[10];
+        float const dx =
+            (m2_local_x * ModelMatrix4x4[0]) + (m2_local_y * ModelMatrix4x4[4]) + (m2_local_z * ModelMatrix4x4[8]);
+        float const dy =
+            (m2_local_x * ModelMatrix4x4[1]) + (m2_local_y * ModelMatrix4x4[5]) + (m2_local_z * ModelMatrix4x4[9]);
+        float const dz =
+            (m2_local_x * ModelMatrix4x4[2]) + (m2_local_y * ModelMatrix4x4[6]) + (m2_local_z * ModelMatrix4x4[10]);
         DestMatrix4x4[12] += dx;
         DestMatrix4x4[13] += dy;
         DestMatrix4x4[14] += dz;
@@ -2015,13 +2093,13 @@ inline granny_mesh_deformer *GrannyNewMeshDeformer(const granny_data_type_defini
                                                    const granny_data_type_definition *OutputVertexLayout,
                                                    granny_deformation_type DeformationType)
 {
-    granny_mesh_deformer *deformer = new granny_mesh_deformer();
+    auto *deformer = new granny_mesh_deformer();
     deformer->InputType = InputVertexLayout;
     deformer->OutputType = OutputVertexLayout;
     deformer->DeformationType = DeformationType;
 
-    granny_int32x inSize = GrannyGetTotalObjectSize(InputVertexLayout);
-    granny_int32x outSize = GrannyGetTotalObjectSize(OutputVertexLayout);
+    granny_int32x const inSize = GrannyGetTotalObjectSize(InputVertexLayout);
+    granny_int32x const outSize = GrannyGetTotalObjectSize(OutputVertexLayout);
     deformer->InputStride = inSize > 0 ? static_cast<size_t>(inSize) : sizeof(granny_pnt332_vertex);
     deformer->OutputStride = outSize > 0 ? static_cast<size_t>(outSize) : sizeof(granny_pnt332_vertex);
 
@@ -2052,33 +2130,37 @@ inline void GrannyDeformVertices(const granny_mesh_deformer *Deformer, const gra
     if (!Deformer || !SourceVertices || !DestVertices || VertexCount <= 0)
         return;
 
-    const granny_matrix_4x4 *matrices = reinterpret_cast<const granny_matrix_4x4 *>(MatrixBuffer4x4);
-    const uint8_t *srcBytes = static_cast<const uint8_t *>(SourceVertices);
-    uint8_t *dstBytes = static_cast<uint8_t *>(DestVertices);
+    const auto *matrices = reinterpret_cast<const granny_matrix_4x4 *>(MatrixBuffer4x4);
+    const auto *srcBytes = static_cast<const uint8_t *>(SourceVertices);
+    auto *dstBytes = static_cast<uint8_t *>(DestVertices);
 
     for (int v = 0; v < VertexCount; ++v)
     {
-        const uint8_t *sv = srcBytes + static_cast<size_t>(v) * Deformer->InputStride;
-        uint8_t *dv = dstBytes + static_cast<size_t>(v) * Deformer->OutputStride;
+        const uint8_t *sv = srcBytes + (static_cast<size_t>(v) * Deformer->InputStride);
+        uint8_t *dv = dstBytes + (static_cast<size_t>(v) * Deformer->OutputStride);
 
         if (Deformer->HasBoneWeights && Deformer->InputStride >= sizeof(granny_pwnt3432_vertex))
         {
-            const granny_pwnt3432_vertex *pwnt = reinterpret_cast<const granny_pwnt3432_vertex *>(sv);
-            granny_pnt332_vertex *outPnt = reinterpret_cast<granny_pnt332_vertex *>(dv);
+            const auto *pwnt = reinterpret_cast<const granny_pwnt3432_vertex *>(sv);
+            auto *outPnt = reinterpret_cast<granny_pnt332_vertex *>(dv);
 
-            float px = 0.0f, py = 0.0f, pz = 0.0f;
-            float nx = 0.0f, ny = 0.0f, nz = 0.0f;
+            float px = 0.0f;
+            float py = 0.0f;
+            float pz = 0.0f;
+            float nx = 0.0f;
+            float ny = 0.0f;
+            float nz = 0.0f;
             float totalWeight = 0.0f;
 
             for (int w = 0; w < 4; ++w)
             {
-                float weight = float(pwnt->BoneWeights[w]) / 255.0f;
+                float const weight = static_cast<float>(pwnt->BoneWeights[w]) / 255.0f;
                 if (weight <= 0.0f)
                     continue;
                 totalWeight += weight;
 
-                int localBone = pwnt->BoneIndices[w];
-                int boneIdx = MatrixIndices ? MatrixIndices[localBone] : localBone;
+                int const localBone = pwnt->BoneIndices[w];
+                int const boneIdx = MatrixIndices ? MatrixIndices[localBone] : localBone;
                 if (matrices && boneIdx >= 0)
                 {
                     const granny_matrix_4x4 &m = matrices[boneIdx];
@@ -2114,26 +2196,26 @@ inline void GrannyDeformVertices(const granny_mesh_deformer *Deformer, const gra
         }
         else
         {
-            const granny_pnt332_vertex *inPnt = reinterpret_cast<const granny_pnt332_vertex *>(sv);
-            granny_pnt332_vertex *outPnt = reinterpret_cast<granny_pnt332_vertex *>(dv);
+            const auto *inPnt = reinterpret_cast<const granny_pnt332_vertex *>(sv);
+            auto *outPnt = reinterpret_cast<granny_pnt332_vertex *>(dv);
 
-            int boneIdx = MatrixIndices ? MatrixIndices[0] : 0;
+            int const boneIdx = MatrixIndices ? MatrixIndices[0] : 0;
             if (matrices && boneIdx >= 0)
             {
                 const granny_matrix_4x4 &m = matrices[boneIdx];
-                outPnt->Position[0] = inPnt->Position[0] * m[0][0] + inPnt->Position[1] * m[1][0] +
-                                      inPnt->Position[2] * m[2][0] + m[3][0];
-                outPnt->Position[1] = inPnt->Position[0] * m[0][1] + inPnt->Position[1] * m[1][1] +
-                                      inPnt->Position[2] * m[2][1] + m[3][1];
-                outPnt->Position[2] = inPnt->Position[0] * m[0][2] + inPnt->Position[1] * m[1][2] +
-                                      inPnt->Position[2] * m[2][2] + m[3][2];
+                outPnt->Position[0] = (inPnt->Position[0] * m[0][0]) + (inPnt->Position[1] * m[1][0]) +
+                                      (inPnt->Position[2] * m[2][0]) + m[3][0];
+                outPnt->Position[1] = (inPnt->Position[0] * m[0][1]) + (inPnt->Position[1] * m[1][1]) +
+                                      (inPnt->Position[2] * m[2][1]) + m[3][1];
+                outPnt->Position[2] = (inPnt->Position[0] * m[0][2]) + (inPnt->Position[1] * m[1][2]) +
+                                      (inPnt->Position[2] * m[2][2]) + m[3][2];
 
                 outPnt->Normal[0] =
-                    inPnt->Normal[0] * m[0][0] + inPnt->Normal[1] * m[1][0] + inPnt->Normal[2] * m[2][0];
+                    (inPnt->Normal[0] * m[0][0]) + (inPnt->Normal[1] * m[1][0]) + (inPnt->Normal[2] * m[2][0]);
                 outPnt->Normal[1] =
-                    inPnt->Normal[0] * m[0][1] + inPnt->Normal[1] * m[1][1] + inPnt->Normal[2] * m[2][1];
+                    (inPnt->Normal[0] * m[0][1]) + (inPnt->Normal[1] * m[1][1]) + (inPnt->Normal[2] * m[2][1]);
                 outPnt->Normal[2] =
-                    inPnt->Normal[0] * m[0][2] + inPnt->Normal[1] * m[1][2] + inPnt->Normal[2] * m[2][2];
+                    (inPnt->Normal[0] * m[0][2]) + (inPnt->Normal[1] * m[1][2]) + (inPnt->Normal[2] * m[2][2]);
             }
             else
             {

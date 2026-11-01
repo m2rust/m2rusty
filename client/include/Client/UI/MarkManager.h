@@ -15,14 +15,14 @@ class CGuildMarkManager : public singleton<CGuildMarkManager>
     // Symbol
     struct TGuildSymbol
     {
-        DWORD crc;
+        DWORD crc = 0U;
         std::vector<BYTE> raw;
     };
 
     CGuildMarkManager();
-    virtual ~CGuildMarkManager();
+    ~CGuildMarkManager() override;
 
-    const TGuildSymbol *GetGuildSymbol(DWORD GID);
+    const TGuildSymbol *GetGuildSymbol(DWORD guildID);
     bool LoadSymbol(const char *filename);
     void SaveSymbol(const char *filename);
     void UploadSymbol(DWORD guildID, int iSize, const BYTE *pbyData);
@@ -51,7 +51,7 @@ class CGuildMarkManager : public singleton<CGuildMarkManager>
     void GetDiffBlocks(DWORD imgIdx, const DWORD *crcList, std::map<BYTE, const SGuildMarkBlock *> &mapDiffBlocks);
 
     // CLIENT
-    bool SaveBlockFromCompressedData(DWORD imgIdx, DWORD idBlock, const BYTE *pbBlock, DWORD dwSize);
+    bool SaveBlockFromCompressedData(DWORD imgIdx, DWORD posBlock, const BYTE *pbBlock, DWORD dwSize);
     bool GetBlockCRCList(DWORD imgIdx, DWORD *crcList);
 
   private:
@@ -72,7 +72,6 @@ class CGuildMarkManager : public singleton<CGuildMarkManager>
     std::set<DWORD> m_setFreeMarkID;
     std::string m_pathPrefix;
 
-  private:
     //
     // Symbol
     //

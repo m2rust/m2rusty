@@ -4,16 +4,17 @@
 #include <Client/Game/ItemManager.h>
 #include <Client/UI/InstanceBase.h>
 #include <Client/UI/AbstractApplication.h>
+#include <math.h>
 
 extern int TWOHANDED_WEWAPON_ATT_SPEED_DECREASE_VALUE;
 
 PyObject *itemSetUseSoundFileName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iUseSound;
+    int iUseSound = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iUseSound))
         return Py_BadArgument();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BadArgument();
 
@@ -24,11 +25,11 @@ PyObject *itemSetUseSoundFileName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemSetDropSoundFileName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iDropSound;
+    int iDropSound = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iDropSound))
         return Py_BadArgument();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BadArgument();
 
@@ -39,7 +40,7 @@ PyObject *itemSetDropSoundFileName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemSelectItem(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BadArgument();
 
@@ -158,7 +159,7 @@ PyObject *itemGetISellItemPrice(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsAntiFlag(PyObject *poSelf, PyObject *poArgs)
 {
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iFlag))
         return Py_BadArgument();
 
@@ -171,7 +172,7 @@ PyObject *itemIsAntiFlag(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsFlag(PyObject *poSelf, PyObject *poArgs)
 {
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iFlag))
         return Py_BadArgument();
 
@@ -184,7 +185,7 @@ PyObject *itemIsFlag(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsWearableFlag(PyObject *poSelf, PyObject *poArgs)
 {
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iFlag))
         return Py_BadArgument();
 
@@ -206,7 +207,7 @@ PyObject *itemIs1GoldItem(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemGetLimit(PyObject *poSelf, PyObject *poArgs)
 {
-    int iValueIndex;
+    int iValueIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iValueIndex))
         return Py_BadArgument();
 
@@ -223,7 +224,7 @@ PyObject *itemGetLimit(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemGetAffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int iValueIndex;
+    int iValueIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iValueIndex))
         return Py_BadArgument();
 
@@ -246,7 +247,7 @@ PyObject *itemGetAffect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemGetValue(PyObject *poSelf, PyObject *poArgs)
 {
-    int iValueIndex;
+    int iValueIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iValueIndex))
         return Py_BadArgument();
 
@@ -259,7 +260,7 @@ PyObject *itemGetValue(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemGetSocket(PyObject *poSelf, PyObject *poArgs)
 {
-    int iValueIndex;
+    int iValueIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iValueIndex))
         return Py_BadArgument();
 
@@ -288,7 +289,7 @@ PyObject *itemGetIconInstance(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemDeleteIconInstance(PyObject *poSelf, PyObject *poArgs)
 {
-    long iHandle;
+    long iHandle = 0;
     if (!PyTuple_GetLong(poArgs, 0, &iHandle))
         return Py_BadArgument();
 
@@ -299,7 +300,7 @@ PyObject *itemDeleteIconInstance(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsEquipmentVID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemVID;
+    int iItemVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemVID))
         return Py_BadArgument();
 
@@ -314,7 +315,7 @@ PyObject *itemIsEquipmentVID(PyObject *poSelf, PyObject *poArgs)
 // 2005.05.20.myevan.통합 USE_TYPE 체크
 PyObject *itemGetUseType(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemVID;
+    int iItemVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemVID))
         return Py_BadArgument();
 
@@ -328,7 +329,7 @@ PyObject *itemGetUseType(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsRefineScroll(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemIndex;
+    int iItemIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemIndex))
         return Py_BadArgument();
 
@@ -352,7 +353,7 @@ PyObject *itemIsRefineScroll(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsDetachScroll(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemIndex;
+    int iItemIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemIndex))
         return Py_BadArgument();
 
@@ -361,20 +362,22 @@ PyObject *itemIsDetachScroll(PyObject *poSelf, PyObject *poArgs)
     if (!pItemData)
         return Py_BuildException("Can't find select item data");
 
-    int iType = pItemData->GetType();
-    int iSubType = pItemData->GetSubType();
+    int const iType = pItemData->GetType();
+    int const iSubType = pItemData->GetSubType();
     if (iType == CItemData::ITEM_TYPE_USE)
+    {
         if (iSubType == CItemData::USE_DETACHMENT)
         {
             return Py_BuildValue("i", TRUE);
         }
+    }
 
     return Py_BuildValue("i", FALSE);
 }
 
 PyObject *itemCanAddToQuickSlotItem(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemIndex;
+    int iItemIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemIndex))
         return Py_BadArgument();
 
@@ -393,7 +396,7 @@ PyObject *itemCanAddToQuickSlotItem(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsKey(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemIndex;
+    int iItemIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemIndex))
         return Py_BadArgument();
 
@@ -412,7 +415,7 @@ PyObject *itemIsKey(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemIsMetin(PyObject *poSelf, PyObject *poArgs)
 {
-    int iItemIndex;
+    int iItemIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iItemIndex))
         return Py_BadArgument();
 
@@ -448,20 +451,20 @@ PyObject *itemUpdate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemCreateItem(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BadArgument();
-    int iVirtualNumber;
+    int iVirtualNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iVirtualNumber))
         return Py_BadArgument();
 
-    float x;
+    float x = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &x))
         return Py_BadArgument();
-    float y;
+    float y = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &y))
         return Py_BadArgument();
-    float z;
+    float z = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &z))
         return Py_BadArgument();
 
@@ -475,7 +478,7 @@ PyObject *itemCreateItem(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemDeleteItem(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BadArgument();
 
@@ -485,16 +488,17 @@ PyObject *itemDeleteItem(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *itemPick(PyObject *poSelf, PyObject *poArgs)
 {
-    DWORD dwItemID;
+    DWORD dwItemID = 0;
     if (CPythonItem::Instance().GetPickedItemID(&dwItemID))
+    {
         return Py_BuildValue("i", dwItemID);
-    else
-        return Py_BuildValue("i", -1);
+    }
+    return Py_BuildValue("i", -1);
 }
 
 PyObject *itemLoadItemTable(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BadArgument();
 
@@ -545,7 +549,7 @@ void initItem()
 
         {"LoadItemTable", itemLoadItemTable, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("item", s_methods);

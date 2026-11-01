@@ -30,8 +30,8 @@ class CSpeedTreeRT
 
     enum ELodMethod
     {
-        LOD_POP,
-        LOD_SMOOTH,
+        LOD_POP = 0,
+        LOD_SMOOTH = 1,
         LOD_NONE = 3
     };
 
@@ -63,65 +63,65 @@ class CSpeedTreeRT
         struct SIndexed
         {
             SIndexed();
-            ~SIndexed();
+            ~SIndexed() = default;
 
-            int m_nDiscreteLodLevel;
-            unsigned short m_usNumStrips;
-            const unsigned short *m_pStripLengths;
-            const unsigned short **m_pStrips;
+            int m_nDiscreteLodLevel = -1;
+            unsigned short m_usNumStrips = 0;
+            const unsigned short *m_pStripLengths = nullptr;
+            const unsigned short **m_pStrips = nullptr;
 
-            unsigned short m_usVertexCount;
-            const unsigned long *m_pColors;
-            const float *m_pNormals;
-            const float *m_pBinormals;
-            const float *m_pTangents;
-            const float *m_pCoords;
-            const float *m_pTexCoords0;
-            const float *m_pTexCoords1;
-            const float *m_pWindWeights;
-            const unsigned char *m_pWindMatrixIndices;
+            unsigned short m_usVertexCount = 0;
+            const unsigned long *m_pColors = nullptr;
+            const float *m_pNormals = nullptr;
+            const float *m_pBinormals = nullptr;
+            const float *m_pTangents = nullptr;
+            const float *m_pCoords = nullptr;
+            const float *m_pTexCoords0 = nullptr;
+            const float *m_pTexCoords1 = nullptr;
+            const float *m_pWindWeights = nullptr;
+            const unsigned char *m_pWindMatrixIndices = nullptr;
         };
 
         struct SLeaf
         {
             SLeaf();
-            ~SLeaf();
+            ~SLeaf() = default;
 
-            bool m_bIsActive;
-            float m_fAlphaTestValue;
-            int m_nDiscreteLodLevel;
-            unsigned short m_usLeafCount;
+            bool m_bIsActive = false;
+            float m_fAlphaTestValue = 0.0f;
+            int m_nDiscreteLodLevel = -1;
+            unsigned short m_usLeafCount = 0;
 
-            const unsigned char *m_pLeafMapIndices;
-            const unsigned char *m_pLeafClusterIndices;
-            const float *m_pCenterCoords;
-            const float **m_pLeafMapTexCoords;
-            const float **m_pLeafMapCoords;
+            const unsigned char *m_pLeafMapIndices = nullptr;
+            const unsigned char *m_pLeafClusterIndices = nullptr;
+            const float *m_pCenterCoords = nullptr;
+            const float **m_pLeafMapTexCoords = nullptr;
+            const float **m_pLeafMapCoords = nullptr;
 
-            const unsigned long *m_pColors;
-            const float *m_pNormals;
-            const float *m_pBinormals;
-            const float *m_pTangents;
-            const float *m_pWindWeights;
-            const unsigned char *m_pWindMatrixIndices;
+            const unsigned long *m_pColors = nullptr;
+            const float *m_pNormals = nullptr;
+            const float *m_pBinormals = nullptr;
+            const float *m_pTangents = nullptr;
+            const float *m_pWindWeights = nullptr;
+            const unsigned char *m_pWindMatrixIndices = nullptr;
         };
 
         struct SBillboard
         {
             SBillboard();
-            ~SBillboard();
+            ~SBillboard() = default;
 
-            bool m_bIsActive;
-            const float *m_pTexCoords;
-            const float *m_pCoords;
-            float m_fAlphaTestValue;
+            bool m_bIsActive = false;
+            const float *m_pTexCoords = nullptr;
+            const float *m_pCoords = nullptr;
+            float m_fAlphaTestValue = 0.0f;
         };
 
         SIndexed m_sBranches;
-        float m_fBranchAlphaTestValue;
+        float m_fBranchAlphaTestValue = 0.0f;
 
         SIndexed m_sFronds;
-        float m_fFrondAlphaTestValue;
+        float m_fFrondAlphaTestValue = 0.0f;
 
         SLeaf m_sLeaves0;
         SLeaf m_sLeaves1;
@@ -134,26 +134,26 @@ class CSpeedTreeRT
     struct STextures
     {
         STextures();
-        ~STextures();
+        ~STextures() = default;
 
-        const char *m_pBranchTextureFilename;
-        unsigned int m_uiLeafTextureCount;
-        const char **m_pLeafTextureFilenames;
-        unsigned int m_uiFrondTextureCount;
-        const char **m_pFrondTextureFilenames;
-        const char *m_pCompositeFilename;
-        const char *m_pSelfShadowFilename;
+        const char *m_pBranchTextureFilename = nullptr;
+        unsigned int m_uiLeafTextureCount = 0;
+        const char **m_pLeafTextureFilenames = nullptr;
+        unsigned int m_uiFrondTextureCount = 0;
+        const char **m_pFrondTextureFilenames = nullptr;
+        const char *m_pCompositeFilename = nullptr;
+        const char *m_pSelfShadowFilename = nullptr;
     };
 
     CSpeedTreeRT();
     virtual ~CSpeedTreeRT();
 
     // Instances
-    bool Compute(const float *pTransform = 0, unsigned int nSeed = 1, bool bCompositeStrips = true);
+    bool Compute(const float *pTransform = nullptr, unsigned int nSeed = 1, bool bCompositeStrips = true);
     CSpeedTreeRT *Clone(float x = 0.0f, float y = 0.0f, float z = 0.0f, unsigned int nSeed = 0) const;
-    const CSpeedTreeRT *InstanceOf(void) const;
-    CSpeedTreeRT *MakeInstance(void);
-    void DeleteTransientData(void);
+    const CSpeedTreeRT *InstanceOf() const;
+    CSpeedTreeRT *MakeInstance();
+    void DeleteTransientData();
 
     // Tree file loading
     bool LoadTree(const char *pFilename);
@@ -164,19 +164,19 @@ class CSpeedTreeRT
     void GetTreeSize(float &fSize, float &fVariance) const;
     void SetTreeSize(float fNewSize, float fNewVariance = 0.0f);
     unsigned int GetSeed() const;
-    const float *GetTreePosition(void) const;
+    const float *GetTreePosition() const;
     void SetTreePosition(float x, float y, float z);
     void SetLeafTargetAlphaMask(unsigned char ucMask = 0x54);
 
     // Lighting
-    ELightingMethod GetBranchLightingMethod(void) const;
+    ELightingMethod GetBranchLightingMethod() const;
     void SetBranchLightingMethod(ELightingMethod eMethod);
-    ELightingMethod GetLeafLightingMethod(void) const;
+    ELightingMethod GetLeafLightingMethod() const;
     void SetLeafLightingMethod(ELightingMethod eMethod);
-    ELightingMethod GetFrondLightingMethod(void) const;
+    ELightingMethod GetFrondLightingMethod() const;
     void SetFrondLightingMethod(ELightingMethod eMethod);
 
-    EStaticLightingStyle GetStaticLightingStyle(void) const;
+    EStaticLightingStyle GetStaticLightingStyle() const;
     void SetStaticLightingStyle(EStaticLightingStyle eStyle);
     float GetLeafLightingAdjustment() const;
     void SetLeafLightingAdjustment(float fScalar);
@@ -186,11 +186,11 @@ class CSpeedTreeRT
     static const float *GetLightAttributes(unsigned int nLightIndex);
     static void SetLightAttributes(unsigned int nLightIndex, const float *pLightAttributes);
 
-    const float *GetBranchMaterial(void) const;
+    const float *GetBranchMaterial() const;
     void SetBranchMaterial(const float *pMaterial);
-    const float *GetLeafMaterial(void) const;
+    const float *GetLeafMaterial() const;
     void SetLeafMaterial(const float *pMaterial);
-    const float *GetFrondMaterial(void) const;
+    const float *GetFrondMaterial() const;
     void SetFrondMaterial(const float *pMaterial);
 
     // Camera
@@ -200,19 +200,19 @@ class CSpeedTreeRT
     // Wind
     static void SetTime(float fTime);
     void ComputeWindEffects(bool bBranches, bool bLeaves, bool bFronds = true);
-    void ResetLeafWindState(void);
-    bool GetLeafRockingState(void) const;
+    void ResetLeafWindState();
+    bool GetLeafRockingState() const;
     void SetLeafRockingState(bool bFlag);
     void SetNumLeafRockingGroups(unsigned int nRockingGroups);
 
-    EWindMethod GetLeafWindMethod(void) const;
+    EWindMethod GetLeafWindMethod() const;
     void SetLeafWindMethod(EWindMethod eMethod);
-    EWindMethod GetBranchWindMethod(void) const;
+    EWindMethod GetBranchWindMethod() const;
     void SetBranchWindMethod(EWindMethod eMethod);
-    EWindMethod GetFrondWindMethod(void) const;
+    EWindMethod GetFrondWindMethod() const;
     void SetFrondWindMethod(EWindMethod eMethod);
 
-    float GetWindStrength(void) const;
+    float GetWindStrength() const;
     float SetWindStrength(float fNewStrength, float fOldStrength = -1.0f, float fFrequencyTimeOffset = -1.0f);
 
     static void SetNumWindMatrices(unsigned int nNumMatrices);
@@ -221,8 +221,8 @@ class CSpeedTreeRT
     void SetLocalMatrices(unsigned int nStartingMatrix, unsigned int nMatrixSpan);
 
     // LOD
-    void ComputeLodLevel(void);
-    float GetLodLevel(void) const;
+    void ComputeLodLevel();
+    float GetLodLevel() const;
     void SetLodLevel(float fLodLevel);
     static void SetDropToBillboard(bool bFlag);
 
@@ -233,16 +233,16 @@ class CSpeedTreeRT
     unsigned short GetDiscreteLeafLodLevel(float fLodLevel = -1.0f) const;
     short GetDiscreteFrondLodLevel(float fLodLevel = -1.0f) const;
 
-    unsigned short GetNumBranchLodLevels(void) const;
-    unsigned short GetNumLeafLodLevels(void) const;
-    unsigned short GetNumFrondLodLevels(void) const;
+    unsigned short GetNumBranchLodLevels() const;
+    unsigned short GetNumLeafLodLevels() const;
+    unsigned short GetNumFrondLodLevels() const;
 
     // Geometry
-    void DeleteBranchGeometry(void);
-    void DeleteFrondGeometry(void);
+    void DeleteBranchGeometry();
+    void DeleteFrondGeometry();
     unsigned char *GetFrondGeometryMapIndexes(int nLodLevel) const;
     const float *GetLeafBillboardTable(unsigned int &nEntryCount) const;
-    const float *GetLeafLodSizeAdjustments(void);
+    const float *GetLeafLodSizeAdjustments();
     void GetGeometry(SGeometry &sGeometry, unsigned long ulBitVector = SpeedTree_AllGeometry,
                      short sOverrideBranchLodValue = -1, short sOverrideFrondLodValue = -1,
                      short sOverrideLeafLodValue = -1);
@@ -251,7 +251,7 @@ class CSpeedTreeRT
     void GetTextures(STextures &sTextures) const;
     void SetLeafTextureCoords(unsigned int nLeafMapIndex, const float *pTexCoords);
     void SetFrondTextureCoords(unsigned int nFrondMapIndex, const float *pTexCoords);
-    static bool GetTextureFlip(void);
+    static bool GetTextureFlip();
     static void SetTextureFlip(bool bFlag);
     void SetBranchTextureFilename(const char *pFilename);
     void SetLeafTextureFilename(unsigned int nLeafMapIndex, const char *pFilename);
@@ -259,9 +259,9 @@ class CSpeedTreeRT
 
     // Info & Error
     static void Authorize(const char *pKey);
-    static bool IsAuthorized(void);
-    static const char *GetCurrentError(void);
-    static void ResetError(void);
+    static bool IsAuthorized();
+    static const char *GetCurrentError();
+    static void ResetError();
 
     void GetBoundingBox(float *pBounds) const;
     unsigned int GetLeafTriangleCount(float fLodLevel = -1.0f) const;
@@ -269,11 +269,11 @@ class CSpeedTreeRT
     unsigned int GetFrondTriangleCount(float fLodLevel = -1.0f) const;
 
     // Collisions
-    unsigned int GetCollisionObjectCount(void);
+    unsigned int GetCollisionObjectCount();
     void GetCollisionObject(unsigned int nIndex, ECollisionObjectType &eType, float *pPosition, float *pDimensions);
 
     // User data
-    const char *GetUserData(void) const;
+    const char *GetUserData() const;
 
   private:
     struct SCollisionObj
@@ -283,22 +283,22 @@ class CSpeedTreeRT
         float m_afDims[3];
     };
 
-    float m_afPos[3];
-    float m_afBoundingBox[6];
-    float m_fSize;
-    float m_fSizeVariance;
-    unsigned int m_nSeed;
-    float m_fWindStrength;
-    float m_fLeafLightingAdjustment;
-    ELightingMethod m_eBranchLighting;
-    ELightingMethod m_eLeafLighting;
-    ELightingMethod m_eFrondLighting;
-    EWindMethod m_eBranchWind;
-    EWindMethod m_eLeafWind;
-    EWindMethod m_eFrondWind;
-    float m_afBranchMaterial[13];
-    float m_afLeafMaterial[13];
-    float m_afFrondMaterial[13];
+    float m_afPos[3]{};
+    float m_afBoundingBox[6]{};
+    float m_fSize = 400.0f;
+    float m_fSizeVariance = 0.0f;
+    unsigned int m_nSeed = 1;
+    float m_fWindStrength = 0.0f;
+    float m_fLeafLightingAdjustment = 1.0f;
+    ELightingMethod m_eBranchLighting = LIGHT_STATIC;
+    ELightingMethod m_eLeafLighting = LIGHT_STATIC;
+    ELightingMethod m_eFrondLighting = LIGHT_STATIC;
+    EWindMethod m_eBranchWind = WIND_NONE;
+    EWindMethod m_eLeafWind = WIND_NONE;
+    EWindMethod m_eFrondWind = WIND_NONE;
+    float m_afBranchMaterial[13]{};
+    float m_afLeafMaterial[13]{};
+    float m_afFrondMaterial[13]{};
 
     // Texture filenames
     std::string m_strBranchTexture;
@@ -335,19 +335,19 @@ class CSpeedTreeRT
         SHAPE_SMALL
     };
 
-    ETreeShape m_eShape;
+    ETreeShape m_eShape = SHAPE_BROADLEAF;
 
-    bool m_bGeometryGenerated;
-    bool m_bBakedGeometry;
-    float m_fBranchAlpha;
-    float m_fFrondAlpha;
-    float m_fLeafAlpha;
+    bool m_bGeometryGenerated = false;
+    bool m_bBakedGeometry = false;
+    float m_fBranchAlpha = 1.0f;
+    float m_fFrondAlpha = 0.0f;
+    float m_fLeafAlpha = 128.0f;
     std::vector<float> m_vBranchCoords;
     std::vector<unsigned long> m_vBranchColors;
     std::vector<float> m_vBranchTexCoords0;
     std::vector<float> m_vBranchTexCoords1;
     std::vector<unsigned short> m_vBranchStrip;
-    unsigned short m_usBranchStripLength;
+    unsigned short m_usBranchStripLength = 0;
     std::vector<const unsigned short *> m_vpBranchStrips;
 
     std::vector<float> m_vFrondCoords;
@@ -355,7 +355,7 @@ class CSpeedTreeRT
     std::vector<float> m_vFrondTexCoords0;
     std::vector<float> m_vFrondTexCoords1;
     std::vector<unsigned short> m_vFrondStrip;
-    unsigned short m_usFrondStripLength;
+    unsigned short m_usFrondStripLength = 0;
     std::vector<const unsigned short *> m_vpFrondStrips;
 
     std::vector<float> m_vLeafCenters;
@@ -372,7 +372,7 @@ class CSpeedTreeRT
     std::vector<unsigned char> m_vLeafClusterIndices;
 
     // Instancing
-    const CSpeedTreeRT *m_pInstanceOf;
+    const CSpeedTreeRT *m_pInstanceOf = nullptr;
 
     // Static states
     static std::string ms_strError;

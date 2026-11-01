@@ -5,18 +5,12 @@
 
 bool CNetworkAddress::GetHostName(char *szName, int size)
 {
-    if (gethostname(szName, size) == SOCKET_ERROR)
-        return false;
-    return true;
+    return gethostname(szName, size) != SOCKET_ERROR;
 }
 
 CNetworkAddress::CNetworkAddress()
 {
     Clear();
-}
-
-CNetworkAddress::~CNetworkAddress()
-{
 }
 
 CNetworkAddress::operator const SOCKADDR_IN &() const
@@ -32,9 +26,7 @@ void CNetworkAddress::Clear()
 
 bool CNetworkAddress::IsIP(const char *c_szAddr)
 {
-    if (c_szAddr[0] < '0' || c_szAddr[0] > '9')
-        return false;
-    return true;
+    return !(c_szAddr[0] < '0' || c_szAddr[0] > '9');
 }
 
 bool CNetworkAddress::Set(const char *c_szAddr, int port)
@@ -87,20 +79,20 @@ int CNetworkAddress::GetSize()
     return sizeof(m_sockAddrIn);
 }
 
-DWORD CNetworkAddress::GetIP()
+DWORD CNetworkAddress::GetIP() const
 {
     return ntohl(m_sockAddrIn.sin_addr.s_addr);
 }
 
-void CNetworkAddress::GetIP(char *szIP, int len)
+void CNetworkAddress::GetIP(char *szIP, int len) const
 {
     BYTE IPs[4];
-    *((DWORD *)IPs) = m_sockAddrIn.sin_addr.s_addr;
+    *(reinterpret_cast<DWORD *>(IPs)) = m_sockAddrIn.sin_addr.s_addr;
 
     _snprintf(szIP, len, "%d.%d.%d.%d", IPs[0], IPs[1], IPs[2], IPs[3]);
 }
 
-int CNetworkAddress::GetPort()
+int CNetworkAddress::GetPort() const
 {
     return ntohs(m_sockAddrIn.sin_port);
 }

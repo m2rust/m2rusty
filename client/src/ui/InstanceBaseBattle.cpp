@@ -3,16 +3,23 @@
 #include <Client/UI/PythonBackground.h>
 #include <Client/UI/PythonCharacterManager.h>
 #include <Neoeter/Terrain/Terrain.h>
+#include <math.h>
 
 float NEW_UnsignedDegreeToSignedDegree(float fUD)
 {
-    float fSD;
+    float fSD = NAN;
     if (fUD > 180.0f)
+    {
         fSD = -(360.0f - fUD);
+    }
     else if (fUD < -180.0f)
+    {
         fSD = +(360.0f + fUD);
+    }
     else
+    {
         fSD = fUD;
+    }
 
     return fSD;
 }
@@ -87,12 +94,12 @@ float CInstanceBase::NEW_GetDistanceFromDestPixelPosition(const TPixelPosition &
 
 float CInstanceBase::NEW_GetDistanceFromDirPixelPosition(const TPixelPosition &c_rkPPosDir)
 {
-    return sqrtf(c_rkPPosDir.x * c_rkPPosDir.x + c_rkPPosDir.y * c_rkPPosDir.y);
+    return sqrtf((c_rkPPosDir.x * c_rkPPosDir.x) + (c_rkPPosDir.y * c_rkPPosDir.y));
 }
 
 float CInstanceBase::NEW_GetRotation()
 {
-    float fCurRot = GetRotation();
+    float const fCurRot = GetRotation();
     return NEW_UnsignedDegreeToSignedDegree(fCurRot);
 }
 
@@ -122,9 +129,9 @@ float CInstanceBase::NEW_GetRotationFromDestInstance(CInstanceBase &rkInstDst)
 
 void CInstanceBase::NEW_GetRandomPositionInFanRange(CInstanceBase &rkInstTarget, TPixelPosition *pkPPosDst)
 {
-    float fDstDirRot = NEW_GetRotationFromDestInstance(rkInstTarget);
+    float const fDstDirRot = NEW_GetRotationFromDestInstance(rkInstTarget);
 
-    float fRot = frandom(fDstDirRot - 10.0f, fDstDirRot + 10.0f);
+    float const fRot = frandom(fDstDirRot - 10.0f, fDstDirRot + 10.0f);
 
     D3DXMATRIX kMatRot;
     D3DXMatrixRotationZ(&kMatRot, D3DXToRadian(-fRot));
@@ -149,7 +156,7 @@ bool CInstanceBase::NEW_GetFrontInstance(CInstanceBase **ppoutTargetInstance, fl
     const float HALF_FAN_ROT_MIN_DISTANCE = 1000.0f;
     const float RPM = (HALF_FAN_ROT_MAX - HALF_FAN_ROT_MIN) / HALF_FAN_ROT_MIN_DISTANCE;
 
-    float fDstRot = NEW_GetRotation();
+    float const fDstRot = NEW_GetRotation();
 
     std::multimap<float, CInstanceBase *> kMap_pkInstNear;
     {
@@ -167,17 +174,21 @@ bool CInstanceBase::NEW_GetFrontInstance(CInstanceBase **ppoutTargetInstance, fl
             if (NEW_GetDistanceFromDestInstance(*pkInstEach) > fDistance)
                 continue;
 
-            float fEachInstDistance = min(NEW_GetDistanceFromDestInstance(*pkInstEach), HALF_FAN_ROT_MIN_DISTANCE);
-            float fEachInstDirRot = NEW_GetRotationFromDestInstance(*pkInstEach);
+            float const fEachInstDistance =
+                min(NEW_GetDistanceFromDestInstance(*pkInstEach), HALF_FAN_ROT_MIN_DISTANCE);
+            float const fEachInstDirRot = NEW_GetRotationFromDestInstance(*pkInstEach);
 
-            float fHalfFanRot = (HALF_FAN_ROT_MAX - HALF_FAN_ROT_MIN) - RPM * fEachInstDistance + HALF_FAN_ROT_MIN;
+            float const fHalfFanRot =
+                (HALF_FAN_ROT_MAX - HALF_FAN_ROT_MIN) - (RPM * fEachInstDistance) + HALF_FAN_ROT_MIN;
 
-            float fMinDstDirRot = fDstRot - fHalfFanRot;
-            float fMaxDstDirRot = fDstRot + fHalfFanRot;
+            float const fMinDstDirRot = fDstRot - fHalfFanRot;
+            float const fMaxDstDirRot = fDstRot + fHalfFanRot;
 
             if (fEachInstDirRot >= fMinDstDirRot && fEachInstDirRot <= fMaxDstDirRot)
+            {
                 kMap_pkInstNear.insert(
                     std::multimap<float, CInstanceBase *>::value_type(fEachInstDistance, pkInstEach));
+            }
         }
     }
 
@@ -198,7 +209,7 @@ bool CInstanceBase::NEW_GetInstanceVectorInFanRange(float fSkillDistance, CInsta
     const float HALF_FAN_ROT_MIN_DISTANCE = 1000.0f;
     const float RPM = (HALF_FAN_ROT_MAX - HALF_FAN_ROT_MIN) / HALF_FAN_ROT_MIN_DISTANCE;
 
-    float fDstDirRot = NEW_GetRotationFromDestInstance(rkInstTarget);
+    float const fDstDirRot = NEW_GetRotationFromDestInstance(rkInstTarget);
 
     // 2004.07.24.myevan - 비파부 가까이 있는 적부터 공격
     std::multimap<float, CInstanceBase *> kMap_pkInstNear;
@@ -219,31 +230,32 @@ bool CInstanceBase::NEW_GetInstanceVectorInFanRange(float fSkillDistance, CInsta
             if (m_GraphicThingInstance.IsClickableDistanceDestInstance(pkInstEach->m_GraphicThingInstance,
                                                                        fSkillDistance))
             {
-                float fEachInstDistance = min(NEW_GetDistanceFromDestInstance(*pkInstEach), HALF_FAN_ROT_MIN_DISTANCE);
-                float fEachInstDirRot = NEW_GetRotationFromDestInstance(*pkInstEach);
+                float const fEachInstDistance =
+                    min(NEW_GetDistanceFromDestInstance(*pkInstEach), HALF_FAN_ROT_MIN_DISTANCE);
+                float const fEachInstDirRot = NEW_GetRotationFromDestInstance(*pkInstEach);
 
-                float fHalfFanRot = (HALF_FAN_ROT_MAX - HALF_FAN_ROT_MIN) - RPM * fEachInstDistance + HALF_FAN_ROT_MIN;
+                float const fHalfFanRot =
+                    (HALF_FAN_ROT_MAX - HALF_FAN_ROT_MIN) - (RPM * fEachInstDistance) + HALF_FAN_ROT_MIN;
 
-                float fMinDstDirRot = fDstDirRot - fHalfFanRot;
-                float fMaxDstDirRot = fDstDirRot + fHalfFanRot;
+                float const fMinDstDirRot = fDstDirRot - fHalfFanRot;
+                float const fMaxDstDirRot = fDstDirRot + fHalfFanRot;
 
                 if (fEachInstDirRot >= fMinDstDirRot && fEachInstDirRot <= fMaxDstDirRot)
+                {
                     kMap_pkInstNear.insert(
                         std::multimap<float, CInstanceBase *>::value_type(fEachInstDistance, pkInstEach));
+                }
             }
         }
     }
 
     {
-        std::multimap<float, CInstanceBase *>::iterator i = kMap_pkInstNear.begin();
+        auto i = kMap_pkInstNear.begin();
         for (i = kMap_pkInstNear.begin(); i != kMap_pkInstNear.end(); ++i)
             pkVct_pkInst->push_back(i->second);
     }
 
-    if (pkVct_pkInst->empty())
-        return false;
-
-    return true;
+    return !pkVct_pkInst->empty();
 }
 
 bool CInstanceBase::NEW_GetInstanceVectorInCircleRange(float fSkillDistance, std::vector<CInstanceBase *> *pkVct_pkInst)
@@ -268,27 +280,24 @@ bool CInstanceBase::NEW_GetInstanceVectorInCircleRange(float fSkillDistance, std
             if (m_GraphicThingInstance.IsClickableDistanceDestInstance(pkInstEach->m_GraphicThingInstance,
                                                                        fSkillDistance))
             {
-                float fEachInstDistance = NEW_GetDistanceFromDestInstance(*pkInstEach);
+                float const fEachInstDistance = NEW_GetDistanceFromDestInstance(*pkInstEach);
                 kMap_pkInstNear.insert(std::make_pair(fEachInstDistance, pkInstEach));
             }
         }
     }
 
     {
-        std::multimap<float, CInstanceBase *>::iterator i = kMap_pkInstNear.begin();
+        auto i = kMap_pkInstNear.begin();
         for (i = kMap_pkInstNear.begin(); i != kMap_pkInstNear.end(); ++i)
             pkVct_pkInst->push_back(i->second);
     }
 
-    if (pkVct_pkInst->empty())
-        return false;
-
-    return true;
+    return !pkVct_pkInst->empty();
 }
 
 BOOL CInstanceBase::NEW_IsClickableDistanceDestPixelPosition(const TPixelPosition &c_rkPPosDst)
 {
-    float fDistance = NEW_GetDistanceFromDestPixelPosition(c_rkPPosDst);
+    float const fDistance = NEW_GetDistanceFromDestPixelPosition(c_rkPPosDst);
 
     if (fDistance > 150.0f)
         return FALSE;
@@ -338,7 +347,7 @@ bool CInstanceBase::NEW_UseSkill(UINT uSkill, UINT uMot, UINT uMotLoopCount, boo
         m_isGoing = FALSE;
     }
 
-    float fCurRot = m_GraphicThingInstance.GetTargetRotation();
+    float const fCurRot = m_GraphicThingInstance.GetTargetRotation();
     SetAdvancingRotation(fCurRot);
 
     m_GraphicThingInstance.InterceptOnceMotion(CRaceMotionData::NAME_SKILL + uMot, 0.1f, uSkill, 1.0f);
@@ -353,7 +362,7 @@ bool CInstanceBase::NEW_UseSkill(UINT uSkill, UINT uMot, UINT uMotLoopCount, boo
 
 void CInstanceBase::NEW_Attack()
 {
-    float fDirRot = GetRotation();
+    float const fDirRot = GetRotation();
     NEW_Attack(fDirRot);
 }
 
@@ -395,7 +404,7 @@ void CInstanceBase::NEW_Attack(float fDirRot)
 
 void CInstanceBase::NEW_AttackToDestPixelPositionDirection(const TPixelPosition &c_rkPPosDst)
 {
-    float fDirRot = NEW_GetRotationFromDestPixelPosition(c_rkPPosDst);
+    float const fDirRot = NEW_GetRotationFromDestPixelPosition(c_rkPPosDst);
 
     NEW_Attack(fDirRot);
 }
@@ -419,7 +428,7 @@ void CInstanceBase::AttackProcess()
     if (!m_GraphicThingInstance.CanCheckAttacking())
         return;
 
-    CInstanceBase *pkInstLast = NULL;
+    CInstanceBase *pkInstLast = nullptr;
     CPythonCharacterManager &rkChrMgr = CPythonCharacterManager::Instance();
     CPythonCharacterManager::CharacterIterator i = rkChrMgr.CharacterInstanceBegin();
     while (rkChrMgr.CharacterInstanceEnd() != i)
@@ -506,7 +515,7 @@ BOOL CInstanceBase::CheckAdvancing()
         return FALSE;
     }
 
-    BOOL bUsingSkill = m_GraphicThingInstance.IsUsingSkill();
+    BOOL const bUsingSkill = m_GraphicThingInstance.IsUsingSkill();
 
     m_dwAdvActorVID = 0;
     UINT uCollisionCount = 0;
@@ -542,10 +551,8 @@ BOOL CInstanceBase::CheckAdvancing()
                 rkActorSelf.BlockMovement();
                 return TRUE;
             }
-            else
-            {
-                NEW_MoveToDestPixelPositionDirection(NEW_GetDstPixelPositionRef());
-            }
+
+            NEW_MoveToDestPixelPositionDirection(NEW_GetDstPixelPositionRef());
         }
     }
 
@@ -556,8 +563,8 @@ BOOL CInstanceBase::CheckAdvancing()
 
     // NOTE : 만약 이동 거리가 크다면 쪼개서 구간 별로 속성을 체크해 본다
     //        현재 설정해 놓은 10.0f는 임의의 거리 - [levites]
-    int iStep = int(D3DXVec3Length(&rv3MoveDirection) / 10.0f);
-    D3DXVECTOR3 v3CheckStep = rv3MoveDirection / float(iStep);
+    int const iStep = static_cast<int>(D3DXVec3Length(&rv3MoveDirection) / 10.0f);
+    D3DXVECTOR3 const v3CheckStep = rv3MoveDirection / static_cast<float>(iStep);
     D3DXVECTOR3 v3CheckPosition = rv3Position;
     for (int j = 0; j < iStep; ++j)
     {
@@ -572,7 +579,7 @@ BOOL CInstanceBase::CheckAdvancing()
     }
 
     // Check
-    D3DXVECTOR3 v3NextPosition = rv3Position + rv3MoveDirection;
+    D3DXVECTOR3 const v3NextPosition = rv3Position + rv3MoveDirection;
     if (rkBG.isAttrOn(v3NextPosition.x, -v3NextPosition.y, CTerrainImpl::ATTRIBUTE_BLOCK))
     {
         BlockMovement();

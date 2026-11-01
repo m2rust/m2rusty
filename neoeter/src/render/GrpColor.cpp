@@ -21,10 +21,6 @@ CGraphicColor::CGraphicColor(DWORD color)
     Set(color);
 }
 
-CGraphicColor::~CGraphicColor()
-{
-}
-
 void CGraphicColor::Clear()
 {
     Set(1.0f, 1.0f, 1.0f, 1.0f);
@@ -48,11 +44,11 @@ void CGraphicColor::Set(const CGraphicColor &c_rSrcColor)
 
 void CGraphicColor::Blend(float p, const CGraphicColor &c_rSrcColor, const CGraphicColor &c_rDstColor)
 {
-    float q = 1.0f - p;
-    m_r = c_rSrcColor.m_r * q + c_rDstColor.m_r * p;
-    m_g = c_rSrcColor.m_g * q + c_rDstColor.m_g * p;
-    m_b = c_rSrcColor.m_b * q + c_rDstColor.m_b * p;
-    m_a = c_rSrcColor.m_a * q + c_rDstColor.m_a * p;
+    float const q = 1.0f - p;
+    m_r = (c_rSrcColor.m_r * q) + (c_rDstColor.m_r * p);
+    m_g = (c_rSrcColor.m_g * q) + (c_rDstColor.m_g * p);
+    m_b = (c_rSrcColor.m_b * q) + (c_rDstColor.m_b * p);
+    m_a = (c_rSrcColor.m_a * q) + (c_rDstColor.m_a * p);
 }
 
 void CGraphicColor::Set(DWORD pack)
@@ -70,13 +66,13 @@ DWORD CGraphicColor::GetPackValue() const
 {
     DWORD packValue = 0;
 
-    packValue = int(255.0f * m_a);
+    packValue = static_cast<int>(255.0f * m_a);
     packValue <<= 8;
-    packValue |= int(255.0f * m_r);
+    packValue |= static_cast<int>(255.0f * m_r);
     packValue <<= 8;
-    packValue |= int(255.0f * m_g);
+    packValue |= static_cast<int>(255.0f * m_g);
     packValue <<= 8;
-    packValue |= int(255.0f * m_b);
+    packValue |= static_cast<int>(255.0f * m_b);
 
     return packValue;
 }

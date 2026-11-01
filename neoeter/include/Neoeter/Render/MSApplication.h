@@ -6,7 +6,7 @@ class CMSApplication : public CMSWindow
 {
   public:
     CMSApplication();
-    virtual ~CMSApplication();
+    ~CMSApplication() override;
 
     void Initialize(HINSTANCE hInstance);
 
@@ -18,5 +18,5 @@ class CMSApplication : public CMSWindow
   protected:
     void ClearWindowClass();
 
-    LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam);
+    LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam) override;
 };

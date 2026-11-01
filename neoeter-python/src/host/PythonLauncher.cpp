@@ -6,18 +6,20 @@
 #include <ctime>
 #include <cmath>
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 #include <dlfcn.h>
 #include <cstdlib>
+#include <numbers>
 #include <string>
 #include <vector>
+#include <math.h>
 #include <sys/stat.h>
 #endif
 
 static PyObject *py_time_time(PyObject *self, PyObject *args)
 {
     auto now = std::chrono::system_clock::now().time_since_epoch();
-    double s = std::chrono::duration<double>(now).count();
+    double const s = std::chrono::duration<double>(now).count();
     return PyFloat_FromDouble(s);
 }
 
@@ -25,40 +27,40 @@ static PyObject *py_time_clock(PyObject *self, PyObject *args)
 {
     static auto start = std::chrono::steady_clock::now();
     auto now = std::chrono::steady_clock::now();
-    double s = std::chrono::duration<double>(now - start).count();
+    double const s = std::chrono::duration<double>(now - start).count();
     return PyFloat_FromDouble(s);
 }
 
 static PyObject *py_time_sleep(PyObject *self, PyObject *args)
 {
-    double secs;
+    double secs = NAN;
     if (!PyArg_ParseTuple(args, "d", &secs))
-        return NULL;
-#if defined(_WIN32)
+        return nullptr;
+#ifdef _WIN32
     // nanosleep is POSIX; the Windows build uses the Win32 equivalent (T1.9).
     Sleep((DWORD)(secs * 1000.0));
 #else
-    struct timespec ts;
-    ts.tv_sec = (time_t)secs;
-    ts.tv_nsec = (long)((secs - ts.tv_sec) * 1e9);
-    nanosleep(&ts, NULL);
+    struct timespec ts{};
+    ts.tv_sec = static_cast<time_t>(secs);
+    ts.tv_nsec = static_cast<long>((secs - ts.tv_sec) * 1e9);
+    nanosleep(&ts, nullptr);
 #endif
     Py_RETURN_NONE;
 }
 
 static PyObject *py_time_localtime(PyObject *self, PyObject *args)
 {
-    time_t t;
-    double dt;
+    time_t t = 0;
+    double dt = NAN;
     if (args && PyTuple_Size(args) > 0)
     {
         if (!PyArg_ParseTuple(args, "d", &dt))
-            return NULL;
-        t = (time_t)dt;
+            return nullptr;
+        t = static_cast<time_t>(dt);
     }
     else
     {
-        t = ::time(NULL);
+        t = ::time(nullptr);
     }
     struct tm *tm_info = localtime(&t);
     if (!tm_info)
@@ -70,14 +72,14 @@ static PyObject *py_time_localtime(PyObject *self, PyObject *args)
 
 static PyObject *py_time_strftime(PyObject *self, PyObject *args)
 {
-    const char *fmt;
-    PyObject *tup = NULL;
+    const char *fmt = nullptr;
+    PyObject *tup = nullptr;
     if (!PyArg_ParseTuple(args, "s|O", &fmt, &tup))
-        return NULL;
+        return nullptr;
 
-    time_t t = ::time(NULL);
+    time_t const t = ::time(nullptr);
     struct tm *tm_info = localtime(&t);
-    struct tm custom_tm;
+    struct tm custom_tm{};
     if (tup && PyTuple_Check(tup) && PyTuple_Size(tup) >= 9)
     {
         custom_tm.tm_year = PyInt_AsLong(PyTuple_GetItem(tup, 0)) - 1900;
@@ -92,7 +94,7 @@ static PyObject *py_time_strftime(PyObject *self, PyObject *args)
         tm_info = &custom_tm;
     }
     char buf[256];
-    size_t len = strftime(buf, sizeof(buf), fmt, tm_info);
+    size_t const len = strftime(buf, sizeof(buf), fmt, tm_info);
     return PyString_FromStringAndSize(buf, len);
 }
 
@@ -102,7 +104,7 @@ static PyMethodDef s_time_methods[] = {
     {"sleep", py_time_sleep, METH_VARARGS, "sleep(seconds)"},
     {"localtime", py_time_localtime, METH_VARARGS, "localtime([seconds]) -> tuple"},
     {"strftime", py_time_strftime, METH_VARARGS, "strftime(format[, tuple]) -> string"},
-    {NULL, NULL, 0, NULL}};
+    {nullptr, nullptr, 0, nullptr}};
 
 static void init_embedded_time()
 {
@@ -111,141 +113,144 @@ static void init_embedded_time()
 
 static PyObject *py_math_sin(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:sin", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::sin(x));
 }
 
 static PyObject *py_math_cos(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:cos", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::cos(x));
 }
 
 static PyObject *py_math_tan(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:tan", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::tan(x));
 }
 
 static PyObject *py_math_asin(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:asin", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::asin(x));
 }
 
 static PyObject *py_math_acos(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:acos", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::acos(x));
 }
 
 static PyObject *py_math_atan(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:atan", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::atan(x));
 }
 
 static PyObject *py_math_atan2(PyObject *self, PyObject *args)
 {
-    double y, x;
+    double y = NAN;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "dd:atan2", &y, &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::atan2(y, x));
 }
 
 static PyObject *py_math_sqrt(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:sqrt", &x))
-        return NULL;
+        return nullptr;
     if (x < 0.0)
     {
         PyErr_SetString(PyExc_ValueError, "math domain error");
-        return NULL;
+        return nullptr;
     }
     return PyFloat_FromDouble(std::sqrt(x));
 }
 
 static PyObject *py_math_ceil(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:ceil", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::ceil(x));
 }
 
 static PyObject *py_math_floor(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:floor", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::floor(x));
 }
 
 static PyObject *py_math_fabs(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:fabs", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::fabs(x));
 }
 
 static PyObject *py_math_hypot(PyObject *self, PyObject *args)
 {
-    double x, y;
+    double x = NAN;
+    double y = NAN;
     if (!PyArg_ParseTuple(args, "dd:hypot", &x, &y))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::hypot(x, y));
 }
 
 static PyObject *py_math_pow(PyObject *self, PyObject *args)
 {
-    double x, y;
+    double x = NAN;
+    double y = NAN;
     if (!PyArg_ParseTuple(args, "dd:pow", &x, &y))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::pow(x, y));
 }
 
 static PyObject *py_math_exp(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:exp", &x))
-        return NULL;
+        return nullptr;
     return PyFloat_FromDouble(std::exp(x));
 }
 
 static PyObject *py_math_log(PyObject *self, PyObject *args)
 {
-    double x;
-    PyObject *baseObj = NULL;
+    double x = NAN;
+    PyObject *baseObj = nullptr;
     if (!PyArg_ParseTuple(args, "d|O:log", &x, &baseObj))
-        return NULL;
+        return nullptr;
     if (x <= 0.0)
     {
         PyErr_SetString(PyExc_ValueError, "math domain error");
-        return NULL;
+        return nullptr;
     }
     if (baseObj && baseObj != Py_None)
     {
-        double base = PyFloat_AsDouble(baseObj);
+        double const base = PyFloat_AsDouble(baseObj);
         if (PyErr_Occurred())
-            return NULL;
+            return nullptr;
         if (base <= 0.0 || base == 1.0)
         {
             PyErr_SetString(PyExc_ValueError, "math domain error");
-            return NULL;
+            return nullptr;
         }
         return PyFloat_FromDouble(std::log(x) / std::log(base));
     }
@@ -254,53 +259,54 @@ static PyObject *py_math_log(PyObject *self, PyObject *args)
 
 static PyObject *py_math_log10(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:log10", &x))
-        return NULL;
+        return nullptr;
     if (x <= 0.0)
     {
         PyErr_SetString(PyExc_ValueError, "math domain error");
-        return NULL;
+        return nullptr;
     }
     return PyFloat_FromDouble(std::log10(x));
 }
 
 static PyObject *py_math_degrees(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:degrees", &x))
-        return NULL;
-    return PyFloat_FromDouble(x * (180.0 / 3.14159265358979323846));
+        return nullptr;
+    return PyFloat_FromDouble(x * (180.0 / std::numbers::pi));
 }
 
 static PyObject *py_math_radians(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:radians", &x))
-        return NULL;
-    return PyFloat_FromDouble(x * (3.14159265358979323846 / 180.0));
+        return nullptr;
+    return PyFloat_FromDouble(x * (std::numbers::pi / 180.0));
 }
 
 static PyObject *py_math_fmod(PyObject *self, PyObject *args)
 {
-    double x, y;
+    double x = NAN;
+    double y = NAN;
     if (!PyArg_ParseTuple(args, "dd:fmod", &x, &y))
-        return NULL;
+        return nullptr;
     if (y == 0.0)
     {
         PyErr_SetString(PyExc_ValueError, "math domain error");
-        return NULL;
+        return nullptr;
     }
     return PyFloat_FromDouble(std::fmod(x, y));
 }
 
 static PyObject *py_math_modf(PyObject *self, PyObject *args)
 {
-    double x;
+    double x = NAN;
     if (!PyArg_ParseTuple(args, "d:modf", &x))
-        return NULL;
-    double intpart;
-    double fractpart = std::modf(x, &intpart);
+        return nullptr;
+    double intpart = NAN;
+    double const fractpart = std::modf(x, &intpart);
     return Py_BuildValue("(dd)", fractpart, intpart);
 }
 
@@ -324,15 +330,15 @@ static PyMethodDef s_math_methods[] = {{"sin", py_math_sin, METH_VARARGS, "sin(x
                                        {"radians", py_math_radians, METH_VARARGS, "radians(x)"},
                                        {"fmod", py_math_fmod, METH_VARARGS, "fmod(x, y)"},
                                        {"modf", py_math_modf, METH_VARARGS, "modf(x)"},
-                                       {NULL, NULL, 0, NULL}};
+                                       {nullptr, nullptr, 0, nullptr}};
 
 static void init_embedded_math()
 {
     PyObject *m = Py_InitModule("math", s_math_methods);
     if (m)
     {
-        PyModule_AddObject(m, "pi", PyFloat_FromDouble(3.14159265358979323846));
-        PyModule_AddObject(m, "e", PyFloat_FromDouble(2.71828182845904523536));
+        PyModule_AddObject(m, "pi", PyFloat_FromDouble(std::numbers::pi));
+        PyModule_AddObject(m, "e", PyFloat_FromDouble(std::numbers::e));
     }
 }
 
@@ -369,10 +375,10 @@ void Traceback()
         str.append("\n");
     }
 
-    PyObject *exc;
-    PyObject *v;
-    PyObject *tb;
-    const char *errStr;
+    PyObject *exc = nullptr;
+    PyObject *v = nullptr;
+    PyObject *tb = nullptr;
+    const char *errStr = nullptr;
 
     PyErr_Fetch(&exc, &v, &tb);
 
@@ -392,7 +398,7 @@ void Traceback()
 
 int TraceFunc(PyObject *obj, PyFrameObject *f, int what, PyObject *arg)
 {
-    const char *funcname;
+    const char *funcname = nullptr;
     char szTraceBuffer[128];
 
     switch (what)
@@ -421,14 +427,16 @@ int TraceFunc(PyObject *obj, PyFrameObject *f, int what, PyObject *arg)
         if (g_nCurTraceN >= 512)
             return 0;
 
-        PyObject *exc_type, *exc_value, *exc_traceback;
+        PyObject *exc_type = nullptr;
+        PyObject *exc_value = nullptr;
+        PyObject *exc_traceback = nullptr;
 
         PyTuple_GetObject(arg, 0, &exc_type);
         PyTuple_GetObject(arg, 1, &exc_value);
         PyTuple_GetObject(arg, 2, &exc_traceback);
 
-        Py_ssize_t len;
-        const char *exc_str;
+        Py_ssize_t len = 0;
+        const char *exc_str = nullptr;
         PyObject_AsCharBuffer(exc_type, &exc_str, &len);
 
         _snprintf(szTraceBuffer, sizeof(szTraceBuffer), "Exception: File \"%s\", line %d, in %s",
@@ -441,16 +449,16 @@ int TraceFunc(PyObject *obj, PyFrameObject *f, int what, PyObject *arg)
     return 0;
 }
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 static bool IsDirectory(const std::string &path)
 {
-    struct stat st;
+    struct stat st{};
     return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 static bool IsPythonStdlib(const std::string &dir)
 {
-    struct stat st;
+    struct stat st{};
     return !dir.empty() && (stat((dir + "/os.py").c_str(), &st) == 0 || stat((dir + "/os.pyc").c_str(), &st) == 0);
 }
 
@@ -462,40 +470,42 @@ static std::string FindPythonStdlib()
     std::vector<std::string> candidates;
 
     if (const char *env = getenv("OPENMT2_PYTHON_STDLIB"))
-        candidates.push_back(env);
+        candidates.emplace_back(env);
     if (const char *env = getenv("PYTHONHOME"))
         candidates.push_back(std::string(env) + "/lib/python2.7");
 
     // Next to the libpython that is actually loaded.
     Dl_info info;
-    if (dladdr((void *)&Py_Initialize, &info) && info.dli_fname)
+    if (dladdr(reinterpret_cast<void *>(&Py_Initialize), &info) && info.dli_fname)
     {
-        std::string lib = info.dli_fname;
-        std::string::size_type slash = lib.rfind('/');
+        std::string const lib = info.dli_fname;
+        std::string::size_type const slash = lib.rfind('/');
         if (slash != std::string::npos)
         {
-            std::string libDir = lib.substr(0, slash);
+            std::string const libDir = lib.substr(0, slash);
             candidates.push_back(libDir + "/python2.7");
             // Debian: /usr/lib/x86_64-linux-gnu/libpython2.7.so ->
             // /usr/lib/python2.7
-            std::string::size_type parent = libDir.rfind('/');
+            std::string::size_type const parent = libDir.rfind('/');
             if (parent != std::string::npos)
                 candidates.push_back(libDir.substr(0, parent) + "/python2.7");
         }
     }
 
 #ifdef OPENMT2_PYTHON_STDLIB_BUILD
-    candidates.push_back(OPENMT2_PYTHON_STDLIB_BUILD);
+    candidates.emplace_back(OPENMT2_PYTHON_STDLIB_BUILD);
 #endif
-    candidates.push_back("/usr/lib/python2.7");
-    candidates.push_back("/usr/lib64/python2.7");
-    candidates.push_back("/usr/local/lib/python2.7");
+    candidates.emplace_back("/usr/lib/python2.7");
+    candidates.emplace_back("/usr/lib64/python2.7");
+    candidates.emplace_back("/usr/local/lib/python2.7");
 
     for (const std::string &dir : candidates)
+    {
         if (IsPythonStdlib(dir))
             return dir;
+    }
 
-    return std::string();
+    return {};
 }
 
 static void AppendSysPath(const std::string &dir)
@@ -518,12 +528,12 @@ static void AppendSysPath(const std::string &dir)
 
 void CPythonLauncher::SetTraceFunc(int (*pFunc)(PyObject *obj, PyFrameObject *f, int what, PyObject *arg))
 {
-    PyEval_SetTrace(pFunc, NULL);
+    PyEval_SetTrace(pFunc, nullptr);
 }
 
 bool CPythonLauncher::Create(const char *c_szProgramName)
 {
-    Py_SetProgramName((char *)c_szProgramName);
+    Py_SetProgramName(const_cast<char *>(c_szProgramName));
 #ifdef _DEBUG
     PyEval_SetTrace(TraceFunc, NULL);
 #endif
@@ -551,9 +561,9 @@ bool CPythonLauncher::Create(const char *c_szProgramName)
 
     RunLine("sys.path.insert(0, 'lib')");
 
-#if !defined(_WIN32)
+#ifndef _WIN32
     // After lib, so the modules shipped with the client keep priority.
-    std::string stdlib = FindPythonStdlib();
+    std::string const stdlib = FindPythonStdlib();
     if (!stdlib.empty())
     {
         Tracef("Python standard library: %s\n", stdlib.c_str());
@@ -577,10 +587,9 @@ bool CPythonLauncher::RunCompiledFile(const char *c_szFileName)
     if (!fp)
         return false;
 
-    PyCodeObject *co;
-    PyObject *v;
-    long magic;
-    long PyImport_GetMagicNumber(void);
+    PyCodeObject *co = nullptr;
+    PyObject *v = nullptr;
+    long magic = 0;
 
     magic = _PyMarshal_ReadLongFromFile(fp);
 
@@ -603,7 +612,7 @@ bool CPythonLauncher::RunCompiledFile(const char *c_szFileName)
         return false;
     }
 
-    co = (PyCodeObject *)v;
+    co = reinterpret_cast<PyCodeObject *>(v);
     v = PyEval_EvalCode(co, m_poDic, m_poDic);
     /*	if (v && flags)
             flags->cf_flags |= (co->co_flags & PyCF_MASK);*/
@@ -621,7 +630,7 @@ bool CPythonLauncher::RunCompiledFile(const char *c_szFileName)
     return true;
 }
 
-bool CPythonLauncher::RunMemoryTextFile(const char *c_szFileName, std::shared_ptr<std::vector<char>> fileData)
+bool CPythonLauncher::RunMemoryTextFile(const char *c_szFileName, const std::shared_ptr<std::vector<char>> &fileData)
 {
     std::string stConvFileData;
     stConvFileData.reserve(fileData->size());
@@ -652,7 +661,7 @@ bool CPythonLauncher::RunFile(const char *c_szFileName)
     if (!CEterPackManager::Instance().Get(c_szFileName, data))
         return false;
 
-    if (data->size() == 0)
+    if (data->empty())
         return false;
 
     return RunMemoryTextFile(c_szFileName, data);
@@ -674,9 +683,9 @@ bool CPythonLauncher::RunLine(const char *c_szSrc)
 
 const char *CPythonLauncher::GetError()
 {
-    PyObject *exc;
-    PyObject *v;
-    PyObject *tb;
+    PyObject *exc = nullptr;
+    PyObject *v = nullptr;
+    PyObject *tb = nullptr;
 
     PyErr_Fetch(&exc, &v, &tb);
 

@@ -9,10 +9,6 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CEnvironmentMap::CEnvironmentMap()
-{
-}
+CEnvironmentMap::CEnvironmentMap() = default;
 
-CEnvironmentMap::~CEnvironmentMap()
-{
-}
+CEnvironmentMap::~CEnvironmentMap() = default;

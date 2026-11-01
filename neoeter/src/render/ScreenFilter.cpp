@@ -40,13 +40,9 @@ void CScreenFilter::SetColor(const D3DXCOLOR &c_rColor)
     m_Color = c_rColor;
 }
 
-CScreenFilter::CScreenFilter()
+CScreenFilter::CScreenFilter() : m_bEnable(FALSE), m_byDestType(D3DBLEND_INVSRCALPHA), m_bySrcType(D3DBLEND_SRCALPHA)
 {
-    m_bEnable = FALSE;
-    m_bySrcType = D3DBLEND_SRCALPHA;
-    m_byDestType = D3DBLEND_INVSRCALPHA;
+
     m_Color = D3DXCOLOR(0.0f, 0.0f, 0.0f, 0.0f);
 }
-CScreenFilter::~CScreenFilter()
-{
-}
+CScreenFilter::~CScreenFilter() = default;

@@ -10,34 +10,33 @@ class CInstanceBase
   public:
     struct SCreateData
     {
-        BYTE m_bType;
-        DWORD m_dwStateFlags;
-        DWORD m_dwEmpireID;
-        DWORD m_dwGuildID;
-        DWORD m_dwLevel;
-        DWORD m_dwVID;
-        DWORD m_dwRace;
-        DWORD m_dwMovSpd;
-        DWORD m_dwAtkSpd;
-        LONG m_lPosX;
-        LONG m_lPosY;
-        FLOAT m_fRot;
-        DWORD m_dwArmor;
-        DWORD m_dwWeapon;
-        DWORD m_dwHair;
-        DWORD m_dwMountVnum;
+        BYTE m_bType = 0U;
+        DWORD m_dwStateFlags = 0U;
+        DWORD m_dwEmpireID = 0U;
+        DWORD m_dwGuildID = 0U;
+        DWORD m_dwLevel = 0U;
+        DWORD m_dwVID = 0U;
+        DWORD m_dwRace = 0U;
+        DWORD m_dwMovSpd = 0U;
+        DWORD m_dwAtkSpd = 0U;
+        LONG m_lPosX = 0;
+        LONG m_lPosY = 0;
+        FLOAT m_fRot = 0.0F;
+        DWORD m_dwArmor = 0U;
+        DWORD m_dwWeapon = 0U;
+        DWORD m_dwHair = 0U;
+        DWORD m_dwMountVnum = 0U;
 
-        short m_sAlignment;
-        BYTE m_byPKMode;
+        short m_sAlignment = 0;
+        BYTE m_byPKMode = 0U;
         CAffectFlagContainer m_kAffectFlags;
 
         std::string m_stName;
 
-        bool m_isMain;
+        bool m_isMain = false;
     };
 
-  public:
-    typedef DWORD TType;
+    using TType = DWORD;
 
     enum EDirection
     {
@@ -54,66 +53,66 @@ class CInstanceBase
 
     enum
     {
-        FUNC_WAIT,
-        FUNC_MOVE,
-        FUNC_ATTACK,
-        FUNC_COMBO,
-        FUNC_MOB_SKILL,
-        FUNC_EMOTION,
+        FUNC_WAIT = 0,
+        FUNC_MOVE = 1,
+        FUNC_ATTACK = 2,
+        FUNC_COMBO = 3,
+        FUNC_MOB_SKILL = 4,
+        FUNC_EMOTION = 5,
         FUNC_SKILL = 0x80,
     };
 
     enum
     {
-        AFFECT_YMIR,
-        AFFECT_INVISIBILITY,
-        AFFECT_SPAWN,
+        AFFECT_YMIR = 0,
+        AFFECT_INVISIBILITY = 1,
+        AFFECT_SPAWN = 2,
 
-        AFFECT_POISON,
-        AFFECT_SLOW,
-        AFFECT_STUN,
+        AFFECT_POISON = 3,
+        AFFECT_SLOW = 4,
+        AFFECT_STUN = 5,
 
-        AFFECT_DUNGEON_READY, // 던전에서 준비 상태
-        AFFECT_SHOW_ALWAYS,   // AFFECT_DUNGEON_UNIQUE 에서 변경(클라이언트에서
-                              // 컬링되지않음)
+        AFFECT_DUNGEON_READY = 6, // 던전에서 준비 상태
+        AFFECT_SHOW_ALWAYS = 7,   // AFFECT_DUNGEON_UNIQUE 에서 변경(클라이언트에서
+                                  // 컬링되지않음)
 
-        AFFECT_BUILDING_CONSTRUCTION_SMALL,
-        AFFECT_BUILDING_CONSTRUCTION_LARGE,
-        AFFECT_BUILDING_UPGRADE,
+        AFFECT_BUILDING_CONSTRUCTION_SMALL = 8,
+        AFFECT_BUILDING_CONSTRUCTION_LARGE = 9,
+        AFFECT_BUILDING_UPGRADE = 10,
 
-        AFFECT_MOV_SPEED_POTION, // 11
-        AFFECT_ATT_SPEED_POTION, // 12
+        AFFECT_MOV_SPEED_POTION = 11, // 11
+        AFFECT_ATT_SPEED_POTION = 12, // 12
 
-        AFFECT_FISH_MIND, // 13
+        AFFECT_FISH_MIND = 13, // 13
 
-        AFFECT_JEONGWI,             // 14 전귀혼
-        AFFECT_GEOMGYEONG,          // 15 검경
-        AFFECT_CHEONGEUN,           // 16 천근추
-        AFFECT_GYEONGGONG,          // 17 경공술
-        AFFECT_EUNHYEONG,           // 18 은형법
-        AFFECT_GWIGEOM,             // 19 귀검
-        AFFECT_GONGPO,              // 20 공포
-        AFFECT_JUMAGAP,             // 21 주마갑
-        AFFECT_HOSIN,               // 22 호신
-        AFFECT_BOHO,                // 23 보호
-        AFFECT_KWAESOK,             // 24 쾌속
-        AFFECT_HEUKSIN,             // 25 흑신수호
-        AFFECT_MUYEONG,             // 26 무영진
-        AFFECT_REVIVE_INVISIBILITY, // 27 부활 무적
-        AFFECT_FIRE,                // 28 지속 불
-        AFFECT_GICHEON,             // 29 기천 대공
-        AFFECT_JEUNGRYEOK,          // 30 증력술
-        AFFECT_DASH,                // 31 대쉬
-        AFFECT_PABEOP,              // 32 파법술
-        AFFECT_FALLEN_CHEONGEUN,    // 33 다운 그레이드 천근추
-        AFFECT_POLYMORPH,           // 34 폴리모프
-        AFFECT_WAR_FLAG1,           // 35
-        AFFECT_WAR_FLAG2,           // 36
-        AFFECT_WAR_FLAG3,           // 37
-        AFFECT_CHINA_FIREWORK,      // 38
-        AFFECT_PREMIUM_SILVER,
-        AFFECT_PREMIUM_GOLD,
-        AFFECT_RAMADAN_RING, // 41 초승달 반지 착용 Affect
+        AFFECT_JEONGWI = 14,             // 14 전귀혼
+        AFFECT_GEOMGYEONG = 15,          // 15 검경
+        AFFECT_CHEONGEUN = 16,           // 16 천근추
+        AFFECT_GYEONGGONG = 17,          // 17 경공술
+        AFFECT_EUNHYEONG = 18,           // 18 은형법
+        AFFECT_GWIGEOM = 19,             // 19 귀검
+        AFFECT_GONGPO = 20,              // 20 공포
+        AFFECT_JUMAGAP = 21,             // 21 주마갑
+        AFFECT_HOSIN = 22,               // 22 호신
+        AFFECT_BOHO = 23,                // 23 보호
+        AFFECT_KWAESOK = 24,             // 24 쾌속
+        AFFECT_HEUKSIN = 25,             // 25 흑신수호
+        AFFECT_MUYEONG = 26,             // 26 무영진
+        AFFECT_REVIVE_INVISIBILITY = 27, // 27 부활 무적
+        AFFECT_FIRE = 28,                // 28 지속 불
+        AFFECT_GICHEON = 29,             // 29 기천 대공
+        AFFECT_JEUNGRYEOK = 30,          // 30 증력술
+        AFFECT_DASH = 31,                // 31 대쉬
+        AFFECT_PABEOP = 32,              // 32 파법술
+        AFFECT_FALLEN_CHEONGEUN = 33,    // 33 다운 그레이드 천근추
+        AFFECT_POLYMORPH = 34,           // 34 폴리모프
+        AFFECT_WAR_FLAG1 = 35,           // 35
+        AFFECT_WAR_FLAG2 = 36,           // 36
+        AFFECT_WAR_FLAG3 = 37,           // 37
+        AFFECT_CHINA_FIREWORK = 38,      // 38
+        AFFECT_PREMIUM_SILVER = 39,
+        AFFECT_PREMIUM_GOLD = 40,
+        AFFECT_RAMADAN_RING = 41, // 41 초승달 반지 착용 Affect
 
         AFFECT_NUM = 64,
 
@@ -123,37 +122,37 @@ class CInstanceBase
     enum
     {
         NEW_AFFECT_MOV_SPEED = 200,
-        NEW_AFFECT_ATT_SPEED,
-        NEW_AFFECT_ATT_GRADE,
-        NEW_AFFECT_INVISIBILITY,
-        NEW_AFFECT_STR,
-        NEW_AFFECT_DEX, // 205
-        NEW_AFFECT_CON,
-        NEW_AFFECT_INT,
-        NEW_AFFECT_FISH_MIND_PILL,
+        NEW_AFFECT_ATT_SPEED = 201,
+        NEW_AFFECT_ATT_GRADE = 202,
+        NEW_AFFECT_INVISIBILITY = 203,
+        NEW_AFFECT_STR = 204,
+        NEW_AFFECT_DEX = 205, // 205
+        NEW_AFFECT_CON = 206,
+        NEW_AFFECT_INT = 207,
+        NEW_AFFECT_FISH_MIND_PILL = 208,
 
-        NEW_AFFECT_POISON,
-        NEW_AFFECT_STUN, // 210
-        NEW_AFFECT_SLOW,
-        NEW_AFFECT_DUNGEON_READY,
-        NEW_AFFECT_DUNGEON_UNIQUE,
+        NEW_AFFECT_POISON = 209,
+        NEW_AFFECT_STUN = 210, // 210
+        NEW_AFFECT_SLOW = 211,
+        NEW_AFFECT_DUNGEON_READY = 212,
+        NEW_AFFECT_DUNGEON_UNIQUE = 213,
 
-        NEW_AFFECT_BUILDING,
-        NEW_AFFECT_REVIVE_INVISIBLE, // 215
-        NEW_AFFECT_FIRE,
-        NEW_AFFECT_CAST_SPEED,
-        NEW_AFFECT_HP_RECOVER_CONTINUE,
-        NEW_AFFECT_SP_RECOVER_CONTINUE,
+        NEW_AFFECT_BUILDING = 214,
+        NEW_AFFECT_REVIVE_INVISIBLE = 215, // 215
+        NEW_AFFECT_FIRE = 216,
+        NEW_AFFECT_CAST_SPEED = 217,
+        NEW_AFFECT_HP_RECOVER_CONTINUE = 218,
+        NEW_AFFECT_SP_RECOVER_CONTINUE = 219,
 
-        NEW_AFFECT_POLYMORPH, // 220
-        NEW_AFFECT_MOUNT,
+        NEW_AFFECT_POLYMORPH = 220, // 220
+        NEW_AFFECT_MOUNT = 221,
 
-        NEW_AFFECT_WAR_FLAG, // 222
+        NEW_AFFECT_WAR_FLAG = 222, // 222
 
-        NEW_AFFECT_BLOCK_CHAT, // 223
-        NEW_AFFECT_CHINA_FIREWORK,
+        NEW_AFFECT_BLOCK_CHAT = 223, // 223
+        NEW_AFFECT_CHINA_FIREWORK = 224,
 
-        NEW_AFFECT_BOW_DISTANCE, // 225
+        NEW_AFFECT_BOW_DISTANCE = 225, // 225
 
         NEW_AFFECT_EXP_BONUS = 500,     // 경험의 반지
         NEW_AFFECT_ITEM_BONUS = 501,    // 도둑의 장갑
@@ -225,24 +224,24 @@ class CInstanceBase
 
     enum
     {
-        NAMECOLOR_MOB,
-        NAMECOLOR_NPC,
-        NAMECOLOR_PC,
+        NAMECOLOR_MOB = 0,
+        NAMECOLOR_NPC = 1,
+        NAMECOLOR_PC = 2,
         NAMECOLOR_PC_END = NAMECOLOR_PC + EMPIRE_NUM,
-        NAMECOLOR_NORMAL_MOB,
-        NAMECOLOR_NORMAL_NPC,
-        NAMECOLOR_NORMAL_PC,
+        NAMECOLOR_NORMAL_MOB = 7,
+        NAMECOLOR_NORMAL_NPC = 8,
+        NAMECOLOR_NORMAL_PC = 9,
         NAMECOLOR_NORMAL_PC_END = NAMECOLOR_NORMAL_PC + EMPIRE_NUM,
-        NAMECOLOR_EMPIRE_MOB,
-        NAMECOLOR_EMPIRE_NPC,
-        NAMECOLOR_EMPIRE_PC,
+        NAMECOLOR_EMPIRE_MOB = 14,
+        NAMECOLOR_EMPIRE_NPC = 15,
+        NAMECOLOR_EMPIRE_PC = 16,
         NAMECOLOR_EMPIRE_PC_END = NAMECOLOR_EMPIRE_PC + EMPIRE_NUM,
-        NAMECOLOR_FUNC,
-        NAMECOLOR_PK,
-        NAMECOLOR_PVP,
-        NAMECOLOR_PARTY,
-        NAMECOLOR_WARP,
-        NAMECOLOR_WAYPOINT,
+        NAMECOLOR_FUNC = 21,
+        NAMECOLOR_PK = 22,
+        NAMECOLOR_PVP = 23,
+        NAMECOLOR_PARTY = 24,
+        NAMECOLOR_WARP = 25,
+        NAMECOLOR_WAYPOINT = 26,
         NAMECOLOR_EXTRA = NAMECOLOR_FUNC + 10,
         NAMECOLOR_NUM = NAMECOLOR_EXTRA + 10,
     };
@@ -311,68 +310,68 @@ class CInstanceBase
 
     enum
     {
-        EFFECT_DUST,
-        EFFECT_STUN,
-        EFFECT_HIT,
-        EFFECT_FLAME_ATTACK,
-        EFFECT_FLAME_HIT,
-        EFFECT_FLAME_ATTACH,
-        EFFECT_ELECTRIC_ATTACK,
-        EFFECT_ELECTRIC_HIT,
-        EFFECT_ELECTRIC_ATTACH,
-        EFFECT_SPAWN_APPEAR,
-        EFFECT_SPAWN_DISAPPEAR,
-        EFFECT_LEVELUP,
-        EFFECT_SKILLUP,
-        EFFECT_HPUP_RED,
-        EFFECT_SPUP_BLUE,
-        EFFECT_SPEEDUP_GREEN,
-        EFFECT_DXUP_PURPLE,
-        EFFECT_CRITICAL,
-        EFFECT_PENETRATE,
-        EFFECT_BLOCK,
-        EFFECT_DODGE,
-        EFFECT_FIRECRACKER,
-        EFFECT_SPIN_TOP,
-        EFFECT_WEAPON,
+        EFFECT_DUST = 0,
+        EFFECT_STUN = 1,
+        EFFECT_HIT = 2,
+        EFFECT_FLAME_ATTACK = 3,
+        EFFECT_FLAME_HIT = 4,
+        EFFECT_FLAME_ATTACH = 5,
+        EFFECT_ELECTRIC_ATTACK = 6,
+        EFFECT_ELECTRIC_HIT = 7,
+        EFFECT_ELECTRIC_ATTACH = 8,
+        EFFECT_SPAWN_APPEAR = 9,
+        EFFECT_SPAWN_DISAPPEAR = 10,
+        EFFECT_LEVELUP = 11,
+        EFFECT_SKILLUP = 12,
+        EFFECT_HPUP_RED = 13,
+        EFFECT_SPUP_BLUE = 14,
+        EFFECT_SPEEDUP_GREEN = 15,
+        EFFECT_DXUP_PURPLE = 16,
+        EFFECT_CRITICAL = 17,
+        EFFECT_PENETRATE = 18,
+        EFFECT_BLOCK = 19,
+        EFFECT_DODGE = 20,
+        EFFECT_FIRECRACKER = 21,
+        EFFECT_SPIN_TOP = 22,
+        EFFECT_WEAPON = 23,
         EFFECT_WEAPON_END = EFFECT_WEAPON + WEAPON_NUM,
-        EFFECT_AFFECT,
+        EFFECT_AFFECT = 27,
         EFFECT_AFFECT_GYEONGGONG = EFFECT_AFFECT + AFFECT_GYEONGGONG,
         EFFECT_AFFECT_KWAESOK = EFFECT_AFFECT + AFFECT_KWAESOK,
         EFFECT_AFFECT_END = EFFECT_AFFECT + AFFECT_NUM,
-        EFFECT_EMOTICON,
+        EFFECT_EMOTICON = 92,
         EFFECT_EMOTICON_END = EFFECT_EMOTICON + EMOTICON_NUM,
-        EFFECT_SELECT,
-        EFFECT_TARGET,
-        EFFECT_EMPIRE,
+        EFFECT_SELECT = 221,
+        EFFECT_TARGET = 222,
+        EFFECT_EMPIRE = 223,
         EFFECT_EMPIRE_END = EFFECT_EMPIRE + EMPIRE_NUM,
-        EFFECT_HORSE_DUST,
-        EFFECT_REFINED,
+        EFFECT_HORSE_DUST = 228,
+        EFFECT_REFINED = 229,
         EFFECT_REFINED_END = EFFECT_REFINED + EFFECT_REFINED_NUM,
-        EFFECT_DAMAGE_TARGET,
-        EFFECT_DAMAGE_NOT_TARGET,
-        EFFECT_DAMAGE_SELFDAMAGE,
-        EFFECT_DAMAGE_SELFDAMAGE2,
-        EFFECT_DAMAGE_POISON,
-        EFFECT_DAMAGE_MISS,
-        EFFECT_DAMAGE_TARGETMISS,
-        EFFECT_DAMAGE_CRITICAL,
-        EFFECT_SUCCESS,
-        EFFECT_FAIL,
-        EFFECT_FR_SUCCESS,
-        EFFECT_LEVELUP_ON_14_FOR_GERMANY,    // 레벨업 14일때 ( 독일전용 )
-        EFFECT_LEVELUP_UNDER_15_FOR_GERMANY, // 레벨업 15일때 ( 독일전용 )
-        EFFECT_PERCENT_DAMAGE1,
-        EFFECT_PERCENT_DAMAGE2,
-        EFFECT_PERCENT_DAMAGE3,
-        EFFECT_AUTO_HPUP,
-        EFFECT_AUTO_SPUP,
-        EFFECT_RAMADAN_RING_EQUIP,    // 초승달 반지 착용 순간에 발동하는 이펙트
-        EFFECT_HALLOWEEN_CANDY_EQUIP, // 할로윈 사탕 착용 순간에 발동하는 이펙트
-        EFFECT_HAPPINESS_RING_EQUIP,  // 행복의 반지 착용 순간에 발동하는 이펙트
-        EFFECT_LOVE_PENDANT_EQUIP,    // 행복의 반지 착용 순간에 발동하는 이펙트
-        EFFECT_TEMP,
-        EFFECT_NUM,
+        EFFECT_DAMAGE_TARGET = 251,
+        EFFECT_DAMAGE_NOT_TARGET = 252,
+        EFFECT_DAMAGE_SELFDAMAGE = 253,
+        EFFECT_DAMAGE_SELFDAMAGE2 = 254,
+        EFFECT_DAMAGE_POISON = 255,
+        EFFECT_DAMAGE_MISS = 256,
+        EFFECT_DAMAGE_TARGETMISS = 257,
+        EFFECT_DAMAGE_CRITICAL = 258,
+        EFFECT_SUCCESS = 259,
+        EFFECT_FAIL = 260,
+        EFFECT_FR_SUCCESS = 261,
+        EFFECT_LEVELUP_ON_14_FOR_GERMANY = 262,    // 레벨업 14일때 ( 독일전용 )
+        EFFECT_LEVELUP_UNDER_15_FOR_GERMANY = 263, // 레벨업 15일때 ( 독일전용 )
+        EFFECT_PERCENT_DAMAGE1 = 264,
+        EFFECT_PERCENT_DAMAGE2 = 265,
+        EFFECT_PERCENT_DAMAGE3 = 266,
+        EFFECT_AUTO_HPUP = 267,
+        EFFECT_AUTO_SPUP = 268,
+        EFFECT_RAMADAN_RING_EQUIP = 269,    // 초승달 반지 착용 순간에 발동하는 이펙트
+        EFFECT_HALLOWEEN_CANDY_EQUIP = 270, // 할로윈 사탕 착용 순간에 발동하는 이펙트
+        EFFECT_HAPPINESS_RING_EQUIP = 271,  // 행복의 반지 착용 순간에 발동하는 이펙트
+        EFFECT_LOVE_PENDANT_EQUIP = 272,    // 행복의 반지 착용 순간에 발동하는 이펙트
+        EFFECT_TEMP = 273,
+        EFFECT_NUM = 274,
     };
 
     enum
@@ -382,7 +381,6 @@ class CInstanceBase
         DUEL_START,
     };
 
-  public:
     static void DestroySystem();
     static void CreateSystem(UINT uCapacity);
     static bool RegisterEffect(UINT eEftType, const char *c_szEftAttachBone, const char *c_szEftName, bool isCache);
@@ -397,7 +395,6 @@ class CInstanceBase
     static void SetEmpireNameMode(bool isEnable);
     static const D3DXCOLOR &GetIndexedNameColor(UINT eNameColor);
 
-  public:
     void SetMainInstance();
 
     void OnSelected();
@@ -411,7 +408,6 @@ class CInstanceBase
     bool __MainCanSeeHiddenThing();
     float __GetBowRange();
 
-  protected:
     DWORD __AttachEffect(UINT eEftType);
     DWORD __AttachEffect(char filename[128]);
     void __DetachEffect(DWORD dwEID);
@@ -482,8 +478,8 @@ class CInstanceBase
     void GetBoundBox(D3DXVECTOR3 *vtMin, D3DXVECTOR3 *vtMax);
 
     void SetNameString(const char *c_szName, int len);
-    bool SetRace(DWORD dwRaceIndex);
-    void SetVirtualID(DWORD wVirtualNumber);
+    bool SetRace(DWORD eRace);
+    void SetVirtualID(DWORD dwVirtualID);
     void SetVirtualNumber(DWORD dwVirtualNumber);
     void SetInstanceType(int iInstanceType);
     void SetAlignment(short sAlignment);
@@ -510,18 +506,18 @@ class CInstanceBase
     const char *GetNameString();
     int GetInstanceType();
     DWORD GetPart(CRaceData::EParts part);
-    DWORD GetShape();
-    DWORD GetRace();
+    DWORD GetShape() const;
+    DWORD GetRace() const;
     DWORD GetVirtualID();
-    DWORD GetVirtualNumber();
-    DWORD GetEmpireID();
-    DWORD GetGuildID();
-    int GetAlignment();
-    UINT GetAlignmentGrade();
+    DWORD GetVirtualNumber() const;
+    DWORD GetEmpireID() const;
+    DWORD GetGuildID() const;
+    int GetAlignment() const;
+    UINT GetAlignmentGrade() const;
     int GetAlignmentType();
-    BYTE GetPKMode();
-    bool IsKiller();
-    bool IsPartyMember();
+    BYTE GetPKMode() const;
+    bool IsKiller() const;
+    bool IsPartyMember() const;
 
     void ActDualEmotion(CInstanceBase &rkDstInst, WORD dwMotionNumber1, WORD dwMotionNumber2);
     void ActEmotion(DWORD dwMotionNumber);
@@ -542,13 +538,13 @@ class CInstanceBase
     bool IsConflictAlignmentInstance(CInstanceBase &rkInstVictim);
     bool IsAttackableInstance(CInstanceBase &rkInstVictim);
     bool IsTargetableInstance(CInstanceBase &rkInstVictim);
-    bool IsPVPInstance(CInstanceBase &rkInstVictim);
+    bool IsPVPInstance(CInstanceBase &rkInstSel);
     bool CanChangeTarget();
     bool CanPickInstance();
     bool CanViewTargetHP(CInstanceBase &rkInstVictim);
 
     // Movement
-    BOOL IsGoing();
+    BOOL IsGoing() const;
     bool NEW_Goto(const TPixelPosition &c_rkPPosDst, float fDstRot);
     void EndGoing();
 
@@ -565,7 +561,7 @@ class CInstanceBase
     BOOL IsFishingMode();
     BOOL IsFishing();
 
-    BOOL IsWearingDress();
+    BOOL IsWearingDress() const;
     BOOL IsHoldingPickAxe();
     BOOL IsMountingHorse();
     BOOL IsNewMount();
@@ -573,7 +569,7 @@ class CInstanceBase
     BOOL IsInSafe();
     BOOL IsEnemy();
     BOOL IsStone();
-    BOOL IsResource();
+    BOOL IsResource() const;
     BOOL IsNPC();
     BOOL IsPC();
     BOOL IsPoly();
@@ -585,7 +581,7 @@ class CInstanceBase
     BOOL IsWoodenDoor();
     BOOL IsStoneDoor();
     BOOL IsFlag();
-    BOOL IsGuildWall();
+    BOOL IsGuildWall() const;
 
     BOOL IsDead();
     BOOL IsStun();
@@ -661,11 +657,11 @@ class CInstanceBase
                                          std::vector<CInstanceBase *> *pkVct_pkInst);
     bool NEW_GetInstanceVectorInCircleRange(float fSkillDistance, std::vector<CInstanceBase *> *pkVct_pkInst);
 
-    void NEW_SetOwner(DWORD dwOwnerVID);
+    void NEW_SetOwner(DWORD dwVIDOwner);
     void NEW_SyncPixelPosition(long nPPosX, long nPPosY);
     void NEW_SyncCurrentPixelPosition();
 
-    void NEW_SetPixelPosition(const TPixelPosition &c_rkPPosDst);
+    void NEW_SetPixelPosition(const TPixelPosition &c_rPixelPosition);
 
     bool NEW_IsLastPixelPosition();
     const TPixelPosition &NEW_GetLastPixelPositionRef();
@@ -689,7 +685,6 @@ class CInstanceBase
     bool IsBlockObject(const CGraphicObjectInstance &c_rkBGObj);
     void BlockMovement();
 
-  public:
     BOOL CheckAttacking(CInstanceBase &rkInstVictim);
     void ProcessHitting(DWORD dwMotionKey, CInstanceBase *pVictimInstance);
     void ProcessHitting(DWORD dwMotionKey, BYTE byEventIndex, CInstanceBase *pVictimInstance);
@@ -784,7 +779,7 @@ class CInstanceBase
 
     void SetEmoticon(UINT eEmoticon);
     void SetFishEmoticon();
-    bool IsPossibleEmoticon();
+    bool IsPossibleEmoticon() const;
 
   protected:
     UINT __LessRenderOrder_GetLODLevel();
@@ -798,7 +793,7 @@ class CInstanceBase
     CInstanceBase *__FindInstancePtr(DWORD dwVID);
 
     bool __FindRaceType(DWORD dwRace, BYTE *pbType);
-    DWORD __GetRaceType();
+    DWORD __GetRaceType() const;
 
     bool __IsShapeAnimalWear();
     BOOL __IsChangableWeapon(int iWeaponID);
@@ -833,8 +828,8 @@ class CInstanceBase
 
     struct SHORSE
     {
-        bool m_isMounting;
-        CActorInstance *m_pkActor;
+        bool m_isMounting = false;
+        CActorInstance *m_pkActor = nullptr;
 
         SHORSE();
         ~SHORSE();
@@ -846,20 +841,19 @@ class CInstanceBase
         void SetMoveSpeed(UINT uMovSpd);
         void Deform();
         void Render();
-        CActorInstance &GetActorRef();
-        CActorInstance *GetActorPtr();
+        CActorInstance &GetActorRef() const;
+        CActorInstance *GetActorPtr() const;
 
-        bool IsMounting();
+        bool IsMounting() const;
         bool CanAttack();
         bool CanUseSkill();
 
-        UINT GetLevel();
-        bool IsNewMount();
+        UINT GetLevel() const;
+        bool IsNewMount() const;
 
         void __Initialize();
     } m_kHorse;
 
-  protected:
     // Blend Mode
     void __SetBlendRenderingMode();
     void __SetAlphaValue(float fAlpha);
@@ -877,13 +871,12 @@ class CInstanceBase
     void RefreshState(DWORD dwMotIndex, bool isLoop);
     void RefreshActorInstance();
 
-  protected:
     void OnSyncing();
     void OnWaiting();
     void OnMoving();
 
     void NEW_SetCurPixelPosition(const TPixelPosition &c_rkPPosDst);
-    void NEW_SetSrcPixelPosition(const TPixelPosition &c_rkPPosDst);
+    void NEW_SetSrcPixelPosition(const TPixelPosition &c_rkPPosSrc);
     void NEW_SetDstPixelPosition(const TPixelPosition &c_rkPPosDst);
     void NEW_SetDstPixelPositionZ(FLOAT z);
 
@@ -894,26 +887,24 @@ class CInstanceBase
     const TPixelPosition &NEW_GetDstPixelPositionRef();
 
   protected:
-    BOOL m_isTextTail;
+    BOOL m_isTextTail = 0;
 
     // Instance Data
     std::string m_stName;
 
-    DWORD m_awPart[CRaceData::PART_MAX_NUM];
+    DWORD m_awPart[CRaceData::PART_MAX_NUM]{};
 
-    DWORD m_dwLevel;
-    DWORD m_dwEmpireID;
-    DWORD m_dwGuildID;
+    DWORD m_dwLevel = 0U;
+    DWORD m_dwEmpireID = 0U;
+    DWORD m_dwGuildID = 0U;
 
-  protected:
     CAffectFlagContainer m_kAffectFlagContainer;
-    DWORD m_adwCRCAffectEffect[AFFECT_NUM];
+    DWORD m_adwCRCAffectEffect[AFFECT_NUM]{};
 
     UINT __GetRefinedEffect(CItemData *pItem);
     void __ClearWeaponRefineEffect();
     void __ClearArmorRefineEffect();
 
-  protected:
     void __AttachSelectEffect();
     void __DetachSelectEffect();
 
@@ -922,108 +913,104 @@ class CInstanceBase
 
     void __AttachEmpireEffect(DWORD eEmpire);
 
-  protected:
     struct SEffectContainer
     {
-        typedef std::map<DWORD, DWORD> Dict;
+        using Dict = std::map<DWORD, DWORD>;
         Dict m_kDct_dwEftID;
     } m_kEffectContainer;
 
     void __EffectContainer_Initialize();
     void __EffectContainer_Destroy();
 
-    DWORD __EffectContainer_AttachEffect(DWORD eEffect);
-    void __EffectContainer_DetachEffect(DWORD eEffect);
+    DWORD __EffectContainer_AttachEffect(DWORD dwEftKey);
+    void __EffectContainer_DetachEffect(DWORD dwEftKey);
 
     SEffectContainer::Dict &__EffectContainer_GetDict();
 
-  protected:
     struct SStoneSmoke
     {
         DWORD m_dwEftID;
-    } m_kStoneSmoke;
+    } m_kStoneSmoke{};
 
     void __StoneSmoke_Inialize();
     void __StoneSmoke_Destroy();
     void __StoneSmoke_Create(DWORD eSmoke);
 
-  protected:
     // Emoticon
     // DWORD m_adwCRCEmoticonEffect[EMOTICON_NUM];
 
-    BYTE m_eType;
-    BYTE m_eRaceType;
-    DWORD m_eShape;
-    DWORD m_dwRace;
-    DWORD m_dwVirtualNumber;
-    short m_sAlignment;
-    BYTE m_byPKMode;
-    bool m_isKiller;
-    bool m_isPartyMember;
+    BYTE m_eType = 0U;
+    BYTE m_eRaceType = 0U;
+    DWORD m_eShape = 0U;
+    DWORD m_dwRace = 0U;
+    DWORD m_dwVirtualNumber = 0U;
+    short m_sAlignment = 0;
+    BYTE m_byPKMode = 0U;
+    bool m_isKiller = false;
+    bool m_isPartyMember = false;
 
     // Movement
-    int m_iRotatingDirection;
+    int m_iRotatingDirection = 0;
 
-    DWORD m_dwAdvActorVID;
-    DWORD m_dwLastDmgActorVID;
+    DWORD m_dwAdvActorVID = 0U;
+    DWORD m_dwLastDmgActorVID = 0U;
 
-    LONG m_nAverageNetworkGap;
-    DWORD m_dwNextUpdateHeightTime;
+    LONG m_nAverageNetworkGap = 0;
+    DWORD m_dwNextUpdateHeightTime = 0U;
 
-    bool m_isGoing;
+    bool m_isGoing = false;
 
     TPixelPosition m_kPPosDust;
 
-    DWORD m_dwLastComboIndex;
+    DWORD m_dwLastComboIndex = 0U;
 
-    DWORD m_swordRefineEffectRight;
-    DWORD m_swordRefineEffectLeft;
-    DWORD m_armorRefineEffect;
+    DWORD m_swordRefineEffectRight = 0U;
+    DWORD m_swordRefineEffectLeft = 0U;
+    DWORD m_armorRefineEffect = 0U;
 
     struct SMoveAfterFunc
     {
-        UINT eFunc;
-        UINT uArg;
+        UINT eFunc = 0U;
+        UINT uArg = 0U;
 
         // For Emotion Function
-        UINT uArgExpanded;
+        UINT uArgExpanded = 0U;
         TPixelPosition kPosDst;
     };
 
     SMoveAfterFunc m_kMovAfterFunc;
 
-    float m_fDstRot;
-    float m_fAtkPosTime;
-    float m_fRotSpd;
-    float m_fMaxRotSpd;
+    float m_fDstRot = 0.0F;
+    float m_fAtkPosTime = 0.0F;
+    float m_fRotSpd = 0.0F;
+    float m_fMaxRotSpd = 0.0F;
 
-    BOOL m_bEnableTCPState;
+    BOOL m_bEnableTCPState = 0;
 
     // Graphic Instance
     CActorInstance m_GraphicThingInstance;
 
-  protected:
     struct SCommand
     {
-        DWORD m_dwChkTime;
-        DWORD m_dwCmdTime;
-        float m_fDstRot;
-        UINT m_eFunc;
-        UINT m_uArg;
-        UINT m_uTargetVID;
+        DWORD m_dwChkTime = 0U;
+        DWORD m_dwCmdTime = 0U;
+        float m_fDstRot = 0.0F;
+        UINT m_eFunc = 0U;
+        UINT m_uArg = 0U;
+        UINT m_uTargetVID = 0U;
         TPixelPosition m_kPPosDst;
     };
 
-    typedef std::list<SCommand> CommandQueue;
+    using CommandQueue = std::list<SCommand>;
 
-    DWORD m_dwBaseChkTime;
-    DWORD m_dwBaseCmdTime;
+    DWORD m_dwBaseChkTime = 0U;
+    DWORD m_dwBaseCmdTime = 0U;
 
-    DWORD m_dwSkipTime;
+    DWORD m_dwSkipTime = 0U;
 
     CommandQueue m_kQue_kCmdNew;
 
-    BOOL m_bDamageEffectType;
+    BOOL m_bDamageEffectType = 0;
 
     struct SEffectDamage
     {
@@ -1033,7 +1020,7 @@ class CInstanceBase
         BOOL bTarget;
     };
 
-    typedef std::list<SEffectDamage> CommandDamageQueue;
+    using CommandDamageQueue = std::list<SEffectDamage>;
     CommandDamageQueue m_DamageQueue;
 
     void ProcessDamage();
@@ -1047,21 +1034,21 @@ class CInstanceBase
         DWORD m_dwGeomgyeongEffect;
     };
 
-    SWarrior m_kWarrior;
+    SWarrior m_kWarrior{};
 
     void __Warrior_Initialize();
 
   public:
     static void ClearPVPKeySystem();
 
-    static void InsertPVPKey(DWORD dwSrcVID, DWORD dwDstVID);
-    static void InsertPVPReadyKey(DWORD dwSrcVID, DWORD dwDstVID);
-    static void RemovePVPKey(DWORD dwSrcVID, DWORD dwDstVID);
+    static void InsertPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst);
+    static void InsertPVPReadyKey(DWORD dwVIDSrc, DWORD dwVIDDst);
+    static void RemovePVPKey(DWORD dwVIDSrc, DWORD dwVIDDst);
 
     static void InsertGVGKey(DWORD dwSrcGuildVID, DWORD dwDstGuildVID);
     static void RemoveGVGKey(DWORD dwSrcGuildVID, DWORD dwDstGuildVID);
 
-    static void InsertDUELKey(DWORD dwSrcVID, DWORD dwDstVID);
+    static void InsertDUELKey(DWORD dwVIDSrc, DWORD dwVIDDst);
 
     UINT GetNameColorIndex();
 
@@ -1069,17 +1056,15 @@ class CInstanceBase
     const D3DXCOLOR &GetTitleColor();
 
   protected:
-    static DWORD __GetPVPKey(DWORD dwSrcVID, DWORD dwDstVID);
-    static bool __FindPVPKey(DWORD dwSrcVID, DWORD dwDstVID);
-    static bool __FindPVPReadyKey(DWORD dwSrcVID, DWORD dwDstVID);
+    static DWORD __GetPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst);
+    static bool __FindPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst);
+    static bool __FindPVPReadyKey(DWORD dwVIDSrc, DWORD dwVIDDst);
     static bool __FindGVGKey(DWORD dwSrcGuildID, DWORD dwDstGuildID);
-    static bool __FindDUELKey(DWORD dwSrcGuildID, DWORD dwDstGuildID);
+    static bool __FindDUELKey(DWORD dwVIDSrc, DWORD dwVIDDst);
 
-  protected:
     CActorInstance::IEventHandler *GetEventHandlerPtr();
     CActorInstance::IEventHandler &GetEventHandlerRef();
 
-  protected:
     static float __GetBackgroundHeight(float x, float y);
     static DWORD __GetShadowMapColor(float x, float y);
 
@@ -1087,7 +1072,6 @@ class CInstanceBase
     static void ResetPerformanceCounter();
     static void GetInfo(std::string *pstInfo);
 
-  public:
     static CInstanceBase *New();
     static void Delete(CInstanceBase *pkInst);
 
@@ -1099,12 +1083,12 @@ class CInstanceBase
     static DWORD ms_dwDeformCounter;
 
   public:
-    DWORD GetDuelMode();
+    DWORD GetDuelMode() const;
     void SetDuelMode(DWORD type);
 
   protected:
-    DWORD m_dwDuelMode;
-    DWORD m_dwEmoticonTime;
+    DWORD m_dwDuelMode = 0U;
+    DWORD m_dwEmoticonTime = 0U;
 };
 
 inline int RaceToJob(int race)

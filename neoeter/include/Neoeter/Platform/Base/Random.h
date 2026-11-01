@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(_WIN32)
+#ifdef _WIN32
 extern void srandom(unsigned long seed);
 extern unsigned long random();
 #else

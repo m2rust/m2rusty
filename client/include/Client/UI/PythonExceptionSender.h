@@ -6,7 +6,7 @@ class CPythonExceptionSender : public IPythonExceptionSender
     CPythonExceptionSender();
     virtual ~CPythonExceptionSender();
 
-    void Send();
+    void Send() override;
 
   protected:
     std::set<DWORD> m_kSet_dwSendedExceptionCRC;

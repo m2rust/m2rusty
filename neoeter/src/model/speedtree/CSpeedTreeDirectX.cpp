@@ -6,7 +6,7 @@
 #include <Neoeter/Render/StateManager.h>
 #include <Neoeter/Render/Camera.h>
 
-CSpeedTreeDirectX::CSpeedTreeDirectX() : m_dwBranchVertexShader(NULL), m_dwLeafVertexShader(NULL)
+CSpeedTreeDirectX::CSpeedTreeDirectX() : m_dwBranchVertexShader(nullptr), m_dwLeafVertexShader(nullptr)
 {
 }
 
@@ -37,7 +37,8 @@ void CSpeedTreeDirectX::UpdateCompundMatrix(const D3DXVECTOR3 &c_rEyeVec, const 
     CSpeedTreeRT::SetCamera(c_rEyeVec, afDirection);
 
     D3DXMatrixTranspose(&matBlendShader, &matBlendShader);
-    STATEMANAGER.SetVertexShaderConstant(c_nVertexShader_CompoundMatrix, (const float *)&matBlendShader, 4);
+    STATEMANAGER.SetVertexShaderConstant(c_nVertexShader_CompoundMatrix,
+                                         reinterpret_cast<const float *>(&matBlendShader), 4);
 }
 
 bool CSpeedTreeDirectX::SetRenderingDevice()
@@ -79,15 +80,15 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
     if (!(ulRenderBitVector & Forest_RenderToShadow) && !(ulRenderBitVector & Forest_RenderToMiniMap))
         UpdateCompundMatrix(CCameraManager::Instance().GetCurrentCamera()->GetEye(), ms_matView, ms_matProj);
 
-    DWORD dwLightState = STATEMANAGER.GetRenderState(D3DRS_LIGHTING);
-    DWORD dwColorVertexState = STATEMANAGER.GetRenderState(D3DRS_COLORVERTEX);
-    DWORD dwFogVertexMode = STATEMANAGER.GetRenderState(D3DRS_FOGVERTEXMODE);
+    DWORD const dwLightState = STATEMANAGER.GetRenderState(D3DRS_LIGHTING);
+    DWORD const dwColorVertexState = STATEMANAGER.GetRenderState(D3DRS_COLORVERTEX);
+    DWORD const dwFogVertexMode = STATEMANAGER.GetRenderState(D3DRS_FOGVERTEXMODE);
 
     STATEMANAGER.SetRenderState(D3DRS_LIGHTING, FALSE);
     STATEMANAGER.SetRenderState(D3DRS_COLORVERTEX, TRUE);
 
-    UINT uiCount;
-    TTreeMap::const_iterator itor = m_pMainTreeMap.begin();
+    UINT uiCount = 0;
+    auto itor = m_pMainTreeMap.begin();
 
     while (itor != m_pMainTreeMap.end())
     {
@@ -156,8 +157,10 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
             pMainTree->SetupBranchForTreeType();
 
             for (UINT i = 0; i < uiCount; ++i)
+            {
                 if (ppInstances[i]->isShow())
                     ppInstances[i]->RenderBranches();
+            }
         }
     }
 
@@ -175,8 +178,10 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
             pMainTree->SetupFrondForTreeType();
 
             for (UINT i = 0; i < uiCount; ++i)
+            {
                 if (ppInstances[i]->isShow())
                     ppInstances[i]->RenderFronds();
+            }
         }
     }
 
@@ -204,8 +209,10 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
             pMainTree->SetupLeafForTreeType();
 
             for (UINT i = 0; i < uiCount; ++i)
+            {
                 if (ppInstances[i]->isShow())
                     ppInstances[i]->RenderLeaves();
+            }
         }
 
         if (ulRenderBitVector & Forest_RenderToShadow || ulRenderBitVector & Forest_RenderToMiniMap)
@@ -217,7 +224,7 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
 
     if (ulRenderBitVector & Forest_RenderBillboards)
     {
-        STATEMANAGER.SetVertexShader(NULL);
+        STATEMANAGER.SetVertexShader(nullptr);
         STATEMANAGER.SetFVF(D3DFVF_SPEEDTREE_BILLBOARD_VERTEX);
         STATEMANAGER.SetRenderState(D3DRS_LIGHTING, FALSE);
         STATEMANAGER.SetRenderState(D3DRS_COLORVERTEX, FALSE);
@@ -232,8 +239,10 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
             pMainTree->SetupBranchForTreeType();
 
             for (UINT i = 0; i < uiCount; ++i)
+            {
                 if (ppInstances[i]->isShow())
                     ppInstances[i]->RenderBillboards();
+            }
         }
     }
 
@@ -252,7 +261,7 @@ void CSpeedTreeDirectX::Render(unsigned long ulRenderBitVector)
     STATEMANAGER.RestoreRenderState(D3DRS_CULLMODE);
 }
 
-bool CSpeedTreeDirectX::InitVertexShaders(void)
+bool CSpeedTreeDirectX::InitVertexShaders()
 {
     m_dwBranchVertexShader = LoadBranchShader(ms_lpd3dDevice);
     m_dwLeafVertexShader = LoadLeafShader(ms_lpd3dDevice);

@@ -22,14 +22,14 @@ const GUID CLSID_DIrectSoundRenderer = {0x79376820, 0x07D0, 0x11CF, 0xA2, 0x4D, 
 class CMovieMan : public CSingleton<CMovieMan>
 {
   public:
-    CMovieMan() : m_movieWidth(0), m_movieHeight(0), m_usingRGB32(false), m_pPrimarySurface(NULL), m_pBasicAudio(NULL)
+    CMovieMan() : m_pPrimarySurface(nullptr), m_pBasicAudio(nullptr)
     {
 #ifndef OPENMT2_PLATFORM_LINUX
         CoInitialize(NULL);
 #endif
     };
 
-    virtual ~CMovieMan()
+    ~CMovieMan() override
     {
 #ifndef OPENMT2_PLATFORM_LINUX
         CoUninitialize();
@@ -42,10 +42,10 @@ class CMovieMan : public CSingleton<CMovieMan>
     BOOL PlayTutorial(LONG nIdx);
 
   private:
-    bool m_usingRGB32;
-    int m_movieWidth;
-    int m_movieHeight;
-    RECT m_movieRect;
+    bool m_usingRGB32 = false;
+    int m_movieWidth = 0;
+    int m_movieHeight = 0;
+    RECT m_movieRect{};
     IDirectDrawSurface *m_pPrimarySurface;
     IBasicAudio *m_pBasicAudio;
 
@@ -57,12 +57,12 @@ class CMovieMan : public CSingleton<CMovieMan>
     void CalcMovieRect(int srcWidth, int srcHeight, RECT &movieRect);
     void CalcBackgroundRect(const RECT &movieRect, RECT &upperRect, RECT &lowerRect);
 
-    BOOL PlayMovie(const char *cpFileName, const bool bSkipAllowed = FALSE, const int nPostEffectID = 0,
-                   const DWORD dwPostEffectData = 0);
+    BOOL PlayMovie(const char *cpFileName, const bool bSkipAllowed = FALSE, int nPostEffectID = 0,
+                   DWORD dwPostEffectData = 0);
 
     HRESULT
-    BuildFilterGraphManually(WCHAR *wpFilename, IAMMultiMediaStream *pAMStream, const GUID FAR clsidSplitter,
-                             const GUID FAR clsidVideoCodec, const GUID FAR clsidAudioCodec);
+    BuildFilterGraphManually(WCHAR *wpFilename, IAMMultiMediaStream *pAMStream, GUID FAR clsidSplitter,
+                             GUID FAR clsidVideoCodec, GUID FAR clsidAudioCodec);
 
     HRESULT
     RenderFileToMMStream(const char *cpFilename, IMultiMediaStream **ppMMStream, IDirectDraw *pDD);

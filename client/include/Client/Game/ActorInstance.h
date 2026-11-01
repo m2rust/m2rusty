@@ -23,12 +23,8 @@ class CSpeedTreeWrapper;
 class IMobProto : public CSingleton<IMobProto>
 {
   public:
-    IMobProto()
-    {
-    }
-    virtual ~IMobProto()
-    {
-    }
+    IMobProto() = default;
+    ~IMobProto() override = default;
 
     virtual bool FindRaceType(UINT eRace, UINT *puType);
 };
@@ -41,20 +37,14 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
       public:
         static IEventHandler *GetEmptyPtr();
 
-      public:
         struct SState
         {
             TPixelPosition kPPosSelf;
-            FLOAT fAdvRotSelf;
+            FLOAT fAdvRotSelf = 0.0F;
         };
 
-      public:
-        IEventHandler()
-        {
-        }
-        virtual ~IEventHandler()
-        {
-        }
+        IEventHandler() = default;
+        virtual ~IEventHandler() = default;
 
         virtual void OnSyncing(const SState &c_rkState) = 0;
         virtual void OnWaiting(const SState &c_rkState) = 0;
@@ -81,7 +71,6 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
   public:
     static bool IsDirLine();
 
-  public:
     enum EType
     {
         TYPE_ENEMY,
@@ -115,7 +104,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
         MOTION_TYPE_LOOP,
     };
 
-    typedef struct SReservingMotionNode
+    using TReservingMotionNode = struct SReservingMotionNode
     {
         EMotionPushType iMotionType;
 
@@ -125,7 +114,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
         float fSpeedRatio;
 
         DWORD dwMotionKey;
-    } TReservingMotionNode;
+    };
 
     struct SCurrentMotionNode
     {
@@ -143,57 +132,57 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
         UINT uSkill;
     };
 
-    typedef std::deque<TReservingMotionNode> TMotionDeque;
+    using TMotionDeque = std::deque<TReservingMotionNode>;
     /////////////////////////////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////////////////////////////////////
     // Motion Event
-    typedef struct SMotionEventInstance
+    using TMotionEventInstance = struct SMotionEventInstance
     {
         int iType;
         int iMotionEventIndex;
         float fStartingTime;
 
         const CRaceMotionData::TMotionEventData *c_pMotionData;
-    } TMotionEventInstance;
+    };
 
-    typedef std::list<TMotionEventInstance> TMotionEventInstanceList;
-    typedef TMotionEventInstanceList::iterator TMotionEventInstanceListIterator;
+    using TMotionEventInstanceList = std::list<TMotionEventInstance>;
+    using TMotionEventInstanceListIterator = TMotionEventInstanceList::iterator;
     /////////////////////////////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////////////////////////////////////
     // For Collision Detection
-    typedef struct SCollisionPointInstance
+    using TCollisionPointInstance = struct SCollisionPointInstance
     {
-        const NRaceData::TCollisionData *c_pCollisionData;
-        BOOL isAttached;
-        DWORD dwModelIndex;
-        DWORD dwBoneIndex;
+        const NRaceData::TCollisionData *c_pCollisionData = nullptr;
+        BOOL isAttached = 0;
+        DWORD dwModelIndex = 0U;
+        DWORD dwBoneIndex = 0U;
         CDynamicSphereInstanceVector SphereInstanceVector;
-    } TCollisionPointInstance;
-    typedef std::list<TCollisionPointInstance> TCollisionPointInstanceList;
-    typedef TCollisionPointInstanceList::iterator TCollisionPointInstanceListIterator;
+    };
+    using TCollisionPointInstanceList = std::list<TCollisionPointInstance>;
+    using TCollisionPointInstanceListIterator = TCollisionPointInstanceList::iterator;
 
-    typedef std::map<CActorInstance *, float> THittedInstanceMap;
-    typedef std::map<const NRaceData::THitData *, THittedInstanceMap> THitDataMap;
+    using THittedInstanceMap = std::map<CActorInstance *, float>;
+    using THitDataMap = std::map<const NRaceData::THitData *, THittedInstanceMap>;
     struct SSplashArea
     {
-        BOOL isEnableHitProcess;
-        UINT uSkill;
-        MOTION_KEY MotionKey;
-        float fDisappearingTime;
-        const CRaceMotionData::TMotionAttackingEventData *c_pAttackingEvent;
+        BOOL isEnableHitProcess = 0;
+        UINT uSkill = 0U;
+        MOTION_KEY MotionKey = 0U;
+        float fDisappearingTime = 0.0F;
+        const CRaceMotionData::TMotionAttackingEventData *c_pAttackingEvent = nullptr;
         CDynamicSphereInstanceVector SphereInstanceVector;
 
         THittedInstanceMap HittedInstanceMap;
     };
 
-    typedef struct SHittingData
+    using THittingData = struct SHittingData
     {
         BYTE byAttackingType;
         DWORD dwMotionKey;
         BYTE byEventIndex;
-    } THittingData;
+    };
     /////////////////////////////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -207,24 +196,22 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
     struct TAttachingEffect
     {
-        DWORD dwEffectIndex;
-        int iBoneIndex;
-        DWORD dwModelIndex;
+        DWORD dwEffectIndex = 0U;
+        int iBoneIndex = 0;
+        DWORD dwModelIndex = 0U;
         D3DXMATRIX matTranslation;
-        BOOL isAttaching;
+        BOOL isAttaching = 0;
 
-        int iLifeType;
-        DWORD dwEndTime;
+        int iLifeType = 0;
+        DWORD dwEndTime = 0U;
     };
     /////////////////////////////////////////////////////////////////////////////////////
 
-  public:
     static void ShowDirectionLine(bool isVisible);
     static void DestroySystem();
 
-  public:
     CActorInstance();
-    virtual ~CActorInstance();
+    ~CActorInstance() override;
 
     // 20041201.myevan.인스턴스베이스용 함수
     void INSTANCEBASE_Transform();
@@ -257,11 +244,10 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void SetShape(DWORD eShape, float fSpecular = 0.0f);
     void ChangeMaterial(const char *c_szFileName);
 
-  public:
     void SetComboType(WORD wComboType);
 
-    DWORD GetRace();
-    DWORD GetVirtualID();
+    DWORD GetRace() const;
+    DWORD GetVirtualID() override;
 
     UINT GetActorType() const;
     void SetActorType(UINT eType);
@@ -271,17 +257,17 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     bool CanAttack();
     bool CanUseSkill();
 
-    bool IsPC();
-    bool IsNPC();
-    bool IsEnemy();
-    bool IsStone();
-    bool IsWarp();
-    bool IsGoto();
-    bool IsObject();
-    bool IsDoor();
-    bool IsPoly();
+    bool IsPC() const;
+    bool IsNPC() const;
+    bool IsEnemy() const;
+    bool IsStone() const;
+    bool IsWarp() const;
+    bool IsGoto() const;
+    bool IsObject() const;
+    bool IsDoor() const;
+    bool IsPoly() const;
 
-    bool IsBuilding();
+    bool IsBuilding() const;
 
     bool IsHandMode();
     bool IsBowMode();
@@ -295,19 +281,19 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     DWORD GetPartItemID(DWORD dwPartIndex);
 
     // Attach Effect
-    BOOL GetAttachingBoneName(DWORD dwPartIndex, const char **c_szBoneName);
+    BOOL GetAttachingBoneName(DWORD dwPartIndex, const char **c_pszBoneName);
     void UpdateAttachingInstances();
     void DettachEffect(DWORD dwEID);
-    DWORD AttachEffectByName(DWORD dwParentPartIndex, const char *c_pszBoneName, const char *c_pszEffectFileName);
+    DWORD AttachEffectByName(DWORD dwParentPartIndex, const char *c_pszBoneName, const char *c_pszEffectName);
     DWORD
     AttachEffectByID(DWORD dwParentPartIndex, const char *c_pszBoneName, DWORD dwEffectID,
-                     const D3DXVECTOR3 *c_pv3Position = NULL);
+                     const D3DXVECTOR3 *c_pv3Position = nullptr);
     DWORD AttachSmokeEffect(DWORD eSmoke);
 
     /////////////////////////////////////////////////////////////////////////////////////
     // Motion Queueing System
     void SetMotionMode(int iMotionMode); // FIXME : 모드의 시간차 적용이 가능하게끔 한다.
-    int GetMotionMode();
+    int GetMotionMode() const;
     void SetLoopMotion(DWORD dwMotion, float fBlendTime = 0.1f, float fSpeedRatio = 1.0f);
     bool InterceptOnceMotion(DWORD dwMotion, float fBlendTime = 0.1f, UINT uSkill = 0, float fSpeedRatio = 1.0f);
     bool InterceptLoopMotion(DWORD dwMotion, float fBlendTime = 0.1f);
@@ -336,7 +322,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
                                  D3DXVECTOR3 *pv3Position);
 
     // Collision Detection Checking
-    virtual bool TestCollisionWithDynamicSphere(const CDynamicSphereInstance &dsi);
+    bool TestCollisionWithDynamicSphere(const CDynamicSphereInstance &dsi) override;
 
     void UpdateAdvancingPointInstance();
 
@@ -375,7 +361,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     BOOL IsSplashAttacking();
     BOOL IsUsingMovingSkill();
     BOOL IsActEmotion();
-    DWORD GetComboIndex();
+    DWORD GetComboIndex() const;
     float GetAttackingElapsedTime();
     void SetBlendingPosition(const TPixelPosition &c_rPosition, float fBlendingTime = 1.0f);
     void ResetBlendingPosition();
@@ -386,14 +372,14 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
     void Revive();
 
-    BOOL IsSleep();
-    BOOL IsParalysis();
-    BOOL IsFaint();
-    BOOL IsResistFallen();
+    BOOL IsSleep() const;
+    BOOL IsParalysis() const;
+    BOOL IsFaint() const;
+    BOOL IsResistFallen() const;
     BOOL IsWaiting();
     BOOL IsMoving();
-    BOOL IsDead();
-    BOOL IsStun();
+    BOOL IsDead() const;
+    BOOL IsStun() const;
     BOOL IsAttacked();
     BOOL IsDamage();
     BOOL IsKnockDown();
@@ -427,7 +413,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
     const TPixelPosition &NEW_GetLastPixelPositionRef();
 
-    void GetPixelPosition(TPixelPosition *pPixelPosition);
+    void GetPixelPosition(TPixelPosition *pPixelPosition) const;
     void SetPixelPosition(const TPixelPosition &c_rPixelPos);
 
     // Rotation Command
@@ -440,12 +426,12 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void SetReachScale(float fScale);
     void SetOwner(DWORD dwOwnerVID);
 
-    float GetRotation();
-    float GetTargetRotation();
+    float GetRotation() const;
+    float GetTargetRotation() const;
 
-    float GetAdvancingRotation();
+    float GetAdvancingRotation() const;
 
-    float GetRotatingTime();
+    float GetRotatingTime() const;
     void SetRotation(float fRot);
     void SetXYRotation(float fRotX, float fRotY);
     void BlendRotation(float fRot, float fBlendTime);
@@ -454,7 +440,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
     /////////////////////////////////////////////////////////////////////////////////////
     void MotionEventProcess();
-    void MotionEventProcess(DWORD dwcurTime, int iIndex, const CRaceMotionData::TMotionEventData *c_pData);
+    void MotionEventProcess(DWORD dwcurFrame, int iIndex, const CRaceMotionData::TMotionEventData *c_pData);
     void SoundEventProcess(BOOL bCheckFrequency);
     /////////////////////////////////////////////////////////////////////////////////////
 
@@ -469,11 +455,11 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void BeginOpacityRender();
     void EndOpacityRender();
 
-    void BeginBlendRender();
+    void BeginBlendRender() const;
     void EndBlendRender();
     void SetBlendRenderMode();
     void SetAlphaValue(float fAlpha);
-    float GetAlphaValue();
+    float GetAlphaValue() const;
     void BlendAlphaValue(float fDstAlpha, float fDuration);
     void SetSpecularInfo(BOOL bEnable, int iPart, float fAlpha);
     void SetSpecularInfoForce(BOOL bEnable, int iPart, float fAlpha);
@@ -519,14 +505,14 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
     // Flying Methods
     // As a Flying Target
-  public:
-    virtual D3DXVECTOR3 OnGetFlyTargetPosition();
 
-    void OnShootDamage();
+    D3DXVECTOR3 OnGetFlyTargetPosition() override;
+
+    void OnShootDamage() override;
 
     // As a Shooter
     // NOTE : target and target position are exclusive
-  public:
+
     void ClearFlyTarget();
     bool IsFlyTargetObject();
     void AddFlyTarget(const CFlyTarget &cr_FlyTarget);
@@ -542,7 +528,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     bool CanChangeTarget();
 
   protected:
-    IFlyEventHandler *m_pFlyEventHandler;
+    IFlyEventHandler *m_pFlyEventHandler = nullptr;
 
   public:
     void MountHorse(CActorInstance *pkHorse);
@@ -569,11 +555,10 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     CFlyTarget m_kBackupFlyTarget;
     std::deque<CFlyTarget> m_kQue_kFlyTarget;
 
-  protected:
     bool __IsInSplashTime();
 
-    void OnUpdate();
-    void OnRender();
+    void OnUpdate() override;
+    void OnRender() override;
 
     BOOL isValidAttacking();
 
@@ -590,7 +575,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void ProcessMotionEventEffectEvent(const CRaceMotionData::TMotionEventData *c_pData);
     void ProcessMotionEventEffectToTargetEvent(const CRaceMotionData::TMotionEventData *c_pData);
     void ProcessMotionEventSpecialAttacking(int iMotionEventIndex, const CRaceMotionData::TMotionEventData *c_pData);
-    void ProcessMotionEventSound(const CRaceMotionData::TMotionEventData *c_pData);
+    void ProcessMotionEventSound(const CRaceMotionData::TMotionEventData *c_pData) const;
     void ProcessMotionEventFly(const CRaceMotionData::TMotionEventData *c_pData);
     void ProcessMotionEventWarp(const CRaceMotionData::TMotionEventData *c_pData);
 
@@ -600,19 +585,16 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     bool __IsRightHandWeapon(DWORD type);
     bool __IsWeaponTrace(DWORD weaponType);
 
-  protected:
     void __InitializeMovement();
 
-  protected:
     void __Initialize();
 
     void __ClearAttachingEffect();
 
     float __GetOwnerTime();
-    DWORD __GetOwnerVID();
+    DWORD __GetOwnerVID() const;
     bool __CanPushDestActor(CActorInstance &rkActorDst);
 
-  protected:
     void __RunNextCombo();
     void __ClearCombo();
     void __OnEndCombo();
@@ -626,12 +608,11 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void __HitGood(CActorInstance &rVictim);
     void __HitGreate(CActorInstance &rVictim);
 
-    void __PushDirect(CActorInstance &rVictim);
+    void __PushDirect(CActorInstance &rVictim) const;
     void __PushCircle(CActorInstance &rVictim);
     bool __isInvisible();
     void __SetFallingDirection(float fx, float fy);
 
-  protected:
     struct SSetMotionData
     {
         MOTION_KEY dwMotKey;
@@ -640,18 +621,12 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
         int iLoopCount;
         UINT uSkill;
 
-        SSetMotionData()
+        SSetMotionData() : iLoopCount(0), dwMotKey(0), fBlendTime(0.0f), fSpeedRatio(1.0f), uSkill(0)
         {
-            iLoopCount = 0;
-            dwMotKey = 0;
-            fSpeedRatio = 1.0f;
-            fBlendTime = 0.0f;
-            uSkill = 0;
         }
     };
 
-  protected:
-    float __GetAttackSpeed();
+    float __GetAttackSpeed() const;
     DWORD __SetMotion(const SSetMotionData &c_rkSetMotData,
                       DWORD dwRandMotKey = 0); // 모션 데이터 설정
     void __ClearMotion();
@@ -676,21 +651,21 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     bool __CanAttack();          // 공격 할수 있는가?
     bool __CanNextComboAttack(); // 다음 콤보 어택이 가능한가?
 
-    bool __IsComboAttacking();  // 콤보 공격중인가?
-    void __CancelComboAttack(); // 콤보 공격 취소
+    bool __IsComboAttacking() const; // 콤보 공격중인가?
+    void __CancelComboAttack();      // 콤보 공격 취소
 
-    WORD __GetCurrentMotionIndex();
-    DWORD __GetCurrentMotionKey();
+    WORD __GetCurrentMotionIndex() const;
+    DWORD __GetCurrentMotionKey() const;
 
     int __GetLoopCount();
     WORD __GetCurrentComboType();
 
     void __ShowEvent();
     void __HideEvent();
-    BOOL __IsHiding();
+    BOOL __IsHiding() const;
     BOOL __IsMovingSkill(WORD wSkillNumber);
 
-    float __GetReachScale();
+    float __GetReachScale() const;
 
     void __CreateAttributeInstance(CAttributeData *pData);
 
@@ -698,23 +673,20 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     bool __IsSameFlyTarget(CActorInstance *pInstance);
     D3DXVECTOR3 __GetFlyTargetPosition();
 
-  protected:
     void __DestroyWeaponTrace(); // 무기 잔상을 제거한다
     void __ShowWeaponTrace();    // 무기 잔상을 보인다
     void __HideWeaponTrace();    // 무기 잔상을 감춘다
 
-  protected:
     // collision data
-    void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector);
-    void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance);
-    bool OnGetObjectHeight(float fX, float fY, float *pfHeight);
+    void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector) override;
+    void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance) override;
+    bool OnGetObjectHeight(float fX, float fY, float *pfHeight) override;
 
-  protected:
     /////////////////////////////////////////////////////////////////////////////////////
     // Motion Queueing System
     TMotionDeque m_MotionDeque;
-    SCurrentMotionNode m_kCurMotNode;
-    WORD m_wcurMotionMode;
+    SCurrentMotionNode m_kCurMotNode{};
+    WORD m_wcurMotionMode = 0U;
     /////////////////////////////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -722,7 +694,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     TCollisionPointInstanceList m_BodyPointInstanceList;
     TCollisionPointInstanceList m_DefendingPointInstanceList;
     SSplashArea m_kSplashArea; // TODO : 복수에 대한 고려를 해야한다 - [levites]
-    CAttributeInstance *m_pAttributeInstance;
+    CAttributeInstance *m_pAttributeInstance = nullptr;
     /////////////////////////////////////////////////////////////////////////////////////
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -730,89 +702,89 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     std::vector<CWeaponTrace *> m_WeaponTraceVector;
     CPhysicsObject m_PhysicsObject;
 
-    DWORD m_dwcurComboIndex;
+    DWORD m_dwcurComboIndex = 0U;
 
-    DWORD m_eActorType;
+    DWORD m_eActorType = 0U;
 
-    DWORD m_eRace;
-    DWORD m_eShape;
-    DWORD m_eHair;
-    BOOL m_isPreInput;
-    BOOL m_isNextPreInput;
-    DWORD m_dwcurComboBackMotionIndex;
+    DWORD m_eRace = 0U;
+    DWORD m_eShape = 0U;
+    DWORD m_eHair = 0U;
+    BOOL m_isPreInput = 0;
+    BOOL m_isNextPreInput = 0;
+    DWORD m_dwcurComboBackMotionIndex = 0U;
 
-    WORD m_wcurComboType;
+    WORD m_wcurComboType = 0U;
 
-    float m_fAtkDirRot;
+    float m_fAtkDirRot = 0.0F;
 
-    CRaceData *m_pkCurRaceData;
-    CRaceMotionData *m_pkCurRaceMotionData;
+    CRaceData *m_pkCurRaceData = nullptr;
+    CRaceMotionData *m_pkCurRaceMotionData = nullptr;
 
     // Defender
-    float m_fInvisibleTime;
-    BOOL m_isHiding;
+    float m_fInvisibleTime = 0.0F;
+    BOOL m_isHiding = 0;
 
     // TODO : State로 통합 시킬 수 있는지 고려해 볼것
-    BOOL m_isResistFallen;
-    BOOL m_isSleep;
-    BOOL m_isFaint;
-    BOOL m_isParalysis;
-    BOOL m_isStun;
-    BOOL m_isRealDead;
-    BOOL m_isWalking;
-    BOOL m_isMain;
+    BOOL m_isResistFallen = 0;
+    BOOL m_isSleep = 0;
+    BOOL m_isFaint = 0;
+    BOOL m_isParalysis = 0;
+    BOOL m_isStun = 0;
+    BOOL m_isRealDead = 0;
+    BOOL m_isWalking = 0;
+    BOOL m_isMain = 0;
 
     // Effect
-    DWORD m_dwBattleHitEffectID;
-    DWORD m_dwBattleAttachEffectID;
+    DWORD m_dwBattleHitEffectID = 0U;
+    DWORD m_dwBattleAttachEffectID = 0U;
     /////////////////////////////////////////////////////////////////////////////////////
 
     // Fishing
     D3DXVECTOR3 m_v3FishingPosition;
-    int m_iFishingEffectID;
+    int m_iFishingEffectID = 0;
 
     // Position
-    float m_x;
-    float m_y;
-    float m_z;
+    float m_x = 0.0F;
+    float m_y = 0.0F;
+    float m_z = 0.0F;
     D3DXVECTOR3 m_v3Pos;
     D3DXVECTOR3 m_v3Movement;
-    BOOL m_bNeedUpdateCollision;
+    BOOL m_bNeedUpdateCollision = 0;
 
-    DWORD m_dwShakeTime;
+    DWORD m_dwShakeTime = 0U;
 
-    float m_fReachScale;
-    float m_fMovSpd;
-    float m_fAtkSpd;
+    float m_fReachScale = 0.0F;
+    float m_fMovSpd = 0.0F;
+    float m_fAtkSpd = 0.0F;
 
     // Rotation
-    float m_fcurRotation;
-    float m_rotBegin;
-    float m_rotEnd;
-    float m_rotEndTime;
-    float m_rotBeginTime;
-    float m_rotBlendTime;
-    float m_fAdvancingRotation;
-    float m_rotX;
-    float m_rotY;
+    float m_fcurRotation = 0.0F;
+    float m_rotBegin = 0.0F;
+    float m_rotEnd = 0.0F;
+    float m_rotEndTime = 0.0F;
+    float m_rotBeginTime = 0.0F;
+    float m_rotBlendTime = 0.0F;
+    float m_fAdvancingRotation = 0.0F;
+    float m_rotX = 0.0F;
+    float m_rotY = 0.0F;
 
-    float m_fOwnerBaseTime;
+    float m_fOwnerBaseTime = 0.0F;
 
     // Rendering
-    int m_iRenderMode;
+    int m_iRenderMode = 0;
     D3DXCOLOR m_AddColor;
-    float m_fAlphaValue;
+    float m_fAlphaValue = 0.0F;
 
     // Part
-    DWORD m_adwPartItemID[CRaceData::PART_MAX_NUM];
+    DWORD m_adwPartItemID[CRaceData::PART_MAX_NUM]{};
 
     // Attached Effect
     std::list<TAttachingEffect> m_AttachingEffectList;
-    bool m_bEffectInitialized;
+    bool m_bEffectInitialized = false;
 
     // material color
-    DWORD m_dwMtrlColor;
-    DWORD m_dwMtrlAlpha;
+    DWORD m_dwMtrlColor = 0U;
+    DWORD m_dwMtrlAlpha = 0U;
 
     TPixelPosition m_kPPosCur;
     TPixelPosition m_kPPosSrc;
@@ -823,14 +795,12 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
     THitDataMap m_HitDataMap;
 
-    CActorInstance *m_pkHorse;
-    CSpeedTreeWrapper *m_pkTree;
+    CActorInstance *m_pkHorse = nullptr;
+    CSpeedTreeWrapper *m_pkTree = nullptr;
 
-  protected:
-    DWORD m_dwSelfVID;
-    DWORD m_dwOwnerVID;
+    DWORD m_dwSelfVID = 0U;
+    DWORD m_dwOwnerVID = 0U;
 
-  protected:
     void __InitializeStateData();
     void __InitializeMotionData();
     void __InitializeRotationData();
@@ -853,19 +823,18 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void __OnUseSkill(UINT uMotSkill, UINT uLoopCount, bool isMoving);
 
   protected:
-    void __OnHit(UINT uSkill, CActorInstance &rkInstVictm, BOOL isSendPacket);
+    void __OnHit(UINT uSkill, CActorInstance &rkActorVictm, BOOL isSendPacket);
 
   public:
     void EnableSkipCollision();
     void DisableSkipCollision();
-    bool CanSkipCollision();
+    bool CanSkipCollision() const;
 
   protected:
     void __InitializeCollisionData();
 
-    bool m_canSkipCollision;
+    bool m_canSkipCollision = false;
 
-  protected:
     struct SBlendAlpha
     {
         float m_fBaseTime;
@@ -875,7 +844,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
 
         DWORD m_iOldRenderMode;
         bool m_isBlending;
-    } m_kBlendAlpha;
+    } m_kBlendAlpha{};
 
     void __BlendAlpha_Initialize();
     void __BlendAlpha_Apply(float fDstAlpha, float fDuration);
@@ -896,8 +865,7 @@ class CActorInstance : public IActorInstance, public IFlyTargetableObject
     void __SetTreePosition(float fx, float fy, float fz);
 
   protected:
-    IEventHandler *m_pkEventHandler;
+    IEventHandler *m_pkEventHandler = nullptr;
 
-  protected:
     static bool ms_isDirLine;
 };

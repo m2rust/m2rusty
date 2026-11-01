@@ -1,6 +1,8 @@
 #include <Neoeter/Effect/StdAfx.h>
 #include <Neoeter/Effect/FrameController.h>
 
+#include <algorithm>
+
 void CFrameController::Update(float fElapsedTime)
 {
     m_fLastFrameTime -= fElapsedTime;
@@ -16,8 +18,7 @@ void CFrameController::Update(float fElapsedTime)
             {
                 if (m_isLoop && --m_iLoopCount != 0)
                 {
-                    if (m_iLoopCount < 0)
-                        m_iLoopCount = 0;
+                    m_iLoopCount = std::max(m_iLoopCount, 0);
                     m_dwcurFrame = 0;
                 }
                 else
@@ -41,7 +42,7 @@ void CFrameController::SetCurrentFrame(DWORD dwFrame)
     m_dwcurFrame = dwFrame;
 }
 
-BYTE CFrameController::GetCurrentFrame()
+BYTE CFrameController::GetCurrentFrame() const
 {
     return m_dwcurFrame;
 }
@@ -75,7 +76,7 @@ void CFrameController::SetActive(BOOL bFlag)
     m_isActive = bFlag;
 }
 
-BOOL CFrameController::isActive(DWORD dwMainFrame)
+BOOL CFrameController::isActive(DWORD dwMainFrame) const
 {
     if (dwMainFrame < m_dwStartFrame)
         return FALSE;
@@ -91,17 +92,8 @@ void CFrameController::Clear()
 }
 
 CFrameController::CFrameController()
-{
-    m_isActive = TRUE;
-    m_dwcurFrame = 0;
-    m_fLastFrameTime = 0.0f;
-
-    m_iLoopCount = 0;
-    m_isLoop = FALSE;
-    m_dwMaxFrame = 0;
-    m_fFrameTime = 0.0f;
-    m_dwStartFrame = 0;
-}
-CFrameController::~CFrameController()
+    : m_isActive(TRUE), m_dwMaxFrame(0), m_dwStartFrame(0), m_dwcurFrame(0), m_fFrameTime(0.0f), m_fLastFrameTime(0.0f),
+      m_iLoopCount(0), m_isLoop(FALSE)
 {
 }
+CFrameController::~CFrameController() = default;

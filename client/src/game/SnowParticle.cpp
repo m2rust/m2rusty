@@ -11,7 +11,7 @@ void CSnowParticle::SetCameraVertex(const D3DXVECTOR3 &rv3Up, const D3DXVECTOR3 
     m_v3Cross = rv3Cross * m_fHalfHeight;
 }
 
-bool CSnowParticle::IsActivate()
+bool CSnowParticle::IsActivate() const
 {
     return m_bActivate;
 }
@@ -25,11 +25,17 @@ void CSnowParticle::Update(float fElapsedTime, const D3DXVECTOR3 &c_rv3Pos)
     m_fcurRadian += m_fPeriod * fElapsedTime;
 
     if (m_v3Position.z < c_rv3Pos.z - 500.0f)
+    {
         m_bActivate = false;
+    }
     else if (abs(m_v3Position.x - c_rv3Pos.x) > c_fSnowDistance)
+    {
         m_bActivate = false;
+    }
     else if (abs(m_v3Position.y - c_rv3Pos.y) > c_fSnowDistance)
+    {
         m_bActivate = false;
+    }
 }
 
 void CSnowParticle::GetVerticies(SParticleVertex &rv3Vertex1, SParticleVertex &rv3Vertex2, SParticleVertex &rv3Vertex3,
@@ -54,11 +60,11 @@ void CSnowParticle::GetVerticies(SParticleVertex &rv3Vertex1, SParticleVertex &r
 
 void CSnowParticle::Init(const D3DXVECTOR3 &c_rv3Pos)
 {
-    float fRot = frandom(0.0f, 36000.0f) / 100.0f;
-    float fDistance = frandom(0.0f, c_fSnowDistance) / 10.0f;
+    float const fRot = frandom(0.0f, 36000.0f) / 100.0f;
+    float const fDistance = frandom(0.0f, c_fSnowDistance) / 10.0f;
 
-    m_v3Position.x = c_rv3Pos.x + fDistance * sin((double)D3DXToRadian(fRot));
-    m_v3Position.y = c_rv3Pos.y + fDistance * cos((double)D3DXToRadian(fRot));
+    m_v3Position.x = c_rv3Pos.x + (fDistance * sin(static_cast<double> D3DXToRadian(fRot)));
+    m_v3Position.y = c_rv3Pos.y + (fDistance * cos(static_cast<double> D3DXToRadian(fRot)));
     m_v3Position.z = c_rv3Pos.z + frandom(1500.0f, 2000.0f);
     m_v3Velocity.x = 0.0f;
     m_v3Velocity.y = 0.0f;
@@ -95,9 +101,4 @@ void CSnowParticle::DestroyPool()
     stl_wipe(ms_kVct_SnowParticlePool);
 }
 
-CSnowParticle::CSnowParticle()
-{
-}
-CSnowParticle::~CSnowParticle()
-{
-}
+CSnowParticle::CSnowParticle() = default;

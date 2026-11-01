@@ -10,17 +10,15 @@ class CEffectMeshInstance : public CEffectElementBaseInstance
 {
   public:
     // NOTE : Mesh 단위 텍스춰 데이타의 인스턴스이다.
-    typedef struct STextureInstance
+    using TTextureInstance = struct STextureInstance
     {
         CFrameController TextureFrameController;
         std::vector<CGraphicImageInstance *> TextureInstanceVector;
-    } TTextureInstance;
+    };
 
-  public:
     CEffectMeshInstance();
-    virtual ~CEffectMeshInstance();
+    ~CEffectMeshInstance() override;
 
-  public:
     static void DestroySystem();
 
     static CEffectMeshInstance *New();
@@ -29,19 +27,18 @@ class CEffectMeshInstance : public CEffectElementBaseInstance
     static CDynamicPool<CEffectMeshInstance> ms_kPool;
 
   protected:
-    void OnSetDataPointer(CEffectElementBase *pElement);
+    void OnSetDataPointer(CEffectElementBase *pElement) override;
 
-    void OnInitialize();
-    void OnDestroy();
+    void OnInitialize() override;
+    void OnDestroy() override;
 
-    bool OnUpdate(float fElapsedTime);
-    void OnRender();
+    bool OnUpdate(float fElapsedTime) override;
+    void OnRender() override;
 
     BOOL isActive();
 
-  protected:
-    CEffectMeshScript *m_pMeshScript;
-    CEffectMesh *m_pEffectMesh;
+    CEffectMeshScript *m_pMeshScript = nullptr;
+    CEffectMesh *m_pEffectMesh = nullptr;
 
     CFrameController m_MeshFrameController;
     std::vector<TTextureInstance> m_TextureInstanceVector;

@@ -76,7 +76,7 @@ const D3DXCOLOR &CInstanceBase::GetIndexedNameColor(UINT eNameColor)
 {
     if (eNameColor >= NAMECOLOR_NUM)
     {
-        static D3DXCOLOR s_kD3DXClrNameDefault(0xffffffff);
+        static D3DXCOLOR const s_kD3DXClrNameDefault(0xffffffff);
         return s_kD3DXClrNameDefault;
     }
 
@@ -87,7 +87,7 @@ void CInstanceBase::AddDamageEffect(DWORD damage, BYTE flag, BOOL bSelf, BOOL bT
 {
     if (CPythonSystem::Instance().IsShowDamage())
     {
-        SEffectDamage sDamage;
+        SEffectDamage sDamage{};
         sDamage.bSelf = bSelf;
         sDamage.bTarget = bTarget;
         sDamage.damage = damage;
@@ -101,38 +101,42 @@ void CInstanceBase::ProcessDamage()
     if (m_DamageQueue.empty())
         return;
 
-    SEffectDamage sDamage = m_DamageQueue.front();
+    SEffectDamage const sDamage = m_DamageQueue.front();
 
     m_DamageQueue.pop_front();
 
     DWORD damage = sDamage.damage;
-    BYTE flag = sDamage.flag;
-    BOOL bSelf = sDamage.bSelf;
-    BOOL bTarget = sDamage.bTarget;
+    BYTE const flag = sDamage.flag;
+    BOOL const bSelf = sDamage.bSelf;
+    BOOL const bTarget = sDamage.bTarget;
 
     CCamera *pCamera = CCameraManager::Instance().GetCurrentCamera();
-    float cameraAngle = GetDegreeFromPosition2(pCamera->GetTarget().x, pCamera->GetTarget().y, pCamera->GetEye().x,
-                                               pCamera->GetEye().y);
+    float const cameraAngle = GetDegreeFromPosition2(pCamera->GetTarget().x, pCamera->GetTarget().y,
+                                                     pCamera->GetEye().x, pCamera->GetEye().y);
 
-    DWORD FONT_WIDTH = 30;
+    DWORD const FONT_WIDTH = 30;
 
     CEffectManager &rkEftMgr = CEffectManager::Instance();
 
     D3DXVECTOR3 v3Pos = m_GraphicThingInstance.GetPosition();
-    v3Pos.z += float(m_GraphicThingInstance.GetHeight());
+    v3Pos.z += m_GraphicThingInstance.GetHeight();
 
-    D3DXVECTOR3 v3Rot = D3DXVECTOR3(0.0f, 0.0f, cameraAngle);
+    D3DXVECTOR3 const v3Rot = D3DXVECTOR3(0.0f, 0.0f, cameraAngle);
 
     if ((flag & DAMAGE_DODGE) || (flag & DAMAGE_BLOCK))
     {
         if (bSelf)
+        {
             rkEftMgr.CreateEffect(ms_adwCRCAffectEffect[EFFECT_DAMAGE_MISS], v3Pos, v3Rot);
+        }
         else
+        {
             rkEftMgr.CreateEffect(ms_adwCRCAffectEffect[EFFECT_DAMAGE_TARGETMISS], v3Pos, v3Rot);
+        }
         //__AttachEffect(EFFECT_DAMAGE_MISS);
         return;
     }
-    else if (flag & DAMAGE_CRITICAL)
+    if (flag & DAMAGE_CRITICAL)
     {
         // rkEftMgr.CreateEffect(ms_adwCRCAffectEffect[EFFECT_DAMAGE_CRITICAL],v3Pos,v3Rot);
         // return; 숫자도 표시.
@@ -153,12 +157,16 @@ void CInstanceBase::ProcessDamage()
         {
             strDamageType = "damage_";
             if (m_bDamageEffectType == 0)
+            {
                 rdwCRCEft = EFFECT_DAMAGE_SELFDAMAGE;
+            }
             else
+            {
                 rdwCRCEft = EFFECT_DAMAGE_SELFDAMAGE2;
+            }
             m_bDamageEffectType = !m_bDamageEffectType;
         }
-        else if (bTarget == false)
+        else if (!static_cast<bool>(bTarget))
         {
             strDamageType = "nontarget_";
             rdwCRCEft = EFFECT_DAMAGE_NOT_TARGET;
@@ -189,7 +197,8 @@ void CInstanceBase::ProcessDamage()
 
         rkEftMgr.SetEffectTextures(ms_adwCRCAffectEffect[rdwCRCEft], textures);
 
-        D3DXMATRIX matrix, matTrans;
+        D3DXMATRIX matrix;
+        D3DXMATRIX matTrans;
         D3DXMatrixIdentity(&matrix);
         matrix._41 = v3Pos.x;
         matrix._42 = v3Pos.y;
@@ -228,8 +237,8 @@ void CInstanceBase::CreateSpecialEffect(DWORD iEffectIndex)
 {
     const D3DXMATRIX &c_rmatGlobal = m_GraphicThingInstance.GetTransform();
 
-    DWORD dwEffectIndex = CEffectManager::Instance().GetEmptyIndex();
-    DWORD dwEffectCRC = ms_adwCRCAffectEffect[iEffectIndex];
+    DWORD const dwEffectIndex = CEffectManager::Instance().GetEmptyIndex();
+    DWORD const dwEffectCRC = ms_adwCRCAffectEffect[iEffectIndex];
     CEffectManager::Instance().CreateEffectInstance(dwEffectIndex, dwEffectCRC);
     CEffectManager::Instance().SelectEffectInstance(dwEffectIndex);
     CEffectManager::Instance().SetEffectInstanceGlobalMatrix(c_rmatGlobal);
@@ -261,11 +270,11 @@ CInstanceBase::SEffectContainer::Dict &CInstanceBase::__EffectContainer_GetDict(
 DWORD CInstanceBase::__EffectContainer_AttachEffect(DWORD dwEftKey)
 {
     SEffectContainer::Dict &rkDctEftID = __EffectContainer_GetDict();
-    SEffectContainer::Dict::iterator f = rkDctEftID.find(dwEftKey);
+    auto f = rkDctEftID.find(dwEftKey);
     if (rkDctEftID.end() != f)
         return 0;
 
-    DWORD dwEftID = __AttachEffect(dwEftKey);
+    DWORD const dwEftID = __AttachEffect(dwEftKey);
     rkDctEftID.insert(SEffectContainer::Dict::value_type(dwEftKey, dwEftID));
     return dwEftID;
 }
@@ -273,7 +282,7 @@ DWORD CInstanceBase::__EffectContainer_AttachEffect(DWORD dwEftKey)
 void CInstanceBase::__EffectContainer_DetachEffect(DWORD dwEftKey)
 {
     SEffectContainer::Dict &rkDctEftID = __EffectContainer_GetDict();
-    SEffectContainer::Dict::iterator f = rkDctEftID.find(dwEftKey);
+    auto f = rkDctEftID.find(dwEftKey);
     if (rkDctEftID.end() == f)
         return;
 
@@ -370,13 +379,10 @@ bool CInstanceBase::UpdateDeleting()
 
     IAbstractApplication &rApp = IAbstractApplication::GetSingleton();
 
-    float fAlpha = __GetAlphaValue() - (rApp.GetGlobalElapsedTime() * 1.5f);
+    float const fAlpha = __GetAlphaValue() - (rApp.GetGlobalElapsedTime() * 1.5f);
     __SetAlphaValue(fAlpha);
 
-    if (fAlpha < 0.0f)
-        return false;
-
-    return true;
+    return fAlpha >= 0.0f;
 }
 
 void CInstanceBase::DeleteBlendOut()
@@ -399,40 +405,40 @@ void CInstanceBase::ClearPVPKeySystem()
 
 void CInstanceBase::InsertPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
     g_kSet_dwPVPKey.insert(dwPVPKey);
 }
 
 void CInstanceBase::InsertPVPReadyKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwPVPReadyKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwPVPReadyKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
     g_kSet_dwPVPKey.insert(dwPVPReadyKey);
 }
 
 void CInstanceBase::RemovePVPKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
     g_kSet_dwPVPKey.erase(dwPVPKey);
 }
 
 void CInstanceBase::InsertGVGKey(DWORD dwSrcGuildVID, DWORD dwDstGuildVID)
 {
-    DWORD dwGVGKey = __GetPVPKey(dwSrcGuildVID, dwDstGuildVID);
+    DWORD const dwGVGKey = __GetPVPKey(dwSrcGuildVID, dwDstGuildVID);
     g_kSet_dwGVGKey.insert(dwGVGKey);
 }
 
 void CInstanceBase::RemoveGVGKey(DWORD dwSrcGuildVID, DWORD dwDstGuildVID)
 {
-    DWORD dwGVGKey = __GetPVPKey(dwSrcGuildVID, dwDstGuildVID);
+    DWORD const dwGVGKey = __GetPVPKey(dwSrcGuildVID, dwDstGuildVID);
     g_kSet_dwGVGKey.erase(dwGVGKey);
 }
 
 void CInstanceBase::InsertDUELKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
     g_kSet_dwDUELKey.insert(dwPVPKey);
 }
@@ -446,14 +452,14 @@ DWORD CInstanceBase::__GetPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst)
     awSrc[0] = dwVIDSrc;
     awSrc[1] = dwVIDDst;
 
-    const BYTE *s = (const BYTE *)awSrc;
+    const BYTE *s = reinterpret_cast<const BYTE *>(awSrc);
     const BYTE *end = s + sizeof(awSrc);
     unsigned long h = 0;
 
     while (s < end)
     {
         h *= 16777619;
-        h ^= (BYTE) * (BYTE *)(s++);
+        h ^= (*const_cast<BYTE *>(s++));
     }
 
     return h;
@@ -461,51 +467,39 @@ DWORD CInstanceBase::__GetPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 
 bool CInstanceBase::__FindPVPKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
-    if (g_kSet_dwPVPKey.end() == g_kSet_dwPVPKey.find(dwPVPKey))
-        return false;
-
-    return true;
+    return g_kSet_dwPVPKey.end() != g_kSet_dwPVPKey.find(dwPVPKey);
 }
 
 bool CInstanceBase::__FindPVPReadyKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwPVPKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
-    if (g_kSet_dwPVPReadyKey.end() == g_kSet_dwPVPReadyKey.find(dwPVPKey))
-        return false;
-
-    return true;
+    return g_kSet_dwPVPReadyKey.end() != g_kSet_dwPVPReadyKey.find(dwPVPKey);
 }
 // 길드전시 상대 길드인지 확인할때.
 bool CInstanceBase::__FindGVGKey(DWORD dwSrcGuildID, DWORD dwDstGuildID)
 {
-    DWORD dwGVGKey = __GetPVPKey(dwSrcGuildID, dwDstGuildID);
+    DWORD const dwGVGKey = __GetPVPKey(dwSrcGuildID, dwDstGuildID);
 
-    if (g_kSet_dwGVGKey.end() == g_kSet_dwGVGKey.find(dwGVGKey))
-        return false;
-
-    return true;
+    return g_kSet_dwGVGKey.end() != g_kSet_dwGVGKey.find(dwGVGKey);
 }
 // 대련 모드에서는 대련 상대만 공격할 수 있다.
 bool CInstanceBase::__FindDUELKey(DWORD dwVIDSrc, DWORD dwVIDDst)
 {
-    DWORD dwDUELKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
+    DWORD const dwDUELKey = __GetPVPKey(dwVIDSrc, dwVIDDst);
 
-    if (g_kSet_dwDUELKey.end() == g_kSet_dwDUELKey.find(dwDUELKey))
-        return false;
-
-    return true;
+    return g_kSet_dwDUELKey.end() != g_kSet_dwDUELKey.find(dwDUELKey);
 }
 
 bool CInstanceBase::IsPVPInstance(CInstanceBase &rkInstSel)
 {
-    DWORD dwVIDSrc = GetVirtualID();
-    DWORD dwVIDDst = rkInstSel.GetVirtualID();
+    DWORD const dwVIDSrc = GetVirtualID();
+    DWORD const dwVIDDst = rkInstSel.GetVirtualID();
 
-    DWORD dwGuildIDSrc = GetGuildID();
-    DWORD dwGuildIDDst = rkInstSel.GetGuildID();
+    DWORD const dwGuildIDSrc = GetGuildID();
+    DWORD const dwGuildIDDst = rkInstSel.GetGuildID();
 
     if (GetDuelMode()) // 대련 모드일때는 ~_~
         return true;
@@ -536,8 +530,8 @@ UINT CInstanceBase::GetNameColorIndex()
                 TraceError("CInstanceBase::GetNameColorIndex - MainInstance is NULL");
                 return NAMECOLOR_PC;
             }
-            DWORD dwVIDMain = pkInstMain->GetVirtualID();
-            DWORD dwVIDSelf = GetVirtualID();
+            DWORD const dwVIDMain = pkInstMain->GetVirtualID();
+            DWORD const dwVIDSelf = GetVirtualID();
 
             if (pkInstMain->GetDuelMode())
             {
@@ -547,9 +541,13 @@ UINT CInstanceBase::GetNameColorIndex()
                     return NAMECOLOR_PC + GetEmpireID();
                 case DUEL_START:
                     if (__FindDUELKey(dwVIDMain, dwVIDSelf))
+                    {
                         return NAMECOLOR_PVP;
+                    }
                     else
+                    {
                         return NAMECOLOR_PC + GetEmpireID();
+                    }
                 }
             }
 
@@ -560,8 +558,8 @@ UINT CInstanceBase::GetNameColorIndex()
                     return NAMECOLOR_PVP;
                 }
 
-                DWORD dwGuildIDMain = pkInstMain->GetGuildID();
-                DWORD dwGuildIDSelf = GetGuildID();
+                DWORD const dwGuildIDMain = pkInstMain->GetGuildID();
+                DWORD const dwGuildIDSelf = GetGuildID();
                 if (__FindGVGKey(dwGuildIDMain, dwGuildIDSelf))
                 {
                     return NAMECOLOR_PVP;
@@ -585,7 +583,7 @@ UINT CInstanceBase::GetNameColorIndex()
 
         return NAMECOLOR_PC + GetEmpireID();
     }
-    else if (IsNPC())
+    if (IsNPC())
     {
         return NAMECOLOR_NPC;
     }
@@ -603,10 +601,10 @@ UINT CInstanceBase::GetNameColorIndex()
 
 const D3DXCOLOR &CInstanceBase::GetTitleColor()
 {
-    UINT uGrade = GetAlignmentGrade();
+    UINT const uGrade = GetAlignmentGrade();
     if (uGrade >= TITLE_NUM)
     {
-        static D3DXCOLOR s_kD3DXClrTitleDefault(0xffffffff);
+        static D3DXCOLOR const s_kD3DXClrTitleDefault(0xffffffff);
         return s_kD3DXClrTitleDefault;
     }
 
@@ -623,11 +621,11 @@ void CInstanceBase::AttachTextTail()
 
     m_isTextTail = true;
 
-    DWORD dwVID = GetVirtualID();
+    DWORD const dwVID = GetVirtualID();
 
-    float fTextTailHeight = IsMountingHorse() ? 110.0f : 10.0f;
+    float const fTextTailHeight = IsMountingHorse() ? 110.0f : 10.0f;
 
-    static D3DXCOLOR s_kD3DXClrTextTail = D3DXCOLOR(1.0f, 1.0f, 1.0f, 1.0f);
+    static D3DXCOLOR const s_kD3DXClrTextTail = D3DXCOLOR(1.0f, 1.0f, 1.0f, 1.0f);
     CPythonTextTail::Instance().RegisterCharacterTextTail(m_dwGuildID, dwVID, s_kD3DXClrTextTail, fTextTailHeight);
 
     // CHARACTER_LEVEL
@@ -650,7 +648,7 @@ void CInstanceBase::UpdateTextTailLevel(DWORD level)
 {
     // static D3DXCOLOR s_kLevelColor = D3DXCOLOR(119.0f/255.0f, 246.0f/255.0f,
     // 168.0f/255.0f, 1.0f);
-    static D3DXCOLOR s_kLevelColor = D3DXCOLOR(152.0f / 255.0f, 255.0f / 255.0f, 51.0f / 255.0f, 1.0f);
+    static D3DXCOLOR const s_kLevelColor = D3DXCOLOR(152.0f / 255.0f, 255.0f / 255.0f, 51.0f / 255.0f, 1.0f);
 
     m_dwLevel = level;
 
@@ -663,14 +661,14 @@ void CInstanceBase::RefreshTextTail()
 {
     CPythonTextTail::Instance().SetCharacterTextTailColor(GetVirtualID(), GetNameColor());
 
-    int iAlignmentGrade = GetAlignmentGrade();
+    int const iAlignmentGrade = GetAlignmentGrade();
     if (TITLE_NONE == iAlignmentGrade)
     {
         CPythonTextTail::Instance().DetachTitle(GetVirtualID());
     }
     else
     {
-        std::map<int, std::string>::iterator itor = g_TitleNameMap.find(iAlignmentGrade);
+        auto itor = g_TitleNameMap.find(iAlignmentGrade);
         if (g_TitleNameMap.end() != itor)
         {
             const std::string &c_rstrTitleName = itor->second;
@@ -699,10 +697,10 @@ void CInstanceBase::__ClearAffects()
     }
     else
     {
-        for (int iAffect = 0; iAffect < AFFECT_NUM; ++iAffect)
+        for (unsigned int &iAffect : m_adwCRCAffectEffect)
         {
-            __DetachEffect(m_adwCRCAffectEffect[iAffect]);
-            m_adwCRCAffectEffect[iAffect] = 0;
+            __DetachEffect(iAffect);
+            iAffect = 0;
         }
 
         __ClearAffectFlagContainer();
@@ -717,17 +715,21 @@ void CInstanceBase::__SetNormalAffectFlagContainer(const CAffectFlagContainer &c
 {
     for (int i = 0; i < CAffectFlagContainer::BIT_SIZE; ++i)
     {
-        bool isOldSet = m_kAffectFlagContainer.IsSet(i);
-        bool isNewSet = c_rkAffectFlagContainer.IsSet(i);
+        bool const isOldSet = m_kAffectFlagContainer.IsSet(i);
+        bool const isNewSet = c_rkAffectFlagContainer.IsSet(i);
 
         if (isOldSet != isNewSet)
         {
             __SetAffect(i, isNewSet);
 
             if (isNewSet)
+            {
                 m_GraphicThingInstance.__OnSetAffect(i);
+            }
             else
+            {
                 m_GraphicThingInstance.__OnResetAffect(i);
+            }
         }
     }
 
@@ -738,17 +740,25 @@ void CInstanceBase::__SetStoneSmokeFlagContainer(const CAffectFlagContainer &c_r
 {
     m_kAffectFlagContainer.CopyInstance(c_rkAffectFlagContainer);
 
-    DWORD eSmoke;
+    DWORD eSmoke = 0;
     if (m_kAffectFlagContainer.IsSet(STONE_SMOKE8))
+    {
         eSmoke = 3;
+    }
     else if (m_kAffectFlagContainer.IsSet(STONE_SMOKE5) | m_kAffectFlagContainer.IsSet(STONE_SMOKE6) |
              m_kAffectFlagContainer.IsSet(STONE_SMOKE7))
+    {
         eSmoke = 2;
+    }
     else if (m_kAffectFlagContainer.IsSet(STONE_SMOKE2) | m_kAffectFlagContainer.IsSet(STONE_SMOKE3) |
              m_kAffectFlagContainer.IsSet(STONE_SMOKE4))
+    {
         eSmoke = 1;
+    }
     else
+    {
         eSmoke = 0;
+    }
 
     __StoneSmoke_Destroy();
     __StoneSmoke_Create(eSmoke);
@@ -760,7 +770,7 @@ void CInstanceBase::SetAffectFlagContainer(const CAffectFlagContainer &c_rkAffec
     {
         return;
     }
-    else if (IsStone())
+    if (IsStone())
     {
         __SetStoneSmokeFlagContainer(c_rkAffectFlagContainer);
     }
@@ -834,9 +844,13 @@ void CInstanceBase::__Warrior_SetGeomgyeongAffect(bool isVisible)
 
         m_GraphicThingInstance.SetReachScale(1.5f);
         if (m_GraphicThingInstance.IsTwoHandMode())
+        {
             m_kWarrior.m_dwGeomgyeongEffect = __AttachEffect(EFFECT_WEAPON + WEAPON_TWOHAND);
+        }
         else
+        {
             m_kWarrior.m_dwGeomgyeongEffect = __AttachEffect(EFFECT_WEAPON + WEAPON_ONEHAND);
+        }
     }
     else
     {
@@ -901,8 +915,10 @@ void CInstanceBase::__SetAffect(UINT eAffect, bool isVisible)
     case AFFECT_KWAESOK:
         // 경공술, 쾌속은 뛸때만 Attaching 시킵니다. - [levites]
         if (isVisible)
+        {
             if (!IsWalking())
                 return;
+        }
         break;
     case AFFECT_INVISIBILITY:
         // 2004.07.17.levites.isShow를 ViewFrustumCheck로 변경
@@ -956,12 +972,12 @@ void CInstanceBase::__SetAffect(UINT eAffect, bool isVisible)
     }
 }
 
-bool CInstanceBase::IsPossibleEmoticon()
+bool CInstanceBase::IsPossibleEmoticon() const
 {
     CEffectManager &rkEftMgr = CEffectManager::Instance();
     for (DWORD eEmoticon = 0; eEmoticon < EMOTICON_NUM; eEmoticon++)
     {
-        DWORD effectID = ms_adwCRCAffectEffect[EFFECT_EMOTICON + eEmoticon];
+        DWORD const effectID = ms_adwCRCAffectEffect[EFFECT_EMOTICON + eEmoticon];
         if (effectID && rkEftMgr.IsAliveEffect(effectID))
             return false;
     }
@@ -992,19 +1008,19 @@ void CInstanceBase::SetEmoticon(UINT eEmoticon)
     if (IsPossibleEmoticon())
     {
         D3DXVECTOR3 v3Pos = m_GraphicThingInstance.GetPosition();
-        v3Pos.z += float(m_GraphicThingInstance.GetHeight());
+        v3Pos.z += m_GraphicThingInstance.GetHeight();
 
         // CEffectManager& rkEftMgr=CEffectManager::Instance();
         CCamera *pCamera = CCameraManager::Instance().GetCurrentCamera();
 
-        D3DXVECTOR3 v3Dir = (pCamera->GetEye() - v3Pos) * 9 / 10;
+        D3DXVECTOR3 const v3Dir = (pCamera->GetEye() - v3Pos) * 9 / 10;
         v3Pos = pCamera->GetEye() - v3Dir;
 
         v3Pos = D3DXVECTOR3(0, 0, 0);
-        v3Pos.z += float(m_GraphicThingInstance.GetHeight());
+        v3Pos.z += m_GraphicThingInstance.GetHeight();
 
         // rkEftMgr.CreateEffect(ms_adwCRCAffectEffect[EFFECT_EMOTICON+eEmoticon],v3Pos,D3DXVECTOR3(0,0,0));
-        m_GraphicThingInstance.AttachEffectByID(0, NULL, ms_adwCRCAffectEffect[EFFECT_EMOTICON + eEmoticon], &v3Pos);
+        m_GraphicThingInstance.AttachEffectByID(0, nullptr, ms_adwCRCAffectEffect[EFFECT_EMOTICON + eEmoticon], &v3Pos);
         m_dwEmoticonTime = ELTimer_GetMSec();
     }
 }
@@ -1035,23 +1051,23 @@ DWORD CInstanceBase::__AttachEffect(UINT eEftType)
 
     if (ms_astAffectEffectAttachBone[eEftType].empty())
     {
-        return m_GraphicThingInstance.AttachEffectByID(0, NULL, ms_adwCRCAffectEffect[eEftType]);
+        return m_GraphicThingInstance.AttachEffectByID(0, nullptr, ms_adwCRCAffectEffect[eEftType]);
     }
     else
     {
-        std::string &rstrBoneName = ms_astAffectEffectAttachBone[eEftType];
-        const char *c_szBoneName;
+        std::string const &rstrBoneName = ms_astAffectEffectAttachBone[eEftType];
+        const char *c_szBoneName = nullptr;
         // 양손에 붙일 때 사용한다.
         // 이런 식의 예외 처리를 해놓은 것은 캐릭터 마다 Equip 의 Bone Name 이
         // 다르기 때문.
-        if (0 == rstrBoneName.compare("PART_WEAPON"))
+        if ("PART_WEAPON" == rstrBoneName)
         {
             if (m_GraphicThingInstance.GetAttachingBoneName(CRaceData::PART_WEAPON, &c_szBoneName))
             {
                 return m_GraphicThingInstance.AttachEffectByID(0, c_szBoneName, ms_adwCRCAffectEffect[eEftType]);
             }
         }
-        else if (0 == rstrBoneName.compare("PART_WEAPON_LEFT"))
+        else if ("PART_WEAPON_LEFT" == rstrBoneName)
         {
             if (m_GraphicThingInstance.GetAttachingBoneName(CRaceData::PART_WEAPON_LEFT, &c_szBoneName))
             {
@@ -1122,7 +1138,7 @@ D3DXCOLOR __RGBToD3DXColoru(UINT r, UINT g, UINT b)
     dwColor <<= 8;
     dwColor |= b;
 
-    return D3DXCOLOR(dwColor);
+    return {dwColor};
 }
 
 bool CInstanceBase::RegisterNameColor(UINT uIndex, UINT r, UINT g, UINT b)

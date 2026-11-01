@@ -12,7 +12,7 @@ BOOL CNetDatagramReceiver::Process()
     socklen_t irecvAddrLength = sizeof(SOCKADDR_IN);
 #endif
     m_recvBufCurrentSize =
-        recvfrom(m_Socket, (char *)m_recvBuf, m_recvBufSize, 0, (PSOCKADDR)&m_SockAddr, &irecvAddrLength);
+        recvfrom(m_Socket, m_recvBuf, m_recvBufSize, 0, reinterpret_cast<PSOCKADDR>(&m_SockAddr), &irecvAddrLength);
 
     if (m_recvBufCurrentSize <= 0)
     {
@@ -40,7 +40,7 @@ BOOL CNetDatagramReceiver::Peek(void *pBuffer, int iSize)
     return TRUE;
 }
 
-BOOL CNetDatagramReceiver::isBind()
+BOOL CNetDatagramReceiver::isBind() const
 {
     return m_isBind;
 }
@@ -49,7 +49,7 @@ BOOL CNetDatagramReceiver::Bind(DWORD /*dwAddress*/, WORD wPortIndex)
 {
     m_Socket = socket(AF_INET, SOCK_DGRAM, 0);
 
-    DWORD arg = 1;
+    DWORD const arg = 1;
     ioctlsocket(m_Socket, FIONBIO, &arg); // Non-blocking mode
 
     memset(&m_SockAddr, 0, sizeof(SOCKADDR_IN));
@@ -58,7 +58,7 @@ BOOL CNetDatagramReceiver::Bind(DWORD /*dwAddress*/, WORD wPortIndex)
     m_SockAddr.sin_addr.s_addr = INADDR_ANY;
     m_SockAddr.sin_port = htons(wPortIndex);
 
-    if (bind(m_Socket, (PSOCKADDR)&m_SockAddr, sizeof(SOCKADDR_IN)) < 0)
+    if (bind(m_Socket, reinterpret_cast<PSOCKADDR>(&m_SockAddr), sizeof(SOCKADDR_IN)) < 0)
     {
         Tracef("Failed binding socket\n");
         return FALSE;
@@ -95,15 +95,13 @@ void CNetDatagramReceiver::Clear()
     m_recvBufCurrentSize = 0;
 }
 
-CNetDatagramReceiver::CNetDatagramReceiver()
+CNetDatagramReceiver::CNetDatagramReceiver() : m_recvBuf(nullptr), m_recvBufSize(0)
 {
-    m_recvBuf = NULL;
-    m_recvBufSize = 0;
 
     Clear();
 }
 CNetDatagramReceiver::~CNetDatagramReceiver()
 {
-    if (m_recvBuf)
-        delete[] m_recvBuf;
+
+    delete[] m_recvBuf;
 }

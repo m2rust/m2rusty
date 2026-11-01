@@ -2,6 +2,8 @@
 #include <Neoeter/Model/Grn/ModelInstance.h>
 #include <Neoeter/Model/Grn/Model.h>
 
+#include <algorithm>
+
 void CGrannyModelInstance::Clear()
 {
     m_kMtrlPal.Clear();
@@ -20,7 +22,7 @@ void CGrannyModelInstance::Clear()
 void CGrannyModelInstance::SetMainModelPointer(CGrannyModel *pModel,
                                                CGraphicVertexBuffer *pkSharedDeformableVertexBuffer)
 {
-    SetLinkedModelPointer(pModel, pkSharedDeformableVertexBuffer, NULL);
+    SetLinkedModelPointer(pModel, pkSharedDeformableVertexBuffer, nullptr);
 }
 
 void CGrannyModelInstance::SetLinkedModelPointer(CGrannyModel *pkModel,
@@ -37,9 +39,13 @@ void CGrannyModelInstance::SetLinkedModelPointer(CGrannyModel *pkModel,
     m_pModel->AddReference();
 
     if (pkSharedDeformableVertexBuffer)
+    {
         __SetSharedDeformableVertexBuffer(pkSharedDeformableVertexBuffer);
+    }
     else
+    {
         __CreateDynamicVertexBuffer();
+    }
 
     __CreateModelInstance();
 
@@ -52,8 +58,8 @@ void CGrannyModelInstance::SetLinkedModelPointer(CGrannyModel *pkModel,
     }
     else
     {
-        __CreateWorldPose(NULL);
-        __CreateMeshBindingVector(NULL);
+        __CreateWorldPose(nullptr);
+        __CreateMeshBindingVector(nullptr);
     }
     // END_OF_WORK
 
@@ -73,8 +79,8 @@ granny_world_pose *CGrannyModelInstance::__GetWorldPosePtr() const
     if (m_ppkSkeletonInst && *m_ppkSkeletonInst)
         return (*m_ppkSkeletonInst)->m_pgrnWorldPoseReal;
 
-    assert(m_ppkSkeletonInst != NULL && "__GetWorldPosePtr - NO HAVE SKELETON");
-    return NULL;
+    assert(m_ppkSkeletonInst != nullptr && "__GetWorldPosePtr - NO HAVE SKELETON");
+    return nullptr;
 }
 
 int *CGrannyModelInstance::__GetMeshBoneIndices(unsigned int iMeshBinding) const
@@ -100,17 +106,19 @@ bool CGrannyModelInstance::__CreateMeshBindingVector(CGrannyModelInstance *pkDst
 
     m_vct_pgrnMeshBinding.reserve(pgrnModel->MeshBindingCount);
 
-    granny_int32 iMeshBinding;
+    granny_int32 iMeshBinding = 0;
     for (iMeshBinding = 0; iMeshBinding != pgrnModel->MeshBindingCount; ++iMeshBinding)
+    {
         m_vct_pgrnMeshBinding.push_back(
             GrannyNewMeshBinding(pgrnModel->MeshBindings[iMeshBinding].Mesh, pgrnModel->Skeleton, pgrnDstSkeleton));
+    }
 
     return true;
 }
 
 void CGrannyModelInstance::__DestroyMeshBindingVector()
 {
-    std::for_each(m_vct_pgrnMeshBinding.begin(), m_vct_pgrnMeshBinding.end(), GrannyFreeMeshBinding);
+    std::ranges::for_each(m_vct_pgrnMeshBinding, GrannyFreeMeshBinding);
     m_vct_pgrnMeshBinding.clear();
 }
 
@@ -118,8 +126,8 @@ void CGrannyModelInstance::__DestroyMeshBindingVector()
 
 void CGrannyModelInstance::__CreateWorldPose(CGrannyModelInstance *pkSkeletonInst)
 {
-    assert(m_pgrnModelInstance != NULL);
-    assert(m_pgrnWorldPoseReal == NULL);
+    assert(m_pgrnModelInstance != nullptr);
+    assert(m_pgrnWorldPoseReal == nullptr);
 
     // WORK
     if (pkSkeletonInst)
@@ -139,13 +147,13 @@ void CGrannyModelInstance::__DestroyWorldPose()
         return;
 
     GrannyFreeWorldPose(m_pgrnWorldPoseReal);
-    m_pgrnWorldPoseReal = NULL;
+    m_pgrnWorldPoseReal = nullptr;
 }
 
 void CGrannyModelInstance::__CreateModelInstance()
 {
-    assert(m_pModel != NULL);
-    assert(m_pgrnModelInstance == NULL);
+    assert(m_pModel != nullptr);
+    assert(m_pgrnModelInstance == nullptr);
 
     const granny_model *pgrnModel = m_pModel->GetGrannyModelPointer();
     m_pgrnModelInstance = GrannyInstantiateModel(pgrnModel);
@@ -157,17 +165,17 @@ void CGrannyModelInstance::__DestroyModelInstance()
         return;
 
     GrannyFreeModelInstance(m_pgrnModelInstance);
-    m_pgrnModelInstance = NULL;
+    m_pgrnModelInstance = nullptr;
 }
 
 void CGrannyModelInstance::__CreateMeshMatrices()
 {
-    assert(m_pModel != NULL);
+    assert(m_pModel != nullptr);
 
     if (m_pModel->GetMeshCount() <= 0) // 메쉬가 없는 (카메라 같은) 모델도 간혹 있다..
         return;
 
-    int meshCount = m_pModel->GetMeshCount();
+    int const meshCount = m_pModel->GetMeshCount();
     m_meshMatrices = new D3DXMATRIX[meshCount];
 }
 
@@ -177,7 +185,7 @@ void CGrannyModelInstance::__DestroyMeshMatrices()
         return;
 
     delete[] m_meshMatrices;
-    m_meshMatrices = NULL;
+    m_meshMatrices = nullptr;
 }
 
 DWORD CGrannyModelInstance::GetDeformableVertexCount()
@@ -226,10 +234,10 @@ CGraphicVertexBuffer &CGrannyModelInstance::__GetDeformableVertexBufferRef()
 
 void CGrannyModelInstance::__CreateDynamicVertexBuffer()
 {
-    assert(m_pModel != NULL);
+    assert(m_pModel != nullptr);
     assert(!m_kLocalDeformableVertexBuffer.IsEmpty());
 
-    int vtxCount = m_pModel->GetDeformVertexCount();
+    int const vtxCount = m_pModel->GetDeformVertexCount();
 
     if (0 != vtxCount)
     {
@@ -244,21 +252,18 @@ void CGrannyModelInstance::__CreateDynamicVertexBuffer()
 void CGrannyModelInstance::__DestroyDynamicVertexBuffer()
 {
     m_kLocalDeformableVertexBuffer.Destroy();
-    m_pkSharedDeformableVertexBuffer = NULL;
+    m_pkSharedDeformableVertexBuffer = nullptr;
 }
 
 // END_OF_WORK
 
 bool CGrannyModelInstance::GetBoneIndexByName(const char *c_szBoneName, int *pBoneIndex) const
 {
-    assert(m_pgrnModelInstance != NULL);
+    assert(m_pgrnModelInstance != nullptr);
 
     granny_skeleton *pgrnSkeleton = GrannyGetSourceSkeleton(m_pgrnModelInstance);
 
-    if (!GrannyFindBoneByName(pgrnSkeleton, c_szBoneName, pBoneIndex))
-        return false;
-
-    return true;
+    return GrannyFindBoneByName(pgrnSkeleton, c_szBoneName, pBoneIndex);
 }
 
 const float *CGrannyModelInstance::GetBoneMatrixPointer(int iBone) const
@@ -269,7 +274,7 @@ const float *CGrannyModelInstance::GetBoneMatrixPointer(int iBone) const
         granny_model *pModel = m_pModel->GetGrannyModelPointer();
         // TraceError("GrannyModelInstance(%s).GetBoneMatrixPointer(boneIndex(%d)).NOT_FOUND_BONE",
         // pModel->Name, iBone);
-        return NULL;
+        return nullptr;
     }
     return bones;
 }

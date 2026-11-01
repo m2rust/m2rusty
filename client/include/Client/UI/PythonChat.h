@@ -6,7 +6,7 @@
 class CWhisper
 {
   public:
-    typedef struct SChatLine
+    using TChatLine = struct SChatLine
     {
         CGraphicTextInstance Instance;
 
@@ -24,12 +24,11 @@ class CWhisper
         static void Delete(SChatLine *pkChatLine);
 
         static CDynamicPool<SChatLine> ms_kPool;
-    } TChatLine;
+    };
 
-    typedef std::deque<TChatLine *> TChatLineDeque;
-    typedef std::list<TChatLine *> TChatLineList;
+    using TChatLineDeque = std::deque<TChatLine *>;
+    using TChatLineList = std::list<TChatLine *>;
 
-  public:
     CWhisper();
     ~CWhisper();
 
@@ -44,11 +43,10 @@ class CWhisper
     void __Initialize();
     void __ArrangeChat();
 
-  protected:
-    float m_fLineStep;
-    float m_fWidth;
-    float m_fHeight;
-    float m_fcurPosition;
+    float m_fLineStep = 0.0F;
+    float m_fWidth = 0.0F;
+    float m_fHeight = 0.0F;
+    float m_fcurPosition = 0.0F;
 
     TChatLineDeque m_ChatLineDeque;
     TChatLineList m_ShowingChatLineList;
@@ -89,10 +87,10 @@ class CPythonChat : public CSingleton<CPythonChat>, public IAbstractChat
         CHAT_LINE_COLOR_ARRAY_MAX_NUM = 3,
     };
 
-    typedef struct SChatLine
+    using TChatLine = struct SChatLine
     {
-        int iType;
-        float fAppendedTime;
+        int iType = 0;
+        float fAppendedTime = 0.0F;
         D3DXCOLOR aColor[CHAT_LINE_COLOR_ARRAY_MAX_NUM];
         CGraphicTextInstance Instance;
 
@@ -108,24 +106,24 @@ class CPythonChat : public CSingleton<CPythonChat>, public IAbstractChat
         static void Delete(SChatLine *pkChatLine);
 
         static CDynamicPool<SChatLine> ms_kPool;
-    } TChatLine;
+    };
 
-    typedef struct SWaitChat
+    using TWaitChat = struct SWaitChat
     {
-        int iType;
+        int iType = 0;
         std::string strChat;
 
-        DWORD dwAppendingTime;
-    } TWaitChat;
+        DWORD dwAppendingTime = 0U;
+    };
 
-    typedef std::deque<TChatLine *> TChatLineDeque;
-    typedef std::list<TChatLine *> TChatLineList;
+    using TChatLineDeque = std::deque<TChatLine *>;
+    using TChatLineList = std::list<TChatLine *>;
 
-    typedef std::map<std::string, CWhisper *> TWhisperMap;
-    typedef std::set<std::string> TIgnoreCharacterSet;
-    typedef std::list<TWaitChat> TWaitChatList;
+    using TWhisperMap = std::map<std::string, CWhisper *>;
+    using TIgnoreCharacterSet = std::set<std::string>;
+    using TWaitChatList = std::list<TWaitChat>;
 
-    typedef struct SChatSet
+    using TChatSet = struct SChatSet
     {
         int m_ix;
         int m_iy;
@@ -143,31 +141,23 @@ class CPythonChat : public CSingleton<CPythonChat>, public IAbstractChat
             if (dwType >= m_iMode.size())
                 return false;
 
-            return m_iMode[dwType] ? true : false;
+            return m_iMode[dwType] != 0;
         }
 
-        SChatSet()
+        SChatSet() : m_iBoardState(BOARD_STATE_VIEW), m_fEndPos(1.0f), m_iHeight(0), m_iStep(15), m_ix(0), m_iy(0)
         {
-            m_iBoardState = BOARD_STATE_VIEW;
-
-            m_ix = 0;
-            m_iy = 0;
-            m_fEndPos = 1.0f;
-            m_iHeight = 0;
-            m_iStep = 15;
 
             m_iMode.clear();
             m_iMode.resize(ms_iChatModeSize, 1);
         }
 
         static int ms_iChatModeSize;
-    } TChatSet;
+    };
 
-    typedef std::map<int, TChatSet> TChatSetMap;
+    using TChatSetMap = std::map<int, TChatSet>;
 
-  public:
     CPythonChat();
-    virtual ~CPythonChat();
+    ~CPythonChat() override;
 
     void SetChatColor(UINT eType, UINT r, UINT g, UINT b);
 
@@ -194,7 +184,7 @@ class CPythonChat : public CSingleton<CPythonChat>, public IAbstractChat
     int GetLineStep(DWORD dwID);
 
     // Chat
-    void AppendChat(int iType, const char *c_szChat);
+    void AppendChat(int iType, const char *c_szChat) override;
     void AppendChatWithDelay(int iType, const char *c_szChat, int iDelay);
     void ArrangeShowingChat(DWORD dwID);
 
@@ -222,7 +212,6 @@ class CPythonChat : public CSingleton<CPythonChat>, public IAbstractChat
 
     DWORD GetChatColor(int iType);
 
-  protected:
     TChatLineDeque m_ChatLineDeque;
     TChatLineList m_ShowingChatLineList;
     TChatSetMap m_ChatSetMap;

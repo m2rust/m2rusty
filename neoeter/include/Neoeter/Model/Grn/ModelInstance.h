@@ -16,7 +16,6 @@ class CGrannyModelInstance : public CGraphicCollisionObject
         ANIFPS_MAX = 120,
     };
 
-  public:
     static void DestroySystem();
 
     static CGrannyModelInstance *New();
@@ -24,7 +23,6 @@ class CGrannyModelInstance : public CGraphicCollisionObject
 
     static CDynamicPool<CGrannyModelInstance> ms_kPool;
 
-  public:
     struct FCreateDeviceObjects
     {
         void operator()(CGrannyModelInstance *pModelInstance)
@@ -41,9 +39,8 @@ class CGrannyModelInstance : public CGraphicCollisionObject
         }
     };
 
-  public:
     CGrannyModelInstance();
-    virtual ~CGrannyModelInstance();
+    ~CGrannyModelInstance() override;
 
     bool IsEmpty();
     void Clear();
@@ -82,8 +79,8 @@ class CGrannyModelInstance : public CGraphicCollisionObject
     void SetMaterialData(const char *c_szImageName, const SMaterialData &c_rkMaterialData);
     void SetSpecularInfo(const char *c_szMtrlName, BOOL bEnable, float fPower);
 
-    void SetMainModelPointer(CGrannyModel *pkModel, CGraphicVertexBuffer *pkSharedDefromableVertexBuffer);
-    void SetLinkedModelPointer(CGrannyModel *pkModel, CGraphicVertexBuffer *pkSharedDefromableVertexBuffer,
+    void SetMainModelPointer(CGrannyModel *pModel, CGraphicVertexBuffer *pkSharedDeformableVertexBuffer);
+    void SetLinkedModelPointer(CGrannyModel *pkModel, CGraphicVertexBuffer *pkSharedDeformableVertexBuffer,
                                CGrannyModelInstance **ppkSkeletonInst);
 
     // Motion
@@ -98,7 +95,7 @@ class CGrannyModelInstance : public CGraphicCollisionObject
     // Time
     void SetLocalTime(float fLocalTime);
     int ResetLocalTime();
-    float GetLocalTime();
+    float GetLocalTime() const;
     float GetNextTime();
 
     // WORK
@@ -137,7 +134,7 @@ class CGrannyModelInstance : public CGraphicCollisionObject
 
     // WORK
     void __DestroyWorldPose();
-    void __CreateWorldPose(CGrannyModelInstance *pkSrcModelInst);
+    void __CreateWorldPose(CGrannyModelInstance *pkSkeletonInst);
 
     bool __CreateMeshBindingVector(CGrannyModelInstance *pkDstModelInst);
     void __DestroyMeshBindingVector();
@@ -162,46 +159,45 @@ class CGrannyModelInstance : public CGraphicCollisionObject
     void RenderMeshNodeListWithTwoTexture(CGrannyMesh::EType eMeshType, CGrannyMaterial::EType eMtrlType);
     void RenderMeshNodeListWithoutTexture(CGrannyMesh::EType eMeshType, CGrannyMaterial::EType eMtrlType);
 
-  protected:
     // Static Data
     CGrannyModel *m_pModel;
 
     // Granny Data
-    granny_model_instance *m_pgrnModelInstance;
+    granny_model_instance *m_pgrnModelInstance = nullptr;
 
     // granny_world_pose *				m_pgrnWorldPose;
     // // 현재 월드 포즈 포인터
 
-    granny_control *m_pgrnCtrl;
-    granny_animation *m_pgrnAni;
+    granny_control *m_pgrnCtrl = nullptr;
+    granny_animation *m_pgrnAni = nullptr;
 
     // Meshes' Transform Data
-    D3DXMATRIX *m_meshMatrices;
+    D3DXMATRIX *m_meshMatrices = nullptr;
 
     // Attaching Data
-    const CGrannyModelInstance *mc_pParentInstance;
-    int m_iParentBoneIndex;
+    const CGrannyModelInstance *mc_pParentInstance = nullptr;
+    int m_iParentBoneIndex = 0;
 
     // Game Data
-    float m_fLocalTime;
-    float m_fSecondsElapsed;
+    float m_fLocalTime = 0.0F;
+    float m_fSecondsElapsed = 0.0F;
 
-    DWORD m_dwOldUpdateFrame;
+    DWORD m_dwOldUpdateFrame = 0U;
 
     CGrannyMaterialPalette m_kMtrlPal;
 
     // WORK
-    granny_world_pose *m_pgrnWorldPoseReal; // 실제 메모리는 여기에 할당
+    granny_world_pose *m_pgrnWorldPoseReal = nullptr; // 실제 메모리는 여기에 할당
     std::vector<granny_mesh_binding *> m_vct_pgrnMeshBinding;
 
     // Dynamic Vertex Buffer
-    CGraphicVertexBuffer *m_pkSharedDeformableVertexBuffer;
+    CGraphicVertexBuffer *m_pkSharedDeformableVertexBuffer = nullptr;
     CGraphicVertexBuffer m_kLocalDeformableVertexBuffer;
-    bool m_isDeformableVertexBuffer;
+    bool m_isDeformableVertexBuffer = false;
     // END_OF_WORK
 
     // TEST
-    CGrannyModelInstance **m_ppkSkeletonInst;
+    CGrannyModelInstance **m_ppkSkeletonInst = nullptr;
     // END_OF_TEST
 #ifdef _TEST
     D3DXMATRIX TEST_matWorld;

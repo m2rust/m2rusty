@@ -7,12 +7,8 @@ class IFlyTargetableObject
     friend class CFlyTarget;
 
   public:
-    IFlyTargetableObject()
-    {
-    }
-    virtual ~IFlyTargetableObject()
-    {
-    }
+    IFlyTargetableObject() = default;
+    virtual ~IFlyTargetableObject() = default;
 
     virtual D3DXVECTOR3 OnGetFlyTargetPosition() = 0;
     virtual void OnShootDamage() = 0;
@@ -22,12 +18,12 @@ class IFlyTargetableObject
 
   private:
     std::set<CFlyTarget *> m_FlyTargeterSet;
-    inline void AddFlyTargeter(CFlyTarget *pTargeter)
+    void AddFlyTargeter(CFlyTarget *pTargeter)
     {
         // if (m_FlyTargeterSet.find(pTargeter)!=m_FlyTargeterSet.end())
         m_FlyTargeterSet.insert(pTargeter);
     }
-    inline void RemoveFlyTargeter(CFlyTarget *pTargeter)
+    void RemoveFlyTargeter(CFlyTarget *pTargeter)
     {
         // if (m_FlyTargeterSet.find(pTargeter)!=m_FlyTargeterSet.end())
         m_FlyTargeterSet.erase(pTargeter);
@@ -44,7 +40,6 @@ class CFlyTarget // final
         TYPE_POSITION,
     };
 
-  public:
     CFlyTarget();
     CFlyTarget(IFlyTargetableObject *pFlyTarget);
     CFlyTarget(const D3DXVECTOR3 &v3FlyTargetPosition);
@@ -68,9 +63,8 @@ class CFlyTarget // final
   private:
     void __Initialize();
 
-  private:
     mutable D3DXVECTOR3 m_v3FlyTargetPosition;
-    IFlyTargetableObject *m_pFlyTarget;
+    IFlyTargetableObject *m_pFlyTarget = nullptr;
 
     EType m_eType;
 };

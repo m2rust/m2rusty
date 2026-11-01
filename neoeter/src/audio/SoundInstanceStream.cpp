@@ -1,7 +1,8 @@
 #include <Neoeter/Audio/StdAfx.h>
 #include <Neoeter/Audio/SoundInstance.h>
+#include <math.h>
 
-CSoundInstanceStream::CSoundInstanceStream() : m_stream(NULL)
+CSoundInstanceStream::CSoundInstanceStream() : m_stream(nullptr)
 {
 }
 
@@ -12,10 +13,10 @@ CSoundInstanceStream::~CSoundInstanceStream()
 
 void CSoundInstanceStream::Destroy()
 {
-    if (m_stream != NULL)
+    if (m_stream != nullptr)
     {
         AIL_close_stream(m_stream);
-        m_stream = NULL;
+        m_stream = nullptr;
     }
 }
 
@@ -36,10 +37,7 @@ bool CSoundInstanceStream::IsDone() const
 
 bool CSoundInstanceStream::IsData() const
 {
-    if (m_stream)
-        return true;
-
-    return false;
+    return m_stream != nullptr;
 }
 
 void CSoundInstanceStream::Play(int count, DWORD dwPlayCycleTimeLimit) const
@@ -73,12 +71,12 @@ void CSoundInstanceStream::Stop()
         return;
 
     AIL_close_stream(m_stream);
-    m_stream = NULL;
+    m_stream = nullptr;
 }
 
 void CSoundInstanceStream::GetVolume(float &rfVolume) const
 {
-    float tmp;
+    float tmp = NAN;
 
     if (!IsData())
         return;

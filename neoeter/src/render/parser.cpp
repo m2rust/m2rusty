@@ -11,16 +11,16 @@ extern DWORD GetDefaultCodePage();
 const char *LocaleString_FindChar(const char *base, int len, char test)
 {
     if (!base)
-        return NULL;
+        return nullptr;
 
-    DWORD codePage = GetDefaultCodePage();
+    DWORD const codePage = GetDefaultCodePage();
 
     int pos = 0;
     while (pos < len)
     {
         const char *cur = base + pos;
         const char *next = CharNextExA(codePage, cur, 0);
-        int cur_len = next - cur;
+        int const cur_len = next - cur;
         if (cur_len > 1)
         {
             pos += cur_len;
@@ -37,12 +37,12 @@ const char *LocaleString_FindChar(const char *base, int len, char test)
             break;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 int LocaleString_RightTrim(char *base, int len)
 {
-    DWORD codePage = GetDefaultCodePage();
+    DWORD const codePage = GetDefaultCodePage();
 
     int pos = len;
 
@@ -51,11 +51,11 @@ int LocaleString_RightTrim(char *base, int len)
         char *cur = base + pos;
         char *prev = CharPrevExA(codePage, base, cur, 0);
 
-        int prev_len = cur - prev;
+        int const prev_len = cur - prev;
         if (prev_len != 1)
             break;
 
-        if (!isspace((unsigned char)*prev) && *prev != '\n' && *prev != '\r')
+        if (!isspace(static_cast<unsigned char>(*prev)) && *prev != '\n' && *prev != '\r')
             break;
 
         *prev = '\0';
@@ -79,7 +79,7 @@ void OLD_rtrim(char *base)
     if (!base)
         return;
 
-    DWORD codePage = GetDefaultCodePage();
+    DWORD const codePage = GetDefaultCodePage();
 
     if (949 == codePage || 936 == codePage)
     {
@@ -88,7 +88,7 @@ void OLD_rtrim(char *base)
         while (end != base)
         {
             if (!isnhspace((unsigned char)*end) && *end != '\n' && *end != '\r' ||
-                (end != base && *((unsigned char *)end - 1) > 0xa0))
+                (end != base && *(reinterpret_cast<unsigned char *>(end) - 1) > 0xa0))
                 break;
 
             *end = '\0';
@@ -104,11 +104,11 @@ void OLD_rtrim(char *base)
         {
             char *prev = CharPrevExA(codePage, base, end, 0);
 
-            int prev_len = end - prev;
+            int const prev_len = end - prev;
             if (prev_len != 1)
                 break;
 
-            if (!isspace((unsigned char)*prev) && *prev != '\n' && *prev != '\r')
+            if (!isspace(static_cast<unsigned char>(*prev)) && *prev != '\n' && *prev != '\r')
                 break;
 
             *prev = '\0';
@@ -131,14 +131,14 @@ const char *LocaleString_Skip(DWORD codePage, const char *cur)
         }
 
         const char *next = CharNextExA(codePage, cur, 0);
-        int cur_len = next - cur;
+        int const cur_len = next - cur;
         if (cur_len > 1)
         {
             cur = next;
         }
         else if (1 == cur_len)
         {
-            if (!isspace((unsigned char)*cur) && *cur != '\n' && *cur != '\r')
+            if (!isspace(static_cast<unsigned char>(*cur)) && *cur != '\n' && *cur != '\r')
                 return cur;
         }
         else
@@ -162,7 +162,7 @@ bool Group::GetArg(const char *c_arg_base, int arg_len, TArgList &argList)
 
     bool isValue = false;
 
-    DWORD codePage = GetDefaultCodePage();
+    DWORD const codePage = GetDefaultCodePage();
 
     while (pos < arg_len)
     {
@@ -212,7 +212,7 @@ bool Group::GetArg(const char *c_arg_base, int arg_len, TArgList &argList)
 
                 iNameLen = LocaleString_RightTrim(szName, iNameLen);
                 iValueLen = LocaleString_RightTrim(szValue, iValueLen);
-                argList.push_back(TArg(szName, szValue));
+                argList.emplace_back(szName, szValue);
 
                 iNameLen = 0;
                 iValueLen = 0;
@@ -222,7 +222,7 @@ bool Group::GetArg(const char *c_arg_base, int arg_len, TArgList &argList)
                 isValue = true;
             }
             // 값이 아니고, 이름이 시작되지 않았을 경우 빈칸은 건너 뛴다.
-            else if (!isValue && iNameLen == 0 && isspace((unsigned char)c))
+            else if (!isValue && iNameLen == 0 && isspace(static_cast<unsigned char>(c)))
             {
             }
             // 엔터는 건너 뛴다
@@ -270,7 +270,7 @@ bool Group::GetArg(const char *c_arg_base, int arg_len, TArgList &argList)
     {
         iNameLen = LocaleString_RightTrim(szName, iNameLen);
         iValueLen = LocaleString_RightTrim(szValue, iValueLen);
-        argList.push_back(TArg(szName, szValue));
+        argList.emplace_back(szName, szValue);
     }
 
     return true;
@@ -289,10 +289,10 @@ bool Group::Create(const std::string &stSource)
         TraceError("Source file has no content");
         return false;
     }
-    int str_len = stSource.length();
+    int const str_len = stSource.length();
     int str_pos = 0;
 
-    DWORD codePage = GetDefaultCodePage();
+    DWORD const codePage = GetDefaultCodePage();
 
     char box_data[1024 + 1];
 
@@ -305,7 +305,7 @@ bool Group::Create(const std::string &stSource)
         const char *word = str_base + str_pos;
         const char *word_next = CharNextExA(codePage, word, 0);
 
-        int word_len = word_next - word;
+        int const word_len = word_next - word;
 
         if (word_len > 1)
         {
@@ -315,7 +315,7 @@ bool Group::Create(const std::string &stSource)
                 stLetter.assign(word, word_next);
 
                 cmd.name.assign("LETTER");
-                cmd.argList.push_back(TArg("value", stLetter));
+                cmd.argList.emplace_back("value", stLetter);
 
                 m_cmdList.push_back(cmd);
             }
@@ -357,13 +357,13 @@ bool Group::Create(const std::string &stSource)
                     const char *space = LocaleString_FindChar(box_data, data_len, ' ');
                     if (space) // 인자가 있음
                     {
-                        int name_len = space - box_data;
+                        int const name_len = space - box_data;
                         cmd.name.assign(box_data, name_len);
 
                         const char *space_next = CharNextExA(codePage, space, 0);
                         const char *arg = LocaleString_Skip(codePage, space_next);
 
-                        int arg_len = data_len - (arg - box_data);
+                        int const arg_len = data_len - (arg - box_data);
 
                         if (!GetArg(arg, arg_len, cmd.argList))
                         {
@@ -391,7 +391,7 @@ bool Group::Create(const std::string &stSource)
                 {
                     stLetter.assign(1, cur);
                     cmd.name.assign("LETTER");
-                    cmd.argList.push_back(TArg("value", stLetter));
+                    cmd.argList.emplace_back("value", stLetter);
                     m_cmdList.push_back(cmd);
                 }
             }
@@ -434,10 +434,6 @@ void Group::SetError(const char *c_pszError)
     m_stError.assign(c_pszError);
 }
 
-Group::Group()
-{
-}
+Group::Group() = default;
 
-Group::~Group()
-{
-}
+Group::~Group() = default;

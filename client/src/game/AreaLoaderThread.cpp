@@ -14,7 +14,7 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-TEMP_CAreaLoaderThread::TEMP_CAreaLoaderThread() : m_bShutdowned(false), m_pArg(NULL), m_hThread(NULL), m_uThreadID(0)
+TEMP_CAreaLoaderThread::TEMP_CAreaLoaderThread() : m_pArg(nullptr), m_hThread(nullptr)
 {
 }
 
@@ -26,7 +26,7 @@ TEMP_CAreaLoaderThread::~TEMP_CAreaLoaderThread()
 bool TEMP_CAreaLoaderThread::Create(void *arg)
 {
     Arg(arg);
-    m_hThread = (HANDLE)_beginthreadex(NULL, 0, EntryPoint, this, 0, &m_uThreadID);
+    m_hThread = (HANDLE)_beginthreadex(nullptr, 0, EntryPoint, this, 0, &m_uThreadID);
 
     if (!m_hThread)
         return false;
@@ -46,7 +46,7 @@ UINT TEMP_CAreaLoaderThread::Run(void *arg)
 /* Static */
 UINT CALLBACK TEMP_CAreaLoaderThread::EntryPoint(void *pThis)
 {
-    TEMP_CAreaLoaderThread *pThread = (TEMP_CAreaLoaderThread *)pThis;
+    auto *pThread = static_cast<TEMP_CAreaLoaderThread *>(pThis);
     return pThread->Run(pThread->Arg());
 }
 
@@ -56,7 +56,7 @@ void TEMP_CAreaLoaderThread::Destroy()
     if (m_hSemaphore)
     {
         CloseHandle(m_hSemaphore);
-        m_hSemaphore = NULL;
+        m_hSemaphore = nullptr;
     }
 
     /*
@@ -85,10 +85,10 @@ void TEMP_CAreaLoaderThread::Destroy()
 
 UINT TEMP_CAreaLoaderThread::Setup()
 {
-    m_hSemaphore = CreateSemaphore(NULL,  // no security attributes
-                                   0,     // initial count
-                                   65535, // maximum count
-                                   NULL); // unnamed semaphore
+    m_hSemaphore = CreateSemaphore(nullptr,  // no security attributes
+                                   0,        // initial count
+                                   65535,    // maximum count
+                                   nullptr); // unnamed semaphore
     if (!m_hSemaphore)
         return 0;
 
@@ -100,13 +100,13 @@ void TEMP_CAreaLoaderThread::Shutdown()
     if (!m_hSemaphore)
         return;
 
-    BOOL bRet;
+    BOOL bRet = 0;
 
     m_bShutdowned = true;
 
     do
     {
-        bRet = ReleaseSemaphore(m_hSemaphore, 1, NULL);
+        bRet = ReleaseSemaphore(m_hSemaphore, 1, nullptr);
     } while (!bRet);
 
     WaitForSingleObject(m_hThread, 10000); // 쓰레드가 종료 되기를 10초 기다림
@@ -114,10 +114,10 @@ void TEMP_CAreaLoaderThread::Shutdown()
 
 UINT TEMP_CAreaLoaderThread::Execute(void *pvArg)
 {
-    bool bProcessTerrain = true;
+    bool const bProcessTerrain = true;
     while (!m_bShutdowned)
     {
-        DWORD dwWaitResult;
+        DWORD dwWaitResult = 0;
 
         dwWaitResult = WaitForSingleObject(m_hSemaphore, INFINITE);
 
@@ -128,9 +128,13 @@ UINT TEMP_CAreaLoaderThread::Execute(void *pvArg)
         {
         case WAIT_OBJECT_0:
             if (bProcessTerrain)
+            {
                 ProcessTerrain();
+            }
             else
+            {
                 ProcessArea();
+            }
             break;
         case WAIT_TIMEOUT:
             TraceError("TEMP_CAreaLoaderThread::Execute: Timeout occured while "
@@ -151,7 +155,7 @@ void TEMP_CAreaLoaderThread::Request(CTerrain *pTerrain) // called in main threa
 
     ++m_iRestSemCount;
 
-    if (!ReleaseSemaphore(m_hSemaphore, m_iRestSemCount, NULL))
+    if (!ReleaseSemaphore(m_hSemaphore, m_iRestSemCount, nullptr))
         TraceError("TEMP_CAreaLoaderThread::Request: ReleaseSemaphore error");
 
     --m_iRestSemCount;
@@ -182,7 +186,7 @@ void TEMP_CAreaLoaderThread::Request(CArea *pArea) // called in main thread
 
     ++m_iRestSemCount;
 
-    if (!ReleaseSemaphore(m_hSemaphore, m_iRestSemCount, NULL))
+    if (!ReleaseSemaphore(m_hSemaphore, m_iRestSemCount, nullptr))
         TraceError("TEMP_CAreaLoaderThread::Request: ReleaseSemaphore error");
 
     --m_iRestSemCount;
@@ -221,12 +225,13 @@ void TEMP_CAreaLoaderThread::ProcessArea() // called in loader thread
     Tracef("TEMP_CAreaLoaderThread::ProcessArea() RequestDeque Size : %d\n", m_pAreaRequestDeque.size());
     m_AreaRequestMutex.Unlock();
 
-    DWORD dwStartTime = ELTimer_GetMSec();
+    DWORD const dwStartTime = ELTimer_GetMSec();
 
     // Area Load
-    WORD wAreaCoordX, wAreaCoordY;
+    WORD wAreaCoordX = 0;
+    WORD wAreaCoordY = 0;
     pArea->GetCoordinate(&wAreaCoordX, &wAreaCoordY);
-    DWORD dwID = (DWORD)(wAreaCoordX) * 1000L + (DWORD)(wAreaCoordY);
+    DWORD const dwID = (static_cast<DWORD>(wAreaCoordX) * 1000L) + static_cast<DWORD>(wAreaCoordY);
 
     const std::string &c_rStrMapName = pArea->GetOwner()->GetName();
 
@@ -260,12 +265,13 @@ void TEMP_CAreaLoaderThread::ProcessTerrain() // called in loader thread
     Tracef("TEMP_CAreaLoaderThread::ProcessTerrain() RequestDeque Size : %d\n", m_pTerrainRequestDeque.size());
     m_TerrainRequestMutex.Unlock();
 
-    DWORD dwStartTime = ELTimer_GetMSec();
+    DWORD const dwStartTime = ELTimer_GetMSec();
 
     // Terrain Load
-    WORD wCoordX, wCoordY;
+    WORD wCoordX = 0;
+    WORD wCoordY = 0;
     pTerrain->GetCoordinate(&wCoordX, &wCoordY);
-    DWORD dwID = (DWORD)(wCoordX) * 1000L + (DWORD)(wCoordY);
+    DWORD const dwID = (static_cast<DWORD>(wCoordX) * 1000L) + static_cast<DWORD>(wCoordY);
 
     const std::string &c_rStrMapName = pTerrain->GetOwner()->GetName();
     char filename[256];
@@ -278,10 +284,10 @@ void TEMP_CAreaLoaderThread::ProcessTerrain() // called in loader thread
 
     Sleep(g_iLoadingDelayTime);
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("scripttype"))
+    if (!stTokenVectorMap.contains("scripttype"))
         return;
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("areaname"))
+    if (!stTokenVectorMap.contains("areaname"))
         return;
 
     const std::string &c_rstrType = stTokenVectorMap["scripttype"][0];
@@ -322,7 +328,7 @@ void TEMP_CAreaLoaderThread::ProcessTerrain() // called in loader thread
     Sleep(g_iLoadingDelayTime);
     pTerrain->LoadMiniMapTexture(szMiniMapTexName);
     Sleep(g_iLoadingDelayTime);
-    pTerrain->SetName(c_rstrAreaName.c_str());
+    pTerrain->SetName(c_rstrAreaName);
     Sleep(g_iLoadingDelayTime);
     pTerrain->CalculateTerrainPatch();
     Sleep(g_iLoadingDelayTime);

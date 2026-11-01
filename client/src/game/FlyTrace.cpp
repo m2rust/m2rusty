@@ -5,6 +5,8 @@
 #include <Client/Game/FlyingData.h>
 #include <Client/Game/FlyTrace.h>
 
+#include <algorithm>
+
 CDynamicPool<CFlyTrace> CFlyTrace::ms_kPool;
 
 void CFlyTrace::DestroySystem()
@@ -60,7 +62,7 @@ void CFlyTrace::Destroy()
 
 void CFlyTrace::UpdateNewPosition(const D3DXVECTOR3 &v3Position)
 {
-    m_TimePositionDeque.push_front(TTimePosition(CTimer::Instance().GetCurrentSecond(), v3Position));
+    m_TimePositionDeque.emplace_front(CTimer::Instance().GetCurrentSecond(), v3Position);
     // Tracenf("%f %f",m_TimePositionDeque.back().first,
     // CTimer::Instance().GetCurrentSecond());
     while (!m_TimePositionDeque.empty() &&
@@ -89,9 +91,9 @@ void CFlyTrace::Update()
 struct TFlyVertex
 {
     D3DXVECTOR3 p;
-    DWORD c;
+    DWORD c = 0U;
     D3DXVECTOR2 t;
-    TFlyVertex() {};
+    TFlyVertex() = default;
     TFlyVertex(const D3DXVECTOR3 &p, DWORD c, const D3DXVECTOR2 &t) : p(p), c(c), t(t)
     {
     }
@@ -104,7 +106,7 @@ struct TFlyVertexSet
     {
         memcpy(v, pv, sizeof(v));
     }
-    bool operator<(const TFlyVertexSet &) const
+    bool operator<(const TFlyVertexSet & /*unused*/) const
     {
         return false;
     }
@@ -115,7 +117,7 @@ struct TFlyVertexSet
     }
 };
 
-typedef std::vector<std::pair<float, TFlyVertexSet>> TFlyVertexSetVector;
+using TFlyVertexSetVector = std::vector<std::pair<float, TFlyVertexSet>>;
 
 void CFlyTrace::Render()
 {
@@ -159,8 +161,8 @@ void CFlyTrace::Render()
     STATEMANAGER.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
     STATEMANAGER.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
     STATEMANAGER.SetRenderState(D3DRS_LIGHTING, FALSE);
-    STATEMANAGER.SetTexture(0, NULL);
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
+    STATEMANAGER.SetTexture(1, nullptr);
 
     D3DXMATRIX m;
     CScreen s;
@@ -176,10 +178,11 @@ void CFlyTrace::Render()
     m._32 = F.y;
     m._33 = F.z;
 
-    Frustum &frustum = s.GetFrustum();
+    Frustum const &frustum = CScreen::GetFrustum();
     // frustum.BuildViewFrustum(ms_matView * ms_matProj);
 
-    TTimePositionDeque::iterator it1, it2;
+    TTimePositionDeque::iterator it1;
+    TTimePositionDeque::iterator it2;
     it2 = it1 = m_TimePositionDeque.begin();
     ++it2;
     for (; it2 != m_TimePositionDeque.end(); ++it2, ++it1)
@@ -188,13 +191,13 @@ void CFlyTrace::Render()
         const D3DXVECTOR3 &rkNew = it2->second;
         D3DXVECTOR3 B = rkNew - rkOld;
 
-        float radius = max(fabs(B.x), max(fabs(B.y), fabs(B.z))) / 2;
-        Vector3d c(it1->second.x + B.x * 0.5f, it1->second.y + B.y * 0.5f, it1->second.z + B.z * 0.5f);
+        float const radius = max({fabs(B.x), fabs(B.y), fabs(B.z)}) / 2;
+        Vector3d const c(it1->second.x + (B.x * 0.5f), it1->second.y + (B.y * 0.5f), it1->second.z + (B.z * 0.5f));
         if (frustum.ViewVolumeTest(c, radius) == VS_OUTSIDE)
             continue;
 
-        float rate1 = (1 - (CTimer::Instance().GetCurrentSecond() - it1->first) / m_fTailLength);
-        float rate2 = (1 - (CTimer::Instance().GetCurrentSecond() - it2->first) / m_fTailLength);
+        float const rate1 = (1 - ((CTimer::Instance().GetCurrentSecond() - it1->first) / m_fTailLength));
+        float const rate2 = (1 - ((CTimer::Instance().GetCurrentSecond() - it2->first) / m_fTailLength));
         float size1 = m_fSize;
         float size2 = m_fSize;
         if (!m_bRectShape)
@@ -255,7 +258,7 @@ void CFlyTrace::Render()
         m._11 = R.x;
         m._12 = R.y;
         m._13 = R.z;
-        int i;
+        int i = 0;
         for (i = 0; i < 6; i++)
             D3DXVec3TransformNormal(&v[i].p, &v[i].p, &m);
         for (i = 0; i < 3; i++)
@@ -265,7 +268,7 @@ void CFlyTrace::Render()
         // for(i=0;i<6;i++)
         //	Tracenf("#%d:%f %f %f", i, v[i].p.x,v[i].p.y,v[i].p.z);
 
-        VSVector.push_back(std::make_pair(-D3DXVec3Dot(&E, &pCurrentCamera->GetView()), TFlyVertexSet(v)));
+        VSVector.emplace_back(-D3DXVec3Dot(&E, &pCurrentCamera->GetView()), TFlyVertexSet(v));
         // OLD: STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 4, v,
         // sizeof(TVertex)); OLD: STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,
         // 2, v+1, sizeof(TVertex));
@@ -273,9 +276,9 @@ void CFlyTrace::Render()
 
     std::sort(VSVector.begin(), VSVector.end());
 
-    for (TFlyVertexSetVector::iterator it = VSVector.begin(); it != VSVector.end(); ++it)
+    for (auto &it : VSVector)
     {
-        STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 4, it->second.v, sizeof(TVertex));
+        STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 4, it.second.v, sizeof(TVertex));
     }
     STATEMANAGER.RestoreRenderState(D3DRS_DESTBLEND);
     STATEMANAGER.RestoreRenderState(D3DRS_SRCBLEND);

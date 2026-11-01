@@ -6,7 +6,7 @@ class CServerStateChecker : public CSingleton<CServerStateChecker>
 {
   public:
     CServerStateChecker();
-    virtual ~CServerStateChecker();
+    ~CServerStateChecker() override;
 
     void Create(PyObject *poWnd);
     void AddChannel(UINT uServerIndex, const char *c_szAddr, UINT uPort);
@@ -16,14 +16,14 @@ class CServerStateChecker : public CSingleton<CServerStateChecker>
     void Initialize();
 
   private:
-    typedef struct SChannel
+    using TChannel = struct SChannel
     {
         UINT uServerIndex;
         const char *c_szAddr;
         UINT uPort;
-    } TChannel;
+    };
 
-    PyObject *m_poWnd;
+    PyObject *m_poWnd = nullptr;
 
     std::list<TChannel> m_lstChannel;
 

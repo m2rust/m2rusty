@@ -49,18 +49,18 @@ void CActorInstance::__CreateAttributeInstance(CAttributeData *pData)
     }
 }
 
-DWORD CActorInstance::GetRace()
+DWORD CActorInstance::GetRace() const
 {
     return m_eRace;
 }
 
 bool CActorInstance::SetRace(DWORD eRace)
 {
-    CRaceData *pRaceData;
+    CRaceData *pRaceData = nullptr;
     if (!CRaceManager::Instance().GetRaceDataPointer(eRace, &pRaceData))
     {
         m_eRace = 0;
-        m_pkCurRaceData = NULL;
+        m_pkCurRaceData = nullptr;
         return false;
     }
 
@@ -98,19 +98,19 @@ bool CActorInstance::SetRace(DWORD eRace)
     {
         do
         {
-            WORD wMotionMode = itor->first;
+            WORD const wMotionMode = itor->first;
             CRaceData::TMotionModeData *pMotionModeData = itor->second;
 
-            CRaceData::TMotionVectorMap::iterator itorMotion = pMotionModeData->MotionVectorMap.begin();
+            auto itorMotion = pMotionModeData->MotionVectorMap.begin();
             for (; itorMotion != pMotionModeData->MotionVectorMap.end(); ++itorMotion)
             {
-                WORD wMotionIndex = itorMotion->first;
+                WORD const wMotionIndex = itorMotion->first;
                 const CRaceData::TMotionVector &c_rMotionVector = itorMotion->second;
                 CRaceData::TMotionVector::const_iterator it;
-                DWORD i;
+                DWORD i = 0;
                 for (i = 0, it = c_rMotionVector.begin(); it != c_rMotionVector.end(); ++i, ++it)
                 {
-                    DWORD dwMotionKey = MAKE_RANDOM_MOTION_KEY(wMotionMode, wMotionIndex, i);
+                    DWORD const dwMotionKey = MAKE_RANDOM_MOTION_KEY(wMotionMode, wMotionIndex, i);
                     CGraphicThingInstance::RegisterMotionThing(dwMotionKey, it->pMotion);
                 }
             }
@@ -124,7 +124,7 @@ void CActorInstance::SetHair(DWORD eHair)
 {
     m_eHair = eHair;
 
-    CRaceData *pRaceData;
+    CRaceData *pRaceData = nullptr;
 
     if (!CRaceManager::Instance().GetRaceDataPointer(m_eRace, &pRaceData))
         return;
@@ -134,7 +134,7 @@ void CActorInstance::SetHair(DWORD eHair)
     {
         if (!pkHair->m_stModelFileName.empty())
         {
-            CGraphicThing *pkHairThing =
+            auto *pkHairThing =
                 (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(pkHair->m_stModelFileName.c_str());
             RegisterModelThing(CRaceData::PART_HAIR, pkHairThing);
             SetModelInstance(CRaceData::PART_HAIR, CRaceData::PART_HAIR, 0, CRaceData::PART_MAIN);
@@ -149,8 +149,10 @@ void CActorInstance::SetHair(DWORD eHair)
             CResource *pkRes = CResourceManager::Instance().GetResourcePointer(c_rkSkinItem.m_stDstFileName.c_str());
 
             if (pkRes)
+            {
                 SetMaterialImagePointer(CRaceData::PART_HAIR, c_rkSkinItem.m_stSrcFileName.c_str(),
                                         static_cast<CGraphicImage *>(pkRes));
+            }
         }
     }
 }
@@ -159,7 +161,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
 {
     m_eShape = eShape;
 
-    CRaceData *pRaceData;
+    CRaceData *pRaceData = nullptr;
     if (!CRaceManager::Instance().GetRaceDataPointer(m_eRace, &pRaceData))
         return;
 
@@ -175,8 +177,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
         }
         else
         {
-            CGraphicThing *pModelThing =
-                (CGraphicThing *)rkResMgr.GetResourcePointer(pkShape->m_stModelFileName.c_str());
+            auto *pModelThing = (CGraphicThing *)rkResMgr.GetResourcePointer(pkShape->m_stModelFileName.c_str());
             RegisterModelThing(0, pModelThing);
         }
 
@@ -191,8 +192,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
                 if (!rkResMgr.IsFileExist(stLODModelFileName.c_str()))
                     break;
 
-                CGraphicThing *pLODModelThing =
-                    (CGraphicThing *)rkResMgr.GetResourcePointer(stLODModelFileName.c_str());
+                auto *pLODModelThing = (CGraphicThing *)rkResMgr.GetResourcePointer(stLODModelFileName.c_str());
                 if (!pLODModelThing)
                     break;
 
@@ -214,7 +214,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
             {
                 if (fSpecular > 0.0f)
                 {
-                    SMaterialData kMaterialData;
+                    SMaterialData kMaterialData{};
                     kMaterialData.pImage = static_cast<CGraphicImage *>(pkRes);
                     kMaterialData.isSpecularEnable = TRUE;
                     kMaterialData.fSpecularPower = fSpecular;
@@ -250,7 +250,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
     // Attaching Objects
     for (DWORD i = 0; i < pRaceData->GetAttachingDataCount(); ++i)
     {
-        const NRaceData::TAttachingData *c_pAttachingData;
+        const NRaceData::TAttachingData *c_pAttachingData = nullptr;
         if (!pRaceData->GetAttachingDataPointer(i, &c_pAttachingData))
             continue;
 
@@ -264,7 +264,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
             }
             else
             {
-                AttachEffectByName(0, 0, c_pAttachingData->pEffectData->strFileName.c_str());
+                AttachEffectByName(0, nullptr, c_pAttachingData->pEffectData->strFileName.c_str());
             }
             break;
         }
@@ -273,7 +273,7 @@ void CActorInstance::SetShape(DWORD eShape, float fSpecular)
 
 void CActorInstance::ChangeMaterial(const char *c_szFileName)
 {
-    CRaceData *pRaceData;
+    CRaceData *pRaceData = nullptr;
     if (!CRaceManager::Instance().GetRaceDataPointer(m_eRace, &pRaceData))
         return;
 
@@ -285,7 +285,7 @@ void CActorInstance::ChangeMaterial(const char *c_szFileName)
     if (c_rkVct_kSkin.empty())
         return;
 
-    std::vector<CRaceData::SSkin>::const_iterator i = c_rkVct_kSkin.begin();
+    auto i = c_rkVct_kSkin.begin();
     const CRaceData::SSkin &c_rkSkinItem = *i;
 
     std::string dstFileName = "d:/ymir work/npc/guild_symbol/guild_symbol.dds";
@@ -344,7 +344,7 @@ DWORD CActorInstance::GetPartItemID(DWORD dwPartIndex)
 
 void CActorInstance::SetSpecularInfo(BOOL bEnable, int iPart, float fAlpha)
 {
-    CRaceData *pkRaceData;
+    CRaceData *pkRaceData = nullptr;
     if (!CRaceManager::Instance().GetRaceDataPointer(m_eRace, &pkRaceData))
         return;
 
@@ -352,7 +352,7 @@ void CActorInstance::SetSpecularInfo(BOOL bEnable, int iPart, float fAlpha)
     if (pkShape->m_kVct_kSkin.empty())
         return;
 
-    std::string filename = pkShape->m_kVct_kSkin[0].m_stSrcFileName.c_str();
+    std::string filename = pkShape->m_kVct_kSkin[0].m_stSrcFileName;
     CFileNameHelper::ChangeDosPath(filename);
 
     CGraphicThingInstance::SetSpecularInfo(iPart, filename.c_str(), bEnable, fAlpha);
@@ -360,5 +360,5 @@ void CActorInstance::SetSpecularInfo(BOOL bEnable, int iPart, float fAlpha)
 
 void CActorInstance::SetSpecularInfoForce(BOOL bEnable, int iPart, float fAlpha)
 {
-    CGraphicThingInstance::SetSpecularInfo(iPart, NULL, bEnable, fAlpha);
+    CGraphicThingInstance::SetSpecularInfo(iPart, nullptr, bEnable, fAlpha);
 }

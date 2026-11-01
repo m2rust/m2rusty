@@ -6,7 +6,7 @@
 class CResource : public CReferenceObject
 {
   public:
-    typedef DWORD TType;
+    using TType = DWORD;
 
     enum EState
     {
@@ -17,7 +17,6 @@ class CResource : public CReferenceObject
         STATE_FREE
     };
 
-  public:
     void Clear();
 
     static TType StringToType(const char *c_szType);
@@ -30,9 +29,8 @@ class CResource : public CReferenceObject
     virtual bool CreateDeviceObjects();
     virtual void DestroyDeviceObjects();
 
-  public:
     CResource(const char *c_szFileName);
-    virtual ~CResource();
+    ~CResource() override;
 
     static void SetDeleteImmediately(bool isSet = false);
 
@@ -41,7 +39,7 @@ class CResource : public CReferenceObject
     bool IsEmpty() const;
     bool IsType(TType type);
 
-    DWORD GetLoadCostMilliSecond()
+    DWORD GetLoadCostMilliSecond() const
     {
         return m_dwLoadCostMiliiSecond;
     }
@@ -65,15 +63,13 @@ class CResource : public CReferenceObject
     virtual bool OnIsEmpty() const = 0;
     virtual bool OnIsType(TType type) = 0;
 
-    virtual void OnConstruct();
-    virtual void OnSelfDestruct();
+    void OnConstruct() override;
+    void OnSelfDestruct() override;
 
-  protected:
     std::string m_stFileName;
     // char *			m_pszFileName;
-    DWORD m_dwLoadCostMiliiSecond;
-    EState me_state;
+    DWORD m_dwLoadCostMiliiSecond = 0U;
+    EState me_state = STATE_EMPTY;
 
-  protected:
     static bool ms_bDeleteImmediately;
 };

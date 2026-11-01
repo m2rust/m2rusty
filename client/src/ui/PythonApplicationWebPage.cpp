@@ -4,7 +4,7 @@
 
 bool CPythonApplication::IsWebPageMode()
 {
-    return WebBrowser_IsVisible() ? true : false;
+    return WebBrowser_IsVisible() != 0;
 }
 
 void CPythonApplication::ShowWebPage(const char *c_szURL, const RECT &c_rcWebPage)
@@ -39,8 +39,12 @@ void CPythonApplication::HideWebPage()
         m_grpDevice.DisableWebBrowserMode();
 
         if (m_pySystem.IsSoftwareCursor())
+        {
             SetCursorMode(CURSOR_MODE_SOFTWARE);
+        }
         else
+        {
             SetCursorMode(CURSOR_MODE_HARDWARE);
+        }
     }
 }

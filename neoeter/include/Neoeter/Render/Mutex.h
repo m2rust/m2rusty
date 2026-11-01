@@ -12,7 +12,7 @@ class Mutex
     bool Trylock();
 
   private:
-    CRITICAL_SECTION lock;
+    CRITICAL_SECTION lock{};
 };
 
 #endif

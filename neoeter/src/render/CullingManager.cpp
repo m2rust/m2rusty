@@ -1,6 +1,7 @@
 #include <Neoeter/Render/StdAfx.h>
 #include <Neoeter/Render/CullingManager.h>
 #include <Neoeter/Render/GrpObjectInstance.h>
+#include <math.h>
 
 // #define COUNT_SHOWING_SPHERE
 
@@ -20,7 +21,7 @@ void CCullingManager::RayTraceCallback(const Vector3d & /*p1*/,  // source pos o
         if (sphere->IS_SPHERE)
             puts("CCullingManager::RayTraceCallback");
 #endif
-        m_list.push_back((CGraphicObjectInstance *)sphere->GetUserData());
+        m_list.push_back(static_cast<CGraphicObjectInstance *>(sphere->GetUserData()));
     }
     // f((CGraphicObjectInstance *)sphere->GetUserData());
     //}
@@ -33,7 +34,7 @@ void CCullingManager::VisibilityCallback(const Frustum & /*f*/, SpherePack *sphe
         puts("CCullingManager::VisibilityCallback");
 #endif
 
-    CGraphicObjectInstance *pInstance = (CGraphicObjectInstance *)sphere->GetUserData();
+    auto *pInstance = static_cast<CGraphicObjectInstance *>(sphere->GetUserData());
     /*if (state == VS_PARTIAL)
     {
         Vector3d v;
@@ -76,7 +77,7 @@ void CCullingManager::RangeTestCallback(const Vector3d & /*p*/, float /*distance
 #endif
     if (state != VS_OUTSIDE)
     {
-        m_list.push_back((CGraphicObjectInstance *)sphere->GetUserData());
+        m_list.push_back(static_cast<CGraphicObjectInstance *>(sphere->GetUserData()));
         // f((CGraphicObjectInstance *)sphere->GetUserData());
     }
     // assert(false && "NOT REACHED");
@@ -119,7 +120,7 @@ CCullingManager::CullingHandle CCullingManager::Register(CGraphicObjectInstance 
     Tracef("show size : %5d\n", showingcount);
 #endif
     Vector3d center;
-    float radius;
+    float radius = NAN;
     obj->GetBoundingSphere(center, radius);
     return m_Factory->AddSphere_(center, radius, obj, false);
 }
@@ -138,12 +139,12 @@ void CCullingManager::Unregister(CullingHandle h)
 }
 
 CCullingManager::CCullingManager()
-{
-    m_Factory = new SpherePackFactory(10000, // maximum count
+    : m_Factory(new SpherePackFactory(10000, // maximum count
                                       6400,  // root radius
                                       1600,  // leaf radius
                                       400    // extra radius
-    );
+                                      ))
+{
 }
 
 CCullingManager::~CCullingManager()

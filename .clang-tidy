@@ -1,5 +1,9 @@
-# Bug-finding checks only; style and modernisation are left out so the
-# legacy sources don't drown in noise. Run against build/compile_commands.json.
+# Bug finding plus every check group that ships fix-its, so the legacy
+# sources can be rewritten mechanically. Run against build/compile_commands.json:
+#   run-clang-tidy -p build -fix                      # everything
+#   run-clang-tidy -p build -fix -checks='-*,modernize-use-nullptr' neoeter/
+# Rewrite one check at a time and rebuild in between: fixes from different
+# checks touching the same line can conflict.
 Checks: >
   -*,
   bugprone-*,
@@ -11,12 +15,64 @@ Checks: >
   -clang-analyzer-security.insecureAPI.*,
   performance-*,
   -performance-enum-size,
+  misc-include-cleaner,
+  misc-const-correctness,
   misc-redundant-expression,
+  misc-unused-alias-decls,
   misc-unused-using-decls,
-  modernize-use-nullptr,
-  modernize-use-override
+  misc-use-anonymous-namespace,
+
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  -modernize-use-nodiscard,
+  -modernize-macro-to-enum,
+  -modernize-unary-static-assert,
+  -modernize-use-integer-sign-comparison,
+  readability-*,
+  -readability-identifier-length,
+  -readability-identifier-naming,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-uppercase-literal-suffix,
+  -readability-implicit-bool-conversion,
+  -readability-convert-member-functions-to-static,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-prefer-member-initializer,
+  cppcoreguidelines-pro-type-member-init,
+  cppcoreguidelines-virtual-class-destructor,
+  google-readability-casting
+
+CheckOptions:
+  # Include-what-you-use, run to make every file self-contained so the
+  # StdAfx.h umbrellas can be dropped: it adds the direct includes each file
+  # needs and flags StdAfx.h once nothing comes from it. Python.h is the
+  # only umbrella kept, since its internal headers are not meant to be
+  # included one by one.
+  misc-include-cleaner.IgnoreHeaders: >-
+    python2\.7/.*;
+    Python\.h
+  misc-include-cleaner.DeduplicateFindings: true
+  # Pointees stay mutable; only locals and references are const-qualified.
+  misc-const-correctness.AnalyzeValues: true
+  misc-const-correctness.AnalyzeReferences: true
+  misc-const-correctness.WarnPointersAsValues: false
+  misc-const-correctness.TransformPointersAsValues: false
+  misc-const-correctness.WarnPointersAsPointers: false
+  misc-const-correctness.TransformPointersAsPointers: false
+  modernize-loop-convert.MinConfidence: reasonable
+  modernize-use-auto.MinTypeNameLength: 5
+  modernize-use-auto.RemoveStars: false
+  modernize-use-default-member-init.UseAssignment: true
+  # The sources still use Win32 typedefs (BOOL, DWORD) through the compat layer.
+  modernize-use-bool-literals.IgnoreMacros: true
+  modernize-use-std-print.ReplacementPrintFunction: 'std::print'
+  readability-braces-around-statements.ShortStatementLines: 2
+  readability-inconsistent-declaration-parameter-name.Strict: false
+  cppcoreguidelines-pro-type-member-init.UseAssignment: true
 
 WarningsAsErrors: ''
 HeaderFilterRegex: '(client|neoeter|neoeter-python)/(include|src)/'
-ExcludeHeaderFilterRegex: 'python2\.7/'
+# Vendored headers stay byte-identical to upstream (see .clang-format-ignore).
+ExcludeHeaderFilterRegex: '(python2\.7/|Platform/stb_image)'
 FormatStyle: file

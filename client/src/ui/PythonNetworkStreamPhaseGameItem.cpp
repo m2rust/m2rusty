@@ -8,6 +8,8 @@
 
 #include <Client/UI/AbstractPlayer.h>
 
+#include <utility>
+
 //////////////////////////////////////////////////////////////////////////
 // SafeBox
 
@@ -260,8 +262,10 @@ bool CPythonNetworkStream::RecvItemSetPacket2()
     rkPlayer.SetItemData(packet_item_set.Cell, kItemData);
 
     if (packet_item_set.highlight)
+    {
         PyCallClassMemberFunc(m_apoPhaseWnd[PHASE_WINDOW_GAME], "BINARY_Highlight_Item",
                               Py_BuildValue("(ii)", packet_item_set.Cell.window_type, packet_item_set.Cell.cell));
+    }
 
     __RefreshInventoryWindow();
     return true;
@@ -290,8 +294,10 @@ bool CPythonNetworkStream::RecvItemUpdatePacket()
     for (int i = 0; i < ITEM_SOCKET_SLOT_MAX_NUM; ++i)
         rkPlayer.SetItemMetinSocket(packet_item_update.Cell, i, packet_item_update.alSockets[i]);
     for (int j = 0; j < ITEM_ATTRIBUTE_SLOT_MAX_NUM; ++j)
+    {
         rkPlayer.SetItemAttribute(packet_item_update.Cell, j, packet_item_update.aAttr[j].bType,
                                   packet_item_update.aAttr[j].sValue);
+    }
 
     __RefreshInventoryWindow();
     return true;
@@ -593,7 +599,7 @@ bool CPythonNetworkStream::__IsEquipItemInSlot(TItemPos uSlotPos)
 void CPythonNetworkStream::__PlayInventoryItemUseSound(TItemPos uSlotPos)
 {
     IAbstractPlayer &rkPlayer = IAbstractPlayer::GetSingleton();
-    DWORD dwItemID = rkPlayer.GetItemIndex(uSlotPos);
+    DWORD const dwItemID = rkPlayer.GetItemIndex(uSlotPos);
 
     CPythonItem &rkItem = CPythonItem::Instance();
     rkItem.PlayUseSound(dwItemID);
@@ -602,7 +608,7 @@ void CPythonNetworkStream::__PlayInventoryItemUseSound(TItemPos uSlotPos)
 void CPythonNetworkStream::__PlayInventoryItemDropSound(TItemPos uSlotPos)
 {
     IAbstractPlayer &rkPlayer = IAbstractPlayer::GetSingleton();
-    DWORD dwItemID = rkPlayer.GetItemIndex(uSlotPos);
+    DWORD const dwItemID = rkPlayer.GetItemIndex(uSlotPos);
 
     CPythonItem &rkItem = CPythonItem::Instance();
     rkItem.PlayDropSound(dwItemID);
@@ -621,7 +627,7 @@ void CPythonNetworkStream::__PlayInventoryItemDropSound(TItemPos uSlotPos)
 
 void CPythonNetworkStream::__PlaySafeBoxItemDropSound(UINT uSlotPos)
 {
-    DWORD dwItemID;
+    DWORD dwItemID = 0;
     CPythonSafeBox &rkSafeBox = CPythonSafeBox::Instance();
     if (!rkSafeBox.GetSlotItemID(uSlotPos, &dwItemID))
         return;
@@ -632,7 +638,7 @@ void CPythonNetworkStream::__PlaySafeBoxItemDropSound(UINT uSlotPos)
 
 void CPythonNetworkStream::__PlayMallItemDropSound(UINT uSlotPos)
 {
-    DWORD dwItemID;
+    DWORD dwItemID = 0;
     CPythonSafeBox &rkSafeBox = CPythonSafeBox::Instance();
     if (!rkSafeBox.GetSlotMallItemID(uSlotPos, &dwItemID))
         return;
@@ -884,9 +890,13 @@ bool CPythonNetworkStream::RecvSpecialEffect()
         if (pInstance)
         {
             if (bAttachEffect)
+            {
                 pInstance->AttachSpecialEffect(effect);
+            }
             else
+            {
                 pInstance->CreateSpecialEffect(effect);
+            }
         }
     }
 

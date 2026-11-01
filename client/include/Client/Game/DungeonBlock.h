@@ -10,19 +10,18 @@ class CDungeonModelInstance;
 class CDungeonBlock : public CGraphicObjectInstance
 {
   public:
-    typedef std::vector<CDungeonModelInstance *> TModelInstanceContainer;
+    using TModelInstanceContainer = std::vector<CDungeonModelInstance *>;
     enum
     {
         ID = THING_OBJECT
     };
-    int GetType() const
+    int GetType() const override
     {
         return ID;
     }
 
-  public:
     CDungeonBlock();
-    virtual ~CDungeonBlock();
+    ~CDungeonBlock() override;
 
     void Destroy();
 
@@ -35,33 +34,32 @@ class CDungeonBlock : public CGraphicObjectInstance
     void Update();
     void Render();
 
-    bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius);
-    void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector);
-    void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance);
-    bool OnGetObjectHeight(float fX, float fY, float *pfHeight);
+    bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius) override;
+    void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector) override;
+    void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance) override;
+    bool OnGetObjectHeight(float fX, float fY, float *pfHeight) override;
 
-    void OnRender()
+    void OnRender() override
     {
     }
-    void OnBlendRender()
+    void OnBlendRender() override
     {
     }
-    void OnRenderToShadowMap()
+    void OnRenderToShadowMap() override
     {
     }
-    void OnRenderShadow();
-    void OnRenderPCBlocker()
+    void OnRenderShadow() override;
+    void OnRenderPCBlocker() override
     {
     }
 
   protected:
     void __Initialize();
 
-  protected:
     D3DXVECTOR3 m_v3Center;
-    float m_fRadius;
+    float m_fRadius = 0.0F;
 
-    CGraphicThing *m_pThing;
+    CGraphicThing *m_pThing = nullptr;
     TModelInstanceContainer m_ModelInstanceContainer;
     CGraphicVertexBuffer m_kDeformableVertexBuffer;
 };

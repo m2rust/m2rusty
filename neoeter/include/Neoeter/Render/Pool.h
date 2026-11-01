@@ -7,11 +7,9 @@
 template <typename T> class CDynamicPool
 {
   public:
-    CDynamicPool()
+    CDynamicPool() : m_uInitCapacity(0), m_uUsedCapacity(0)
     {
         // Tracen(typeid(T).name());
-        m_uInitCapacity = 0;
-        m_uUsedCapacity = 0;
     }
     virtual ~CDynamicPool()
     {
@@ -93,16 +91,11 @@ template <typename T> class CDynamicPool
   protected:
     bool __IsValidData(T *pkData)
     {
-        if (m_kVct_pkData.end() == std::find(m_kVct_pkData.begin(), m_kVct_pkData.end(), pkData))
-            return false;
-        return true;
+        return static_cast<bool>(m_kVct_pkData.end() != std::find(m_kVct_pkData.begin(), m_kVct_pkData.end(), pkData));
     }
     bool __IsFreeData(T *pkData)
     {
-        if (m_kVct_pkFree.end() == std::find(m_kVct_pkFree.begin(), m_kVct_pkFree.end(), pkData))
-            return false;
-
-        return true;
+        return static_cast<bool>(m_kVct_pkFree.end() != std::find(m_kVct_pkFree.begin(), m_kVct_pkFree.end(), pkData));
     }
 
     static void Delete(T *pkData)
@@ -110,7 +103,6 @@ template <typename T> class CDynamicPool
         delete pkData;
     }
 
-  protected:
     std::vector<T *> m_kVct_pkData;
     std::vector<T *> m_kVct_pkFree;
 
@@ -121,10 +113,8 @@ template <typename T> class CDynamicPool
 template <typename T> class CDynamicPoolEx
 {
   public:
-    CDynamicPoolEx()
+    CDynamicPoolEx() : m_uInitCapacity(0), m_uUsedCapacity(0)
     {
-        m_uInitCapacity = 0;
-        m_uUsedCapacity = 0;
     }
     virtual ~CDynamicPoolEx()
     {
@@ -207,16 +197,11 @@ template <typename T> class CDynamicPoolEx
   protected:
     bool __IsValidData(T *pkData)
     {
-        if (m_kVct_pkData.end() == std::find(m_kVct_pkData.begin(), m_kVct_pkData.end(), pkData))
-            return false;
-        return true;
+        return static_cast<bool>(m_kVct_pkData.end() != std::find(m_kVct_pkData.begin(), m_kVct_pkData.end(), pkData));
     }
     bool __IsFreeData(T *pkData)
     {
-        if (m_kVct_pkFree.end() == std::find(m_kVct_pkFree.begin(), m_kVct_pkFree.end(), pkData))
-            return false;
-
-        return true;
+        return static_cast<bool>(m_kVct_pkFree.end() != std::find(m_kVct_pkFree.begin(), m_kVct_pkFree.end(), pkData));
     }
 
     static T *New()
@@ -228,7 +213,6 @@ template <typename T> class CDynamicPoolEx
         ::operator delete(pkData);
     }
 
-  protected:
     std::vector<T *> m_kVct_pkData;
     std::vector<T *> m_kVct_pkFree;
 
@@ -239,12 +223,11 @@ template <typename T> class CDynamicPoolEx
 template <class T> class CPooledObject
 {
   public:
-    CPooledObject()
-    {
-    }
-    virtual ~CPooledObject()
-    {
-    }
+  private:
+    CPooledObject() = default;
+
+  public:
+    virtual ~CPooledObject() = default;
 
     void *operator new(size_t /*mem_size*/)
     {
@@ -268,6 +251,7 @@ template <class T> class CPooledObject
 
   protected:
     static CDynamicPoolEx<T> ms_kPool;
+    friend T;
 };
 
 template <class T> CDynamicPoolEx<T> CPooledObject<T>::ms_kPool;

@@ -10,6 +10,8 @@
 #include <Client/Game/PropertyManager.h>
 #include <Client/Game/Property.h>
 
+#include <algorithm>
+
 CDynamicPool<CArea::TObjectInstance> CArea::ms_ObjectInstancePool;
 CDynamicPool<CAttributeInstance> CArea::ms_AttributeInstancePool;
 CDynamicPool<CArea::TAmbienceInstance> CArea::ms_AmbienceInstancePool;
@@ -45,9 +47,9 @@ void CArea::DestroySystem()
 void CArea::__UpdateAniThingList()
 {
     {
-        CGraphicThingInstance *pkThingInst;
+        CGraphicThingInstance *pkThingInst = nullptr;
 
-        TThingInstanceVector::iterator i = m_ThingCloneInstaceVector.begin();
+        auto i = m_ThingCloneInstaceVector.begin();
         while (i != m_ThingCloneInstaceVector.end())
         {
             pkThingInst = *i++;
@@ -59,9 +61,9 @@ void CArea::__UpdateAniThingList()
     }
 
     {
-        CGraphicThingInstance *pkThingInst;
+        CGraphicThingInstance *pkThingInst = nullptr;
 
-        TThingInstanceVector::iterator i = m_AniThingCloneInstanceVector.begin();
+        auto i = m_AniThingCloneInstanceVector.begin();
         while (i != m_AniThingCloneInstanceVector.end())
         {
             pkThingInst = *i++;
@@ -91,7 +93,9 @@ void CArea::__UpdateEffectList()
             rkEftMgr.DestroyUnsafeEffectInstance(pEffectInstance);
         }
         else
+        {
             ++i;
+        }
     }
 }
 
@@ -121,7 +125,7 @@ struct CArea_LessEffectInstancePtrRenderOrder
 
 struct CArea_FEffectInstanceRender
 {
-    inline void operator()(CEffectInstance *pkEftInst)
+    void operator()(CEffectInstance *pkEftInst)
     {
         pkEftInst->Render();
     }
@@ -132,10 +136,10 @@ void CArea::RenderEffect()
     __UpdateEffectList();
 
     // Effect
-    STATEMANAGER.SetTexture(0, NULL);
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
+    STATEMANAGER.SetTexture(1, nullptr);
 
-    bool m_isDisableSortRendering = false;
+    bool const m_isDisableSortRendering = false;
 
     if (m_isDisableSortRendering)
     {
@@ -157,8 +161,8 @@ void CArea::RenderEffect()
         for (i = rkMap_pkEftInstSrc.begin(); i != rkMap_pkEftInstSrc.end(); ++i)
             s_kVct_pkEftInstSort.push_back(i->second);
 
-        std::sort(s_kVct_pkEftInstSort.begin(), s_kVct_pkEftInstSort.end(), CArea_LessEffectInstancePtrRenderOrder());
-        std::for_each(s_kVct_pkEftInstSort.begin(), s_kVct_pkEftInstSort.end(), CArea_FEffectInstanceRender());
+        std::ranges::sort(s_kVct_pkEftInstSort, CArea_LessEffectInstancePtrRenderOrder());
+        std::ranges::for_each(s_kVct_pkEftInstSort, CArea_FEffectInstanceRender());
     }
 }
 
@@ -208,9 +212,9 @@ void CArea::CollectBlendRenderingObject(std::vector<CGraphicThingInstance *> &rk
 void CArea::Render()
 {
     {
-        CGraphicThingInstance *pkThingInst;
+        CGraphicThingInstance *pkThingInst = nullptr;
 
-        TThingInstanceVector::iterator i = m_AniThingCloneInstanceVector.begin();
+        auto i = m_AniThingCloneInstanceVector.begin();
         while (i != m_AniThingCloneInstanceVector.end())
         {
             pkThingInst = *i++;
@@ -218,9 +222,9 @@ void CArea::Render()
         }
     }
 
-    CGraphicThingInstance *pkThingInst;
+    CGraphicThingInstance *pkThingInst = nullptr;
 
-    TThingInstanceVector::iterator i = m_ThingCloneInstaceVector.begin();
+    auto i = m_ThingCloneInstaceVector.begin();
 
     m_kRenderedThingInstanceCRCWithNumberVector.clear();
     m_kRenderedGrapphicThingInstanceVector.clear();
@@ -232,13 +236,12 @@ void CArea::Render()
         if (pkThingInst->Render())
         {
             aGraphicThingInstanceCRCMapIterator = m_GraphicThingInstanceCRCMap.find(pkThingInst);
-            DWORD dwCRC = (*aGraphicThingInstanceCRCMapIterator).second;
+            DWORD const dwCRC = (*aGraphicThingInstanceCRCMapIterator).second;
 
             m_kRenderedGrapphicThingInstanceVector.push_back(pkThingInst);
 
-            TCRCWithNumberVector::iterator aCRCWithNumberVectorIterator =
-                std::find_if(m_kRenderedThingInstanceCRCWithNumberVector.begin(),
-                             m_kRenderedThingInstanceCRCWithNumberVector.end(), FFindIfCRC(dwCRC));
+            auto aCRCWithNumberVectorIterator =
+                std::ranges::find_if(m_kRenderedThingInstanceCRCWithNumberVector, FFindIfCRC(dwCRC));
 
             if (m_kRenderedThingInstanceCRCWithNumberVector.end() == aCRCWithNumberVectorIterator)
             {
@@ -254,16 +257,15 @@ void CArea::Render()
             }
         }
     }
-    std::sort(m_kRenderedThingInstanceCRCWithNumberVector.begin(), m_kRenderedThingInstanceCRCWithNumberVector.end(),
-              CRCNumComp());
+    std::ranges::sort(m_kRenderedThingInstanceCRCWithNumberVector, CRCNumComp());
 }
 
-void CArea::RenderCollision()
+void CArea::RenderCollision() const
 {
-    DWORD i;
+    DWORD i = 0;
 
-    STATEMANAGER.SetTexture(0, NULL);
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(0, nullptr);
+    STATEMANAGER.SetTexture(1, nullptr);
 
     STATEMANAGER.SaveRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
     STATEMANAGER.SaveRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
@@ -277,12 +279,12 @@ void CArea::RenderCollision()
 
     for (i = 0; i < GetObjectInstanceCount(); i++)
     {
-        const TObjectInstance *po;
+        const TObjectInstance *po = nullptr;
         if (GetObjectInstancePointer(i, &po))
         {
             if (po->pTree && po->pTree->isShow())
             {
-                DWORD j;
+                DWORD j = 0;
                 for (j = 0; j < po->pTree->GetCollisionInstanceCount(); j++)
                 {
                     po->pTree->GetCollisionInstanceData(j)->Render();
@@ -290,7 +292,7 @@ void CArea::RenderCollision()
             }
             if (po->pThingInstance && po->pThingInstance->isShow())
             {
-                DWORD j;
+                DWORD j = 0;
                 for (j = 0; j < po->pThingInstance->GetCollisionInstanceCount(); j++)
                 {
                     po->pThingInstance->GetCollisionInstanceData(j)->Render();
@@ -298,7 +300,7 @@ void CArea::RenderCollision()
             }
             if (po->pDungeonBlock && po->pDungeonBlock->isShow())
             {
-                DWORD j;
+                DWORD j = 0;
                 for (j = 0; j < po->pDungeonBlock->GetCollisionInstanceCount(); j++)
                 {
                     po->pDungeonBlock->GetCollisionInstanceData(j)->Render();
@@ -314,12 +316,13 @@ void CArea::RenderCollision()
 
 void CArea::RenderAmbience()
 {
-    DWORD dwColorArg1, dwColorOp;
+    DWORD dwColorArg1 = 0;
+    DWORD dwColorOp = 0;
     STATEMANAGER.GetTextureStageState(0, D3DTSS_COLORARG1, &dwColorArg1);
     STATEMANAGER.GetTextureStageState(0, D3DTSS_COLOROP, &dwColorOp);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TFACTOR);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-    TAmbienceInstanceVector::iterator itor = m_AmbienceCloneInstanceVector.begin();
+    auto itor = m_AmbienceCloneInstanceVector.begin();
     for (; itor != m_AmbienceCloneInstanceVector.end(); ++itor)
     {
         TAmbienceInstance *pInstance = *itor;
@@ -369,7 +372,7 @@ void CArea::RenderDungeon()
     }
 #endif
 
-    TDungeonBlockInstanceVector::iterator itor = m_DungeonBlockCloneInstanceVector.begin();
+    auto itor = m_DungeonBlockCloneInstanceVector.begin();
     for (; itor != m_DungeonBlockCloneInstanceVector.end(); ++itor)
     {
         (*itor)->Render();
@@ -408,7 +411,7 @@ void CArea::Refresh()
             {
                 m_TreeCloneInstaceVector.push_back(pObjectInstance->pTree);
 
-                const float *pfPosition;
+                const float *pfPosition = nullptr;
                 pfPosition = pObjectInstance->pTree->GetPosition();
                 pObjectInstance->pTree->UpdateBoundingSphere();
                 pObjectInstance->pTree->UpdateCollisionData();
@@ -476,7 +479,7 @@ void CArea::__Load_BuildObjectInstances()
 
     m_GraphicThingInstanceCRCMap.clear();
 
-    std::sort(m_ObjectDataVector.begin(), m_ObjectDataVector.end(), ObjectDataComp());
+    std::ranges::sort(m_ObjectDataVector, ObjectDataComp());
 
     DWORD i = 0;
     TObjectInstanceVector::iterator it;
@@ -485,7 +488,7 @@ void CArea::__Load_BuildObjectInstances()
         *it = ms_ObjectInstancePool.Alloc();
         (*it)->Clear();
 
-        const TObjectData *c_pObjectData;
+        const TObjectData *c_pObjectData = nullptr;
 
         if (!GetObjectDataPointer(i, &c_pObjectData))
             continue;
@@ -494,8 +497,10 @@ void CArea::__Load_BuildObjectInstances()
 
         // 최적화용
         if ((*it)->dwType == prt::PROPERTY_TYPE_BUILDING)
+        {
             m_GraphicThingInstanceCRCMap.insert(
                 TGraphicThingInstanceCRCMap::value_type((*it)->pThingInstance, c_pObjectData->dwCRC));
+        }
     }
 
     //////////
@@ -505,11 +510,11 @@ void CArea::__Load_BuildObjectInstances()
 
 void CArea::__SetObjectInstance(TObjectInstance *pObjectInstance, const TObjectData *c_pData)
 {
-    CProperty *pProperty;
+    CProperty *pProperty = nullptr;
     if (!CPropertyManager::Instance().Get(c_pData->dwCRC, &pProperty))
         return;
 
-    const char *c_szPropertyType;
+    const char *c_szPropertyType = nullptr;
 
     if (!pProperty->GetString("PropertyType", &c_szPropertyType))
         return;
@@ -548,7 +553,7 @@ void CArea::__SetObjectInstance_SetEffect(TObjectInstance *pObjectInstance, cons
     pObjectInstance->dwType = prt::PROPERTY_TYPE_EFFECT;
     pObjectInstance->dwEffectID = GetCaseCRC32(Data.strFileName.c_str(), Data.strFileName.size());
     CEffectManager &rem = CEffectManager::Instance();
-    CEffectData *pData;
+    CEffectData *pData = nullptr;
     if (!rem.GetEffectData(pObjectInstance->dwEffectID, &pData))
     {
         if (!rem.RegisterEffect(Data.strFileName.c_str()))
@@ -559,7 +564,7 @@ void CArea::__SetObjectInstance_SetEffect(TObjectInstance *pObjectInstance, cons
         }
     }
 
-    CEffectInstance *pEffectInstance;
+    CEffectInstance *pEffectInstance = nullptr;
     rem.CreateUnsafeEffectInstance(pObjectInstance->dwEffectID, &pEffectInstance);
 
     D3DXMATRIX mat;
@@ -579,7 +584,7 @@ void CArea::__SetObjectInstance_SetEffect(TObjectInstance *pObjectInstance, cons
 void CArea::__SetObjectInstance_SetTree(TObjectInstance *pObjectInstance, const TObjectData *c_pData,
                                         CProperty *pProperty)
 {
-    const char *c_szTreeName;
+    const char *c_szTreeName = nullptr;
     if (!pProperty->GetString("TreeFile", &c_szTreeName))
         return;
 
@@ -603,7 +608,7 @@ void CArea::__SetObjectInstance_SetBuilding(TObjectInstance *pObjectInstance, co
 
     CResourceManager &rkResMgr = CResourceManager::Instance();
 
-    CGraphicThing *pThing = (CGraphicThing *)rkResMgr.GetResourcePointer(Data.strFileName.c_str());
+    auto *pThing = (CGraphicThing *)rkResMgr.GetResourcePointer(Data.strFileName.c_str());
     if (!pThing)
     {
         TraceError("CArea::SetBuilding: Failed to get resource: %s", Data.strFileName.c_str());
@@ -619,10 +624,10 @@ void CArea::__SetObjectInstance_SetBuilding(TObjectInstance *pObjectInstance, co
         return;
     }
 
-    int iModelCount = pThing->GetModelCount();
+    int const iModelCount = pThing->GetModelCount();
     if (iModelCount <= 0)
         return;
-    int iMotionCount = pThing->GetMotionCount();
+    int const iMotionCount = pThing->GetMotionCount();
 
     pObjectInstance->dwType = prt::PROPERTY_TYPE_BUILDING;
     pObjectInstance->pThingInstance = CGraphicThingInstance::New();
@@ -631,11 +636,13 @@ void CArea::__SetObjectInstance_SetBuilding(TObjectInstance *pObjectInstance, co
     pObjectInstance->pThingInstance->ReserveModelInstance(iModelCount);
     pObjectInstance->pThingInstance->RegisterModelThing(0, pThing);
     for (int j = 0; j < PORTAL_ID_MAX_NUM; ++j)
+    {
         if (0 != c_pData->abyPortalID[j])
             pObjectInstance->pThingInstance->SetPortal(j, c_pData->abyPortalID[j]);
+    }
 
     {
-        std::string stSrcModelFileName = Data.strFileName;
+        std::string const stSrcModelFileName = Data.strFileName;
         std::string stLODModelFileName;
 
         char szLODModelFileNameEnd[256];
@@ -646,7 +653,7 @@ void CArea::__SetObjectInstance_SetBuilding(TObjectInstance *pObjectInstance, co
             if (!rkResMgr.IsFileExist(stLODModelFileName.c_str()))
                 break;
 
-            CGraphicThing *pLODModelThing = (CGraphicThing *)rkResMgr.GetResourcePointer(stLODModelFileName.c_str());
+            auto *pLODModelThing = (CGraphicThing *)rkResMgr.GetResourcePointer(stLODModelFileName.c_str());
             if (!pLODModelThing)
                 break;
 
@@ -687,15 +694,15 @@ void CArea::__SetObjectInstance_SetAmbience(TObjectInstance *pObjectInstance, co
     pAmbienceInstance->dwRange = c_pData->dwRange;
     pAmbienceInstance->fMaxVolumeAreaPercentage = c_pData->fMaxVolumeAreaPercentage;
 
-    if (0 == pAmbienceInstance->AmbienceData.strPlayType.compare("ONCE"))
+    if ("ONCE" == pAmbienceInstance->AmbienceData.strPlayType)
     {
         pAmbienceInstance->Update = &TAmbienceInstance::UpdateOnceSound;
     }
-    else if (0 == pAmbienceInstance->AmbienceData.strPlayType.compare("STEP"))
+    else if ("STEP" == pAmbienceInstance->AmbienceData.strPlayType)
     {
         pAmbienceInstance->Update = &TAmbienceInstance::UpdateStepSound;
     }
-    else if (0 == pAmbienceInstance->AmbienceData.strPlayType.compare("LOOP"))
+    else if ("LOOP" == pAmbienceInstance->AmbienceData.strPlayType)
     {
         pAmbienceInstance->Update = &TAmbienceInstance::UpdateLoopSound;
     }
@@ -725,8 +732,10 @@ void CArea::__SetObjectInstance_SetDungeonBlock(TObjectInstance *pObjectInstance
     pObjectInstance->pDungeonBlock->BuildBoundingSphere();
     pObjectInstance->pDungeonBlock->RegisterBoundingSphere();
     for (int j = 0; j < PORTAL_ID_MAX_NUM; ++j)
+    {
         if (0 != c_pData->abyPortalID[j])
             pObjectInstance->pDungeonBlock->SetPortal(j, c_pData->abyPortalID[j]);
+    }
     __LoadAttribute(pObjectInstance, Data.strAttributeDataFileName.c_str());
 }
 
@@ -738,8 +747,7 @@ void CArea::__LoadAttribute(TObjectInstance *pObjectInstance, const char *c_szAt
     // OBB를 사용한 충돌 정보 자동 생성.
     const bool bFileExist = CResourceManager::Instance().IsFileExist(c_szAttributeFileName);
 
-    CAttributeData *pAttributeData =
-        (CAttributeData *)CResourceManager::Instance().GetResourcePointer(c_szAttributeFileName);
+    auto *pAttributeData = (CAttributeData *)CResourceManager::Instance().GetResourcePointer(c_szAttributeFileName);
     if (!pAttributeData)
         return;
 
@@ -747,13 +755,12 @@ void CArea::__LoadAttribute(TObjectInstance *pObjectInstance, const char *c_szAt
     pAttrInstance->Clear();
     pAttrInstance->SetObjectPointer(pAttributeData);
 
-    if (false == bFileExist)
+    if (!bFileExist)
     {
         std::string attrFileName(c_szAttributeFileName);
 
         // TODO: Not UTF-8 safe string tolower()
-        std::transform(attrFileName.begin(), attrFileName.end(), attrFileName.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+        std::ranges::transform(attrFileName, attrFileName.begin(), [](unsigned char c) { return std::tolower(c); });
 
         const bool bIsDungeonObject = (std::string::npos != attrFileName.find("/dungeon/")) ||
                                       (std::string::npos != attrFileName.find("\\dungeon\\"));
@@ -761,13 +768,14 @@ void CArea::__LoadAttribute(TObjectInstance *pObjectInstance, const char *c_szAt
         // NOTE: dungeon 오브젝트는 Dummy Collision을 자동으로 생성하지 않도록 함
         // (던전의 경우 더미 컬리전때문에 문제가 된 경우가 수차례 있었음. 이렇게
         // 하기로 그래픽 팀과 협의 완료)
-        if (pAttributeData->IsEmpty() && false == bIsDungeonObject)
+        if (pAttributeData->IsEmpty() && !bIsDungeonObject)
         {
-            if (NULL != pObjectInstance && NULL != pObjectInstance->pThingInstance)
+            if (nullptr != pObjectInstance && nullptr != pObjectInstance->pThingInstance)
             {
                 CGraphicThingInstance *object = pObjectInstance->pThingInstance;
 
-                D3DXVECTOR3 v3Min, v3Max;
+                D3DXVECTOR3 v3Min;
+                D3DXVECTOR3 v3Max;
 
                 object->GetBoundingAABB(v3Min, v3Max);
 
@@ -778,7 +786,7 @@ void CArea::__LoadAttribute(TObjectInstance *pObjectInstance, const char *c_szAt
                 strcpy(collision.szName, "DummyCollisionOBB");
                 collision.v3Position = (v3Min + v3Max) * 0.5f;
 
-                D3DXVECTOR3 vDelta = (v3Max - v3Min);
+                D3DXVECTOR3 const vDelta = (v3Max - v3Min);
                 collision.fDimensions[0] = vDelta.x * 0.5f;
                 collision.fDimensions[1] = vDelta.y * 0.5f;
                 collision.fDimensions[2] = vDelta.z * 0.5f;
@@ -914,8 +922,8 @@ bool CArea::Load(const char *c_szPathName)
 {
     Clear();
 
-    std::string strObjectDataFileName = c_szPathName + std::string("AreaData.txt");
-    std::string strAmbienceDataFileName = c_szPathName + std::string("AreaAmbienceData.txt");
+    std::string const strObjectDataFileName = c_szPathName + std::string("AreaData.txt");
+    std::string const strAmbienceDataFileName = c_szPathName + std::string("AreaAmbienceData.txt");
 
     __Load_LoadObject(strObjectDataFileName.c_str());
     __Load_LoadAmbience(strAmbienceDataFileName.c_str());
@@ -934,13 +942,13 @@ bool CArea::__Load_LoadObject(const char *c_szFileName)
         return false;
     }
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("areadatafile"))
+    if (!stTokenVectorMap.contains("areadatafile"))
     {
         TraceError(" CArea::__LoadObject File Format %s ERROR 1", c_szFileName);
         return false;
     }
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("objectcount"))
+    if (!stTokenVectorMap.contains("objectcount"))
     {
         TraceError(" CArea::__LoadObject File Format %s ERROR 2", c_szFileName);
         return false;
@@ -948,7 +956,7 @@ bool CArea::__Load_LoadObject(const char *c_szFileName)
 
     const std::string &c_rstrCount = stTokenVectorMap["objectcount"][0];
 
-    DWORD dwCount = atoi(c_rstrCount.c_str());
+    DWORD const dwCount = atoi(c_rstrCount.c_str());
 
     char szObjectName[32 + 1];
 
@@ -956,15 +964,15 @@ bool CArea::__Load_LoadObject(const char *c_szFileName)
     {
         _snprintf(szObjectName, sizeof(szObjectName), "object%03d", i);
 
-        if (stTokenVectorMap.end() == stTokenVectorMap.find(szObjectName))
+        if (!stTokenVectorMap.contains(szObjectName))
             continue;
 
         const CTokenVector &rVector = stTokenVectorMap[szObjectName];
 
-        const std::string &c_rstrxPosition = rVector[0].c_str();
-        const std::string &c_rstryPosition = rVector[1].c_str();
-        const std::string &c_rstrzPosition = rVector[2].c_str();
-        const std::string &c_rstrCRC = rVector[3].c_str();
+        const std::string &c_rstrxPosition = rVector[0];
+        const std::string &c_rstryPosition = rVector[1];
+        const std::string &c_rstrzPosition = rVector[2];
+        const std::string &c_rstrCRC = rVector[3];
 
         TObjectData ObjectData;
         ZeroMemory(&ObjectData, sizeof(ObjectData));
@@ -979,10 +987,10 @@ bool CArea::__Load_LoadObject(const char *c_szFileName)
         if (rVector.size() > 4)
         {
             std::string::size_type s = rVector[4].find('#');
-            if (s != rVector[4].npos)
+            if (s != std::string::npos)
             {
                 ObjectData.m_fYaw = atoi(rVector[4].substr(0, s - 1).c_str());
-                int p = s + 1;
+                int const p = s + 1;
                 s = rVector[4].find('#', p);
                 ObjectData.m_fPitch = atoi(rVector[4].substr(p, s - 1 - p + 1).c_str());
                 ObjectData.m_fRoll = atoi(rVector[4].substr(s + 1).c_str());
@@ -1010,7 +1018,7 @@ bool CArea::__Load_LoadObject(const char *c_szFileName)
         }
 
         // If data is not inside property, then delete it.
-        CProperty *pProperty;
+        CProperty *pProperty = nullptr;
         if (!CPropertyManager::Instance().Get(ObjectData.dwCRC, &pProperty))
         {
             TraceError(" CArea::LoadObject Property(%u) Load ERROR", ObjectData.dwCRC);
@@ -1033,13 +1041,13 @@ bool CArea::__Load_LoadAmbience(const char *c_szFileName)
         return false;
     }
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("areaambiencedatafile"))
+    if (!stTokenVectorMap.contains("areaambiencedatafile"))
     {
         TraceError(" CArea::__LoadAmbience File Format %s ERROR 1", c_szFileName);
         return false;
     }
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("objectcount"))
+    if (!stTokenVectorMap.contains("objectcount"))
     {
         TraceError(" CArea::__LoadAmbience File Format %s ERROR 2", c_szFileName);
         return false;
@@ -1047,7 +1055,7 @@ bool CArea::__Load_LoadAmbience(const char *c_szFileName)
 
     const std::string &c_rstrCount = stTokenVectorMap["objectcount"][0];
 
-    DWORD dwCount = atoi(c_rstrCount.c_str());
+    DWORD const dwCount = atoi(c_rstrCount.c_str());
 
     char szObjectName[32 + 1];
 
@@ -1055,16 +1063,16 @@ bool CArea::__Load_LoadAmbience(const char *c_szFileName)
     {
         _snprintf(szObjectName, sizeof(szObjectName), "object%03d", i);
 
-        if (stTokenVectorMap.end() == stTokenVectorMap.find(szObjectName))
+        if (!stTokenVectorMap.contains(szObjectName))
             continue;
 
         const CTokenVector &rVector = stTokenVectorMap[szObjectName];
 
-        const std::string &c_rstrxPosition = rVector[0].c_str();
-        const std::string &c_rstryPosition = rVector[1].c_str();
-        const std::string &c_rstrzPosition = rVector[2].c_str();
-        const std::string &c_rstrCRC = rVector[3].c_str();
-        const std::string &c_rstrRange = rVector[4].c_str();
+        const std::string &c_rstrxPosition = rVector[0];
+        const std::string &c_rstryPosition = rVector[1];
+        const std::string &c_rstrzPosition = rVector[2];
+        const std::string &c_rstrCRC = rVector[3];
+        const std::string &c_rstrRange = rVector[4];
 
         TObjectData ObjectData;
         ZeroMemory(&ObjectData, sizeof(ObjectData));
@@ -1081,12 +1089,12 @@ bool CArea::__Load_LoadAmbience(const char *c_szFileName)
 
         if (rVector.size() >= 6)
         {
-            const std::string &c_rstrPercentage = rVector[5].c_str();
+            const std::string &c_rstrPercentage = rVector[5];
             ObjectData.fMaxVolumeAreaPercentage = atof(c_rstrPercentage.c_str());
         }
 
         // If data is not inside property, then delete it.
-        CProperty *pProperty;
+        CProperty *pProperty = nullptr;
         if (!CPropertyManager::Instance().Get(ObjectData.dwCRC, &pProperty))
         {
             TraceError(" CArea::LoadAmbience Property(%d) Load ERROR", ObjectData.dwCRC);
@@ -1103,10 +1111,7 @@ bool CArea::__Load_LoadAmbience(const char *c_szFileName)
 
 bool CArea::CheckObjectIndex(DWORD dwIndex) const
 {
-    if (dwIndex >= m_ObjectDataVector.size())
-        return false;
-
-    return true;
+    return dwIndex < m_ObjectDataVector.size();
 }
 
 DWORD CArea::GetObjectDataCount()
@@ -1126,12 +1131,12 @@ bool CArea::GetObjectDataPointer(DWORD dwIndex, const TObjectData **ppObjectData
     return true;
 }
 
-const DWORD CArea::GetObjectInstanceCount() const
+DWORD CArea::GetObjectInstanceCount() const
 {
     return m_ObjectInstanceVector.size();
 }
 
-const bool CArea::GetObjectInstancePointer(const DWORD &dwIndex, const TObjectInstance **ppObjectInstance) const
+bool CArea::GetObjectInstancePointer(const DWORD &dwIndex, const TObjectInstance **ppObjectInstance) const
 {
     if (dwIndex >= m_ObjectInstanceVector.size())
         return false;
@@ -1164,16 +1169,15 @@ void CArea::RefreshPortal()
     kSet_ShowingObjectInstance.clear();
     for (DWORD i = 0; i < m_ObjectDataVector.size(); ++i)
     {
-        TObjectData &rData = m_ObjectDataVector[i];
+        TObjectData const &rData = m_ObjectDataVector[i];
         TObjectInstance *pInstance = m_ObjectInstanceVector[i];
 
-        for (int j = 0; j < PORTAL_ID_MAX_NUM; ++j)
+        for (unsigned char const byPortalID : rData.abyPortalID)
         {
-            BYTE byPortalID = rData.abyPortalID[j];
             if (0 == byPortalID)
                 break;
 
-            if (m_kSet_ShowingPortalID.end() == m_kSet_ShowingPortalID.find(byPortalID))
+            if (!m_kSet_ShowingPortalID.contains(byPortalID))
                 continue;
 
             kSet_ShowingObjectInstance.insert(pInstance);
@@ -1194,7 +1198,7 @@ void CArea::RefreshPortal()
 
         if (m_bPortalEnable)
         {
-            if (kSet_ShowingObjectInstance.end() == kSet_ShowingObjectInstance.find(pObjectInstance))
+            if (!kSet_ShowingObjectInstance.contains(pObjectInstance))
                 continue;
         }
 
@@ -1257,7 +1261,7 @@ void CArea::__Clear_DestroyObjectInstance(TObjectInstance *pObjectInstance)
 {
     if (pObjectInstance->dwEffectInstanceIndex != 0xffffffff)
     {
-        TEffectInstanceIterator f = m_EffectInstanceMap.find(pObjectInstance->dwEffectInstanceIndex);
+        auto f = m_EffectInstanceMap.find(pObjectInstance->dwEffectInstanceIndex);
         if (m_EffectInstanceMap.end() != f)
         {
             CEffectInstance *pEffectInstance = f->second;
@@ -1273,32 +1277,32 @@ void CArea::__Clear_DestroyObjectInstance(TObjectInstance *pObjectInstance)
     {
         pObjectInstance->pAttributeInstance->Clear();
         ms_AttributeInstancePool.Free(pObjectInstance->pAttributeInstance);
-        pObjectInstance->pAttributeInstance = NULL;
+        pObjectInstance->pAttributeInstance = nullptr;
     }
 
     if (pObjectInstance->pTree)
     {
         pObjectInstance->pTree->Clear();
         CSpeedTreeForest::Instance().DeleteInstance(pObjectInstance->pTree);
-        pObjectInstance->pTree = NULL;
+        pObjectInstance->pTree = nullptr;
     }
 
     if (pObjectInstance->pThingInstance)
     {
         CGraphicThingInstance::Delete(pObjectInstance->pThingInstance);
-        pObjectInstance->pThingInstance = NULL;
+        pObjectInstance->pThingInstance = nullptr;
     }
 
     if (pObjectInstance->pAmbienceInstance)
     {
         ms_AmbienceInstancePool.Free(pObjectInstance->pAmbienceInstance);
-        pObjectInstance->pAmbienceInstance = NULL;
+        pObjectInstance->pAmbienceInstance = nullptr;
     }
 
     if (pObjectInstance->pDungeonBlock)
     {
         ms_DungeonBlockInstancePool.Free(pObjectInstance->pDungeonBlock);
-        pObjectInstance->pDungeonBlock = NULL;
+        pObjectInstance->pDungeonBlock = nullptr;
     }
 
     pObjectInstance->Clear();
@@ -1308,7 +1312,7 @@ void CArea::__Clear_DestroyObjectInstance(TObjectInstance *pObjectInstance)
 
 //////////////////////////////////////////////////////////////////////////
 // Coordination 관련
-void CArea::GetCoordinate(unsigned short *usCoordX, unsigned short *usCoordY)
+void CArea::GetCoordinate(unsigned short *usCoordX, unsigned short *usCoordY) const
 {
     *usCoordX = m_wX;
     *usCoordY = m_wY;
@@ -1351,9 +1355,9 @@ void CArea::TAmbienceInstance::__Update(float fxCenter, float fyCenter, float fz
 
 void CArea::TAmbienceInstance::UpdateOnceSound(float fxCenter, float fyCenter, float fzCenter)
 {
-    float fDistance = sqrtf((fx - fxCenter) * (fx - fxCenter) + (fy - fyCenter) * (fy - fyCenter) +
-                            (fz - fzCenter) * (fz - fzCenter));
-    if (DWORD(fDistance) < dwRange)
+    float const fDistance = sqrtf(((fx - fxCenter) * (fx - fxCenter)) + ((fy - fyCenter) * (fy - fyCenter)) +
+                                  ((fz - fzCenter) * (fz - fzCenter)));
+    if (static_cast<DWORD>(fDistance) < dwRange)
     {
         if (-1 == iPlaySoundIndex)
         {
@@ -1374,11 +1378,11 @@ void CArea::TAmbienceInstance::UpdateOnceSound(float fxCenter, float fyCenter, f
 
 void CArea::TAmbienceInstance::UpdateStepSound(float fxCenter, float fyCenter, float fzCenter)
 {
-    float fDistance = sqrtf((fx - fxCenter) * (fx - fxCenter) + (fy - fyCenter) * (fy - fyCenter) +
-                            (fz - fzCenter) * (fz - fzCenter));
-    if (DWORD(fDistance) < dwRange)
+    float const fDistance = sqrtf(((fx - fxCenter) * (fx - fxCenter)) + ((fy - fyCenter) * (fy - fyCenter)) +
+                                  ((fz - fzCenter) * (fz - fzCenter)));
+    if (static_cast<DWORD>(fDistance) < dwRange)
     {
-        float fcurTime = CTimer::Instance().GetCurrentSecond();
+        float const fcurTime = CTimer::Instance().GetCurrentSecond();
 
         if (fcurTime > fNextPlayTime)
         {
@@ -1403,9 +1407,9 @@ void CArea::TAmbienceInstance::UpdateStepSound(float fxCenter, float fyCenter, f
 
 void CArea::TAmbienceInstance::UpdateLoopSound(float fxCenter, float fyCenter, float fzCenter)
 {
-    float fDistance = sqrtf((fx - fxCenter) * (fx - fxCenter) + (fy - fyCenter) * (fy - fyCenter) +
-                            (fz - fzCenter) * (fz - fzCenter));
-    if (DWORD(fDistance) < dwRange)
+    float const fDistance = sqrtf(((fx - fxCenter) * (fx - fxCenter)) + ((fy - fyCenter) * (fy - fyCenter)) +
+                                  ((fz - fzCenter) * (fz - fzCenter)));
+    if (static_cast<DWORD>(fDistance) < dwRange)
     {
         if (-1 == iPlaySoundIndex)
         {
@@ -1437,9 +1441,9 @@ void CArea::TAmbienceInstance::UpdateLoopSound(float fxCenter, float fyCenter, f
     }
 }
 
-float CArea::TAmbienceInstance::__GetVolumeFromDistance(float fDistance)
+float CArea::TAmbienceInstance::__GetVolumeFromDistance(float fDistance) const
 {
-    float fMaxVolumeAreaRadius = float(dwRange) * fMaxVolumeAreaPercentage;
+    float const fMaxVolumeAreaRadius = static_cast<float>(dwRange) * fMaxVolumeAreaPercentage;
     if (fMaxVolumeAreaRadius <= 0.0f)
         return 1.0f;
     if (fDistance <= fMaxVolumeAreaRadius)
@@ -1450,19 +1454,21 @@ float CArea::TAmbienceInstance::__GetVolumeFromDistance(float fDistance)
 
 void CArea::TAmbienceInstance::Render()
 {
-    float fBoxSize = 10.0f;
+    float const fBoxSize = 10.0f;
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, 0xff00ff00);
     RenderCube(fx - fBoxSize, fy - fBoxSize, fz - fBoxSize, fx + fBoxSize, fy + fBoxSize, fz + fBoxSize);
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, 0xffffffff);
-    RenderSphere(NULL, fx, fy, fz, float(dwRange) * fMaxVolumeAreaPercentage, D3DFILL_POINT);
-    RenderSphere(NULL, fx, fy, fz, float(dwRange), D3DFILL_POINT);
-    RenderCircle2d(fx, fy, fz, float(dwRange) * fMaxVolumeAreaPercentage);
-    RenderCircle2d(fx, fy, fz, float(dwRange));
+    RenderSphere(nullptr, fx, fy, fz, static_cast<float>(dwRange) * fMaxVolumeAreaPercentage, D3DFILL_POINT);
+    RenderSphere(nullptr, fx, fy, fz, static_cast<float>(dwRange), D3DFILL_POINT);
+    RenderCircle2d(fx, fy, fz, static_cast<float>(dwRange) * fMaxVolumeAreaPercentage);
+    RenderCircle2d(fx, fy, fz, static_cast<float>(dwRange));
 
     for (int i = 0; i < 4; ++i)
     {
-        float fxAdd = cosf(float(i) * D3DX_PI / 4.0f) * float(dwRange) / 2.0f;
-        float fyAdd = sinf(float(i) * D3DX_PI / 4.0f) * float(dwRange) / 2.0f;
+        float fxAdd =
+            cosf(static_cast<float>(i) * std::numbers::pi_v<float> / 4.0f) * static_cast<float>(dwRange) / 2.0f;
+        float fyAdd =
+            sinf(static_cast<float>(i) * std::numbers::pi_v<float> / 4.0f) * static_cast<float>(dwRange) / 2.0f;
 
         if (i % 2)
         {
@@ -1480,11 +1486,6 @@ bool CArea::SAmbienceInstance::Picking()
 }
 
 CArea::SAmbienceInstance::SAmbienceInstance()
+    : fx(0.0f), dwRange(0), fNextPlayTime(0.0f), fy(0.0f), fz(0.0f), iPlaySoundIndex(-1)
 {
-    fx = 0.0f;
-    fy = 0.0f;
-    fz = 0.0f;
-    dwRange = 0;
-    iPlaySoundIndex = -1;
-    fNextPlayTime = 0.0f;
 }

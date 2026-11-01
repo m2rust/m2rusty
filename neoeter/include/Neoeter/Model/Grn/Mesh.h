@@ -22,22 +22,21 @@ class CGrannyMesh
         TYPE_MAX_NUM
     };
 
-    typedef struct STriGroupNode
+    using TTriGroupNode = struct STriGroupNode
     {
         STriGroupNode *pNextTriGroupNode;
         int idxPos;
         int triCount;
         DWORD mtrlIndex;
-    } TTriGroupNode;
+    };
 
-  public:
     CGrannyMesh();
     virtual ~CGrannyMesh();
 
     bool IsEmpty() const;
     bool CreateFromGrannyMeshPointer(granny_skeleton *pgrnSkeleton, granny_mesh *pgrnMesh, int vtxBasePos,
                                      int idxBasePos, CGrannyMaterialPalette &rkMtrlPal);
-    void LoadIndices(void *dstBaseIndices);
+    void LoadIndices(void *dstBaseIndices) const;
     void LoadPNTVertices(void *dstBaseVertices);
     void NEW_LoadVertices(void *dstBaseVertices);
     void Destroy();
@@ -69,35 +68,34 @@ class CGrannyMesh
     bool LoadMaterials(CGrannyMaterialPalette &rkMtrlPal);
     bool LoadTriGroupNodeList(CGrannyMaterialPalette &rkMtrlPal);
 
-  protected:
     // Granny Mesh Data
-    granny_data_type_definition *m_pgrnMeshType;
-    granny_mesh *m_pgrnMesh;
+    granny_data_type_definition *m_pgrnMeshType = nullptr;
+    granny_mesh *m_pgrnMesh = nullptr;
 
     // WORK
-    granny_mesh_binding *m_pgrnMeshBindingTemp;
+    granny_mesh_binding *m_pgrnMeshBindingTemp = nullptr;
     // END_OF_WORK
 
-    granny_mesh_deformer *m_pgrnMeshDeformer;
+    granny_mesh_deformer *m_pgrnMeshDeformer = nullptr;
 
     // Granny Material Data
     std::vector<DWORD> m_mtrlIndexVector;
 
     // TriGroups Data
-    TTriGroupNode *m_triGroupNodes;
-    TTriGroupNode *m_triGroupNodeLists[CGrannyMaterial::TYPE_MAX_NUM];
+    TTriGroupNode *m_triGroupNodes = nullptr;
+    TTriGroupNode *m_triGroupNodeLists[CGrannyMaterial::TYPE_MAX_NUM]{};
 
-    int m_vtxBasePos;
-    int m_idxBasePos;
+    int m_vtxBasePos = 0;
+    int m_idxBasePos = 0;
 
-    bool m_canDeformPNTVertex;
-    bool m_isTwoSide;
+    bool m_canDeformPNTVertex = false;
+    bool m_isTwoSide = false;
 
   private:
-    bool m_bHaveBlendThing;
+    bool m_bHaveBlendThing = false;
 
   public:
-    bool HaveBlendThing()
+    bool HaveBlendThing() const
     {
         return m_bHaveBlendThing;
     }

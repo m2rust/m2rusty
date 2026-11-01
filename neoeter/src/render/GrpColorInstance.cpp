@@ -2,15 +2,11 @@
 #include <Neoeter/Render/GrpColorInstance.h>
 #include <Neoeter/Platform/Base/Timer.h>
 
-CGraphicColorInstance::CGraphicColorInstance()
+CGraphicColorInstance::CGraphicColorInstance() : m_baseTime(0), m_blendTime(0)
 {
-    m_baseTime = 0;
-    m_blendTime = 0;
 }
 
-CGraphicColorInstance::~CGraphicColorInstance()
-{
-}
+CGraphicColorInstance::~CGraphicColorInstance() = default;
 
 void CGraphicColorInstance::Clear()
 {
@@ -40,12 +36,12 @@ void CGraphicColorInstance::BlendColorReference(DWORD blendTime, const CGraphicC
 
 void CGraphicColorInstance::Update()
 {
-    DWORD curTime = GetCurrentTime();
-    DWORD elapsedTime = curTime - m_baseTime;
+    DWORD const curTime = GetCurrentTime();
+    DWORD const elapsedTime = curTime - m_baseTime;
 
     if (elapsedTime < m_blendTime)
     {
-        m_curColor.Blend(elapsedTime / float(m_blendTime), m_srcColor, m_dstColor);
+        m_curColor.Blend(elapsedTime / static_cast<float>(m_blendTime), m_srcColor, m_dstColor);
     }
     else
     {

@@ -4,6 +4,8 @@
 #include <Neoeter/Effect/EffectMeshInstance.h>
 #include <Neoeter/Render/GrpMath.h>
 
+#include <algorithm>
+
 CDynamicPool<CEffectMeshInstance> CEffectMeshInstance::ms_kPool;
 
 void CEffectMeshInstance::DestroySystem()
@@ -30,10 +32,10 @@ BOOL CEffectMeshInstance::isActive()
     if (!m_MeshFrameController.isActive())
         return FALSE;
 
-    for (DWORD j = 0; j < m_TextureInstanceVector.size(); ++j)
+    for (auto &j : m_TextureInstanceVector)
     {
-        int iCurrentFrame = m_MeshFrameController.GetCurrentFrame();
-        if (m_TextureInstanceVector[j].TextureFrameController.isActive(iCurrentFrame))
+        int const iCurrentFrame = m_MeshFrameController.GetCurrentFrame();
+        if (j.TextureFrameController.isActive(iCurrentFrame))
             return TRUE;
     }
 
@@ -48,11 +50,11 @@ bool CEffectMeshInstance::OnUpdate(float fElapsedTime)
     if (m_MeshFrameController.isActive())
         m_MeshFrameController.Update(fElapsedTime);
 
-    for (DWORD j = 0; j < m_TextureInstanceVector.size(); ++j)
+    for (auto &j : m_TextureInstanceVector)
     {
-        int iCurrentFrame = m_MeshFrameController.GetCurrentFrame();
-        if (m_TextureInstanceVector[j].TextureFrameController.isActive(iCurrentFrame))
-            m_TextureInstanceVector[j].TextureFrameController.Update(fElapsedTime);
+        int const iCurrentFrame = m_MeshFrameController.GetCurrentFrame();
+        if (j.TextureFrameController.isActive(iCurrentFrame))
+            j.TextureFrameController.Update(fElapsedTime);
     }
 
     return true;
@@ -69,11 +71,11 @@ void CEffectMeshInstance::OnRender()
     {
         assert(i < m_TextureInstanceVector.size());
 
-        CFrameController &rTextureFrameController = m_TextureInstanceVector[i].TextureFrameController;
+        CFrameController const &rTextureFrameController = m_TextureInstanceVector[i].TextureFrameController;
         if (!rTextureFrameController.isActive(m_MeshFrameController.GetCurrentFrame()))
             continue;
 
-        int iBillboardType = m_pMeshScript->GetBillboardType(i);
+        int const iBillboardType = m_pMeshScript->GetBillboardType(i);
 
         D3DXMATRIX m_matWorld;
         D3DXMatrixIdentity(&m_matWorld);
@@ -83,7 +85,7 @@ void CEffectMeshInstance::OnRender()
         case MESH_BILLBOARD_TYPE_ALL: {
             D3DXMATRIX matTemp;
             D3DXMatrixRotationX(&matTemp, 90.0f);
-            D3DXMatrixInverse(&m_matWorld, NULL, &CScreen::GetViewMatrix());
+            D3DXMatrixInverse(&m_matWorld, nullptr, &CScreen::GetViewMatrix());
 
             m_matWorld = matTemp * m_matWorld;
         }
@@ -93,7 +95,7 @@ void CEffectMeshInstance::OnRender()
             D3DXMATRIX matTemp;
             D3DXMatrixIdentity(&matTemp);
 
-            D3DXMatrixInverse(&matTemp, NULL, &CScreen::GetViewMatrix());
+            D3DXMatrixInverse(&matTemp, nullptr, &CScreen::GetViewMatrix());
             m_matWorld._11 = matTemp._11;
             m_matWorld._12 = matTemp._12;
             m_matWorld._21 = matTemp._21;
@@ -123,8 +125,8 @@ void CEffectMeshInstance::OnRender()
         }
         else
         {
-            int iBlendingSrcType = m_pMeshScript->GetBlendingSrcType(i);
-            int iBlendingDestType = m_pMeshScript->GetBlendingDestType(i);
+            int const iBlendingSrcType = m_pMeshScript->GetBlendingSrcType(i);
+            int const iBlendingDestType = m_pMeshScript->GetBlendingDestType(i);
             STATEMANAGER.SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
             STATEMANAGER.SetRenderState(D3DRS_SRCBLEND, iBlendingSrcType);
             STATEMANAGER.SetRenderState(D3DRS_DESTBLEND, iBlendingDestType);
@@ -138,13 +140,13 @@ void CEffectMeshInstance::OnRender()
         m_matWorld = m_matWorld * *mc_pmatLocal;
         STATEMANAGER.SetTransform(D3DTS_WORLD, &m_matWorld);
 
-        BYTE byType;
+        BYTE byType = 0;
         D3DXCOLOR Color(1.0f, 1.0f, 1.0f, 1.0f);
         if (m_pMeshScript->GetColorOperationType(i, &byType))
             STATEMANAGER.SetTextureStageState(0, D3DTSS_COLOROP, byType);
         m_pMeshScript->GetColorFactor(i, &Color);
 
-        TTimeEventTableFloat *TableAlpha;
+        TTimeEventTableFloat *TableAlpha = nullptr;
 
         float fAlpha = 1.0f;
         if (m_pMeshScript->GetTimeTableAlphaPointer(i, &TableAlpha) && !TableAlpha->empty())
@@ -157,7 +159,7 @@ void CEffectMeshInstance::OnRender()
         CEffectMesh::TEffectFrameData &rFrameData =
             pMeshData->EffectFrameDataVector[m_MeshFrameController.GetCurrentFrame()];
 
-        DWORD dwcurTextureFrame = rTextureFrameController.GetCurrentFrame();
+        DWORD const dwcurTextureFrame = rTextureFrameController.GetCurrentFrame();
         if (dwcurTextureFrame < m_TextureInstanceVector[i].TextureInstanceVector.size())
         {
             CGraphicImageInstance *pImageInstance = m_TextureInstanceVector[i].TextureInstanceVector[dwcurTextureFrame];
@@ -167,7 +169,7 @@ void CEffectMeshInstance::OnRender()
         Color.a = fAlpha * rFrameData.fVisibility;
         STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, DWORD(Color));
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_TEX1);
-        STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLELIST, rFrameData.dwIndexCount / 3, &rFrameData.PDTVertexVector[0],
+        STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLELIST, rFrameData.dwIndexCount / 3, rFrameData.PDTVertexVector.data(),
                                      sizeof(TPTVertex));
         // Render //
     }
@@ -175,7 +177,7 @@ void CEffectMeshInstance::OnRender()
 
 void CEffectMeshInstance::OnSetDataPointer(CEffectElementBase *pElement)
 {
-    CEffectMeshScript *pMesh = (CEffectMeshScript *)pElement;
+    auto *pMesh = (CEffectMeshScript *)pElement;
     m_pMeshScript = pMesh;
 
     const char *c_szMeshFileName = pMesh->GetMeshFileName();
@@ -198,7 +200,7 @@ void CEffectMeshInstance::OnSetDataPointer(CEffectElementBase *pElement)
     m_TextureInstanceVector.resize(m_pEffectMesh->GetMeshCount());
     for (DWORD j = 0; j < m_TextureInstanceVector.size(); ++j)
     {
-        CEffectMeshScript::TMeshData *pMeshData;
+        CEffectMeshScript::TMeshData *pMeshData = nullptr;
         if (!m_pMeshScript->GetMeshDataPointer(j, &pMeshData))
             continue;
 
@@ -211,7 +213,7 @@ void CEffectMeshInstance::OnSetDataPointer(CEffectElementBase *pElement)
         if (!pTextureVector)
             continue;
 
-        std::vector<CGraphicImage *> &rTextureVector = *pTextureVector;
+        std::vector<CGraphicImage *> const &rTextureVector = *pTextureVector;
 
         CFrameController &rFrameController = m_TextureInstanceVector[j].TextureFrameController;
         rFrameController.Clear();
@@ -223,9 +225,8 @@ void CEffectMeshInstance::OnSetDataPointer(CEffectElementBase *pElement)
         std::vector<CGraphicImageInstance *> &rImageInstanceVector = m_TextureInstanceVector[j].TextureInstanceVector;
         rImageInstanceVector.clear();
         rImageInstanceVector.reserve(rTextureVector.size());
-        for (std::vector<CGraphicImage *>::iterator itor = rTextureVector.begin(); itor != rTextureVector.end(); ++itor)
+        for (auto *pImage : rTextureVector)
         {
-            CGraphicImage *pImage = *itor;
             CGraphicImageInstance *pImageInstance = CGraphicImageInstance::ms_kPool.Alloc();
             pImageInstance->SetImagePointer(pImage);
             rImageInstanceVector.push_back(pImageInstance);
@@ -241,7 +242,7 @@ void CEffectMeshInstance_DeleteImageInstance(CGraphicImageInstance *pkInstance)
 void CEffectMeshInstance_DeleteTextureInstance(CEffectMeshInstance::TTextureInstance &rkInstance)
 {
     std::vector<CGraphicImageInstance *> &rVector = rkInstance.TextureInstanceVector;
-    for_each(rVector.begin(), rVector.end(), CEffectMeshInstance_DeleteImageInstance);
+    std::ranges::for_each(rVector, CEffectMeshInstance_DeleteImageInstance);
     rVector.clear();
 }
 
@@ -251,9 +252,9 @@ void CEffectMeshInstance::OnInitialize()
 
 void CEffectMeshInstance::OnDestroy()
 {
-    for_each(m_TextureInstanceVector.begin(), m_TextureInstanceVector.end(), CEffectMeshInstance_DeleteTextureInstance);
+    std::ranges::for_each(m_TextureInstanceVector, CEffectMeshInstance_DeleteTextureInstance);
     m_TextureInstanceVector.clear();
-    m_roMesh.SetPointer(NULL);
+    m_roMesh.SetPointer(nullptr);
 }
 
 CEffectMeshInstance::CEffectMeshInstance()

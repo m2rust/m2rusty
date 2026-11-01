@@ -27,7 +27,8 @@ BOOL CNetDatagramSender::Send(const void *pBuffer, int iSize)
 {
     assert(isSocket());
 
-    int iSendingLength = sendto(m_Socket, (const char *)pBuffer, iSize, 0, (PSOCKADDR)&m_SockAddr, sizeof(SOCKADDR_IN));
+    int const iSendingLength = sendto(m_Socket, static_cast<const char *>(pBuffer), iSize, 0,
+                                      reinterpret_cast<PSOCKADDR>(&m_SockAddr), sizeof(SOCKADDR_IN));
     if (iSendingLength < 0)
     {
         Tracef("Failed sending packet\n");
@@ -37,22 +38,15 @@ BOOL CNetDatagramSender::Send(const void *pBuffer, int iSize)
     return TRUE;
 }
 
-BOOL CNetDatagramSender::isSocket()
+BOOL CNetDatagramSender::isSocket() const
 {
     return m_isSocket;
 }
 
-CNetDatagramSender::CNetDatagramSender()
+CNetDatagramSender::CNetDatagramSender() : m_isSocket(FALSE), m_Socket(0), m_dwAddress(0), m_wPortIndex(1000)
 {
-    m_isSocket = FALSE;
 
-    m_dwAddress = 0;
-    m_wPortIndex = 1000;
-
-    m_Socket = 0;
     memset(&m_SockAddr, 0, sizeof(SOCKADDR_IN));
 }
 
-CNetDatagramSender::~CNetDatagramSender()
-{
-}
+CNetDatagramSender::~CNetDatagramSender() = default;

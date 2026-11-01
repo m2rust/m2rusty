@@ -33,7 +33,7 @@ void CActorInstance::__OnMoving()
     const TPixelPosition &c_rkPPosDst = NEW_GetDstPixelPositionRef();
 
     TPixelPosition kPPosDir = c_rkPPosDst - c_rkPPosCur;
-    float distance = sqrt(kPPosDir.x * kPPosDir.x + kPPosDir.y * kPPosDir.y);
+    float const distance = sqrt((kPPosDir.x * kPPosDir.x) + (kPPosDir.y * kPPosDir.y));
 
     IEventHandler::SState kState;
 
@@ -132,7 +132,7 @@ void CActorInstance::__OnResetAffect(UINT uAffect)
 
 CActorInstance::IEventHandler &CActorInstance::__GetEventHandlerRef()
 {
-    assert(m_pkEventHandler != NULL && "CActorInstance::GetEventHandlerRef");
+    assert(m_pkEventHandler != nullptr && "CActorInstance::GetEventHandlerRef");
     return *m_pkEventHandler;
 }
 
@@ -151,54 +151,50 @@ CActorInstance::IEventHandler *CActorInstance::IEventHandler::GetEmptyPtr()
     static class CEmptyEventHandler : public IEventHandler
     {
       public:
-        CEmptyEventHandler()
+        CEmptyEventHandler() = default;
+        ~CEmptyEventHandler() override = default;
+
+        void OnSyncing(const SState &c_rkState) override
         {
         }
-        virtual ~CEmptyEventHandler()
+        void OnWaiting(const SState &c_rkState) override
+        {
+        }
+        void OnMoving(const SState &c_rkState) override
+        {
+        }
+        void OnMove(const SState &c_rkState) override
+        {
+        }
+        void OnStop(const SState &c_rkState) override
+        {
+        }
+        void OnWarp(const SState &c_rkState) override
         {
         }
 
-        virtual void OnSyncing(const SState &c_rkState)
+        void OnClearAffects() override
         {
         }
-        virtual void OnWaiting(const SState &c_rkState)
+        void OnSetAffect(UINT uAffect) override
         {
         }
-        virtual void OnMoving(const SState &c_rkState)
-        {
-        }
-        virtual void OnMove(const SState &c_rkState)
-        {
-        }
-        virtual void OnStop(const SState &c_rkState)
-        {
-        }
-        virtual void OnWarp(const SState &c_rkState)
+        void OnResetAffect(UINT uAffect) override
         {
         }
 
-        virtual void OnClearAffects()
+        void OnAttack(const SState &c_rkState, WORD wMotionIndex) override
         {
         }
-        virtual void OnSetAffect(UINT uAffect)
-        {
-        }
-        virtual void OnResetAffect(UINT uAffect)
+        void OnUseSkill(const SState &c_rkState, UINT uMotSkill, UINT uMotLoopCount) override
         {
         }
 
-        virtual void OnAttack(const SState &c_rkState, WORD wMotionIndex)
-        {
-        }
-        virtual void OnUseSkill(const SState &c_rkState, UINT uMotSkill, UINT uMotLoopCount)
+        void OnHit(UINT uMotAttack, CActorInstance &rkActorVictim, BOOL isSendPacket) override
         {
         }
 
-        virtual void OnHit(UINT uMotAttack, CActorInstance &rkActorVictim, BOOL isSendPacket)
-        {
-        }
-
-        virtual void OnChangeShape()
+        void OnChangeShape() override
         {
         }
 

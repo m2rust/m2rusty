@@ -32,17 +32,17 @@ void CPythonApplication::__SetFullScreenWindow(HWND hWnd, DWORD dwWidth, DWORD d
     DevMode.dmPelsHeight = dwHeight;
     DevMode.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
 
-    LONG Error = ChangeDisplaySettings(&DevMode, CDS_FULLSCREEN);
+    LONG const Error = ChangeDisplaySettings(&DevMode, CDS_FULLSCREEN);
     if (Error == DISP_CHANGE_RESTART)
     {
-        ChangeDisplaySettings(0, 0);
+        ChangeDisplaySettings(nullptr, 0);
     }
 }
 
 void CPythonApplication::__MinimizeFullScreenWindow(HWND hWnd, DWORD dwWidth, DWORD dwHeight)
 {
-    ChangeDisplaySettings(0, 0);
-    SetWindowPos(hWnd, 0, 0, 0, dwWidth, dwHeight, SWP_SHOWWINDOW);
+    ChangeDisplaySettings(nullptr, 0);
+    SetWindowPos(hWnd, nullptr, 0, 0, dwWidth, dwHeight, SWP_SHOWWINDOW);
     ShowWindow(hWnd, SW_MINIMIZE);
 }
 
@@ -124,13 +124,13 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
         {
             m_dwLButtonDownTime = 0;
 
-            OnMouseLeftButtonDoubleClick(short(LOWORD(lParam)), short(HIWORD(lParam)));
+            OnMouseLeftButtonDoubleClick(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
         }
         else
         {
             m_dwLButtonDownTime = ELTimer_GetMSec();
 
-            OnMouseLeftButtonDown(short(LOWORD(lParam)), short(HIWORD(lParam)));
+            OnMouseLeftButtonDown(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
         }
 
         s_xDownPosition = LOWORD(lParam);
@@ -143,14 +143,15 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
         if (hWnd == GetCapture() || !GetCapture())
         {
             SafeReleaseCapture();
-            OnMouseLeftButtonUp(short(LOWORD(lParam)), short(HIWORD(lParam)));
+            OnMouseLeftButtonUp(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
         }
         return 0;
 
     case WM_MBUTTONDOWN:
         SafeSetCapture();
 
-        UI::CWindowManager::Instance().RunMouseMiddleButtonDown(short(LOWORD(lParam)), short(HIWORD(lParam)));
+        UI::CWindowManager::Instance().RunMouseMiddleButtonDown(static_cast<short>(LOWORD(lParam)),
+                                                                static_cast<short>(HIWORD(lParam)));
         //			OnMouseMiddleButtonDown(short(LOWORD(lParam)),
         // short(HIWORD(lParam)));
         break;
@@ -160,7 +161,8 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
         {
             SafeReleaseCapture();
 
-            UI::CWindowManager::Instance().RunMouseMiddleButtonUp(short(LOWORD(lParam)), short(HIWORD(lParam)));
+            UI::CWindowManager::Instance().RunMouseMiddleButtonUp(static_cast<short>(LOWORD(lParam)),
+                                                                  static_cast<short>(HIWORD(lParam)));
             //				OnMouseMiddleButtonUp(short(LOWORD(lParam)),
             // short(HIWORD(lParam)));
         }
@@ -168,7 +170,7 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
 
     case WM_RBUTTONDOWN:
         SafeSetCapture();
-        OnMouseRightButtonDown(short(LOWORD(lParam)), short(HIWORD(lParam)));
+        OnMouseRightButtonDown(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
         return 0;
 
     case WM_RBUTTONUP:
@@ -176,7 +178,7 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
         {
             SafeReleaseCapture();
 
-            OnMouseRightButtonUp(short(LOWORD(lParam)), short(HIWORD(lParam)));
+            OnMouseRightButtonUp(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
         }
         return 0;
 
@@ -187,7 +189,7 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
         }
         else
         {
-            OnMouseWheel(short(HIWORD(wParam)));
+            OnMouseWheel(static_cast<short>(HIWORD(wParam)));
         }
         break;
 
@@ -199,19 +201,16 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
             RECT rcWnd;
             GetClientRect(&rcWnd);
 
-            UINT uWidth = rcWnd.right - rcWnd.left;
-            UINT uHeight = rcWnd.bottom - rcWnd.left;
+            UINT const uWidth = rcWnd.right - rcWnd.left;
+            UINT const uHeight = rcWnd.bottom - rcWnd.left;
             m_grpDevice.ResizeBackBuffer(uWidth, uHeight);
         }
         break;
         }
 
-        if (wParam == SIZE_MINIMIZED)
-            m_isMinimizedWnd = true;
-        else
-            m_isMinimizedWnd = false;
+        m_isMinimizedWnd = wParam == SIZE_MINIMIZED;
 
-        OnSizeChange(short(LOWORD(lParam)), short(HIWORD(lParam)));
+        OnSizeChange(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
 
         break;
 
@@ -219,10 +218,10 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
         RECT rcWnd;
         GetClientRect(&rcWnd);
 
-        UINT uWidth = rcWnd.right - rcWnd.left;
-        UINT uHeight = rcWnd.bottom - rcWnd.left;
+        UINT const uWidth = rcWnd.right - rcWnd.left;
+        UINT const uHeight = rcWnd.bottom - rcWnd.left;
         m_grpDevice.ResizeBackBuffer(uWidth, uHeight);
-        OnSizeChange(short(LOWORD(lParam)), short(HIWORD(lParam)));
+        OnSizeChange(static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam)));
     }
     break;
 
@@ -253,11 +252,9 @@ LRESULT CPythonApplication::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam
                 Platform_SetCursorHandle(m_hCurrentCursor);
                 return 0;
             }
-            else
-            {
-                Platform_SetCursorHandle(NULL);
-                return 0;
-            }
+
+            Platform_SetCursorHandle(nullptr);
+            return 0;
         }
         break;
 

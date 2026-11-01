@@ -37,28 +37,28 @@ void CBlockTexture::Render(int ix, int iy)
 
         if (m_clipRect.left > isx)
         {
-            int idx = m_clipRect.left - isx;
+            int const idx = m_clipRect.left - isx;
             isx += idx;
-            su += float(idx) / float(m_dwWidth);
+            su += static_cast<float>(idx) / static_cast<float>(m_dwWidth);
         }
         if (iex > m_clipRect.right)
         {
-            int idx = iex - m_clipRect.right;
+            int const idx = iex - m_clipRect.right;
             iex -= idx;
-            eu -= float(idx) / float(m_dwWidth);
+            eu -= static_cast<float>(idx) / static_cast<float>(m_dwWidth);
         }
 
         if (m_clipRect.top > isy)
         {
-            int idy = m_clipRect.top - isy;
+            int const idy = m_clipRect.top - isy;
             isy += idy;
-            sv += float(idy) / float(m_dwHeight);
+            sv += static_cast<float>(idy) / static_cast<float>(m_dwHeight);
         }
         if (iey > m_clipRect.bottom)
         {
-            int idy = iey - m_clipRect.bottom;
+            int const idy = iey - m_clipRect.bottom;
             iey -= idy;
-            ev -= float(idy) / float(m_dwHeight);
+            ev -= static_cast<float>(idy) / static_cast<float>(m_dwHeight);
         }
     }
 
@@ -92,7 +92,7 @@ void CBlockTexture::Render(int ix, int iy)
         CGraphicBase::SetDefaultIndexBuffer(CGraphicBase::DEFAULT_IB_FILL_RECT);
 
         STATEMANAGER.SetTexture(0, m_lpd3dTexture);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_TEX1 | D3DFVF_DIFFUSE);
         STATEMANAGER.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 4, 0, 2);
     }
@@ -100,7 +100,7 @@ void CBlockTexture::Render(int ix, int iy)
 
 void CBlockTexture::InvalidateRect(const RECT &c_rsrcRect)
 {
-    RECT dstRect = m_rect;
+    RECT const dstRect = m_rect;
     if (c_rsrcRect.right < dstRect.left || c_rsrcRect.left > dstRect.right || c_rsrcRect.bottom < dstRect.top ||
         c_rsrcRect.top > dstRect.bottom)
     {
@@ -117,9 +117,9 @@ void CBlockTexture::InvalidateRect(const RECT &c_rsrcRect)
     };
     // END_OF_DIBBAR_LONGSIZE_BUGFIX
 
-    DWORD *pdwSrc;
-    pdwSrc = (DWORD *)m_pDIB->GetPointer();
-    pdwSrc += dstRect.left + dstRect.top * m_pDIB->GetWidth();
+    DWORD *pdwSrc = nullptr;
+    pdwSrc = static_cast<DWORD *>(m_pDIB->GetPointer());
+    pdwSrc += dstRect.left + (dstRect.top * m_pDIB->GetWidth());
 
     D3DLOCKED_RECT lockedRect;
     if (FAILED(m_lpd3dTexture->LockRect(0, &lockedRect, &clipRect, 0)))
@@ -128,19 +128,23 @@ void CBlockTexture::InvalidateRect(const RECT &c_rsrcRect)
         return;
     }
 
-    int iclipWidth = clipRect.right - clipRect.left;
-    int iclipHeight = clipRect.bottom - clipRect.top;
-    DWORD *pdwDst = (DWORD *)lockedRect.pBits;
-    DWORD dwDstWidth = lockedRect.Pitch >> 2;
-    DWORD dwSrcWidth = m_pDIB->GetWidth();
+    int const iclipWidth = clipRect.right - clipRect.left;
+    int const iclipHeight = clipRect.bottom - clipRect.top;
+    auto *pdwDst = static_cast<DWORD *>(lockedRect.pBits);
+    DWORD const dwDstWidth = lockedRect.Pitch >> 2;
+    DWORD const dwSrcWidth = m_pDIB->GetWidth();
     for (int i = 0; i < iclipHeight; ++i)
     {
         for (int i = 0; i < iclipWidth; ++i)
         {
             if (pdwSrc[i])
+            {
                 pdwDst[i] = pdwSrc[i] | 0xff000000;
+            }
             else
+            {
                 pdwDst[i] = 0;
+            }
         }
         pdwDst += dwDstWidth;
         pdwSrc += dwSrcWidth;
@@ -152,7 +156,7 @@ void CBlockTexture::InvalidateRect(const RECT &c_rsrcRect)
 bool CBlockTexture::Create(CGraphicDib *pDIB, const RECT &c_rRect, DWORD dwWidth, DWORD dwHeight)
 {
     if (FAILED(ms_lpd3dDevice->CreateTexture(dwWidth, dwHeight, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_lpd3dTexture,
-                                             NULL)))
+                                             nullptr)))
     {
         Tracef("Failed to create block texture %u, %u\n", dwWidth, dwHeight);
         return false;
@@ -167,14 +171,12 @@ bool CBlockTexture::Create(CGraphicDib *pDIB, const RECT &c_rRect, DWORD dwWidth
     return true;
 }
 
-CBlockTexture::CBlockTexture()
+CBlockTexture::CBlockTexture() : m_pDIB(nullptr), m_lpd3dTexture(nullptr)
 {
-    m_pDIB = NULL;
-    m_lpd3dTexture = NULL;
 }
 
 CBlockTexture::~CBlockTexture()
 {
     safe_release(m_lpd3dTexture);
-    m_lpd3dTexture = NULL;
+    m_lpd3dTexture = nullptr;
 }

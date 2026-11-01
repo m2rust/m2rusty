@@ -38,12 +38,12 @@ void CTerrainDecal::Make(D3DXVECTOR3 v3Center, D3DXVECTOR3 v3Normal, D3DXVECTOR3
 
     // Calculate boundary planes
     float fd = D3DXVec3Dot(&m_v3Center, &v3Tangent);
-    m_v4LeftPlane = D3DXPLANE(v3Tangent.x, v3Tangent.y, v3Tangent.z, fWidth * 0.5f - fd);
-    m_v4RightPlane = D3DXPLANE(-v3Tangent.x, -v3Tangent.y, -v3Tangent.z, fWidth * 0.5f + fd);
+    m_v4LeftPlane = D3DXPLANE(v3Tangent.x, v3Tangent.y, v3Tangent.z, (fWidth * 0.5f) - fd);
+    m_v4RightPlane = D3DXPLANE(-v3Tangent.x, -v3Tangent.y, -v3Tangent.z, (fWidth * 0.5f) + fd);
 
     fd = D3DXVec3Dot(&m_v3Center, &v3Binormal);
-    m_v4BottomPlane = D3DXPLANE(v3Binormal.x, v3Binormal.y, v3Binormal.z, fHeight * 0.5f - fd);
-    m_v4TopPlane = D3DXPLANE(-v3Binormal.x, -v3Binormal.y, -v3Binormal.z, fHeight * 0.5f + fd);
+    m_v4BottomPlane = D3DXPLANE(v3Binormal.x, v3Binormal.y, v3Binormal.z, (fHeight * 0.5f) - fd);
+    m_v4TopPlane = D3DXPLANE(-v3Binormal.x, -v3Binormal.y, -v3Binormal.z, (fHeight * 0.5f) + fd);
 
     fd = D3DXVec3Dot(&m_v3Center, &m_v3Normal);
     m_v4FrontPlane = D3DXPLANE(-m_v3Normal.x, -m_v3Normal.y, -m_v3Normal.z, fDepth + fd);
@@ -56,11 +56,11 @@ void CTerrainDecal::Make(D3DXVECTOR3 v3Center, D3DXVECTOR3 v3Normal, D3DXVECTOR3
     // Add this point, determine which surfaces may be affected by this decal and
     // call ClipMesh().
 
-    float fSearchRadius = fMAX(fWidth, fHeight); // 0.75f >= sqrtf(2)/2;
-    float fMinX = v3Center.x - fSearchRadius;
-    float fMaxX = v3Center.x + fSearchRadius;
-    float fMinY = fabs(v3Center.y) - fSearchRadius;
-    float fMaxY = fabs(v3Center.y) + fSearchRadius;
+    float const fSearchRadius = fMAX(fWidth, fHeight); // 0.75f >= sqrtf(2)/2;
+    float const fMinX = v3Center.x - fSearchRadius;
+    float const fMaxX = v3Center.x + fSearchRadius;
+    float const fMinY = fabs(v3Center.y) - fSearchRadius;
+    float const fMaxY = fabs(v3Center.y) + fSearchRadius;
 
     DWORD dwAffectedPrimitiveCount = 0;
     D3DXVECTOR3 v3AffectedVertex[MAX_SEARCH_VERTICES];
@@ -74,13 +74,13 @@ void CTerrainDecal::Make(D3DXVECTOR3 v3Center, D3DXVECTOR3 v3Normal, D3DXVECTOR3
     ClipMesh(dwAffectedPrimitiveCount, v3AffectedVertex, v3AffectedNormal);
 
     // Assign texture mapping coordinates
-    float fOne_over_w = 1.0f / fWidth;
-    float fOne_over_h = 1.0f / fHeight;
+    float const fOne_over_w = 1.0f / fWidth;
+    float const fOne_over_h = 1.0f / fHeight;
     for (DWORD dwi = 0; dwi < m_dwVertexCount; ++dwi)
     {
         D3DXVECTOR3 v3 = m_Vertices[dwi].position - m_v3Center;
-        float fu = -D3DXVec3Dot(&v3, &v3Binormal) * fOne_over_w + 0.5f;
-        float fv = -D3DXVec3Dot(&v3, &v3Tangent) * fOne_over_h + 0.5f;
+        float const fu = (-D3DXVec3Dot(&v3, &v3Binormal) * fOne_over_w) + 0.5f;
+        float const fv = (-D3DXVec3Dot(&v3, &v3Tangent) * fOne_over_h) + 0.5f;
         m_Vertices[dwi].texCoord = D3DXVECTOR2(fu, fv);
     }
 }
@@ -124,7 +124,10 @@ void CTerrainDecal::SearchAffectedTerrainMesh(float fMinX, float fMaxX, float fM
 {
     if (!m_pMapOutdoor)
         return;
-    int iMinX, iMaxX, iMinY, iMaxY;
+    int iMinX = 0;
+    int iMaxX = 0;
+    int iMinY = 0;
+    int iMaxY = 0;
     PR_FLOAT_TO_INT(fMinX, iMinX);
     PR_FLOAT_TO_INT(fMaxX, iMaxX);
     PR_FLOAT_TO_INT(fMinY, iMinY);
@@ -139,35 +142,39 @@ void CTerrainDecal::SearchAffectedTerrainMesh(float fMinX, float fMaxX, float fM
     {
         if (iy < 0)
             continue;
-        WORD wTerrainNumY = iy / CTerrainImpl::TERRAIN_YSIZE;
+        WORD const wTerrainNumY = iy / CTerrainImpl::TERRAIN_YSIZE;
         for (int ix = iMinX; ix <= iMaxX; ix += CTerrainImpl::CELLSCALE)
         {
             if (ix < 0)
                 continue;
-            WORD wTerrainNumX = ix / CTerrainImpl::TERRAIN_YSIZE;
+            WORD const wTerrainNumX = ix / CTerrainImpl::TERRAIN_YSIZE;
 
-            BYTE byTerrainNum;
+            BYTE byTerrainNum = 0;
             if (!m_pMapOutdoor->GetTerrainNumFromCoord(wTerrainNumX, wTerrainNumY, &byTerrainNum))
                 continue;
-            CTerrain *pTerrain;
+            CTerrain *pTerrain = nullptr;
             if (!m_pMapOutdoor->GetTerrainPointer(byTerrainNum, &pTerrain))
                 continue;
 
-            float fHeightLT = pTerrain->GetHeight(ix, iy) + m_cfDecalEpsilon;
-            float fHeightRT = pTerrain->GetHeight(ix + CTerrainImpl::CELLSCALE, iy) + m_cfDecalEpsilon;
-            float fHeightLB = pTerrain->GetHeight(ix, iy + CTerrainImpl::CELLSCALE) + m_cfDecalEpsilon;
-            float fHeightRB =
+            float const fHeightLT = pTerrain->GetHeight(ix, iy) + m_cfDecalEpsilon;
+            float const fHeightRT = pTerrain->GetHeight(ix + CTerrainImpl::CELLSCALE, iy) + m_cfDecalEpsilon;
+            float const fHeightLB = pTerrain->GetHeight(ix, iy + CTerrainImpl::CELLSCALE) + m_cfDecalEpsilon;
+            float const fHeightRB =
                 pTerrain->GetHeight(ix + CTerrainImpl::CELLSCALE, iy + CTerrainImpl::CELLSCALE) + m_cfDecalEpsilon;
 
             *pdwAffectedPrimitiveCount += 2;
 
-            *pv3AffectedVertex++ = D3DXVECTOR3((float)ix, (float)(-iy), fHeightLT);
-            *pv3AffectedVertex++ = D3DXVECTOR3((float)ix, (float)(-iy - CTerrainImpl::CELLSCALE), fHeightLB);
-            *pv3AffectedVertex++ = D3DXVECTOR3((float)(ix + CTerrainImpl::CELLSCALE), (float)(-iy), fHeightRT);
-            *pv3AffectedVertex++ = D3DXVECTOR3((float)(ix + CTerrainImpl::CELLSCALE), (float)(-iy), fHeightRT);
-            *pv3AffectedVertex++ = D3DXVECTOR3((float)ix, (float)(-iy - CTerrainImpl::CELLSCALE), fHeightLB);
+            *pv3AffectedVertex++ = D3DXVECTOR3(static_cast<float>(ix), static_cast<float>(-iy), fHeightLT);
             *pv3AffectedVertex++ =
-                D3DXVECTOR3((float)(ix + CTerrainImpl::CELLSCALE), (float)(-iy - CTerrainImpl::CELLSCALE), fHeightRB);
+                D3DXVECTOR3(static_cast<float>(ix), static_cast<float>(-iy - CTerrainImpl::CELLSCALE), fHeightLB);
+            *pv3AffectedVertex++ =
+                D3DXVECTOR3(static_cast<float>(ix + CTerrainImpl::CELLSCALE), static_cast<float>(-iy), fHeightRT);
+            *pv3AffectedVertex++ =
+                D3DXVECTOR3(static_cast<float>(ix + CTerrainImpl::CELLSCALE), static_cast<float>(-iy), fHeightRT);
+            *pv3AffectedVertex++ =
+                D3DXVECTOR3(static_cast<float>(ix), static_cast<float>(-iy - CTerrainImpl::CELLSCALE), fHeightLB);
+            *pv3AffectedVertex++ = D3DXVECTOR3(static_cast<float>(ix + CTerrainImpl::CELLSCALE),
+                                               static_cast<float>(-iy - CTerrainImpl::CELLSCALE), fHeightRB);
 
             *pv3AffectedNormal++ = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
             *pv3AffectedNormal++ = D3DXVECTOR3(0.0f, 0.0f, 1.0f);

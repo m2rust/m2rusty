@@ -32,11 +32,11 @@ class Frustum
     void BuildViewFrustum(D3DXMATRIX &mat);
     void BuildViewFrustum2(D3DXMATRIX &mat, float fNear, float fFar, float fFov, float fAspect,
                            const D3DXVECTOR3 &vCamera, const D3DXVECTOR3 &vLook);
-    ViewState ViewVolumeTest(const Vector3d &c_v3Center, const float c_fRadius) const;
+    ViewState ViewVolumeTest(const Vector3d &c_v3Center, float c_fRadius) const;
 
   private:
-    bool m_bUsingSphere;
+    bool m_bUsingSphere = false;
     D3DXVECTOR3 m_v3Center;
-    float m_fRadius;
+    float m_fRadius = 0.0F;
     D3DXPLANE m_plane[6];
 };

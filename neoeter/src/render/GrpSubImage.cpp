@@ -8,7 +8,7 @@ char CGraphicSubImage::m_SearchPath[256] = "D:/Ymir Work/UI/";
 
 CGraphicSubImage::TType CGraphicSubImage::Type()
 {
-    static TType s_type = StringToType("CGraphicSubImage");
+    static TType const s_type = StringToType("CGraphicSubImage");
     return s_type;
 }
 
@@ -18,7 +18,7 @@ CGraphicSubImage::CGraphicSubImage(const char *c_szFileName) : CGraphicImage(c_s
 
 CGraphicSubImage::~CGraphicSubImage()
 {
-    m_roImage = NULL;
+    m_roImage = nullptr;
 }
 
 bool CGraphicSubImage::CreateDeviceObjects()
@@ -159,15 +159,17 @@ bool CGraphicSubImage::OnLoad(int iSize, const void *c_pvBuf)
 
 void CGraphicSubImage::OnClear()
 {
-    m_roImage = NULL;
+    m_roImage = nullptr;
     memset(&m_rect, 0, sizeof(m_rect));
 }
 
 bool CGraphicSubImage::OnIsEmpty() const
 {
     if (!m_roImage.IsNull())
+    {
         if (!m_roImage->IsEmpty())
             return false;
+    }
 
     return true;
 }

@@ -20,6 +20,5 @@ class CGrannyMotion
   protected:
     void Initialize();
 
-  protected:
-    granny_animation *m_pgrnAni;
+    granny_animation *m_pgrnAni = nullptr;
 };

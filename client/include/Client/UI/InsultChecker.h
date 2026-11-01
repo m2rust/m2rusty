@@ -5,7 +5,6 @@ class CInsultChecker
   public:
     CInsultChecker &GetSingleton();
 
-  public:
     CInsultChecker();
     virtual ~CInsultChecker();
 
@@ -19,6 +18,5 @@ class CInsultChecker
     bool __GetInsultLength(const char *c_szWord, UINT *puInsultLen);
     bool __IsInsult(const char *c_szWord);
 
-  private:
     std::list<std::string> m_kList_stInsult;
 };

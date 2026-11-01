@@ -3,7 +3,7 @@
 
 PyObject *ServerStateCheckerCreate(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *poWnd;
+    PyObject *poWnd = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &poWnd))
         return Py_BadArgument();
 
@@ -25,15 +25,15 @@ PyObject *ServerStateCheckerRequest(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *ServerStateCheckerAddChannel(PyObject *poSelf, PyObject *poArgs)
 {
-    int nServerIndex;
+    int nServerIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nServerIndex))
         return Py_BuildException();
 
-    char *szAddr;
+    char *szAddr = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szAddr))
         return Py_BuildException();
 
-    int nPort;
+    int nPort = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &nPort))
         return Py_BuildException();
 
@@ -55,7 +55,7 @@ void initServerStateChecker()
         {"Request", ServerStateCheckerRequest, METH_VARARGS},
         {"AddChannel", ServerStateCheckerAddChannel, METH_VARARGS},
         {"Initialize", ServerStateCheckerInitialize, METH_VARARGS},
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     // PyObject * poModule = Py_InitModule("ServerStateChecker", s_methods);

@@ -1,5 +1,5 @@
 #include <Neoeter/Audio/StdAfx.h>
-#include <math.h>
+#include <cmath>
 
 #include <Neoeter/Audio/SoundManager.h>
 #include <Neoeter/Platform/Base/Timer.h>
@@ -9,25 +9,13 @@ CSoundManager3D CSoundManager::ms_SoundManager3D;
 CSoundManagerStream CSoundManager::ms_SoundManagerStream;
 
 CSoundManager::CSoundManager()
+    : m_bInitialized(FALSE), m_fAmbienceSoundScale(1000.0f), m_fBackupMusicVolume(0.0f), m_fBackupSoundVolume(0.0f),
+      m_fMusicVolume(1.0f), m_fSoundScale(200.0f), m_fSoundVolume(1.0f), m_fxPosition(0.0f), m_fyPosition(0.0f),
+      m_fzPosition(0.0f), m_isSoundDisable(FALSE)
 {
-    m_bInitialized = FALSE;
-    m_isSoundDisable = FALSE;
 
-    m_fxPosition = 0.0f;
-    m_fyPosition = 0.0f;
-    m_fzPosition = 0.0f;
-
-    m_fSoundScale = 200.0f;
-    m_fAmbienceSoundScale = 1000.0f;
-    m_fSoundVolume = 1.0f;
-    m_fMusicVolume = 1.0f;
-
-    m_fBackupMusicVolume = 0.0f;
-    m_fBackupSoundVolume = 0.0f;
-
-    for (int i = 0; i < CSoundManagerStream::MUSIC_INSTANCE_MAX_NUM; ++i)
+    for (auto &rInstance : m_MusicInstances)
     {
-        TMusicInstance &rInstance = m_MusicInstances[i];
         rInstance.dwMusicFileNameCRC = 0;
         rInstance.MusicState = MUSIC_STATE_OFF;
         rInstance.fVolume = 0.0f;
@@ -35,9 +23,7 @@ CSoundManager::CSoundManager()
     }
 }
 
-CSoundManager::~CSoundManager()
-{
-}
+CSoundManager::~CSoundManager() = default;
 
 BOOL CSoundManager::Create()
 {
@@ -160,9 +146,8 @@ void CSoundManager::UpdateSoundInstance(float fx, float fy, float fz, DWORD dwcu
                                         const NSound::TSoundInstanceVector *c_pSoundInstanceVector,
                                         BOOL bCheckFrequency)
 {
-    for (DWORD i = 0; i < c_pSoundInstanceVector->size(); ++i)
+    for (const auto &c_rSoundInstance : *c_pSoundInstanceVector)
     {
-        const NSound::TSoundInstance &c_rSoundInstance = c_pSoundInstanceVector->at(i);
         if (c_rSoundInstance.dwFrame == dwcurFrame)
         {
             // Tracenf("PLAY SOUND %s", c_rSoundInstance.strSoundFileName.c_str());
@@ -173,10 +158,8 @@ void CSoundManager::UpdateSoundInstance(float fx, float fy, float fz, DWORD dwcu
 
 void CSoundManager::UpdateSoundInstance(DWORD dwcurFrame, const NSound::TSoundInstanceVector *c_pSoundInstanceVector)
 {
-    for (DWORD i = 0; i < c_pSoundInstanceVector->size(); ++i)
+    for (const auto &c_rSoundInstance : *c_pSoundInstanceVector)
     {
-        const NSound::TSoundInstance &c_rSoundInstance = c_pSoundInstanceVector->at(i);
-
         if (c_rSoundInstance.dwFrame == dwcurFrame)
         {
             PlaySound2D(c_rSoundInstance.strSoundFileName.c_str());
@@ -184,7 +167,7 @@ void CSoundManager::UpdateSoundInstance(DWORD dwcurFrame, const NSound::TSoundIn
     }
 }
 
-float CSoundManager::GetSoundScale()
+float CSoundManager::GetSoundScale() const
 {
     return m_fSoundScale;
 }
@@ -255,7 +238,7 @@ float CSoundManager::__ConvertRatioVolumeToApplyVolume(float fRatioVolume)
     if (0.1f > fRatioVolume)
         return fRatioVolume;
 
-    return (float)pow(10.0f, (-1.0f + fRatioVolume));
+    return static_cast<float>(std::pow(10.0f, (-1.0f + fRatioVolume)));
 }
 
 float CSoundManager::__ConvertGradeVolumeToApplyVolume(int nGradeVolume)
@@ -265,7 +248,7 @@ float CSoundManager::__ConvertGradeVolumeToApplyVolume(int nGradeVolume)
 
 void CSoundManager::SetSoundVolumeGrade(int iGrade)
 {
-    float fVolume = __ConvertGradeVolumeToApplyVolume(iGrade);
+    float const fVolume = __ConvertGradeVolumeToApplyVolume(iGrade);
     SetSoundVolume(fVolume);
 }
 
@@ -277,7 +260,7 @@ void CSoundManager::SetSoundVolumeGrade(int iGrade)
 
 void CSoundManager::SetSoundVolumeRatio(float fRatio)
 {
-    float fVolume = __ConvertRatioVolumeToApplyVolume(fRatio);
+    float const fVolume = __ConvertRatioVolumeToApplyVolume(fRatio);
     SetSoundVolume(fVolume);
 }
 
@@ -287,12 +270,12 @@ void CSoundManager::SetMusicVolume(float fVolume)
     __SetMusicVolume(fVolume);
 }
 
-float CSoundManager::GetSoundVolume()
+float CSoundManager::GetSoundVolume() const
 {
     return m_fSoundVolume;
 }
 
-float CSoundManager::GetMusicVolume()
+float CSoundManager::GetMusicVolume() const
 {
     return m_fMusicVolume;
 }
@@ -309,7 +292,7 @@ BOOL CSoundManager::GetSoundInstance2D(const char *c_szSoundFileName, ISoundInst
 
 BOOL CSoundManager::GetSoundInstance3D(const char *c_szFileName, ISoundInstance **ppInstance)
 {
-    int iIndex = ms_SoundManager3D.SetInstance(c_szFileName);
+    int const iIndex = ms_SoundManager3D.SetInstance(c_szFileName);
 
     if (-1 == iIndex)
         return FALSE;
@@ -327,7 +310,7 @@ void CSoundManager::PlaySound2D(const char *c_szFileName)
     if (0.0f == GetSoundVolume())
         return;
 
-    ISoundInstance *pInstance;
+    ISoundInstance *pInstance = nullptr;
     if (!GetSoundInstance2D(c_szFileName, &pInstance))
         return;
 
@@ -340,7 +323,7 @@ void CSoundManager::PlaySound3D(float fx, float fy, float fz, const char *c_szFi
     if (0.0f == GetSoundVolume())
         return;
 
-    int iIndex = ms_SoundManager3D.SetInstance(c_szFileName);
+    int const iIndex = ms_SoundManager3D.SetInstance(c_szFileName);
     if (-1 == iIndex)
         return;
 
@@ -360,7 +343,7 @@ int CSoundManager::PlayAmbienceSound3D(float fx, float fy, float fz, const char 
     if (0.0f == GetSoundVolume())
         return -1;
 
-    int iIndex = ms_SoundManager3D.SetInstance(c_szFileName);
+    int const iIndex = ms_SoundManager3D.SetInstance(c_szFileName);
     if (-1 == iIndex)
         return -1;
 
@@ -385,17 +368,17 @@ void CSoundManager::PlayCharacterSound3D(float fx, float fy, float fz, const cha
     // 어느 정도의 최적화가 필요할 수도 있다 - [levites]
     if (bCheckFrequency)
     {
-        static float s_fLimitDistance = 5000 * 5000;
-        float fdx = (fx - m_fxPosition) * (fx - m_fxPosition);
-        float fdy = (fy - m_fyPosition) * (fy - m_fyPosition);
+        static float const s_fLimitDistance = 5000 * 5000;
+        float const fdx = (fx - m_fxPosition) * (fx - m_fxPosition);
+        float const fdy = (fy - m_fyPosition) * (fy - m_fyPosition);
 
         if (fdx + fdy > s_fLimitDistance)
             return;
 
-        std::map<std::string, float>::iterator itor = m_PlaySoundHistoryMap.find(c_szFileName);
+        auto itor = m_PlaySoundHistoryMap.find(c_szFileName);
         if (m_PlaySoundHistoryMap.end() != itor)
         {
-            float fTime = itor->second;
+            float const fTime = itor->second;
             if (CTimer::Instance().GetCurrentSecond() - fTime < 0.3f)
             {
                 // Tracef("Play the same sound again in 0.3 seconds\n",
@@ -409,7 +392,7 @@ void CSoundManager::PlayCharacterSound3D(float fx, float fy, float fz, const cha
             std::map<std::string, float>::value_type(c_szFileName, CTimer::Instance().GetCurrentSecond()));
     }
 
-    ISoundInstance *pInstance;
+    ISoundInstance *pInstance = nullptr;
 
     if (!GetSoundInstance3D(c_szFileName, &pInstance))
         return;
@@ -442,7 +425,7 @@ void CSoundManager::SetSoundVolume3D(int iIndex, float fVolume)
     pInstance->SetVolume(fVolume);
 }
 
-void CSoundManager::UpdateAmbienceSound3D(int iIndex, float fx, float fy, float fz)
+void CSoundManager::UpdateAmbienceSound3D(int iIndex, float fx, float fy, float fz) const
 {
     ISoundInstance *pInstance = ms_SoundManager3D.GetInstance(iIndex);
 
@@ -471,7 +454,7 @@ void CSoundManager::PlayMusic(const char *c_szFileName)
 
 void CSoundManager::FadeInMusic(const char *c_szFileName, float fVolumeSpeed)
 {
-    DWORD dwIndex;
+    DWORD dwIndex = 0;
     if (GetMusicIndex(c_szFileName, &dwIndex))
     {
         m_MusicInstances[dwIndex].MusicState = MUSIC_STATE_FADE_IN;
@@ -485,15 +468,13 @@ void CSoundManager::FadeInMusic(const char *c_szFileName, float fVolumeSpeed)
 
     for (int i = 0; i < CSoundManagerStream::MUSIC_INSTANCE_MAX_NUM; ++i)
     {
-        TMusicInstance &rMusicInstance = m_MusicInstances[i];
+        TMusicInstance const &rMusicInstance = m_MusicInstances[i];
         if (MUSIC_STATE_OFF != rMusicInstance.MusicState)
             continue;
 
         PlayMusic(i, c_szFileName, 0.0f, fVolumeSpeed);
         return;
     }
-
-    return;
 
     // If there is no empty music slot, then play music on slot 0.
     /*
@@ -506,7 +487,7 @@ void CSoundManager::FadeLimitOutMusic(const char *c_szFileName, float fLimitVolu
 {
     // Tracenf("FadeLimitOutMusic: %s", c_szFileName);
 
-    DWORD dwIndex;
+    DWORD dwIndex = 0;
     if (!GetMusicIndex(c_szFileName, &dwIndex))
     {
         Tracenf("FadeOutMusic: %s - ERROR NOT EXIST", c_szFileName);
@@ -531,7 +512,7 @@ void CSoundManager::FadeOutMusic(const char *c_szFileName, float fVolumeSpeed)
 {
     // Tracenf("FadeOutMusic: %s", c_szFileName);
 
-    DWORD dwIndex;
+    DWORD dwIndex = 0;
     if (!GetMusicIndex(c_szFileName, &dwIndex))
     {
         Tracenf("FadeOutMusic: %s - ERROR NOT EXIST", c_szFileName);
@@ -552,13 +533,13 @@ void CSoundManager::FadeOutAllMusic()
 {
     // Tracenf("FadeOutAllMusic");
 
-    for (int i = 0; i < CSoundManagerStream::MUSIC_INSTANCE_MAX_NUM; ++i)
+    for (auto &m_MusicInstance : m_MusicInstances)
     {
-        if (MUSIC_STATE_OFF == m_MusicInstances[i].MusicState)
+        if (MUSIC_STATE_OFF == m_MusicInstance.MusicState)
             continue;
 
-        m_MusicInstances[i].MusicState = MUSIC_STATE_FADE_OUT;
-        m_MusicInstances[i].fVolumeSpeed = 0.01f;
+        m_MusicInstance.MusicState = MUSIC_STATE_FADE_OUT;
+        m_MusicInstance.fVolumeSpeed = 0.01f;
     }
 }
 
@@ -568,8 +549,8 @@ void CSoundManager::SaveVolume()
     if (m_isSoundDisable)
         return;
 
-    float fBackupMusicVolume = m_fMusicVolume;
-    float fBackupSoundVolume = m_fSoundVolume;
+    float const fBackupMusicVolume = m_fMusicVolume;
+    float const fBackupSoundVolume = m_fSoundVolume;
     __SetMusicVolume(0.0f);
     SetSoundVolume(0.0f);
     m_fBackupMusicVolume = fBackupMusicVolume;
@@ -637,17 +618,19 @@ BOOL CSoundManager::GetMusicIndex(const char *c_szFileName, DWORD *pdwIndex)
 {
     std::string strFileName;
     StringPath(c_szFileName, strFileName);
-    DWORD dwCRC = GetCaseCRC32(strFileName.c_str(), strFileName.length());
+    DWORD const dwCRC = GetCaseCRC32(strFileName.c_str(), strFileName.length());
 
     for (int i = 0; i < CSoundManagerStream::MUSIC_INSTANCE_MAX_NUM; ++i)
     {
         const TMusicInstance &c_rMusicInstance = m_MusicInstances[i];
         if (MUSIC_STATE_OFF != c_rMusicInstance.MusicState)
+        {
             if (c_rMusicInstance.dwMusicFileNameCRC == dwCRC)
             {
                 *pdwIndex = i;
                 return TRUE;
             }
+        }
     }
 
     return FALSE;

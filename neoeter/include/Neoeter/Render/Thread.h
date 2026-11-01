@@ -4,6 +4,7 @@
 class CThread
 {
   public:
+    virtual ~CThread() = default;
     CThread();
     int Create(void *arg);
 
@@ -28,7 +29,7 @@ class CThread
 
   private:
     void *m_pArg;
-    unsigned m_uThreadID;
+    unsigned m_uThreadID = 0;
 };
 
 #endif

@@ -12,6 +12,5 @@ class CNetworkDevice
   protected:
     void Initialize();
 
-  protected:
-    bool m_isWSA;
+    bool m_isWSA = false;
 };

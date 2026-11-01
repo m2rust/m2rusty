@@ -18,11 +18,11 @@ void CGameEventManager::ProcessEventScreenWaving(CActorInstance *pActorInstance,
     TPixelPosition PixelPosition;
     pActorInstance->GetPixelPosition(&PixelPosition);
 
-    float fdx = PixelPosition.x - m_CenterPosition.x;
-    float fdy = PixelPosition.y - m_CenterPosition.y;
-    float fdz = PixelPosition.z - m_CenterPosition.z;
+    float const fdx = PixelPosition.x - m_CenterPosition.x;
+    float const fdy = PixelPosition.y - m_CenterPosition.y;
+    float const fdz = PixelPosition.z - m_CenterPosition.z;
 
-    if (fdx * fdx + fdy * fdy + fdz * fdz > c_pData->iAffectingRange * c_pData->iAffectingRange)
+    if ((fdx * fdx) + (fdy * fdy) + (fdz * fdz) > c_pData->iAffectingRange * c_pData->iAffectingRange)
         return;
 
     SetScreenEffectWaving(c_pData->fDurationTime, c_pData->iPower);
@@ -32,6 +32,4 @@ CGameEventManager::CGameEventManager() : m_CenterPosition(0.0f, 0.0f, 0.0f)
 {
 }
 
-CGameEventManager::~CGameEventManager()
-{
-}
+CGameEventManager::~CGameEventManager() = default;

@@ -14,13 +14,11 @@ class CItemManager : public CSingleton<CItemManager>
         ITEMDESC_COL_NUM,
     };
 
-  public:
-    typedef std::map<DWORD, CItemData *> TItemMap;
-    typedef std::map<std::string, CItemData *> TItemNameMap;
+    using TItemMap = std::map<DWORD, CItemData *>;
+    using TItemNameMap = std::map<std::string, CItemData *>;
 
-  public:
     CItemManager();
-    virtual ~CItemManager();
+    ~CItemManager() override;
 
     void Destroy();
 

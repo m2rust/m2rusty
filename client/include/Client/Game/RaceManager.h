@@ -5,12 +5,11 @@
 class CRaceManager : public CSingleton<CRaceManager>
 {
   public:
-    typedef std::map<DWORD, CRaceData *> TRaceDataMap;
-    typedef TRaceDataMap::iterator TRaceDataIterator;
+    using TRaceDataMap = std::map<DWORD, CRaceData *>;
+    using TRaceDataIterator = TRaceDataMap::iterator;
 
-  public:
     CRaceManager();
-    virtual ~CRaceManager();
+    ~CRaceManager() override;
 
     void Create();
     void Destroy();
@@ -36,7 +35,6 @@ class CRaceManager : public CSingleton<CRaceManager>
     void __Initialize();
     void __DestroyRaceDataMap();
 
-  protected:
     TRaceDataMap m_RaceDataMap;
 
     std::map<std::string, std::string> m_kMap_stRaceName_stSrcName;
@@ -44,5 +42,5 @@ class CRaceManager : public CSingleton<CRaceManager>
 
   private:
     std::string m_strPathName;
-    CRaceData *m_pSelectedRaceData;
+    CRaceData *m_pSelectedRaceData = nullptr;
 };

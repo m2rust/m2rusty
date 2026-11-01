@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
 #include <string>
 
 // Resolves a Windows font face name (e.g. "Tahoma") to a font file on disk.

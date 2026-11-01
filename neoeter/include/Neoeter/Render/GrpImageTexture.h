@@ -7,7 +7,7 @@ class CGraphicImageTexture : public CGraphicTexture
 {
   public:
     CGraphicImageTexture();
-    virtual ~CGraphicImageTexture();
+    ~CGraphicImageTexture() override;
 
     void Destroy();
 
@@ -28,7 +28,7 @@ class CGraphicImageTexture : public CGraphicTexture
     void Initialize();
 
     D3DFORMAT m_d3dFmt;
-    DWORD m_dwFilter;
+    DWORD m_dwFilter = 0U;
 
     std::string m_stFileName;
 };

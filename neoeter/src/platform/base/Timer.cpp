@@ -1,7 +1,7 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 #include <Neoeter/Platform/Base/Timer.h>
 
-#if defined(_WIN32)
+#ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
 #endif
 
@@ -47,22 +47,12 @@ VOID ELTimer_SetFrameMSec()
     gs_dwFrameTime = ELTimer_GetMSec();
 }
 
-CTimer::CTimer()
+CTimer::CTimer() : m_dwCurrentTime(0), m_bUseRealTime(true), m_dwElapsedTime(0), m_fCurrentTime(0.0f), m_index(0)
 {
     ELTimer_Init();
-
-    m_dwCurrentTime = 0;
-    m_bUseRealTime = true;
-    m_index = 0;
-
-    m_dwElapsedTime = 0;
-
-    m_fCurrentTime = 0.0f;
 }
 
-CTimer::~CTimer()
-{
-}
+CTimer::~CTimer() = default;
 
 void CTimer::SetBaseTime()
 {
@@ -83,7 +73,7 @@ void CTimer::Advance()
     }
     else
     {
-        DWORD currentTime = ELTimer_GetMSec();
+        DWORD const currentTime = ELTimer_GetMSec();
 
         if (m_dwCurrentTime == 0)
             m_dwCurrentTime = currentTime;
@@ -98,7 +88,7 @@ void CTimer::Adjust(int iTimeGap)
     m_dwCurrentTime += iTimeGap;
 }
 
-float CTimer::GetCurrentSecond()
+float CTimer::GetCurrentSecond() const
 {
     if (m_bUseRealTime)
         return ELTimer_GetMSec() / 1000.0f;
@@ -106,7 +96,7 @@ float CTimer::GetCurrentSecond()
     return m_fCurrentTime;
 }
 
-DWORD CTimer::GetCurrentMillisecond()
+DWORD CTimer::GetCurrentMillisecond() const
 {
     if (m_bUseRealTime)
         return ELTimer_GetMSec();
@@ -119,7 +109,7 @@ float CTimer::GetElapsedSecond()
     return GetElapsedMilliecond() / 1000.0f;
 }
 
-DWORD CTimer::GetElapsedMilliecond()
+DWORD CTimer::GetElapsedMilliecond() const
 {
     if (!m_bUseRealTime)
         return 16 + (m_index & 1);

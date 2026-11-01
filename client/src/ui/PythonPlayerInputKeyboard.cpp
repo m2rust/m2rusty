@@ -9,11 +9,13 @@ void CPythonPlayer::SetAttackKeyState(bool isPress)
     {
         CInstanceBase *pkInstMain = NEW_GetMainActorPtr();
         if (pkInstMain)
+        {
             if (pkInstMain->IsFishingMode())
             {
                 NEW_Fishing();
                 return;
             }
+        }
     }
 
     m_isAtkKey = isPress;
@@ -69,7 +71,7 @@ void CPythonPlayer::NEW_SetMultiDirKeyState(bool isLeft, bool isRight, bool isUp
     if (!__CanMove())
         return;
 
-    bool isAny = (isLeft || isRight || isUp || isDown);
+    bool const isAny = (isLeft || isRight || isUp || isDown);
 
     if (isAny)
     {

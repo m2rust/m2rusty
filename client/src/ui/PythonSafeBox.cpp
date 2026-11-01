@@ -7,9 +7,8 @@ void CPythonSafeBox::OpenSafeBox(int iSize)
     m_ItemInstanceVector.clear();
     m_ItemInstanceVector.resize(SAFEBOX_SLOT_X_COUNT * iSize);
 
-    for (DWORD i = 0; i < m_ItemInstanceVector.size(); ++i)
+    for (auto &rInstance : m_ItemInstanceVector)
     {
-        TItemData &rInstance = m_ItemInstanceVector[i];
         ZeroMemory(&rInstance, sizeof(rInstance));
     }
 }
@@ -42,7 +41,7 @@ void CPythonSafeBox::SetMoney(DWORD dwMoney)
     m_dwMoney = dwMoney;
 }
 
-DWORD CPythonSafeBox::GetMoney()
+DWORD CPythonSafeBox::GetMoney() const
 {
     return m_dwMoney;
 }
@@ -83,9 +82,8 @@ void CPythonSafeBox::OpenMall(int iSize)
     m_MallItemInstanceVector.clear();
     m_MallItemInstanceVector.resize(SAFEBOX_SLOT_X_COUNT * iSize);
 
-    for (DWORD i = 0; i < m_MallItemInstanceVector.size(); ++i)
+    for (auto &rInstance : m_MallItemInstanceVector)
     {
-        TItemData &rInstance = m_MallItemInstanceVector[i];
         ZeroMemory(&rInstance, sizeof(rInstance));
     }
 }
@@ -148,14 +146,11 @@ DWORD CPythonSafeBox::GetMallSize()
     return m_MallItemInstanceVector.size();
 }
 
-CPythonSafeBox::CPythonSafeBox()
+CPythonSafeBox::CPythonSafeBox() : m_dwMoney(0)
 {
-    m_dwMoney = 0;
 }
 
-CPythonSafeBox::~CPythonSafeBox()
-{
-}
+CPythonSafeBox::~CPythonSafeBox() = default;
 
 PyObject *safeboxGetCurrentSafeboxSize(PyObject *poSelf, PyObject *poArgs)
 {
@@ -164,11 +159,11 @@ PyObject *safeboxGetCurrentSafeboxSize(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetItemID(PyObject *poSelf, PyObject *poArgs)
 {
-    int ipos;
+    int ipos = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ipos))
         return Py_BadArgument();
 
-    TItemData *pInstance;
+    TItemData *pInstance = nullptr;
     if (!CPythonSafeBox::Instance().GetItemDataPtr(ipos, &pInstance))
         return Py_BuildException();
 
@@ -177,11 +172,11 @@ PyObject *safeboxGetItemID(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetItemCount(PyObject *poSelf, PyObject *poArgs)
 {
-    int ipos;
+    int ipos = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ipos))
         return Py_BadArgument();
 
-    TItemData *pInstance;
+    TItemData *pInstance = nullptr;
     if (!CPythonSafeBox::Instance().GetItemDataPtr(ipos, &pInstance))
         return Py_BuildException();
 
@@ -190,11 +185,11 @@ PyObject *safeboxGetItemCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetItemFlags(PyObject *poSelf, PyObject *poArgs)
 {
-    int ipos;
+    int ipos = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ipos))
         return Py_BadArgument();
 
-    TItemData *pInstance;
+    TItemData *pInstance = nullptr;
     if (!CPythonSafeBox::Instance().GetItemDataPtr(ipos, &pInstance))
         return Py_BuildException();
 
@@ -203,17 +198,17 @@ PyObject *safeboxGetItemFlags(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetItemMetinSocket(PyObject *poSelf, PyObject *poArgs)
 {
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iSlotIndex))
         return Py_BadArgument();
-    int iSocketIndex;
+    int iSocketIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSocketIndex))
         return Py_BadArgument();
 
     if (iSocketIndex >= ITEM_SOCKET_SLOT_MAX_NUM)
         return Py_BuildException();
 
-    TItemData *pItemData;
+    TItemData *pItemData = nullptr;
     if (!CPythonSafeBox::Instance().GetItemDataPtr(iSlotIndex, &pItemData))
         return Py_BuildException();
 
@@ -222,16 +217,16 @@ PyObject *safeboxGetItemMetinSocket(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetItemAttribute(PyObject *poSelf, PyObject *poArgs)
 {
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iSlotIndex))
         return Py_BuildException();
-    int iAttrSlotIndex;
+    int iAttrSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iAttrSlotIndex))
         return Py_BuildException();
 
     if (iAttrSlotIndex >= 0 && iAttrSlotIndex < ITEM_ATTRIBUTE_SLOT_MAX_NUM)
     {
-        TItemData *pItemData;
+        TItemData *pItemData = nullptr;
         if (CPythonSafeBox::Instance().GetItemDataPtr(iSlotIndex, &pItemData))
             return Py_BuildValue("ii", pItemData->aAttr[iAttrSlotIndex].bType, pItemData->aAttr[iAttrSlotIndex].sValue);
     }
@@ -246,11 +241,11 @@ PyObject *safeboxGetMoney(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetMallItemID(PyObject *poSelf, PyObject *poArgs)
 {
-    int ipos;
+    int ipos = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ipos))
         return Py_BadArgument();
 
-    TItemData *pInstance;
+    TItemData *pInstance = nullptr;
     if (!CPythonSafeBox::Instance().GetMallItemDataPtr(ipos, &pInstance))
         return Py_BuildException();
 
@@ -259,11 +254,11 @@ PyObject *safeboxGetMallItemID(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetMallItemCount(PyObject *poSelf, PyObject *poArgs)
 {
-    int ipos;
+    int ipos = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ipos))
         return Py_BadArgument();
 
-    TItemData *pInstance;
+    TItemData *pInstance = nullptr;
     if (!CPythonSafeBox::Instance().GetMallItemDataPtr(ipos, &pInstance))
         return Py_BuildException();
 
@@ -272,17 +267,17 @@ PyObject *safeboxGetMallItemCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetMallItemMetinSocket(PyObject *poSelf, PyObject *poArgs)
 {
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iSlotIndex))
         return Py_BadArgument();
-    int iSocketIndex;
+    int iSocketIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSocketIndex))
         return Py_BadArgument();
 
     if (iSocketIndex >= ITEM_SOCKET_SLOT_MAX_NUM)
         return Py_BuildException();
 
-    TItemData *pItemData;
+    TItemData *pItemData = nullptr;
     if (!CPythonSafeBox::Instance().GetMallItemDataPtr(iSlotIndex, &pItemData))
         return Py_BuildException();
 
@@ -291,16 +286,16 @@ PyObject *safeboxGetMallItemMetinSocket(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *safeboxGetMallItemAttribute(PyObject *poSelf, PyObject *poArgs)
 {
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iSlotIndex))
         return Py_BuildException();
-    int iAttrSlotIndex;
+    int iAttrSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iAttrSlotIndex))
         return Py_BuildException();
 
     if (iAttrSlotIndex >= 0 && iAttrSlotIndex < ITEM_ATTRIBUTE_SLOT_MAX_NUM)
     {
-        TItemData *pItemData;
+        TItemData *pItemData = nullptr;
         if (CPythonSafeBox::Instance().GetMallItemDataPtr(iSlotIndex, &pItemData))
             return Py_BuildValue("ii", pItemData->aAttr[iAttrSlotIndex].bType, pItemData->aAttr[iAttrSlotIndex].sValue);
     }
@@ -331,7 +326,7 @@ void initsafebox()
         {"GetMallItemMetinSocket", safeboxGetMallItemMetinSocket, METH_VARARGS},
         {"GetMallItemAttribute", safeboxGetMallItemAttribute, METH_VARARGS},
         {"GetMallSize", safeboxGetMallSize, METH_VARARGS},
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("safebox", s_methods);

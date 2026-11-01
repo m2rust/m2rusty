@@ -22,7 +22,7 @@ bool PyCallClassMemberFunc(PyObject *poClass, const char *c_szFunc, PyObject *po
 bool PyCallClassMemberFunc_ByPyString(PyObject *poClass, PyObject *poFuncName, PyObject *poArgs);
 bool PyCallClassMemberFunc(PyObject *poClass, PyObject *poFunc, PyObject *poArgs);
 
-PyObject *Py_BuildException(const char *c_pszErr = NULL, ...);
+PyObject *Py_BuildException(const char *c_pszErr = nullptr, ...);
 PyObject *Py_BadArgument();
 PyObject *Py_BuildNone();
 PyObject *Py_BuildEmptyTuple();

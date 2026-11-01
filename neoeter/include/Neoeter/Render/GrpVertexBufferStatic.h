@@ -6,7 +6,7 @@ class CStaticVertexBuffer : public CGraphicVertexBuffer
 {
   public:
     CStaticVertexBuffer();
-    virtual ~CStaticVertexBuffer();
+    ~CStaticVertexBuffer() override;
 
     bool Create(int vtxCount, DWORD fvf, bool isManaged = true);
 };

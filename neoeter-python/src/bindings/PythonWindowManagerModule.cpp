@@ -2,10 +2,11 @@
 #include <Neoeter/Python/Bindings/PythonWindow.h>
 #include <Neoeter/Python/Bindings/PythonSlotWindow.h>
 #include <Neoeter/Python/Bindings/PythonGridSlotWindow.h>
+#include <math.h>
 
 bool PyTuple_GetWindow(PyObject *poArgs, int pos, UI::CWindow **ppRetWindow)
 {
-    long iHandle;
+    long iHandle = 0;
     if (!PyTuple_GetLong(poArgs, pos, &iHandle))
         return false;
     if (!iHandle)
@@ -28,7 +29,7 @@ PyObject *wndMgrOnceIgnoreMouseLeftButtonUpEvent(PyObject *poSelf, PyObject *poA
 
 PyObject *wndMgrSetMouseHandler(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *poHandler;
+    PyObject *poHandler = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &poHandler))
         return Py_BuildException();
 
@@ -41,10 +42,10 @@ PyObject *wndMgrSetMouseHandler(PyObject *poSelf, PyObject *poArgs)
 // Window
 PyObject *wndMgrRegister(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -59,10 +60,10 @@ PyObject *wndMgrRegister(PyObject *poSelf, PyObject *poArgs)
 // SlotWindow
 PyObject *wndMgrRegisterSlotWindow(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -73,10 +74,10 @@ PyObject *wndMgrRegisterSlotWindow(PyObject *poSelf, PyObject *poArgs)
 // GridSlotWindow
 PyObject *wndMgrRegisterGridSlotWindow(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -87,10 +88,10 @@ PyObject *wndMgrRegisterGridSlotWindow(PyObject *poSelf, PyObject *poArgs)
 // TextLine
 PyObject *wndMgrRegisterTextLine(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -101,10 +102,10 @@ PyObject *wndMgrRegisterTextLine(PyObject *poSelf, PyObject *poArgs)
 // MarkBox
 PyObject *wndMgrRegisterMarkBox(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -115,10 +116,10 @@ PyObject *wndMgrRegisterMarkBox(PyObject *poSelf, PyObject *poArgs)
 // ImageBox
 PyObject *wndMgrRegisterImageBox(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -129,10 +130,10 @@ PyObject *wndMgrRegisterImageBox(PyObject *poSelf, PyObject *poArgs)
 // ExpandedImageBox
 PyObject *wndMgrRegisterExpandedImageBox(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -143,10 +144,10 @@ PyObject *wndMgrRegisterExpandedImageBox(PyObject *poSelf, PyObject *poArgs)
 // AniImageBox
 PyObject *wndMgrRegisterAniImageBox(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -157,10 +158,10 @@ PyObject *wndMgrRegisterAniImageBox(PyObject *poSelf, PyObject *poArgs)
 // RegisterButton
 PyObject *wndMgrRegisterButton(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -171,10 +172,10 @@ PyObject *wndMgrRegisterButton(PyObject *poSelf, PyObject *poArgs)
 // RadioButton
 PyObject *wndMgrRegisterRadioButton(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -185,10 +186,10 @@ PyObject *wndMgrRegisterRadioButton(PyObject *poSelf, PyObject *poArgs)
 // ToggleButton
 PyObject *wndMgrRegisterToggleButton(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -199,10 +200,10 @@ PyObject *wndMgrRegisterToggleButton(PyObject *poSelf, PyObject *poArgs)
 // DragButton
 PyObject *wndMgrRegisterDragButton(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -213,10 +214,10 @@ PyObject *wndMgrRegisterDragButton(PyObject *poSelf, PyObject *poArgs)
 // Box
 PyObject *wndMgrRegisterBox(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -227,10 +228,10 @@ PyObject *wndMgrRegisterBox(PyObject *poSelf, PyObject *poArgs)
 // Bar
 PyObject *wndMgrRegisterBar(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -241,10 +242,10 @@ PyObject *wndMgrRegisterBar(PyObject *poSelf, PyObject *poArgs)
 // Line
 PyObject *wndMgrRegisterLine(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -255,10 +256,10 @@ PyObject *wndMgrRegisterLine(PyObject *poSelf, PyObject *poArgs)
 // Slot
 PyObject *wndMgrRegisterBar3D(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -269,10 +270,10 @@ PyObject *wndMgrRegisterBar3D(PyObject *poSelf, PyObject *poArgs)
 // NumberLine
 PyObject *wndMgrRegisterNumberLine(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *po;
+    PyObject *po = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &po))
         return Py_BuildException();
-    char *szLayer;
+    char *szLayer = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szLayer))
         return Py_BuildException();
 
@@ -284,7 +285,7 @@ PyObject *wndMgrRegisterNumberLine(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrDestroy(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -294,7 +295,7 @@ PyObject *wndMgrDestroy(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrIsFocus(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -303,7 +304,7 @@ PyObject *wndMgrIsFocus(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetFocus(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -313,7 +314,7 @@ PyObject *wndMgrSetFocus(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrKillFocus(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (PyTuple_GetWindow(poArgs, 0, &pWin))
     {
         if (pWin == UI::CWindowManager::Instance().GetActivateWindow())
@@ -331,7 +332,7 @@ PyObject *wndMgrKillFocus(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrLock(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -347,10 +348,10 @@ PyObject *wndMgrUnlock(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetName(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szName))
         return Py_BuildException();
 
@@ -360,7 +361,7 @@ PyObject *wndMgrSetName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetTop(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -370,7 +371,7 @@ PyObject *wndMgrSetTop(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrShow(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -380,7 +381,7 @@ PyObject *wndMgrShow(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrHide(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -390,7 +391,7 @@ PyObject *wndMgrHide(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrIsShow(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -399,7 +400,7 @@ PyObject *wndMgrIsShow(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrIsRTL(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -408,10 +409,10 @@ PyObject *wndMgrIsRTL(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetScreenSize(PyObject *poSelf, PyObject *poArgs)
 {
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &width))
         return Py_BuildException();
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &height))
         return Py_BuildException();
 
@@ -421,10 +422,10 @@ PyObject *wndMgrSetScreenSize(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetParent(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    UI::CWindow *pParentWin;
+    UI::CWindow *pParentWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 1, &pParentWin))
         return Py_BuildException();
 
@@ -434,7 +435,7 @@ PyObject *wndMgrSetParent(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetPickAlways(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -444,13 +445,13 @@ PyObject *wndMgrSetPickAlways(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetWndSize(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &width))
         return Py_BuildException();
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &height))
         return Py_BuildException();
 
@@ -460,13 +461,13 @@ PyObject *wndMgrSetWndSize(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetWndPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &x))
         return Py_BuildException();
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &y))
         return Py_BuildException();
 
@@ -476,7 +477,7 @@ PyObject *wndMgrSetWndPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetName(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -485,7 +486,7 @@ PyObject *wndMgrGetName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetWndWidth(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -494,7 +495,7 @@ PyObject *wndMgrGetWndWidth(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetWndHeight(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -503,11 +504,12 @@ PyObject *wndMgrGetWndHeight(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetWndLocalPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    long lx, ly;
+    long lx = 0;
+    long ly = 0;
     pWin->GetPosition(&lx, &ly);
 
     return Py_BuildValue("ii", lx, ly);
@@ -515,30 +517,30 @@ PyObject *wndMgrGetWndLocalPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetWndGlobalPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    RECT &rRect = pWindow->GetRect();
+    RECT const &rRect = pWindow->GetRect();
     return Py_BuildValue("ii", rRect.left, rRect.top);
 }
 
 PyObject *wndMgrGetWindowRect(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    RECT &rRect = pWin->GetRect();
+    RECT const &rRect = pWin->GetRect();
     return Py_BuildValue("iiii", rRect.left, rRect.top, rRect.right - rRect.left, rRect.bottom - rRect.top);
 }
 
 PyObject *wndMgrSetWindowHorizontalAlign(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iAlign;
+    int iAlign = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iAlign))
         return Py_BuildException();
 
@@ -549,10 +551,10 @@ PyObject *wndMgrSetWindowHorizontalAlign(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetWindowVerticalAlign(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iAlign;
+    int iAlign = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iAlign))
         return Py_BuildException();
 
@@ -563,7 +565,7 @@ PyObject *wndMgrSetWindowVerticalAlign(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrIsIn(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -572,11 +574,12 @@ PyObject *wndMgrIsIn(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetMouseLocalPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    long lx, ly;
+    long lx = 0;
+    long ly = 0;
     pWin->GetMouseLocalPosition(lx, ly);
     return Py_BuildValue("ii", lx, ly);
 }
@@ -584,7 +587,7 @@ PyObject *wndMgrGetMouseLocalPosition(PyObject *poSelf, PyObject *poArgs)
 PyObject *wndMgrGetHyperlink(PyObject *poSelf, PyObject *poArgs)
 {
     char retBuf[1024];
-    int retLen = CGraphicTextInstance::Hyperlink_GetText(retBuf, sizeof(retBuf) - 1);
+    int const retLen = CGraphicTextInstance::Hyperlink_GetText(retBuf, sizeof(retBuf) - 1);
     retBuf[retLen] = '\0';
 
     return Py_BuildValue("s#", retBuf, retLen);
@@ -602,7 +605,8 @@ PyObject *wndMgrGetScreenHeight(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetMousePosition(PyObject *poSelf, PyObject *poArgs)
 {
-    long lx, ly;
+    long lx = 0;
+    long ly = 0;
     UI::CWindowManager::Instance().GetMousePosition(lx, ly);
     return Py_BuildValue("ii", lx, ly);
 }
@@ -614,7 +618,7 @@ PyObject *wndMgrIsDragging(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrIsPickedWindow(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -624,7 +628,7 @@ PyObject *wndMgrIsPickedWindow(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetChildCount(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -633,40 +637,64 @@ PyObject *wndMgrGetChildCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrAddFlag(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    char *pszFlag;
+    char *pszFlag = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &pszFlag))
         return Py_BuildException();
 
     if (pszFlag && *pszFlag)
     {
         if (!stricmp(pszFlag, "movable"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_MOVABLE);
+        }
         else if (!stricmp(pszFlag, "limit"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_LIMIT);
+        }
         else if (!stricmp(pszFlag, "dragable"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_DRAGABLE);
+        }
         else if (!stricmp(pszFlag, "attach"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_ATTACH);
+        }
         else if (!stricmp(pszFlag, "restrict_x"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_RESTRICT_X);
+        }
         else if (!stricmp(pszFlag, "restrict_y"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_RESTRICT_Y);
+        }
         else if (!stricmp(pszFlag, "float"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_FLOAT);
+        }
         else if (!stricmp(pszFlag, "not_pick"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_NOT_PICK);
+        }
         else if (!stricmp(pszFlag, "ignore_size"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_IGNORE_SIZE);
+        }
         else if (!stricmp(pszFlag, "rtl"))
+        {
             pWin->AddFlag(UI::CWindow::FLAG_RTL);
+        }
         else if (!stricmp(pszFlag, "ltr"))
+        {
             pWin->RemoveFlag(UI::CWindow::FLAG_RTL);
+        }
         else
+        {
             TraceError("Unknown window flag %s", pszFlag);
+        }
     }
 
     return Py_BuildNone();
@@ -674,20 +702,20 @@ PyObject *wndMgrAddFlag(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetLimitBias(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int l;
+    int l = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &l))
         return Py_BuildException();
-    int r;
+    int r = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &r))
         return Py_BuildException();
-    int t;
+    int t = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &t))
         return Py_BuildException();
-    int b;
+    int b = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &b))
         return Py_BuildException();
 
@@ -697,7 +725,7 @@ PyObject *wndMgrSetLimitBias(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrUpdateRect(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
@@ -707,34 +735,34 @@ PyObject *wndMgrUpdateRect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrAppendSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iIndex))
         return Py_BuildException();
 
-    int ixPosition;
+    int ixPosition = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &ixPosition))
         return Py_BuildException();
 
-    int iyPosition;
+    int iyPosition = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iyPosition))
         return Py_BuildException();
 
-    int ixCellSize;
+    int ixCellSize = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &ixCellSize))
         return Py_BuildException();
 
-    int iyCellSize;
+    int iyCellSize = 0;
     if (!PyTuple_GetInteger(poArgs, 5, &iyCellSize))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->AppendSlot(iIndex, ixPosition, iyPosition, ixCellSize, iyCellSize);
 
     return Py_BuildNone();
@@ -742,35 +770,35 @@ PyObject *wndMgrAppendSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrArrangeSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iStartIndex;
+    int iStartIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iStartIndex))
         return Py_BuildException();
 
-    int ixCellCount;
+    int ixCellCount = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &ixCellCount))
         return Py_BuildException();
 
-    int iyCellCount;
+    int iyCellCount = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iyCellCount))
         return Py_BuildException();
 
-    int ixCellSize;
+    int ixCellSize = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &ixCellSize))
         return Py_BuildException();
 
-    int iyCellSize;
+    int iyCellSize = 0;
     if (!PyTuple_GetInteger(poArgs, 5, &iyCellSize))
         return Py_BuildException();
 
-    int ixBlank;
+    int ixBlank = 0;
     if (!PyTuple_GetInteger(poArgs, 6, &ixBlank))
         return Py_BuildException();
 
-    int iyBlank;
+    int iyBlank = 0;
     if (!PyTuple_GetInteger(poArgs, 7, &iyBlank))
         return Py_BuildException();
 
@@ -780,7 +808,7 @@ PyObject *wndMgrArrangeSlot(PyObject *poSelf, PyObject *poArgs)
         return Py_BuildException();
     }
 
-    UI::CGridSlotWindow *pGridSlotWin = (UI::CGridSlotWindow *)pWin;
+    auto *pGridSlotWin = (UI::CGridSlotWindow *)pWin;
     pGridSlotWin->ArrangeGridSlot(iStartIndex, ixCellCount, iyCellCount, ixCellSize, iyCellSize, ixBlank, iyBlank);
 
     return Py_BuildNone();
@@ -788,24 +816,24 @@ PyObject *wndMgrArrangeSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetSlotBaseImage(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fr))
         return Py_BuildException();
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fg))
         return Py_BuildException();
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &fb))
         return Py_BuildException();
-    float fa;
+    float fa = NAN;
     if (!PyTuple_GetFloat(poArgs, 5, &fa))
         return Py_BuildException();
 
@@ -815,7 +843,7 @@ PyObject *wndMgrSetSlotBaseImage(PyObject *poSelf, PyObject *poArgs)
         return Py_BuildException();
     }
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlotBaseImage(szFileName, fr, fg, fb, fa);
 
     return Py_BuildNone();
@@ -823,35 +851,35 @@ PyObject *wndMgrSetSlotBaseImage(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetCoverButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    char *szUpImageName;
+    char *szUpImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szUpImageName))
         return Py_BuildException();
-    char *szOverImageName;
+    char *szOverImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 3, &szOverImageName))
         return Py_BuildException();
-    char *szDownImageName;
+    char *szDownImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 4, &szDownImageName))
         return Py_BuildException();
-    char *szDisableImageName;
+    char *szDisableImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 5, &szDisableImageName))
         return Py_BuildException();
 
-    int iLeftButtonEnable;
+    int iLeftButtonEnable = 0;
     if (!PyTuple_GetInteger(poArgs, 6, &iLeftButtonEnable))
         return Py_BuildException();
-    int iRightButtonEnable;
+    int iRightButtonEnable = 0;
     if (!PyTuple_GetInteger(poArgs, 7, &iRightButtonEnable))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->SetCoverButton(iSlotIndex, szUpImageName, szOverImageName, szDownImageName, szDisableImageName,
                              iLeftButtonEnable, iRightButtonEnable);
 
@@ -860,15 +888,15 @@ PyObject *wndMgrSetCoverButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrEnableCoverButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->EnableCoverButton(iSlotIndex);
 
     return Py_BuildNone();
@@ -876,15 +904,15 @@ PyObject *wndMgrEnableCoverButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrDisableCoverButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->DisableCoverButton(iSlotIndex);
 
     return Py_BuildNone();
@@ -892,25 +920,25 @@ PyObject *wndMgrDisableCoverButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrIsDisableCoverButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     return Py_BuildValue("i", pSlotWin->IsDisableCoverButton(iSlotIndex));
 }
 
 PyObject *wndMgrSetAlwaysRenderCoverButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     bool bAlwaysRender = false;
 
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
@@ -919,7 +947,7 @@ PyObject *wndMgrSetAlwaysRenderCoverButton(PyObject *poSelf, PyObject *poArgs)
     if (!PyTuple_GetBoolean(poArgs, 2, &bAlwaysRender))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->SetAlwaysRenderCoverButton(iSlotIndex, bAlwaysRender);
 
     return Py_BuildNone();
@@ -927,21 +955,21 @@ PyObject *wndMgrSetAlwaysRenderCoverButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrAppendSlotButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    char *szUpImageName;
+    char *szUpImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szUpImageName))
         return Py_BuildException();
-    char *szOverImageName;
+    char *szOverImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szOverImageName))
         return Py_BuildException();
-    char *szDownImageName;
+    char *szDownImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 3, &szDownImageName))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->AppendSlotButton(szUpImageName, szOverImageName, szDownImageName);
 
     return Py_BuildNone();
@@ -949,15 +977,15 @@ PyObject *wndMgrAppendSlotButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrAppendRequirementSignImage(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    char *szImageName;
+    char *szImageName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szImageName))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->AppendRequirementSignImage(szImageName);
 
     return Py_BuildNone();
@@ -965,15 +993,15 @@ PyObject *wndMgrAppendRequirementSignImage(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrShowSlotButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotNumber;
+    int iSlotNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotNumber))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->ShowSlotButton(iSlotNumber);
 
     return Py_BuildNone();
@@ -981,11 +1009,11 @@ PyObject *wndMgrShowSlotButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrHideAllSlotButton(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->HideAllSlotButton();
 
     return Py_BuildNone();
@@ -993,15 +1021,15 @@ PyObject *wndMgrHideAllSlotButton(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrShowRequirementSign(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotNumber;
+    int iSlotNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotNumber))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->ShowRequirementSign(iSlotNumber);
 
     return Py_BuildNone();
@@ -1009,15 +1037,15 @@ PyObject *wndMgrShowRequirementSign(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrHideRequirementSign(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int iSlotNumber;
+    int iSlotNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotNumber))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWindow;
+    auto *pSlotWin = (UI::CSlotWindow *)pWindow;
     pSlotWin->HideRequirementSign(iSlotNumber);
 
     return Py_BuildNone();
@@ -1025,14 +1053,14 @@ PyObject *wndMgrHideRequirementSign(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrRefreshSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->RefreshSlot();
 
     return Py_BuildNone();
@@ -1040,17 +1068,17 @@ PyObject *wndMgrRefreshSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetUseMode(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iFlag))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetUseMode(iFlag);
 
     return Py_BuildNone();
@@ -1058,17 +1086,17 @@ PyObject *wndMgrSetUseMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetUsableItem(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iFlag))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetUsableItem(iFlag);
 
     return Py_BuildNone();
@@ -1076,18 +1104,18 @@ PyObject *wndMgrSetUsableItem(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrClearSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->ClearSlot(iSlotIndex);
 
     return Py_BuildNone();
@@ -1095,14 +1123,14 @@ PyObject *wndMgrClearSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrClearAllSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->ClearAllSlot();
 
     return Py_BuildNone();
@@ -1110,50 +1138,50 @@ PyObject *wndMgrClearAllSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrHasSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
 
     return Py_BuildValue("i", pSlotWin->HasSlot(iSlotIndex));
 }
 
 PyObject *wndMgrSetSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    int iItemIndex;
+    int iItemIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iItemIndex))
         return Py_BuildException();
 
-    int iWidth;
+    int iWidth = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iWidth))
         return Py_BuildException();
 
-    int iHeight;
+    int iHeight = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &iHeight))
         return Py_BuildException();
 
-    long iImageHandle;
+    long iImageHandle = 0;
     if (!PyTuple_GetLong(poArgs, 5, &iImageHandle))
         return Py_BuildException();
 
     D3DXCOLOR diffuseColor;
-    PyObject *pTuple;
+    PyObject *pTuple = nullptr;
     if (!PyTuple_GetObject(poArgs, 6, &pTuple))
     {
         diffuseColor = D3DXCOLOR(1.0, 1.0, 1.0, 1.0);
@@ -1177,7 +1205,7 @@ PyObject *wndMgrSetSlot(PyObject *poSelf, PyObject *poArgs)
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlot(iSlotIndex, iItemIndex, iWidth, iHeight, (CGraphicImage *)iImageHandle, diffuseColor);
 
     return Py_BuildNone();
@@ -1185,22 +1213,22 @@ PyObject *wndMgrSetSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetSlotCount(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    int iCount;
+    int iCount = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iCount))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlotCount(iSlotIndex, iCount);
 
     return Py_BuildNone();
@@ -1208,26 +1236,26 @@ PyObject *wndMgrSetSlotCount(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetSlotCountNew(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    int iGrade;
+    int iGrade = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iGrade))
         return Py_BuildException();
 
-    int iCount;
+    int iCount = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iCount))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlotCountNew(iSlotIndex, iGrade, iCount);
 
     return Py_BuildNone();
@@ -1235,15 +1263,15 @@ PyObject *wndMgrSetSlotCountNew(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetSlotCoolTime(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
-    float fCoolTime;
+    float fCoolTime = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fCoolTime))
         return Py_BuildException();
 
@@ -1253,7 +1281,7 @@ PyObject *wndMgrSetSlotCoolTime(PyObject *poSelf, PyObject *poArgs)
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlotCoolTime(iSlotIndex, fCoolTime, fElapsedTime);
 
     return Py_BuildNone();
@@ -1268,126 +1296,126 @@ PyObject *wndMgrSetToggleSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrActivateSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->ActivateSlot(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrDeactivateSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->DeactivateSlot(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrEnableSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->EnableSlot(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrDisableSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->DisableSlot(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrShowSlotBaseImage(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->ShowSlotBaseImage(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrHideSlotBaseImage(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->HideSlotBaseImage(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrSetSlotType(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlotType(iType);
 
     return Py_BuildNone();
@@ -1395,18 +1423,18 @@ PyObject *wndMgrSetSlotType(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetSlotStyle(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iStyle;
+    int iStyle = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iStyle))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SetSlotStyle(iStyle);
 
     return Py_BuildNone();
@@ -1414,18 +1442,18 @@ PyObject *wndMgrSetSlotStyle(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSelectSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->SelectSlot(iIndex);
 
     return Py_BuildNone();
@@ -1433,14 +1461,14 @@ PyObject *wndMgrSelectSlot(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrClearSelected(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->ClearSelected();
 
     return Py_BuildNone();
@@ -1448,113 +1476,113 @@ PyObject *wndMgrClearSelected(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrGetSelectedSlotCount(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     return Py_BuildValue("i", pSlotWin->GetSelectedSlotCount());
 }
 
 PyObject *wndMgrGetSelectedSlotNumber(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iSlotNumber;
+    int iSlotNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotNumber))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     return Py_BuildValue("i", pSlotWin->GetSelectedSlotNumber(iSlotNumber));
 }
 
 PyObject *wndMgrIsSelectedSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iSlotNumber;
+    int iSlotNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotNumber))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     return Py_BuildValue("i", pSlotWin->isSelectedSlot(iSlotNumber));
 }
 
 PyObject *wndMgrGetSlotCount(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     return Py_BuildValue("i", pSlotWin->GetSlotCount());
 }
 
 PyObject *wndMgrLockSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->LockSlot(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndMgrUnlockSlot(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWin;
+    UI::CWindow *pWin = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWin))
         return Py_BuildException();
-    int iSlotIndex;
+    int iSlotIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iSlotIndex))
         return Py_BuildException();
 
     if (!pWin->IsType(UI::CSlotWindow::Type()))
         return Py_BuildException();
 
-    UI::CSlotWindow *pSlotWin = (UI::CSlotWindow *)pWin;
+    auto *pSlotWin = (UI::CSlotWindow *)pWin;
     pSlotWin->UnlockSlot(iSlotIndex);
     return Py_BuildNone();
 }
 
 PyObject *wndBarSetColor(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iColor;
+    int iColor = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iColor))
         return Py_BuildException();
 
     if (pWindow->IsType(UI::CBar3D::Type()))
     {
-        int iLeftColor = iColor;
+        int const iLeftColor = iColor;
 
-        int iRightColor;
+        int iRightColor = 0;
         if (!PyTuple_GetInteger(poArgs, 2, &iRightColor))
             return Py_BuildException();
-        int iCenterColor;
+        int iCenterColor = 0;
         if (!PyTuple_GetInteger(poArgs, 3, &iCenterColor))
             return Py_BuildException();
 
@@ -1562,26 +1590,26 @@ PyObject *wndBarSetColor(PyObject *poSelf, PyObject *poArgs)
     }
     else
     {
-        ((UI::CWindow *)pWindow)->SetColor(iColor);
+        (pWindow)->SetColor(iColor);
     }
     return Py_BuildNone();
 }
 
 PyObject *wndMgrAttachIcon(PyObject *poSelf, PyObject *poArgs)
 {
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iType))
         return Py_BuildException();
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iIndex))
         return Py_BuildException();
-    int iSlotNumber;
+    int iSlotNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iSlotNumber))
         return Py_BuildException();
-    int iWidth;
+    int iWidth = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iWidth))
         return Py_BuildException();
-    int iHeight;
+    int iHeight = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &iHeight))
         return Py_BuildException();
 
@@ -1597,7 +1625,7 @@ PyObject *wndMgrDeattachIcon(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrSetAttachingFlag(PyObject *poSelf, PyObject *poArgs)
 {
-    BOOL bFlag;
+    BOOL bFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &bFlag))
         return Py_BuildException();
 
@@ -1608,10 +1636,10 @@ PyObject *wndMgrSetAttachingFlag(PyObject *poSelf, PyObject *poArgs)
 // Text
 PyObject *wndTextSetMax(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iMax;
+    int iMax = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iMax))
         return Py_BuildException();
 
@@ -1620,10 +1648,10 @@ PyObject *wndTextSetMax(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetHorizontalAlign(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
 
@@ -1632,10 +1660,10 @@ PyObject *wndTextSetHorizontalAlign(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetVerticalAlign(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
 
@@ -1644,10 +1672,10 @@ PyObject *wndTextSetVerticalAlign(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetSecret(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iFlag))
         return Py_BuildException();
 
@@ -1656,10 +1684,10 @@ PyObject *wndTextSetSecret(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetOutline(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iFlag))
         return Py_BuildException();
 
@@ -1668,10 +1696,10 @@ PyObject *wndTextSetOutline(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetFeather(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iFlag))
         return Py_BuildException();
 
@@ -1680,10 +1708,10 @@ PyObject *wndTextSetFeather(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetMultiLine(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iFlag))
         return Py_BuildException();
 
@@ -1692,10 +1720,10 @@ PyObject *wndTextSetMultiLine(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetFontName(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFontName;
+    char *szFontName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFontName))
         return Py_BuildException();
 
@@ -1704,32 +1732,33 @@ PyObject *wndTextSetFontName(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetFontColor(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
     if (2 == PyTuple_Size(poArgs))
     {
-        int iColor;
+        int iColor = 0;
         if (!PyTuple_GetInteger(poArgs, 1, &iColor))
             return Py_BuildException();
         ((UI::CTextLine *)pWindow)->SetFontColor(iColor);
     }
     else if (4 == PyTuple_Size(poArgs))
     {
-        float fr;
+        float fr = NAN;
         if (!PyTuple_GetFloat(poArgs, 1, &fr))
             return Py_BuildException();
-        float fg;
+        float fg = NAN;
         if (!PyTuple_GetFloat(poArgs, 2, &fg))
             return Py_BuildException();
-        float fb;
+        float fb = NAN;
         if (!PyTuple_GetFloat(poArgs, 3, &fb))
             return Py_BuildException();
-        float fa = 1.0f;
+        float const fa = 1.0f;
 
-        BYTE argb[4] = {(BYTE)(255.0f * fb), (BYTE)(255.0f * fg), (BYTE)(255.0f * fr), (BYTE)(255.0f * fa)};
-        ((UI::CTextLine *)pWindow)->SetFontColor(*((DWORD *)argb));
+        BYTE argb[4] = {static_cast<BYTE>(255.0f * fb), static_cast<BYTE>(255.0f * fg), static_cast<BYTE>(255.0f * fr),
+                        static_cast<BYTE>(255.0f * fa)};
+        ((UI::CTextLine *)pWindow)->SetFontColor(*(reinterpret_cast<DWORD *>(argb)));
     }
     else
     {
@@ -1740,10 +1769,10 @@ PyObject *wndTextSetFontColor(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetLimitWidth(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fWidth;
+    float fWidth = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fWidth))
         return Py_BuildException();
 
@@ -1752,10 +1781,10 @@ PyObject *wndTextSetLimitWidth(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextSetText(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szText;
+    char *szText = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szText))
         return Py_BuildException();
 
@@ -1764,7 +1793,7 @@ PyObject *wndTextSetText(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextGetText(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1773,14 +1802,14 @@ PyObject *wndTextGetText(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndTextGetTextSize(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int nWidth;
-    int nHeight;
+    int nWidth = 0;
+    int nHeight = 0;
 
-    UI::CTextLine *pkTextLine = (UI::CTextLine *)pWindow;
+    auto *pkTextLine = (UI::CTextLine *)pWindow;
     pkTextLine->GetTextSize(&nWidth, &nHeight);
 
     return Py_BuildValue("(ii)", nWidth, nHeight);
@@ -1788,7 +1817,7 @@ PyObject *wndTextGetTextSize(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndTextShowCursor(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1797,7 +1826,7 @@ PyObject *wndTextShowCursor(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextHideCursor(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1806,7 +1835,7 @@ PyObject *wndTextHideCursor(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndTextGetCursorPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1815,10 +1844,10 @@ PyObject *wndTextGetCursorPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndNumberSetNumber(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szNumber;
+    char *szNumber = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szNumber))
         return Py_BuildException();
 
@@ -1829,7 +1858,7 @@ PyObject *wndNumberSetNumber(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndNumberSetNumberHorizontalAlignCenter(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1840,7 +1869,7 @@ PyObject *wndNumberSetNumberHorizontalAlignCenter(PyObject *poSelf, PyObject *po
 
 PyObject *wndNumberSetNumberHorizontalAlignRight(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1851,10 +1880,10 @@ PyObject *wndNumberSetNumberHorizontalAlignRight(PyObject *poSelf, PyObject *poA
 
 PyObject *wndNumberSetPath(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szPath;
+    char *szPath = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szPath))
         return Py_BuildException();
 
@@ -1865,10 +1894,10 @@ PyObject *wndNumberSetPath(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMarkBox_SetImageFilename(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -1890,11 +1919,11 @@ PyObject *wndMarkBox_Load(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMarkBox_SetIndex(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    int nIndex;
+    int nIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &nIndex))
         return Py_BuildException();
 
@@ -1904,11 +1933,11 @@ PyObject *wndMarkBox_SetIndex(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMarkBox_SetScale(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
-    float fScale;
+    float fScale = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fScale))
         return Py_BuildException();
 
@@ -1918,19 +1947,19 @@ PyObject *wndMarkBox_SetScale(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMarkBox_SetDiffuseColor(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fr))
         return Py_BuildException();
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fg))
         return Py_BuildException();
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fb))
         return Py_BuildException();
-    float fa;
+    float fa = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &fa))
         return Py_BuildException();
 
@@ -1941,10 +1970,10 @@ PyObject *wndMarkBox_SetDiffuseColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndImageLoadImage(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -1956,19 +1985,19 @@ PyObject *wndImageLoadImage(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndImageSetDiffuseColor(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fr))
         return Py_BuildException();
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fg))
         return Py_BuildException();
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fb))
         return Py_BuildException();
-    float fa;
+    float fa = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &fa))
         return Py_BuildException();
 
@@ -1979,7 +2008,7 @@ PyObject *wndImageSetDiffuseColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndImageGetWidth(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1988,7 +2017,7 @@ PyObject *wndImageGetWidth(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndImageGetHeight(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -1997,13 +2026,13 @@ PyObject *wndImageGetHeight(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndImageSetScale(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fx))
         return Py_BuildException();
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fy))
         return Py_BuildException();
 
@@ -2013,13 +2042,13 @@ PyObject *wndImageSetScale(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndImageSetOrigin(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fx))
         return Py_BuildException();
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fy))
         return Py_BuildException();
 
@@ -2029,10 +2058,10 @@ PyObject *wndImageSetOrigin(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndImageSetRotation(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fRotation;
+    float fRotation = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fRotation))
         return Py_BuildException();
 
@@ -2042,35 +2071,39 @@ PyObject *wndImageSetRotation(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndImageSetRenderingRect(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fLeft;
+    float fLeft = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fLeft))
         return Py_BuildException();
-    float fTop;
+    float fTop = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fTop))
         return Py_BuildException();
-    float fRight;
+    float fRight = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fRight))
         return Py_BuildException();
-    float fBottom;
+    float fBottom = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &fBottom))
         return Py_BuildException();
 
     if (pWindow->IsType(UI::CExpandedImageBox::Type()))
+    {
         ((UI::CExpandedImageBox *)pWindow)->SetRenderingRect(fLeft, fTop, fRight, fBottom);
+    }
     else if (pWindow->IsType(UI::CAniImageBox::Type()))
+    {
         ((UI::CAniImageBox *)pWindow)->SetRenderingRect(fLeft, fTop, fRight, fBottom);
+    }
 
     return Py_BuildNone();
 }
 PyObject *wndImageSetRenderingMode(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iMode))
         return Py_BuildException();
 
@@ -2081,10 +2114,10 @@ PyObject *wndImageSetRenderingMode(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndImageSetDelay(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    float fDelay;
+    float fDelay = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fDelay))
         return Py_BuildException();
 
@@ -2094,10 +2127,10 @@ PyObject *wndImageSetDelay(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndImageAppendImage(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -2108,10 +2141,10 @@ PyObject *wndImageAppendImage(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndButtonSetUpVisual(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -2121,10 +2154,10 @@ PyObject *wndButtonSetUpVisual(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonSetOverVisual(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -2134,10 +2167,10 @@ PyObject *wndButtonSetOverVisual(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonSetDownVisual(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -2147,10 +2180,10 @@ PyObject *wndButtonSetDownVisual(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonSetDisableVisual(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -2160,7 +2193,7 @@ PyObject *wndButtonSetDisableVisual(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonGetUpVisualFileName(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2168,7 +2201,7 @@ PyObject *wndButtonGetUpVisualFileName(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonGetOverVisualFileName(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2176,7 +2209,7 @@ PyObject *wndButtonGetOverVisualFileName(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonGetDownVisualFileName(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2184,7 +2217,7 @@ PyObject *wndButtonGetDownVisualFileName(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonFlash(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2194,7 +2227,7 @@ PyObject *wndButtonFlash(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonEnable(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2204,7 +2237,7 @@ PyObject *wndButtonEnable(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonDisable(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2214,7 +2247,7 @@ PyObject *wndButtonDisable(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonDown(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2224,7 +2257,7 @@ PyObject *wndButtonDown(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonSetUp(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
@@ -2234,19 +2267,19 @@ PyObject *wndButtonSetUp(PyObject *poSelf, PyObject *poArgs)
 }
 PyObject *wndButtonSetRestrictMovementArea(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ix))
         return Py_BuildException();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iy))
         return Py_BuildException();
-    int iwidth;
+    int iwidth = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iwidth))
         return Py_BuildException();
-    int iheight;
+    int iheight = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &iheight))
         return Py_BuildException();
 
@@ -2257,19 +2290,18 @@ PyObject *wndButtonSetRestrictMovementArea(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndButtonIsDown(PyObject *poSelf, PyObject *poArgs)
 {
-    UI::CWindow *pWindow;
+    UI::CWindow *pWindow = nullptr;
     if (!PyTuple_GetWindow(poArgs, 0, &pWindow))
         return Py_BuildException();
 
     return Py_BuildValue("i", ((UI::CButton *)pWindow)->IsPressed());
 }
 
-extern BOOL g_bOutlineBoxEnable;
 extern BOOL g_bShowOverInWindowName;
 
 PyObject *wndMgrSetOutlineFlag(PyObject *poSelf, PyObject *poArgs)
 {
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iFlag))
         return Py_BuildException();
 
@@ -2280,7 +2312,7 @@ PyObject *wndMgrSetOutlineFlag(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *wndMgrShowOverInWindowName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iFlag;
+    int iFlag = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iFlag))
         return Py_BuildException();
 
@@ -2482,7 +2514,7 @@ void initwndMgr()
         {"SetOutlineFlag", wndMgrSetOutlineFlag, METH_VARARGS},
         {"ShowOverInWindowName", wndMgrShowOverInWindowName, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("wndMgr", s_methods);

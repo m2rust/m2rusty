@@ -8,14 +8,13 @@
 #include <Platform/DirectXMathCompat.h>
 
 // Force link ImageLoaderCompat.cpp from static libEterBase.a
-extern bool Platform_GetImageInfo(const void *data, size_t size, uint32_t *outW, uint32_t *outH, uint32_t *outFormat);
-extern bool Platform_DecodeImage(const void *data, size_t size, uint32_t *outW, uint32_t *outH,
-                                 std::vector<uint8_t> &outPixels);
-void *g_pfnForceLinkImageLoader[] = {(void *)&Platform_GetImageInfo, (void *)&Platform_DecodeImage};
+
+void *g_pfnForceLinkImageLoader[] = {reinterpret_cast<void *>(&Platform_GetImageInfo),
+                                     reinterpret_cast<void *>(&Platform_DecodeImage)};
 
 // The renderer, not the platform, selects this translation unit (R8): the GL
 // compatibility facade is the Windows path too (T1.5).
-#if defined(OPENMT2_RENDERER_GL)
+#ifdef OPENMT2_RENDERER_GL
 #include <Platform/RenderBackend.h>
 #include <algorithm>
 #include <cstring>
@@ -61,9 +60,9 @@ void CopyMatrix(float (&dst)[16], const D3DXMATRIX &src)
 // =============================================================
 
 IDirect3DTexture9::IDirect3DTexture9(UINT w, UINT h, D3DFORMAT fmt, UINT /*levels*/)
-    : m_width(w ? w : 1), m_height(h ? h : 1), m_format(fmt), m_handle{0, 0}, m_dirty(false)
+    : m_width(w ? w : 1), m_height(h ? h : 1), m_format(fmt), m_handle{.id = 0, .generation = 0}
 {
-    size_t sz = GetLevelDataSize(0);
+    size_t const sz = GetLevelDataSize(0);
     m_data.resize(sz ? sz : 4, 0);
 }
 
@@ -72,7 +71,7 @@ IDirect3DTexture9::~IDirect3DTexture9()
     if (m_handle.IsValid())
     {
         Backend().Destroy(m_handle);
-        m_handle = RenderHandle{0, 0};
+        m_handle = RenderHandle{.id = 0, .generation = 0};
     }
 }
 
@@ -87,42 +86,42 @@ RenderHandle IDirect3DTexture9::GetTextureHandle()
 
 size_t IDirect3DTexture9::GetLevelDataSize(UINT level) const
 {
-    UINT mipW = std::max(1u, m_width >> level);
-    UINT mipH = std::max(1u, m_height >> level);
+    UINT const mipW = std::max(1u, m_width >> level);
+    UINT const mipH = std::max(1u, m_height >> level);
     if (m_format == D3DFMT_DXT1)
     {
-        return (size_t)std::max(1u, (mipW + 3) / 4) * std::max(1u, (mipH + 3) / 4) * 8;
+        return static_cast<size_t>(std::max(1u, (mipW + 3) / 4)) * std::max(1u, (mipH + 3) / 4) * 8;
     }
     if (m_format == D3DFMT_DXT3 || m_format == D3DFMT_DXT5)
     {
-        return (size_t)std::max(1u, (mipW + 3) / 4) * std::max(1u, (mipH + 3) / 4) * 16;
+        return static_cast<size_t>(std::max(1u, (mipW + 3) / 4)) * std::max(1u, (mipH + 3) / 4) * 16;
     }
     if (m_format == D3DFMT_A4R4G4B4 || m_format == D3DFMT_A1R5G5B5 || m_format == D3DFMT_R5G6B5)
     {
-        return (size_t)mipW * mipH * 2;
+        return static_cast<size_t>(mipW) * mipH * 2;
     }
-    return (size_t)mipW * mipH * 4;
+    return static_cast<size_t>(mipW) * mipH * 4;
 }
 
 INT IDirect3DTexture9::GetPitch(UINT level) const
 {
-    UINT mipW = std::max(1u, m_width >> level);
+    UINT const mipW = std::max(1u, m_width >> level);
     if (m_format == D3DFMT_DXT1)
-        return (INT)(std::max(1u, (mipW + 3) / 4) * 8);
+        return static_cast<INT>(std::max(1u, (mipW + 3) / 4) * 8);
     if (m_format == D3DFMT_DXT3 || m_format == D3DFMT_DXT5)
-        return (INT)(std::max(1u, (mipW + 3) / 4) * 16);
+        return static_cast<INT>(std::max(1u, (mipW + 3) / 4) * 16);
     if (m_format == D3DFMT_A4R4G4B4 || m_format == D3DFMT_A1R5G5B5 || m_format == D3DFMT_R5G6B5)
-        return (INT)(mipW * 2);
-    return (INT)(mipW * 4);
+        return static_cast<INT>(mipW * 2);
+    return static_cast<INT>(mipW * 4);
 }
 
-HRESULT IDirect3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *, DWORD)
+HRESULT IDirect3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT * /*unused*/, DWORD /*unused*/)
 {
     if (!pLockedRect)
         return E_INVALIDARG;
     if (Level == 0)
     {
-        size_t sz = GetLevelDataSize(0);
+        size_t const sz = GetLevelDataSize(0);
         if (m_data.size() < sz)
             m_data.resize(sz, 0);
         pLockedRect->Pitch = GetPitch(0);
@@ -130,7 +129,7 @@ HRESULT IDirect3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, con
     }
     else
     {
-        size_t sz = GetLevelDataSize(Level);
+        size_t const sz = GetLevelDataSize(Level);
         auto &mip = m_mipLevels[Level];
         if (mip.size() < sz)
             mip.resize(sz, 0);
@@ -141,7 +140,7 @@ HRESULT IDirect3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, con
     return S_OK;
 }
 
-HRESULT IDirect3DTexture9::UnlockRect(UINT)
+HRESULT IDirect3DTexture9::UnlockRect(UINT /*unused*/)
 {
     UploadToBackend();
     return S_OK;
@@ -151,9 +150,9 @@ void IDirect3DTexture9::UploadLevelToBackend(UINT level, const BYTE *pBytes, siz
 {
     if (!pBytes || dataSize <= 0)
         return;
-    UINT mipW = std::max(1u, m_width >> level);
-    UINT mipH = std::max(1u, m_height >> level);
-    Backend().UploadTextureLevel(m_handle, level, (uint32_t)m_format, mipW, mipH, pBytes, dataSize);
+    UINT const mipW = std::max(1u, m_width >> level);
+    UINT const mipH = std::max(1u, m_height >> level);
+    Backend().UploadTextureLevel(m_handle, level, static_cast<uint32_t>(m_format), mipW, mipH, pBytes, dataSize);
 }
 
 void IDirect3DTexture9::Fill(const DWORD color)
@@ -162,21 +161,21 @@ void IDirect3DTexture9::Fill(const DWORD color)
         return;
     if (GetFormatBytesPerPixel(m_format) == 2)
     {
-        WORD v = (WORD)(color & 0xFFFF);
+        WORD const v = static_cast<WORD>(color & 0xFFFF);
         for (size_t i = 0; i + 1 < m_data.size(); i += 2)
         {
-            m_data[i] = (BYTE)(v & 0xFF);
-            m_data[i + 1] = (BYTE)(v >> 8);
+            m_data[i] = static_cast<BYTE>(v & 0xFF);
+            m_data[i + 1] = static_cast<BYTE>(v >> 8);
         }
     }
     else
     {
         for (size_t i = 0; i + 3 < m_data.size(); i += 4)
         {
-            m_data[i] = (BYTE)(color & 0xFF);
-            m_data[i + 1] = (BYTE)((color >> 8) & 0xFF);
-            m_data[i + 2] = (BYTE)((color >> 16) & 0xFF);
-            m_data[i + 3] = (BYTE)((color >> 24) & 0xFF);
+            m_data[i] = static_cast<BYTE>(color & 0xFF);
+            m_data[i + 1] = static_cast<BYTE>((color >> 8) & 0xFF);
+            m_data[i + 2] = static_cast<BYTE>((color >> 16) & 0xFF);
+            m_data[i + 3] = static_cast<BYTE>((color >> 24) & 0xFF);
         }
     }
     m_dirty = true;
@@ -200,12 +199,11 @@ void IDirect3DTexture9::UploadToBackend()
     UINT maxLevel = 0;
     for (const auto &kv : m_mipLevels)
     {
-        UINT level = kv.first;
+        UINT const level = kv.first;
         if (level > 0 && !kv.second.empty())
         {
             UploadLevelToBackend(level, kv.second.data(), kv.second.size());
-            if (level > maxLevel)
-                maxLevel = level;
+            maxLevel = std::max(level, maxLevel);
         }
     }
 
@@ -225,7 +223,7 @@ size_t IDirect3DTexture9::GetFormatBytesPerPixel(D3DFORMAT fmt)
 }
 
 HRESULT
-IDirect3DTexture9::GetSurfaceLevel(UINT, IDirect3DSurface9 **ppSurfaceLevel)
+IDirect3DTexture9::GetSurfaceLevel(UINT /*unused*/, IDirect3DSurface9 **ppSurfaceLevel)
 {
     if (!ppSurfaceLevel)
         return E_INVALIDARG;
@@ -239,12 +237,12 @@ IDirect3DTexture9::GetSurfaceLevel(UINT, IDirect3DSurface9 **ppSurfaceLevel)
 
 IDirect3DSurface9::IDirect3DSurface9(UINT w, UINT h, IDirect3DTexture9 *pTexture, bool bDepthStencil, bool bDefault)
     : m_width(w ? w : 1), m_height(h ? h : 1), m_texture(pTexture), m_bDepthStencil(bDepthStencil),
-      m_bDefault(bDefault), m_depthStencil{0, 0}
+      m_bDefault(bDefault), m_depthStencil{.id = 0, .generation = 0}
 {
     // Only plain CPU surfaces need backing storage (LockRect / GetDesc users).
     // Colour render-target surfaces and depth-stencil surfaces live on the GPU.
     if (!m_bDepthStencil && !m_texture)
-        m_data.resize((size_t)m_width * m_height * 4, 0);
+        m_data.resize(static_cast<size_t>(m_width) * m_height * 4, 0);
 }
 
 IDirect3DSurface9::~IDirect3DSurface9()
@@ -252,7 +250,7 @@ IDirect3DSurface9::~IDirect3DSurface9()
     if (m_depthStencil.IsValid())
     {
         Backend().Destroy(m_depthStencil);
-        m_depthStencil = RenderHandle{0, 0};
+        m_depthStencil = RenderHandle{.id = 0, .generation = 0};
     }
 }
 
@@ -270,12 +268,7 @@ RenderHandle IDirect3DSurface9::GetDepthStencil()
 // =============================================================
 
 IDirect3DDevice9::IDirect3DDevice9()
-    : m_pIndexBuffer(nullptr), m_fvf(D3DFVF_XYZ), m_srcBlend(D3DBLEND_SRCALPHA), m_destBlend(D3DBLEND_INVSRCALPHA),
-      m_zEnable(false), m_zWriteEnable(true), m_zFunc(D3DCMP_LESSEQUAL), m_alphaBlendEnable(false),
-      m_alphaTestEnable(false), m_alphaRef(0), m_alphaFunc(D3DCMP_ALWAYS), m_cullMode(D3DCULL_CCW),
-      m_fillMode(D3DFILL_SOLID), m_textureFactor(0xFFFFFFFF), m_lighting(0), m_colorVertex(0), m_ambient(0),
-      m_fogEnable(false), m_fogColor(0), m_fogVertexMode(D3DFOG_NONE), m_fogTableMode(D3DFOG_NONE), m_fogStart(0.0f),
-      m_fogEnd(0.0f), m_fogDensity(1.0f), m_rangeFogEnable(false), m_inRenderTarget(false)
+
 {
     std::memset(&m_viewport, 0, sizeof(m_viewport));
     m_viewport.Width = 1024;
@@ -288,7 +281,7 @@ IDirect3DDevice9::IDirect3DDevice9()
     {
         m_boundTextures[i] = nullptr;
         m_texTransformFlags[i] = D3DTTFF_DISABLE;
-        m_texCoordIndex[i] = (DWORD)i;
+        m_texCoordIndex[i] = static_cast<DWORD>(i);
         m_samplerStates[i].addressU = D3DTADDRESS_WRAP;
         m_samplerStates[i].addressV = D3DTADDRESS_WRAP;
         m_samplerStates[i].minFilter = D3DTEXF_LINEAR;
@@ -305,8 +298,8 @@ IDirect3DDevice9::IDirect3DDevice9()
         m_texStageStates[i].alphaArg2 = D3DTA_CURRENT;
         m_texStageStates[i].resultArg = 0;
     }
-    for (int i = 0; i < 512; ++i)
-        D3DXMatrixIdentity(&m_transforms[i]);
+    for (auto &m_transform : m_transforms)
+        D3DXMatrixIdentity(&m_transform);
 }
 
 IDirect3DDevice9::~IDirect3DDevice9()
@@ -374,7 +367,8 @@ bool IDirect3DDevice9::ComputeUntexturedStage0Color(const float *current, float 
         }
     };
 
-    float a1[4], a2[4];
+    float a1[4];
+    float a2[4];
     readArg(ss.colorArg1, a1);
     readArg(ss.colorArg2, a2);
 
@@ -416,11 +410,11 @@ bool IDirect3DDevice9::ComputeUntexturedStage0Color(const float *current, float 
     case D3DTOP_BLENDDIFFUSEALPHA:
     case D3DTOP_BLENDCURRENTALPHA:
         for (int i = 0; i < 4; ++i)
-            out[i] = a1[i] + (a2[i] - a1[i]) * current[3];
+            out[i] = a1[i] + ((a2[i] - a1[i]) * current[3]);
         break;
     case D3DTOP_BLENDFACTORALPHA:
         for (int i = 0; i < 4; ++i)
-            out[i] = a1[i] + (a2[i] - a1[i]) * current[3];
+            out[i] = a1[i] + ((a2[i] - a1[i]) * current[3]);
         break;
     case D3DTOP_MODULATE:
     default:
@@ -431,10 +425,8 @@ bool IDirect3DDevice9::ComputeUntexturedStage0Color(const float *current, float 
 
     for (int i = 0; i < 4; ++i)
     {
-        if (out[i] < 0.0f)
-            out[i] = 0.0f;
-        if (out[i] > 1.0f)
-            out[i] = 1.0f;
+        out[i] = std::max(out[i], 0.0f);
+        out[i] = std::min(out[i], 1.0f);
     }
     return true;
 }
@@ -474,7 +466,7 @@ void IDirect3DDevice9::FillRenderState(RenderState &state) const
     for (uint32_t stage = 0; stage < kRenderMaxTextureStages; ++stage)
     {
         IDirect3DTexture9 *texture = m_boundTextures[stage];
-        state.textures[stage] = texture ? texture->GetTextureHandle() : RenderHandle{0, 0};
+        state.textures[stage] = texture ? texture->GetTextureHandle() : RenderHandle{.id = 0, .generation = 0};
         state.textureHasMips[stage] = texture ? texture->HasMipMaps() : false;
 
         const TextureStageState &ss = m_texStageStates[stage];
@@ -552,7 +544,7 @@ IDirect3DDevice9::SetDepthStencilSurface(IDirect3DSurface9 *pZStencilSurface)
 HRESULT
 IDirect3DDevice9::Clear(DWORD /*Count*/, const RECT * /*pRects*/, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil)
 {
-    Backend().Clear((uint32_t)Flags, (uint32_t)Color, Z, (uint32_t)Stencil);
+    Backend().Clear(static_cast<uint32_t>(Flags), static_cast<uint32_t>(Color), Z, static_cast<uint32_t>(Stencil));
     return S_OK;
 }
 
@@ -561,7 +553,8 @@ HRESULT IDirect3DDevice9::SetViewport(const D3DVIEWPORT9 *pViewport)
     if (pViewport)
     {
         m_viewport = *pViewport;
-        Backend().SetViewport((int32_t)m_viewport.X, (int32_t)m_viewport.Y, m_viewport.Width, m_viewport.Height);
+        Backend().SetViewport(static_cast<int32_t>(m_viewport.X), static_cast<int32_t>(m_viewport.Y), m_viewport.Width,
+                              m_viewport.Height);
     }
     return S_OK;
 }
@@ -791,7 +784,7 @@ HRESULT IDirect3DDevice9::GetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATE
             *pValue = m_texTransformFlags[Stage];
             return S_OK;
         }
-        else if (Type == D3DTSS_TEXCOORDINDEX)
+        if (Type == D3DTSS_TEXCOORDINDEX)
         {
             *pValue = m_texCoordIndex[Stage];
             return S_OK;
@@ -891,7 +884,7 @@ IDirect3DDevice9::GetSamplerState(DWORD Stage, D3DSAMPLERSTATETYPE Type, DWORD *
             *pValue = m_samplerStates[Stage].addressU;
             return S_OK;
         }
-        else if (Type == D3DSAMP_ADDRESSV)
+        if (Type == D3DSAMP_ADDRESSV)
         {
             *pValue = m_samplerStates[Stage].addressV;
             return S_OK;
@@ -927,7 +920,7 @@ IDirect3DDevice9::SetTexture(DWORD Stage, IDirect3DBaseTexture9 *pTexture)
     if (Stage < 8)
     {
         m_boundTextures[Stage] = static_cast<IDirect3DTexture9 *>(pTexture);
-        RenderHandle handle{0, 0};
+        RenderHandle handle{.id = 0, .generation = 0};
         if (m_boundTextures[Stage])
             handle = m_boundTextures[Stage]->GetTextureHandle();
         Backend().BindStageTexture(Stage, handle);
@@ -951,9 +944,9 @@ HRESULT IDirect3DDevice9::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT Sta
     UINT stride = m_streams[0].stride ? m_streams[0].stride : D3DXGetFVFVertexSize(m_fvf);
     if (!stride)
         stride = 24;
-    const BYTE *vbData = (const BYTE *)m_streams[0].vb->GetData() + m_streams[0].offset;
+    const BYTE *vbData = static_cast<const BYTE *>(m_streams[0].vb->GetData()) + m_streams[0].offset;
 
-    DrawCall call;
+    DrawCall call{};
     FillRenderState(call.state);
 
     float primaryColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -974,7 +967,7 @@ HRESULT IDirect3DDevice9::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT Sta
         }
     }
 
-    call.primitiveType = (uint32_t)PrimitiveType;
+    call.primitiveType = static_cast<uint32_t>(PrimitiveType);
     call.vertexData = vbData;
     call.stride = stride;
     call.fvf = m_fvf;
@@ -1006,10 +999,11 @@ IDirect3DDevice9::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseV
     UINT stride = m_streams[0].stride ? m_streams[0].stride : D3DXGetFVFVertexSize(m_fvf);
     if (!stride)
         stride = 24;
-    const BYTE *vbData = (const BYTE *)m_streams[0].vb->GetData() + m_streams[0].offset + (BaseVertexIndex * stride);
-    const WORD *ibData = (const WORD *)m_pIndexBuffer->GetData() + StartIndex;
+    const BYTE *vbData =
+        static_cast<const BYTE *>(m_streams[0].vb->GetData()) + m_streams[0].offset + (BaseVertexIndex * stride);
+    const WORD *ibData = static_cast<const WORD *>(m_pIndexBuffer->GetData()) + StartIndex;
 
-    DrawCall call;
+    DrawCall call{};
     FillRenderState(call.state);
 
     float primaryColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -1030,7 +1024,7 @@ IDirect3DDevice9::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, INT BaseV
         }
     }
 
-    call.primitiveType = (uint32_t)PrimitiveType;
+    call.primitiveType = static_cast<uint32_t>(PrimitiveType);
     call.vertexData = vbData;
     call.stride = stride;
     call.fvf = m_fvf;
@@ -1059,9 +1053,9 @@ HRESULT IDirect3DDevice9::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT P
     UINT stride = VertexStreamZeroStride ? VertexStreamZeroStride : D3DXGetFVFVertexSize(m_fvf);
     if (!stride)
         stride = 24;
-    const BYTE *vbData = (const BYTE *)pVertexStreamZeroData;
+    const BYTE *vbData = static_cast<const BYTE *>(pVertexStreamZeroData);
 
-    DrawCall call;
+    DrawCall call{};
     FillRenderState(call.state);
 
     float primaryColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -1082,7 +1076,7 @@ HRESULT IDirect3DDevice9::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT P
         }
     }
 
-    call.primitiveType = (uint32_t)PrimitiveType;
+    call.primitiveType = static_cast<uint32_t>(PrimitiveType);
     call.vertexData = vbData;
     call.stride = stride;
     call.fvf = m_fvf;
@@ -1113,9 +1107,9 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,
     UINT stride = VertexStreamZeroStride ? VertexStreamZeroStride : D3DXGetFVFVertexSize(m_fvf);
     if (!stride)
         stride = 24;
-    const BYTE *vbData = (const BYTE *)pVertexStreamZeroData;
+    const BYTE *vbData = static_cast<const BYTE *>(pVertexStreamZeroData);
 
-    DrawCall call;
+    DrawCall call{};
     FillRenderState(call.state);
 
     float primaryColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -1136,7 +1130,7 @@ HRESULT IDirect3DDevice9::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,
         }
     }
 
-    call.primitiveType = (uint32_t)PrimitiveType;
+    call.primitiveType = static_cast<uint32_t>(PrimitiveType);
     call.vertexData = vbData;
     call.stride = stride;
     call.fvf = m_fvf;

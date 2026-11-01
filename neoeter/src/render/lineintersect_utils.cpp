@@ -7,9 +7,10 @@
  |      Revisions: 05-Apr-2001 - GSR. Original.
  **************************************************************************************/
 #include <Neoeter/Render/StdAfx.h>
-#include <math.h>
+#include <cmath>
 #include <Neoeter/Render/lineintersect_utils.h>
-#include <assert.h>
+#include <math.h>
+#include <cassert>
 
 // uncomment the following line to have the code check intermediate results
 // #define CHECK_ANSWERS
@@ -28,7 +29,7 @@ __forceinline void FindNearestPointOnLineSegment(const D3DXVECTOR3 &A1, const D3
                                                  D3DXVECTOR3 &Nearest, float &parameter)
 {
     // Line/Segment is degenerate --- special case #1
-    float D = D3DXVec3LengthSq(&L);
+    float const D = D3DXVec3LengthSq(&L);
     if (D < MY_EPSILON * MY_EPSILON)
     {
         Nearest = A1;
@@ -44,7 +45,6 @@ __forceinline void FindNearestPointOnLineSegment(const D3DXVECTOR3 &A1, const D3
     parameter = FMAX(0.0f, FMIN(1.0f, parameter));
 
     Nearest = A1 + parameter * L;
-    return;
 }
 
 /**************************************************************************
@@ -87,7 +87,8 @@ __forceinline void FindNearestPointOfParallelLineSegments(const D3DXVECTOR3 &A1,
                                                           // bool infinite_lines, float epsilon_squared,
                                                           D3DXVECTOR3 &OutA, D3DXVECTOR3 &OutB)
 {
-    float s[2], temp;
+    float s[2];
+    float temp = NAN;
     FindNearestPointOnLineSegment(A1, La, B1, OutA, s[0]);
     /*if (true == infinite_lines)
     {
@@ -209,8 +210,8 @@ void IntersectLineSegments(const D3DXVECTOR3 &A1, const D3DXVECTOR3 &A2, const D
     D3DXVECTOR3 La = A2 - A1;
     D3DXVECTOR3 Lb = B2 - B1;
     // From Equation (15)
-    float L11 = D3DXVec3LengthSq(&La);
-    float L22 = D3DXVec3LengthSq(&Lb);
+    float const L11 = D3DXVec3LengthSq(&La);
+    float const L22 = D3DXVec3LengthSq(&Lb);
 
     // Line/Segment A is degenerate ---- Special Case #1
     if (L11 < epsilon_squared)
@@ -231,9 +232,9 @@ void IntersectLineSegments(const D3DXVECTOR3 &A1, const D3DXVECTOR3 &A2, const D
         D3DXVECTOR3 AB = B1 - A1;
 
         // and from Equation (15).
-        float L12 = -D3DXVec3Dot(&La, &Lb);
+        float const L12 = -D3DXVec3Dot(&La, &Lb);
 
-        float DetL = L11 * L22 - L12 * L12;
+        float const DetL = (L11 * L22) - (L12 * L12);
         // Lines/Segments A and B are parallel ---- special case #2.
         if (FABS(DetL) < epsilon)
         {
@@ -243,15 +244,15 @@ void IntersectLineSegments(const D3DXVECTOR3 &A1, const D3DXVECTOR3 &A2, const D
         else
         {
             // from Equation (15)
-            float ra = D3DXVec3Dot(&La, &AB); // Lax * ABx + Lay * ABy + Laz * ABz;
-            float rb = D3DXVec3Dot(&Lb, &AB); //-Lbx * ABx - Lby * ABy - Lbz * ABz;
+            float const ra = D3DXVec3Dot(&La, &AB); // Lax * ABx + Lay * ABy + Laz * ABz;
+            float const rb = D3DXVec3Dot(&Lb, &AB); //-Lbx * ABx - Lby * ABy - Lbz * ABz;
 
-            float t = (L11 * rb - ra * L12) / DetL; // Equation (12)
+            float const t = (L11 * rb - ra * L12) / DetL; // Equation (12)
 
 #ifdef USE_CRAMERS_RULE
             float s = (L22 * ra - rb * L12) / DetL;
 #else
-            float s = (ra - L12 * t) / L11; // Equation (13)
+            float const s = (ra - L12 * t) / L11; // Equation (13)
 #endif // USE_CRAMERS_RULE
 
 #ifdef CHECK_ANSWERS
@@ -283,18 +284,18 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
                            float &PointOnSegBz)
 {
     float temp = 0.f;
-    float epsilon_squared = epsilon * epsilon;
+    float const epsilon_squared = epsilon * epsilon;
 
     // Compute parameters from Equations (1) and (2) in the text
-    float Lax = A2x - A1x;
-    float Lay = A2y - A1y;
-    float Laz = A2z - A1z;
-    float Lbx = B2x - B1x;
-    float Lby = B2y - B1y;
-    float Lbz = B2z - B1z;
+    float const Lax = A2x - A1x;
+    float const Lay = A2y - A1y;
+    float const Laz = A2z - A1z;
+    float const Lbx = B2x - B1x;
+    float const Lby = B2y - B1y;
+    float const Lbz = B2z - B1z;
     // From Equation (15)
-    float L11 = (Lax * Lax) + (Lay * Lay) + (Laz * Laz);
-    float L22 = (Lbx * Lbx) + (Lby * Lby) + (Lbz * Lbz);
+    float const L11 = (Lax * Lax) + (Lay * Lay) + (Laz * Laz);
+    float const L22 = (Lbx * Lbx) + (Lby * Lby) + (Lbz * Lbz);
 
     // Line/Segment A is degenerate ---- Special Case #1
     if (L11 < epsilon_squared)
@@ -318,14 +319,14 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
     else
     {
         // Compute more parameters from Equation (3) in the text.
-        float ABx = B1x - A1x;
-        float ABy = B1y - A1y;
-        float ABz = B1z - A1z;
+        float const ABx = B1x - A1x;
+        float const ABy = B1y - A1y;
+        float const ABz = B1z - A1z;
 
         // and from Equation (15).
-        float L12 = -(Lax * Lbx) - (Lay * Lby) - (Laz * Lbz);
+        float const L12 = -(Lax * Lbx) - (Lay * Lby) - (Laz * Lbz);
 
-        float DetL = L11 * L22 - L12 * L12;
+        float const DetL = (L11 * L22) - (L12 * L12);
         // Lines/Segments A and B are parallel ---- special case #2.
         if (FABS(DetL) < epsilon)
         {
@@ -338,15 +339,15 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
         else
         {
             // from Equation (15)
-            float ra = Lax * ABx + Lay * ABy + Laz * ABz;
-            float rb = -Lbx * ABx - Lby * ABy - Lbz * ABz;
+            float const ra = (Lax * ABx) + (Lay * ABy) + (Laz * ABz);
+            float const rb = (-Lbx * ABx) - (Lby * ABy) - (Lbz * ABz);
 
-            float t = (L11 * rb - ra * L12) / DetL; // Equation (12)
+            float const t = (L11 * rb - ra * L12) / DetL; // Equation (12)
 
 #ifdef USE_CRAMERS_RULE
             float s = (L22 * ra - rb * L12) / DetL;
 #else
-            float s = (ra - L12 * t) / L11; // Equation (13)
+            float const s = (ra - L12 * t) / L11; // Equation (13)
 #endif // USE_CRAMERS_RULE
 
 #ifdef CHECK_ANSWERS
@@ -359,15 +360,15 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
             // if we are dealing with infinite lines or if parameters s and t
             // both lie in the range [0,1] then just compute the points using
             // Equations (1) and (2) from the text.
-            PointOnSegAx = (A1x + s * Lax);
-            PointOnSegAy = (A1y + s * Lay);
-            PointOnSegAz = (A1z + s * Laz);
-            PointOnSegBx = (B1x + t * Lbx);
-            PointOnSegBy = (B1y + t * Lby);
-            PointOnSegBz = (B1z + t * Lbz);
+            PointOnSegAx = (A1x + (s * Lax));
+            PointOnSegAy = (A1y + (s * Lay));
+            PointOnSegAz = (A1z + (s * Laz));
+            PointOnSegBx = (B1x + (t * Lbx));
+            PointOnSegBy = (B1y + (t * Lby));
+            PointOnSegBz = (B1z + (t * Lbz));
             // otherwise, at least one of s and t is outside of [0,1] and we have
             // to handle this case.
-            if (false == infinite_lines && (OUT_OF_RANGE(s) || OUT_OF_RANGE(t)))
+            if (!infinite_lines && (OUT_OF_RANGE(s) || OUT_OF_RANGE(t)))
             {
                 AdjustNearestPoints(A1x, A1y, A1z, Lax, Lay, Laz, B1x, B1y, B1z, Lbx, Lby, Lbz, epsilon, s, t,
                                     PointOnSegAx, PointOnSegAy, PointOnSegAz, PointOnSegBx, PointOnSegBy, PointOnSegBz);
@@ -428,18 +429,18 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
                            float &NearestVectorX, float &NearestVectorY, float &NearestVectorZ, bool &true_intersection)
 {
     float temp = 0.f;
-    float epsilon_squared = epsilon * epsilon;
+    float const epsilon_squared = epsilon * epsilon;
 
     // Compute parameters from Equations (1) and (2) in the text
-    float Lax = A2x - A1x;
-    float Lay = A2y - A1y;
-    float Laz = A2z - A1z;
-    float Lbx = B2x - B1x;
-    float Lby = B2y - B1y;
-    float Lbz = B2z - B1z;
+    float const Lax = A2x - A1x;
+    float const Lay = A2y - A1y;
+    float const Laz = A2z - A1z;
+    float const Lbx = B2x - B1x;
+    float const Lby = B2y - B1y;
+    float const Lbz = B2z - B1z;
     // From Equation (15)
-    float L11 = (Lax * Lax) + (Lay * Lay) + (Laz * Laz);
-    float L22 = (Lbx * Lbx) + (Lby * Lby) + (Lbz * Lbz);
+    float const L11 = (Lax * Lax) + (Lay * Lay) + (Laz * Laz);
+    float const L22 = (Lbx * Lbx) + (Lby * Lby) + (Lbz * Lbz);
 
     // Line/Segment A is degenerate ---- Special Case #1
     if (L11 < epsilon_squared)
@@ -463,14 +464,14 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
     else
     {
         // Compute more parameters from Equation (3) in the text.
-        float ABx = B1x - A1x;
-        float ABy = B1y - A1y;
-        float ABz = B1z - A1z;
+        float const ABx = B1x - A1x;
+        float const ABy = B1y - A1y;
+        float const ABz = B1z - A1z;
 
         // and from Equation (15).
-        float L12 = -(Lax * Lbx) - (Lay * Lby) - (Laz * Lbz);
+        float const L12 = -(Lax * Lbx) - (Lay * Lby) - (Laz * Lbz);
 
-        float DetL = L11 * L22 - L12 * L12;
+        float const DetL = (L11 * L22) - (L12 * L12);
         // Lines/Segments A and B are parallel ---- special case #2.
         if (FABS(DetL) < epsilon)
         {
@@ -483,15 +484,15 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
         else
         {
             // from Equation (15)
-            float ra = Lax * ABx + Lay * ABy + Laz * ABz;
-            float rb = -Lbx * ABx - Lby * ABy - Lbz * ABz;
+            float const ra = (Lax * ABx) + (Lay * ABy) + (Laz * ABz);
+            float const rb = (-Lbx * ABx) - (Lby * ABy) - (Lbz * ABz);
 
-            float t = (L11 * rb - ra * L12) / DetL; // Equation (12)
+            float const t = (L11 * rb - ra * L12) / DetL; // Equation (12)
 
 #ifdef USE_CRAMERS_RULE
             float s = (L22 * ra - rb * L12) / DetL;
 #else
-            float s = (ra - L12 * t) / L11; // Equation (13)
+            float const s = (ra - L12 * t) / L11; // Equation (13)
 #endif // USE_CRAMERS_RULE
 
 #ifdef CHECK_ANSWERS
@@ -504,15 +505,15 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
             // if we are dealing with infinite lines or if parameters s and t
             // both lie in the range [0,1] then just compute the points using
             // Equations (1) and (2) from the text.
-            PointOnSegAx = (A1x + s * Lax);
-            PointOnSegAy = (A1y + s * Lay);
-            PointOnSegAz = (A1z + s * Laz);
-            PointOnSegBx = (B1x + t * Lbx);
-            PointOnSegBy = (B1y + t * Lby);
-            PointOnSegBz = (B1z + t * Lbz);
+            PointOnSegAx = (A1x + (s * Lax));
+            PointOnSegAy = (A1y + (s * Lay));
+            PointOnSegAz = (A1z + (s * Laz));
+            PointOnSegBx = (B1x + (t * Lbx));
+            PointOnSegBy = (B1y + (t * Lby));
+            PointOnSegBz = (B1z + (t * Lbz));
             // otherwise, at least one of s and t is outside of [0,1] and we have
             // to handle this case.
-            if (false == infinite_lines && (OUT_OF_RANGE(s) || OUT_OF_RANGE(t)))
+            if (!infinite_lines && (OUT_OF_RANGE(s) || OUT_OF_RANGE(t)))
             {
                 AdjustNearestPoints(A1x, A1y, A1z, Lax, Lay, Laz, B1x, B1y, B1z, Lbx, Lby, Lbz, epsilon, s, t,
                                     PointOnSegAx, PointOnSegAy, PointOnSegAz, PointOnSegBx, PointOnSegBy, PointOnSegBz);
@@ -529,7 +530,7 @@ void IntersectLineSegments(const float A1x, const float A1y, const float A1z, co
     NearestVectorZ = PointOnSegBz - PointOnSegAz;
 
     // optional check to indicate if the lines truly intersect
-    true_intersection = (FABS(NearestVectorX) + FABS(NearestVectorY) + FABS(NearestVectorZ)) < epsilon ? true : false;
+    true_intersection = (FABS(NearestVectorX) + FABS(NearestVectorY) + FABS(NearestVectorZ)) < epsilon;
 }
 
 /**************************************************************************
@@ -564,7 +565,7 @@ void FindNearestPointOnLineSegment(const float A1x, const float A1y, const float
                                    float &NearestPointZ, float &parameter)
 {
     // Line/Segment is degenerate --- special case #1
-    float D = Lx * Lx + Ly * Ly + Lz * Lz;
+    float const D = (Lx * Lx) + (Ly * Ly) + (Lz * Lz);
     if (D < epsilon_squared)
     {
         NearestPointX = A1x;
@@ -573,20 +574,19 @@ void FindNearestPointOnLineSegment(const float A1x, const float A1y, const float
         return;
     }
 
-    float ABx = Bx - A1x;
-    float ABy = By - A1y;
-    float ABz = Bz - A1z;
+    float const ABx = Bx - A1x;
+    float const ABy = By - A1y;
+    float const ABz = Bz - A1z;
 
     // parameter is computed from Equation (20).
     parameter = (Lx * ABx + Ly * ABy + Lz * ABz) / D;
 
-    if (false == infinite_line)
+    if (!infinite_line)
         parameter = FMAX(0.0f, FMIN(1.0f, parameter));
 
-    NearestPointX = A1x + parameter * Lx;
-    NearestPointY = A1y + parameter * Ly;
-    NearestPointZ = A1z + parameter * Lz;
-    return;
+    NearestPointX = A1x + (parameter * Lx);
+    NearestPointY = A1y + (parameter * Ly);
+    NearestPointZ = A1z + (parameter * Lz);
 }
 
 /**************************************************************************
@@ -630,10 +630,11 @@ void FindNearestPointOfParallelLineSegments(float A1x, float A1y, float A1z, flo
                                             float &PointOnSegAz, float &PointOnSegBx, float &PointOnSegBy,
                                             float &PointOnSegBz)
 {
-    float s[2], temp;
+    float s[2];
+    float temp = NAN;
     FindNearestPointOnLineSegment(A1x, A1y, A1z, Lax, Lay, Laz, B1x, B1y, B1z, true, epsilon_squared, PointOnSegAx,
                                   PointOnSegAy, PointOnSegAz, s[0]);
-    if (true == infinite_lines)
+    if (infinite_lines)
     {
         PointOnSegBx = B1x;
         PointOnSegBy = B1y;
@@ -683,9 +684,9 @@ void FindNearestPointOfParallelLineSegments(float A1x, float A1y, float A1z, flo
         else
         {
             temp = 0.5f * (FMAX(0.0f, FMIN(1.0f, s[0])) + FMAX(0.0f, FMIN(1.0f, s[1])));
-            PointOnSegAx = (A1x + temp * Lax);
-            PointOnSegAy = (A1y + temp * Lay);
-            PointOnSegAz = (A1z + temp * Laz);
+            PointOnSegAx = (A1x + (temp * Lax));
+            PointOnSegAy = (A1y + (temp * Lay));
+            PointOnSegAz = (A1z + (temp * Laz));
             FindNearestPointOnLineSegment(B1x, B1y, B1z, Lbx, Lby, Lbz, PointOnSegAx, PointOnSegAy, PointOnSegAz, true,
                                           epsilon_squared, PointOnSegBx, PointOnSegBy, PointOnSegBz, temp);
         }
@@ -728,17 +729,17 @@ void AdjustNearestPoints(float A1x, float A1y, float A1z, float Lax, float Lay, 
     if (OUT_OF_RANGE(s) && OUT_OF_RANGE(t))
     {
         s = FMAX(0.0f, FMIN(1.0f, s));
-        PointOnSegAx = (A1x + s * Lax);
-        PointOnSegAy = (A1y + s * Lay);
-        PointOnSegAz = (A1z + s * Laz);
+        PointOnSegAx = (A1x + (s * Lax));
+        PointOnSegAy = (A1y + (s * Lay));
+        PointOnSegAz = (A1z + (s * Laz));
         FindNearestPointOnLineSegment(B1x, B1y, B1z, Lbx, Lby, Lbz, PointOnSegAx, PointOnSegAy, PointOnSegAz, true,
                                       epsilon_squared, PointOnSegBx, PointOnSegBy, PointOnSegBz, t);
         if (OUT_OF_RANGE(t))
         {
             t = FMAX(0.0f, FMIN(1.0f, t));
-            PointOnSegBx = (B1x + t * Lbx);
-            PointOnSegBy = (B1y + t * Lby);
-            PointOnSegBz = (B1z + t * Lbz);
+            PointOnSegBx = (B1x + (t * Lbx));
+            PointOnSegBy = (B1y + (t * Lby));
+            PointOnSegBz = (B1z + (t * Lbz));
             FindNearestPointOnLineSegment(A1x, A1y, A1z, Lax, Lay, Laz, PointOnSegBx, PointOnSegBy, PointOnSegBz, false,
                                           epsilon_squared, PointOnSegAx, PointOnSegAy, PointOnSegAz, s);
             FindNearestPointOnLineSegment(B1x, B1y, B1z, Lbx, Lby, Lbz, PointOnSegAx, PointOnSegAy, PointOnSegAz, false,
@@ -750,18 +751,18 @@ void AdjustNearestPoints(float A1x, float A1y, float A1z, float Lax, float Lay, 
     else if (OUT_OF_RANGE(s))
     {
         s = FMAX(0.0f, FMIN(1.0f, s));
-        PointOnSegAx = (A1x + s * Lax);
-        PointOnSegAy = (A1y + s * Lay);
-        PointOnSegAz = (A1z + s * Laz);
+        PointOnSegAx = (A1x + (s * Lax));
+        PointOnSegAy = (A1y + (s * Lay));
+        PointOnSegAz = (A1z + (s * Laz));
         FindNearestPointOnLineSegment(B1x, B1y, B1z, Lbx, Lby, Lbz, PointOnSegAx, PointOnSegAy, PointOnSegAz, false,
                                       epsilon_squared, PointOnSegBx, PointOnSegBy, PointOnSegBz, t);
     }
     else if (OUT_OF_RANGE(t))
     {
         t = FMAX(0.0f, FMIN(1.0f, t));
-        PointOnSegBx = (B1x + t * Lbx);
-        PointOnSegBy = (B1y + t * Lby);
-        PointOnSegBz = (B1z + t * Lbz);
+        PointOnSegBx = (B1x + (t * Lbx));
+        PointOnSegBy = (B1y + (t * Lby));
+        PointOnSegBz = (B1z + (t * Lbz));
         FindNearestPointOnLineSegment(A1x, A1y, A1z, Lax, Lay, Laz, PointOnSegBx, PointOnSegBy, PointOnSegBz, false,
                                       epsilon_squared, PointOnSegAx, PointOnSegAy, PointOnSegAz, s);
     }

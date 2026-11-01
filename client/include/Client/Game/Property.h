@@ -20,13 +20,13 @@ class CProperty
     void PutString(const char *c_pszKey, const char *c_pszString);
 
     DWORD GetSize();
-    DWORD GetCRC();
+    DWORD GetCRC() const;
 
   protected:
     std::string m_stFileName;
     std::string m_stCRC;
     const char *mc_pFileName;
-    DWORD m_dwCRC;
+    DWORD m_dwCRC = 0;
 
     CTokenVectorMap m_stTokenMap;
 };

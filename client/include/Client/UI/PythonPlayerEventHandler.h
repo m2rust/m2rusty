@@ -11,30 +11,28 @@ class CPythonPlayerEventHandler : public CActorInstance::IEventHandler
   public:
     static CPythonPlayerEventHandler &GetSingleton();
 
-  public:
-    virtual ~CPythonPlayerEventHandler();
+    ~CPythonPlayerEventHandler() override;
 
-    virtual void OnSyncing(const SState &c_rkState);
-    virtual void OnWaiting(const SState &c_rkState);
-    virtual void OnMoving(const SState &c_rkState);
-    virtual void OnMove(const SState &c_rkState);
-    virtual void OnStop(const SState &c_rkState);
-    virtual void OnWarp(const SState &c_rkState);
-    virtual void OnClearAffects();
-    virtual void OnSetAffect(UINT uAffect);
-    virtual void OnResetAffect(UINT uAffect);
-    virtual void OnAttack(const SState &c_rkState, WORD wMotionIndex);
-    virtual void OnUseSkill(const SState &c_rkState, UINT uMotSkill, UINT uArg);
+    void OnSyncing(const SState &c_rkState) override;
+    void OnWaiting(const SState &c_rkState) override;
+    void OnMoving(const SState &c_rkState) override;
+    void OnMove(const SState &c_rkState) override;
+    void OnStop(const SState &c_rkState) override;
+    void OnWarp(const SState &c_rkState) override;
+    void OnClearAffects() override;
+    void OnSetAffect(UINT uAffect) override;
+    void OnResetAffect(UINT uAffect) override;
+    void OnAttack(const SState &c_rkState, WORD wMotionIndex) override;
+    void OnUseSkill(const SState &c_rkState, UINT uMotSkill, UINT uArg) override;
     virtual void OnUpdate();
-    virtual void OnChangeShape();
-    virtual void OnHit(UINT uSkill, CActorInstance &rkActorVictim, BOOL isSendPacket);
+    void OnChangeShape() override;
+    void OnHit(UINT uSkill, CActorInstance &rkActorVictim, BOOL isSendPacket) override;
 
     void FlushVictimList();
 
   protected:
     CPythonPlayerEventHandler();
 
-  protected:
     struct SVictim
     {
         DWORD m_dwVID;
@@ -42,7 +40,6 @@ class CPythonPlayerEventHandler : public CActorInstance::IEventHandler
         long m_lPixelY;
     };
 
-  protected:
     std::vector<SVictim> m_kVctkVictim;
 
     DWORD m_dwPrevComboIndex;
@@ -54,35 +51,31 @@ class CPythonPlayerEventHandler : public CActorInstance::IEventHandler
     class CNormalBowAttack_FlyEventHandler_AutoClear : public IFlyEventHandler
     {
       public:
-        CNormalBowAttack_FlyEventHandler_AutoClear()
-        {
-        }
-        virtual ~CNormalBowAttack_FlyEventHandler_AutoClear()
-        {
-        }
+        CNormalBowAttack_FlyEventHandler_AutoClear() = default;
+        ~CNormalBowAttack_FlyEventHandler_AutoClear() override = default;
 
         void Set(CPythonPlayerEventHandler *pParent, CInstanceBase *pInstMain, CInstanceBase *pInstTarget);
         void SetTarget(CInstanceBase *pInstTarget);
 
-        virtual void OnSetFlyTarget();
-        virtual void OnShoot(DWORD dwSkillIndex);
+        void OnSetFlyTarget() override;
+        void OnShoot(DWORD dwSkillIndex) override;
 
-        virtual void OnNoTarget()
+        void OnNoTarget() override
         { /*Tracenf("Shoot : target이 없습니다.");*/
         }
-        virtual void OnExplodingOutOfRange()
+        void OnExplodingOutOfRange() override
         { /*Tracenf("Shoot : 사정거리가 끝났습니다.");*/
         }
-        virtual void OnExplodingAtBackground()
+        void OnExplodingAtBackground() override
         { /*Tracenf("Shoot : 배경에 맞았습니다.");*/
         }
-        virtual void OnExplodingAtAnotherTarget(DWORD dwSkillIndex, DWORD dwVID);
-        virtual void OnExplodingAtTarget(DWORD dwSkillIndex);
+        void OnExplodingAtAnotherTarget(DWORD dwSkillIndex, DWORD dwVID) override;
+        void OnExplodingAtTarget(DWORD dwSkillIndex) override;
 
       protected:
-        CPythonPlayerEventHandler *m_pParent;
-        CInstanceBase *m_pInstMain;
-        CInstanceBase *m_pInstTarget;
+        CPythonPlayerEventHandler *m_pParent = nullptr;
+        CInstanceBase *m_pInstMain = nullptr;
+        CInstanceBase *m_pInstTarget = nullptr;
     } m_NormalBowAttack_FlyEventHandler_AutoClear;
 
   public:

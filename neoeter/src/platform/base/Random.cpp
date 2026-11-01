@@ -1,8 +1,8 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 #include <Neoeter/Platform/Base/Random.h>
-#include <assert.h>
+#include <cassert>
 
-#if defined(_WIN32)
+#ifdef _WIN32
 static unsigned long randseed = 1;
 
 void srandom(unsigned long seed)
@@ -38,8 +38,8 @@ unsigned long random()
 
 float frandom(float flLow, float flHigh)
 {
-    float fl = float(random()) / float(2147483648.0f); // float in [0,1)
-    return (fl * (flHigh - flLow)) + flLow;            // float in [low,high)
+    float const fl = static_cast<float>(random()) / 2147483648.0f; // float in [0,1)
+    return (fl * (flHigh - flLow)) + flLow;                        // float in [low,high)
 }
 
 long random_range(long from, long to)

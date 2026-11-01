@@ -26,15 +26,16 @@ void CMapOutdoor::BuildQuadTree()
         SubDivideNode(m_pRootNode);
 }
 
-CTerrainQuadtreeNode *CMapOutdoor::AllocQuadTreeNode(long x0, long y0, long x1, long y1)
+CTerrainQuadtreeNode *CMapOutdoor::AllocQuadTreeNode(long x0, long y0, long x1, long y1) const
 {
-    CTerrainQuadtreeNode *Node;
-    long xsize, ysize;
+    CTerrainQuadtreeNode *Node = nullptr;
+    long xsize = 0;
+    long ysize = 0;
 
     xsize = x1 - x0 + 1;
     ysize = y1 - y0 + 1;
     if ((xsize == 0) || (ysize == 0))
-        return NULL;
+        return nullptr;
 
     Node = new CTerrainQuadtreeNode;
     Node->x0 = x0;
@@ -43,11 +44,15 @@ CTerrainQuadtreeNode *CMapOutdoor::AllocQuadTreeNode(long x0, long y0, long x1, 
     Node->y1 = y1;
 
     if (ysize > xsize)
+    {
         Node->Size = ysize;
+    }
     else
+    {
         Node->Size = xsize;
+    }
 
-    Node->PatchNum = y0 * m_wPatchCount + x0;
+    Node->PatchNum = (y0 * m_wPatchCount) + x0;
 
     /*
         const float fTerrainMin = -(float) (m_lViewRadius * m_lCellScale);
@@ -82,8 +87,8 @@ CTerrainQuadtreeNode *CMapOutdoor::AllocQuadTreeNode(long x0, long y0, long x1, 
 
 void CMapOutdoor::SubDivideNode(CTerrainQuadtreeNode *Node)
 {
-    long nw_size;
-    CTerrainQuadtreeNode *tempnode;
+    long nw_size = 0;
+    CTerrainQuadtreeNode *tempnode = nullptr;
 
     nw_size = Node->Size / 2;
 
@@ -92,17 +97,17 @@ void CMapOutdoor::SubDivideNode(CTerrainQuadtreeNode *Node)
     Node->SW_Node = AllocQuadTreeNode(Node->x0, Node->y0 + nw_size, Node->x0 + nw_size - 1, Node->y1);
     Node->SE_Node = AllocQuadTreeNode(Node->x0 + nw_size, Node->y0 + nw_size, Node->x1, Node->y1);
 
-    tempnode = (CTerrainQuadtreeNode *)Node->NW_Node;
-    if ((tempnode != NULL) && (tempnode->Size > 1))
+    tempnode = Node->NW_Node;
+    if ((tempnode != nullptr) && (tempnode->Size > 1))
         SubDivideNode(tempnode);
-    tempnode = (CTerrainQuadtreeNode *)Node->NE_Node;
-    if ((tempnode != NULL) && (tempnode->Size > 1))
+    tempnode = Node->NE_Node;
+    if ((tempnode != nullptr) && (tempnode->Size > 1))
         SubDivideNode(tempnode);
-    tempnode = (CTerrainQuadtreeNode *)Node->SW_Node;
-    if ((tempnode != NULL) && (tempnode->Size > 1))
+    tempnode = Node->SW_Node;
+    if ((tempnode != nullptr) && (tempnode->Size > 1))
         SubDivideNode(tempnode);
-    tempnode = (CTerrainQuadtreeNode *)Node->SE_Node;
-    if ((tempnode != NULL) && (tempnode->Size > 1))
+    tempnode = Node->SE_Node;
+    if ((tempnode != nullptr) && (tempnode->Size > 1))
         SubDivideNode(tempnode);
 }
 
@@ -139,30 +144,30 @@ void CMapOutdoor::RecurseDeleteQuadTree(CTerrainQuadtreeNode *Node)
 
 void CMapOutdoor::FreeQuadTree()
 {
-    if (NULL == m_pRootNode)
+    if (nullptr == m_pRootNode)
         return;
 
     if (m_pRootNode->NW_Node)
     {
         delete m_pRootNode->NW_Node;
-        m_pRootNode->NW_Node = NULL;
+        m_pRootNode->NW_Node = nullptr;
     }
     if (m_pRootNode->NE_Node)
     {
         delete m_pRootNode->NE_Node;
-        m_pRootNode->NE_Node = NULL;
+        m_pRootNode->NE_Node = nullptr;
     }
     if (m_pRootNode->SW_Node)
     {
         delete m_pRootNode->SW_Node;
-        m_pRootNode->SW_Node = NULL;
+        m_pRootNode->SW_Node = nullptr;
     }
     if (m_pRootNode->SE_Node)
     {
         delete m_pRootNode->SE_Node;
-        m_pRootNode->SE_Node = NULL;
+        m_pRootNode->SE_Node = nullptr;
     }
 
     delete m_pRootNode;
-    m_pRootNode = NULL;
+    m_pRootNode = nullptr;
 }

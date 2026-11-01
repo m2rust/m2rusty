@@ -13,9 +13,9 @@ CGraphicDib::~CGraphicDib()
 
 void CGraphicDib::Initialize()
 {
-    m_hDC = NULL;
-    m_hBmp = NULL;
-    m_pvBuf = NULL;
+    m_hDC = nullptr;
+    m_hBmp = nullptr;
+    m_pvBuf = nullptr;
     m_width = 0;
     m_height = 0;
 }
@@ -52,7 +52,7 @@ bool CGraphicDib::Create(HDC hDC, int width, int height)
         return false;
     }
 
-    m_hBmp = CreateDIBSection(m_hDC, &m_bmi, DIB_RGB_COLORS, &m_pvBuf, NULL, 0);
+    m_hBmp = CreateDIBSection(m_hDC, &m_bmi, DIB_RGB_COLORS, &m_pvBuf, nullptr, 0);
     if (!m_hBmp)
     {
         assert(!"CGraphicDib::Create CreateDIBSection Error");
@@ -76,10 +76,13 @@ void CGraphicDib::SetBkMode(int iBkMode)
     ::SetBkMode(m_hDC, iBkMode);
 }
 
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <Neoeter/Render/FontLocator.h>
+
+#include <algorithm>
+#include <utility>
 
 static FT_Library s_dibFtLib = nullptr;
 static FT_Face s_dibFtFace = nullptr;
@@ -92,7 +95,7 @@ static void EnsureDIBFT()
     }
     if (!s_dibFtFace && s_dibFtLib)
     {
-        std::string path = FontLocator_FindFontFile("sans-serif");
+        std::string const path = FontLocator_FindFontFile("sans-serif");
         if (!path.empty() && FT_New_Face(s_dibFtLib, path.c_str(), 0, &s_dibFtFace) == 0)
             FT_Set_Pixel_Sizes(s_dibFtFace, 0, 12);
     }
@@ -101,43 +104,42 @@ static void EnsureDIBFT()
 
 void CGraphicDib::TextOut(int ix, int iy, const char *c_szText)
 {
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
     EnsureDIBFT();
     if (s_dibFtFace && m_pvBuf && c_szText)
     {
-        uint32_t *pdw = (uint32_t *)m_pvBuf;
+        auto *pdw = static_cast<uint32_t *>(m_pvBuf);
         int curX = ix;
-        int ascender = s_dibFtFace->size->metrics.ascender >> 6;
+        int const ascender = s_dibFtFace->size->metrics.ascender >> 6;
         for (size_t i = 0; c_szText[i]; ++i)
         {
-            unsigned char ch = (unsigned char)c_szText[i];
+            auto ch = static_cast<unsigned char>(c_szText[i]);
             if (FT_Load_Char(s_dibFtFace, ch, FT_LOAD_RENDER) != 0)
                 continue;
             FT_GlyphSlot slot = s_dibFtFace->glyph;
-            FT_Bitmap &bmp = slot->bitmap;
-            int top = ascender - slot->bitmap_top;
+            FT_Bitmap const &bmp = slot->bitmap;
+            int const top = ascender - slot->bitmap_top;
             int left = slot->bitmap_left;
-            if (left < 0)
-                left = 0;
+            left = std::max(left, 0);
 
-            for (int r = 0; r < (int)bmp.rows; ++r)
+            for (int r = 0; r < static_cast<int>(bmp.rows); ++r)
             {
-                int dstY = iy + top + r;
+                int const dstY = iy + top + r;
                 if (dstY < 0 || dstY >= m_height)
                     continue;
-                for (int c = 0; c < (int)bmp.width; ++c)
+                for (int c = 0; c < static_cast<int>(bmp.width); ++c)
                 {
-                    int dstX = curX + left + c;
+                    int const dstX = curX + left + c;
                     if (dstX < 0 || dstX >= m_width)
                         continue;
-                    uint8_t a = bmp.buffer[r * bmp.pitch + c];
+                    uint8_t const a = bmp.buffer[(r * bmp.pitch) + c];
                     if (a > 32)
                     {
-                        pdw[dstY * m_width + dstX] = 0xFFFFFFFF;
+                        pdw[(dstY * m_width) + dstX] = 0xFFFFFFFF;
                     }
                 }
             }
-            int adv = slot->advance.x >> 6;
+            int const adv = slot->advance.x >> 6;
             curX += (adv > 0) ? adv : (slot->bitmap.width + 1);
         }
         return;
@@ -157,12 +159,12 @@ void *CGraphicDib::GetPointer()
     return m_pvBuf;
 }
 
-int CGraphicDib::GetWidth()
+int CGraphicDib::GetWidth() const
 {
     return m_width;
 }
 
-int CGraphicDib::GetHeight()
+int CGraphicDib::GetHeight() const
 {
     return m_height;
 }

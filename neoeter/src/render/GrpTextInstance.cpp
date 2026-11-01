@@ -6,6 +6,9 @@
 #include <Neoeter/Platform/Locale/StringCodec.h>
 #include <Neoeter/Platform/Base/Utils.h>
 #include <Neoeter/Platform/Locale/Arabic.h>
+#include <math.h>
+
+#include <utility>
 
 extern DWORD GetDefaultCodePage();
 
@@ -30,10 +33,10 @@ int CGraphicTextInstance::Hyperlink_GetText(char *buf, int len)
     if (gs_hyperlinkText.empty())
         return 0;
 
-    int codePage = GetDefaultCodePage();
+    int const codePage = GetDefaultCodePage();
 
-    return Ymir_WideCharToMultiByte(codePage, 0, gs_hyperlinkText.c_str(), gs_hyperlinkText.length(), buf, len, NULL,
-                                    NULL);
+    return Ymir_WideCharToMultiByte(codePage, 0, gs_hyperlinkText.c_str(), gs_hyperlinkText.length(), buf, len, nullptr,
+                                    nullptr);
 }
 
 int CGraphicTextInstance::__DrawCharacter(CGraphicFontTexture *pFontTexture, WORD codePage, wchar_t text, DWORD dwColor)
@@ -63,14 +66,14 @@ void CGraphicTextInstance::__GetTextPos(DWORD index, float *x, float *y)
 
     for (DWORD i = 0; i < index; ++i)
     {
-        if (sx + float(m_pCharInfoVector[i]->width) > m_fLimitWidth)
+        if (sx + static_cast<float>(m_pCharInfoVector[i]->width) > m_fLimitWidth)
         {
             sx = 0;
             sy += fFontMaxHeight;
         }
 
-        sx += float(m_pCharInfoVector[i]->advance);
-        fFontMaxHeight = max(float(m_pCharInfoVector[i]->height), fFontMaxHeight);
+        sx += m_pCharInfoVector[i]->advance;
+        fFontMaxHeight = max(static_cast<float>(m_pCharInfoVector[i]->height), fFontMaxHeight);
     }
 
     *x = sx;
@@ -79,9 +82,7 @@ void CGraphicTextInstance::__GetTextPos(DWORD index, float *x, float *y)
 
 bool isNumberic(const char chr)
 {
-    if (chr >= '0' && chr <= '9')
-        return true;
-    return false;
+    return chr >= '0' && chr <= '9';
 }
 
 bool IsValidToken(const char *iter)
@@ -99,10 +100,8 @@ const char *FindToken(const char *begin, const char *end)
         {
             return begin;
         }
-        else
-        {
-            ++begin;
-        }
+
+        ++begin;
     }
 
     return end;
@@ -110,7 +109,7 @@ const char *FindToken(const char *begin, const char *end)
 
 int ReadToken(const char *token)
 {
-    int nRet = (token[1] - '0') * 1000 + (token[2] - '0') * 100 + (token[3] - '0') * 10 + (token[4] - '0');
+    int const nRet = ((token[1] - '0') * 1000) + ((token[2] - '0') * 100) + ((token[3] - '0') * 10) + (token[4] - '0');
     if (nRet == 9999)
         return CP_UTF8;
     return nRet;
@@ -134,13 +133,13 @@ void CGraphicTextInstance::Update()
     if (!pFontTexture)
         return;
 
-    UINT defCodePage = GetDefaultCodePage();
+    UINT const defCodePage = GetDefaultCodePage();
 
     UINT dataCodePage = defCodePage; // 아랍 및 베트남 내부 데이터를 UTF8 을 사용하려 했으나 실패
 
     CGraphicFontTexture::TCharacterInfomation *pSpaceInfo = pFontTexture->GetCharacterInfomation(dataCodePage, ' ');
 
-    int spaceHeight = pSpaceInfo ? pSpaceInfo->height : 12;
+    int const spaceHeight = pSpaceInfo ? pSpaceInfo->height : 12;
 
     m_pCharInfoVector.clear();
     m_dwColorInfoVector.clear();
@@ -154,8 +153,8 @@ void CGraphicTextInstance::Update()
     const char *begin = m_stText.c_str();
     const char *end = begin + m_stText.length();
 
-    int wTextMax = (end - begin) * 2;
-    wchar_t *wText = (wchar_t *)_alloca(sizeof(wchar_t) * wTextMax);
+    int const wTextMax = (end - begin) * 2;
+    auto *wText = static_cast<wchar_t *>(_alloca(sizeof(wchar_t) * wTextMax));
 
     DWORD dwColor = m_dwTextColor;
 
@@ -164,7 +163,7 @@ void CGraphicTextInstance::Update()
     {
         const char *token = FindToken(begin, end);
 
-        int wTextLen = Ymir_MultiByteToWideChar(dataCodePage, 0, begin, token - begin, wText, wTextMax);
+        int const wTextLen = Ymir_MultiByteToWideChar(dataCodePage, 0, begin, token - begin, wText, wTextMax);
 
         if (m_isSecret)
         {
@@ -175,8 +174,8 @@ void CGraphicTextInstance::Update()
         {
             if (defCodePage == CP_ARABIC) // ARABIC
             {
-                wchar_t *wArabicText = (wchar_t *)_alloca(sizeof(wchar_t) * wTextLen);
-                int wArabicTextLen = Arabic_MakeShape(wText, wTextLen, wArabicText, wTextLen);
+                auto *wArabicText = static_cast<wchar_t *>(_alloca(sizeof(wchar_t) * wTextLen));
+                int const wArabicTextLen = Arabic_MakeShape(wText, wTextLen, wArabicText, wTextLen);
 
                 bool isEnglish = true;
                 int nEnglishBase = wArabicTextLen - 1;
@@ -184,7 +183,7 @@ void CGraphicTextInstance::Update()
                 //<<하이퍼 링크>>
                 int x = 0;
 
-                int len;
+                int len = 0;
                 int hyperlinkStep = 0;
                 SHyperlink kHyperlink;
                 std::wstring hyperlinkBuffer;
@@ -199,7 +198,7 @@ void CGraphicTextInstance::Update()
                 int i = 0;
                 for (i = wArabicTextLen - 1; i >= 0; --i)
                 {
-                    wchar_t wArabicChar = wArabicText[i];
+                    wchar_t const wArabicChar = wArabicText[i];
 
                     if (isEnglish)
                     {
@@ -227,7 +226,7 @@ void CGraphicTextInstance::Update()
                              wArabicText[i] == '|')) // if end.
                         {
                             // pass
-                            int temptest = 1;
+                            int const temptest = 1;
                         }
                         // (1)아랍어이거나 (2)아랍어 다음의 심볼이라면 아랍어
                         // 모드 전환
@@ -236,15 +235,17 @@ void CGraphicTextInstance::Update()
                             // 그 전까지의 영어를 그린다.
                             for (int e = i + 1; e <= nEnglishBase;)
                             {
-                                int ret = GetTextTag(&wArabicText[e], wArabicTextLen - e, len, hyperlinkBuffer);
+                                int const ret = GetTextTag(&wArabicText[e], wArabicTextLen - e, len, hyperlinkBuffer);
 
                                 if (ret == TEXT_TAG_PLAIN || ret == TEXT_TAG_TAG)
                                 {
                                     if (hyperlinkStep == 1)
+                                    {
                                         hyperlinkBuffer.append(1, wArabicText[e]);
+                                    }
                                     else
                                     {
-                                        int charWidth =
+                                        int const charWidth =
                                             __DrawCharacter(pFontTexture, dataCodePage, wArabicText[e], dwColor);
                                         kHyperlink.ex += charWidth;
                                         // x += charWidth;
@@ -264,9 +265,13 @@ void CGraphicTextInstance::Update()
                                 else
                                 {
                                     if (ret == TEXT_TAG_COLOR)
+                                    {
                                         dwColor = htoi(hyperlinkBuffer.c_str(), 8);
+                                    }
                                     else if (ret == TEXT_TAG_RESTORE_COLOR)
+                                    {
                                         dwColor = m_dwTextColor;
+                                    }
                                     else if (ret == TEXT_TAG_HYPERLINK_START)
                                     {
                                         hyperlinkStep = 1;
@@ -293,7 +298,7 @@ void CGraphicTextInstance::Update()
                                 e += len;
                             }
 
-                            int charWidth =
+                            int const charWidth =
                                 __DrawCharacter(pFontTexture, dataCodePage, Arabic_ConvSymbol(wArabicText[i]), dwColor);
                             kHyperlink.ex += charWidth;
 
@@ -316,7 +321,7 @@ void CGraphicTextInstance::Update()
                         // 아랍어이거나 아랍어 출력중 나오는 심볼이라면
                         if (Arabic_IsInPresentation(wArabicChar) || Arabic_IsInSymbol(wArabicChar))
                         {
-                            int charWidth =
+                            int const charWidth =
                                 __DrawCharacter(pFontTexture, dataCodePage, Arabic_ConvSymbol(wArabicText[i]), dwColor);
                             kHyperlink.ex += charWidth;
                             x += charWidth;
@@ -344,15 +349,18 @@ void CGraphicTextInstance::Update()
                 {
                     for (int e = i + 1; e <= nEnglishBase;)
                     {
-                        int ret = GetTextTag(&wArabicText[e], wArabicTextLen - e, len, hyperlinkBuffer);
+                        int const ret = GetTextTag(&wArabicText[e], wArabicTextLen - e, len, hyperlinkBuffer);
 
                         if (ret == TEXT_TAG_PLAIN || ret == TEXT_TAG_TAG)
                         {
                             if (hyperlinkStep == 1)
+                            {
                                 hyperlinkBuffer.append(1, wArabicText[e]);
+                            }
                             else
                             {
-                                int charWidth = __DrawCharacter(pFontTexture, dataCodePage, wArabicText[e], dwColor);
+                                int const charWidth =
+                                    __DrawCharacter(pFontTexture, dataCodePage, wArabicText[e], dwColor);
                                 kHyperlink.ex += charWidth;
 
                                 // 기존 추가한 하이퍼링크의 좌표 수정.
@@ -370,9 +378,13 @@ void CGraphicTextInstance::Update()
                         else
                         {
                             if (ret == TEXT_TAG_COLOR)
+                            {
                                 dwColor = htoi(hyperlinkBuffer.c_str(), 8);
+                            }
                             else if (ret == TEXT_TAG_RESTORE_COLOR)
+                            {
                                 dwColor = m_dwTextColor;
+                            }
                             else if (ret == TEXT_TAG_HYPERLINK_START)
                             {
                                 hyperlinkStep = 1;
@@ -403,22 +415,24 @@ void CGraphicTextInstance::Update()
             else // 아랍외 다른 지역.
             {
                 int x = 0;
-                int len;
+                int len = 0;
                 int hyperlinkStep = 0;
                 SHyperlink kHyperlink;
                 std::wstring hyperlinkBuffer;
 
                 for (int i = 0; i < wTextLen;)
                 {
-                    int ret = GetTextTag(&wText[i], wTextLen - i, len, hyperlinkBuffer);
+                    int const ret = GetTextTag(&wText[i], wTextLen - i, len, hyperlinkBuffer);
 
                     if (ret == TEXT_TAG_PLAIN || ret == TEXT_TAG_TAG)
                     {
                         if (hyperlinkStep == 1)
+                        {
                             hyperlinkBuffer.append(1, wText[i]);
+                        }
                         else
                         {
-                            int charWidth = __DrawCharacter(pFontTexture, dataCodePage, wText[i], dwColor);
+                            int const charWidth = __DrawCharacter(pFontTexture, dataCodePage, wText[i], dwColor);
                             kHyperlink.ex += charWidth;
                             x += charWidth;
                         }
@@ -426,9 +440,13 @@ void CGraphicTextInstance::Update()
                     else
                     {
                         if (ret == TEXT_TAG_COLOR)
+                        {
                             dwColor = htoi(hyperlinkBuffer.c_str(), 8);
+                        }
                         else if (ret == TEXT_TAG_RESTORE_COLOR)
+                        {
                             dwColor = m_dwTextColor;
+                        }
                         else if (ret == TEXT_TAG_HYPERLINK_START)
                         {
                             hyperlinkStep = 1;
@@ -458,7 +476,7 @@ void CGraphicTextInstance::Update()
 
         if (token < end)
         {
-            int newCodePage = ReadToken(token);
+            int const newCodePage = ReadToken(token);
             dataCodePage = newCodePage; // 아랍 및 베트남 내부 데이터를 UTF8 을
                                         // 사용하려 했으나 실패
             begin = token + 5;
@@ -490,7 +508,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
     float fStanX = m_v3Position.x;
     float fStanY = m_v3Position.y + 1.0f;
 
-    UINT defCodePage = GetDefaultCodePage();
+    UINT const defCodePage = GetDefaultCodePage();
 
     if (defCodePage == CP_ARABIC)
     {
@@ -501,7 +519,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
             break;
 
         case HORIZONTAL_ALIGN_CENTER:
-            fStanX -= float(m_textWidth / 2);
+            fStanX -= static_cast<float>(m_textWidth / 2);
             break;
         }
     }
@@ -514,7 +532,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
             break;
 
         case HORIZONTAL_ALIGN_CENTER:
-            fStanX -= float(m_textWidth / 2);
+            fStanX -= static_cast<float>(m_textWidth / 2);
             break;
         }
     }
@@ -526,7 +544,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
         break;
 
     case VERTICAL_ALIGN_CENTER:
-        fStanY -= float(m_textHeight) / 2.0f;
+        fStanY -= static_cast<float>(m_textHeight) / 2.0f;
         break;
     }
 
@@ -534,8 +552,8 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
 
     STATEMANAGER.SaveRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     STATEMANAGER.SaveRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-    DWORD dwFogEnable = STATEMANAGER.GetRenderState(D3DRS_FOGENABLE);
-    DWORD dwLighting = STATEMANAGER.GetRenderState(D3DRS_LIGHTING);
+    DWORD const dwFogEnable = STATEMANAGER.GetRenderState(D3DRS_FOGENABLE);
+    DWORD const dwLighting = STATEMANAGER.GetRenderState(D3DRS_LIGHTING);
     STATEMANAGER.SetRenderState(D3DRS_FOGENABLE, FALSE);
     STATEMANAGER.SetRenderState(D3DRS_LIGHTING, FALSE);
 
@@ -550,17 +568,17 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
     {
         const float fFontHalfWeight = 1.0f;
 
-        float fCurX;
-        float fCurY;
+        float fCurX = NAN;
+        float fCurY = NAN;
 
-        float fFontSx;
-        float fFontSy;
-        float fFontEx;
-        float fFontEy;
-        float fFontWidth;
-        float fFontHeight;
-        float fFontMaxHeight;
-        float fFontAdvance;
+        float fFontSx = NAN;
+        float fFontSy = NAN;
+        float fFontEx = NAN;
+        float fFontEy = NAN;
+        float fFontWidth = NAN;
+        float fFontHeight = NAN;
+        float fFontMaxHeight = NAN;
+        float fFontAdvance = NAN;
 
         SVertex akVertex[4];
         akVertex[0].z = m_v3Position.z;
@@ -568,7 +586,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
         akVertex[2].z = m_v3Position.z;
         akVertex[3].z = m_v3Position.z;
 
-        CGraphicFontTexture::TCharacterInfomation *pCurCharInfo;
+        CGraphicFontTexture::TCharacterInfomation *pCurCharInfo = nullptr;
 
         // 테두리
         if (m_isOutline)
@@ -582,9 +600,9 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
             {
                 pCurCharInfo = *i;
 
-                fFontWidth = float(pCurCharInfo->width);
-                fFontHeight = float(pCurCharInfo->height);
-                fFontAdvance = float(pCurCharInfo->advance);
+                fFontWidth = static_cast<float>(pCurCharInfo->width);
+                fFontHeight = static_cast<float>(pCurCharInfo->height);
+                fFontAdvance = pCurCharInfo->advance;
 
                 // NOTE : 폰트 출력에 Width 제한을 둡니다. - [levites]
                 if ((fCurX + fFontWidth) - m_v3Position.x > m_fLimitWidth)
@@ -628,7 +646,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
 
                 akVertex[3].color = akVertex[2].color = akVertex[1].color = akVertex[0].color = m_dwOutLineColor;
 
-                float feather = 0.0f; // m_fFontFeather
+                float const feather = 0.0f; // m_fFontFeather
 
                 akVertex[0].y = fFontSy - feather;
                 akVertex[1].y = fFontEy + feather;
@@ -641,7 +659,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
                 akVertex[2].x = fFontEx - fFontHalfWeight + feather;
                 akVertex[3].x = fFontEx - fFontHalfWeight + feather;
 
-                if (CGraphicBase::SetPDTStream((SPDTVertex *)akVertex, 4))
+                if (CGraphicBase::SetPDTStream(reinterpret_cast<SPDTVertex *>(akVertex), 4))
                     STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 
                 // 오른
@@ -650,7 +668,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
                 akVertex[2].x = fFontEx + fFontHalfWeight + feather;
                 akVertex[3].x = fFontEx + fFontHalfWeight + feather;
 
-                if (CGraphicBase::SetPDTStream((SPDTVertex *)akVertex, 4))
+                if (CGraphicBase::SetPDTStream(reinterpret_cast<SPDTVertex *>(akVertex), 4))
                     STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 
                 akVertex[0].x = fFontSx - feather;
@@ -665,7 +683,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
                 akVertex[3].y = fFontEy - fFontHalfWeight + feather;
 
                 // 20041216.myevan.DrawPrimitiveUP
-                if (CGraphicBase::SetPDTStream((SPDTVertex *)akVertex, 4))
+                if (CGraphicBase::SetPDTStream(reinterpret_cast<SPDTVertex *>(akVertex), 4))
                     STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 
                 // 아래
@@ -675,7 +693,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
                 akVertex[3].y = fFontEy + fFontHalfWeight + feather;
 
                 // 20041216.myevan.DrawPrimitiveUP
-                if (CGraphicBase::SetPDTStream((SPDTVertex *)akVertex, 4))
+                if (CGraphicBase::SetPDTStream(reinterpret_cast<SPDTVertex *>(akVertex), 4))
                     STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 
                 fCurX += fFontAdvance;
@@ -691,10 +709,10 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
         {
             pCurCharInfo = m_pCharInfoVector[i];
 
-            fFontWidth = float(pCurCharInfo->width);
-            fFontHeight = float(pCurCharInfo->height);
+            fFontWidth = static_cast<float>(pCurCharInfo->width);
+            fFontHeight = static_cast<float>(pCurCharInfo->height);
             fFontMaxHeight = max(fFontHeight, pCurCharInfo->height);
-            fFontAdvance = float(pCurCharInfo->advance);
+            fFontAdvance = pCurCharInfo->advance;
 
             // NOTE : 폰트 출력에 Width 제한을 둡니다. - [levites]
             if ((fCurX + fFontWidth) - m_v3Position.x > m_fLimitWidth)
@@ -752,7 +770,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
             akVertex[0].color = akVertex[1].color = akVertex[2].color = akVertex[3].color = m_dwColorInfoVector[i];
 
             // 20041216.myevan.DrawPrimitiveUP
-            if (CGraphicBase::SetPDTStream((SPDTVertex *)akVertex, 4))
+            if (CGraphicBase::SetPDTStream(reinterpret_cast<SPDTVertex *>(akVertex), 4))
                 STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
             // STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, akVertex,
             // sizeof(SVertex));
@@ -764,11 +782,14 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
     if (m_isCursor)
     {
         // Draw Cursor
-        float sx, sy, ex, ey;
-        TDiffuse diffuse;
+        float sx = NAN;
+        float sy = NAN;
+        float ex = NAN;
+        float ey = NAN;
+        TDiffuse diffuse = 0;
 
-        int curpos = CIME::GetCurPos();
-        int compend = curpos + CIME::GetCompLen();
+        int const curpos = CIME::GetCurPos();
+        int const compend = curpos + CIME::GetCompLen();
 
         __GetTextPos(curpos, &sx, &sy);
 
@@ -807,7 +828,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
             break;
 
         case VERTICAL_ALIGN_CENTER:
-            sy -= float(m_textHeight) / 2.0f;
+            sy -= static_cast<float>(m_textHeight) / 2.0f;
             break;
         }
         // 최적화 사항
@@ -824,15 +845,15 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
         vertices[2].position = TPosition(sx, ey, 0.0f);
         vertices[3].position = TPosition(ex, ey, 0.0f);
 
-        STATEMANAGER.SetTexture(0, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
 
         // 2004.11.18.myevan.DrawIndexPrimitiveUP -> DynamicVertexBuffer
         CGraphicBase::SetDefaultIndexBuffer(CGraphicBase::DEFAULT_IB_FILL_RECT);
         if (CGraphicBase::SetPDTStream(vertices, 4))
             STATEMANAGER.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 4, 0, 2);
 
-        int ulbegin = CIME::GetULBegin();
-        int ulend = CIME::GetULEnd();
+        int const ulbegin = CIME::GetULBegin();
+        int const ulend = CIME::GetULEnd();
 
         if (ulbegin < ulend)
         {
@@ -865,7 +886,7 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
     STATEMANAGER.SetRenderState(D3DRS_LIGHTING, dwLighting);
 
     // 금강경 링크 띄워주는 부분.
-    if (m_hyperlinkVector.size() != 0)
+    if (!m_hyperlinkVector.empty())
     {
         int lx = gs_mx - m_v3Position.x;
         int ly = gs_my - m_v3Position.y;
@@ -879,11 +900,11 @@ void CGraphicTextInstance::Render(RECT *pClipRect)
 
         if (lx >= 0 && ly >= 0 && lx < m_textWidth && ly < m_textHeight)
         {
-            std::vector<SHyperlink>::iterator it = m_hyperlinkVector.begin();
+            auto it = m_hyperlinkVector.begin();
 
             while (it != m_hyperlinkVector.end())
             {
-                SHyperlink &link = *it++;
+                SHyperlink const &link = *it++;
                 if (lx >= link.sx && lx < link.ex)
                 {
                     gs_hyperlinkText = link.text;
@@ -944,8 +965,10 @@ void CGraphicTextInstance::SetColor(DWORD color)
     if (m_dwTextColor != color)
     {
         for (int i = 0; i < m_pCharInfoVector.size(); ++i)
+        {
             if (m_dwColorInfoVector[i] == m_dwTextColor)
                 m_dwColorInfoVector[i] = color;
+        }
 
         m_dwTextColor = color;
     }
@@ -1015,7 +1038,7 @@ void CGraphicTextInstance::SetLimitWidth(float fWidth)
 
 void CGraphicTextInstance::SetValueString(const std::string &c_stValue)
 {
-    if (0 == m_stText.compare(c_stValue))
+    if (c_stValue == m_stText)
         return;
 
     m_stText = c_stValue;
@@ -1024,7 +1047,7 @@ void CGraphicTextInstance::SetValueString(const std::string &c_stValue)
 
 void CGraphicTextInstance::SetValue(const char *c_szText, size_t len)
 {
-    if (0 == m_stText.compare(c_szText))
+    if (c_szText == m_stText)
         return;
 
     m_stText = c_szText;
@@ -1050,7 +1073,7 @@ const std::string &CGraphicTextInstance::GetValueStringReference()
 
 WORD CGraphicTextInstance::GetTextLineCount()
 {
-    CGraphicFontTexture::TCharacterInfomation *pCurCharInfo;
+    CGraphicFontTexture::TCharacterInfomation *pCurCharInfo = nullptr;
     CGraphicFontTexture::TPCharacterInfomationVector::iterator itor;
 
     float fx = 0.0f;
@@ -1059,8 +1082,8 @@ WORD CGraphicTextInstance::GetTextLineCount()
     {
         pCurCharInfo = *itor;
 
-        float fFontWidth = float(pCurCharInfo->width);
-        float fFontAdvance = float(pCurCharInfo->advance);
+        auto fFontWidth = static_cast<float>(pCurCharInfo->width);
+        auto fFontAdvance = pCurCharInfo->advance;
         // float fFontHeight=float(pCurCharInfo->height);
 
         // NOTE : 폰트 출력에 Width 제한을 둡니다. - [levites]
@@ -1076,7 +1099,7 @@ WORD CGraphicTextInstance::GetTextLineCount()
     return wLineCount;
 }
 
-void CGraphicTextInstance::GetTextSize(int *pRetWidth, int *pRetHeight)
+void CGraphicTextInstance::GetTextSize(int *pRetWidth, int *pRetHeight) const
 {
     *pRetWidth = m_textWidth;
     *pRetHeight = m_textHeight;
@@ -1085,7 +1108,7 @@ void CGraphicTextInstance::GetTextSize(int *pRetWidth, int *pRetHeight)
 int CGraphicTextInstance::PixelPositionToCharacterPosition(int iPixelPosition)
 {
     int icurPosition = 0;
-    for (int i = 0; i < (int)m_pCharInfoVector.size(); ++i)
+    for (int i = 0; i < static_cast<int>(m_pCharInfoVector.size()); ++i)
     {
         CGraphicFontTexture::TCharacterInfomation *pCurCharInfo = m_pCharInfoVector[i];
         icurPosition += pCurCharInfo->width;
@@ -1097,14 +1120,14 @@ int CGraphicTextInstance::PixelPositionToCharacterPosition(int iPixelPosition)
     return -1;
 }
 
-int CGraphicTextInstance::GetHorizontalAlign()
+int CGraphicTextInstance::GetHorizontalAlign() const
 {
     return m_hAlign;
 }
 
 void CGraphicTextInstance::__Initialize()
 {
-    m_roText = NULL;
+    m_roText = nullptr;
 
     m_hAlign = HORIZONTAL_ALIGN_LEFT;
     m_vAlign = VERTICAL_ALIGN_TOP;

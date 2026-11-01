@@ -16,21 +16,23 @@
 
 #include <Client/Game/MonsterAreaInfo.h>
 
+#include <algorithm>
+
 #define LOAD_SIZE_WIDTH 1
 
-#define AROUND_AREA_NUM 1 + (LOAD_SIZE_WIDTH * 2) * (LOAD_SIZE_WIDTH * 2) * 2
+#define AROUND_AREA_NUM (1 + (LOAD_SIZE_WIDTH * 2) * (LOAD_SIZE_WIDTH * 2) * 2)
 #define MAX_PREPARE_SIZE 9
 #define MAX_MAPSIZE 256 // 0 ~ 255, cellsize 200 = 64km
 
 #define TERRAINPATCH_LODMAX 3
 
-typedef struct SOutdoorMapCoordinate
+using TOutdoorMapCoordinate = struct SOutdoorMapCoordinate
 {
     short m_sTerrainCoordX; // Terrain 좌표
     short m_sTerrainCoordY;
-} TOutdoorMapCoordinate;
+};
 
-typedef std::map<const std::string, TOutdoorMapCoordinate> TOutdoorMapCoordinateMap;
+using TOutdoorMapCoordinateMap = std::map<const std::string, TOutdoorMapCoordinate>;
 
 class CTerrainPatchProxy;
 class CTerrainQuadtreeNode;
@@ -62,45 +64,43 @@ class CMapOutdoor : public CMapBase
         TEXTURE_SORT,
     };
 
-  public:
     CMapOutdoor();
-    virtual ~CMapOutdoor();
+    ~CMapOutdoor() override;
 
-    virtual void OnBeginEnvironment();
+    void OnBeginEnvironment() override;
 
   protected:
-    bool Initialize();
+    bool Initialize() override;
     void InitializeFog();
 
-    virtual bool Destroy();
-    virtual void OnSetEnvironmentDataPtr();
-    virtual void OnResetEnvironmentDataPtr();
+    bool Destroy() override;
+    void OnSetEnvironmentDataPtr() override;
+    void OnResetEnvironmentDataPtr() override;
 
-    virtual void OnRender();
+    void OnRender() override;
 
     virtual void OnPreAssignTerrainPtr() {};
 
   public:
     void SetInverseViewAndDynamicShaodwMatrices();
-    virtual bool Load(float x, float y, float z);
-    virtual float GetHeight(float x, float y);
+    bool Load(float x, float y, float z) override;
+    float GetHeight(float x, float y) override;
     virtual float GetCacheHeight(float x, float y);
 
-    virtual bool Update(float fX, float fY, float fZ);
-    virtual void UpdateAroundAmbience(float fX, float fY, float fZ);
+    bool Update(float fX, float fY, float fZ) override;
+    void UpdateAroundAmbience(float fX, float fY, float fZ) override;
 
-  public:
-    void Clear();
+    void Clear() override;
 
     void SetVisiblePart(int ePart, bool isVisible);
     void SetSplatLimit(int iSplatNum);
     std::vector<int> &GetRenderedSplatNum(int *piPatch, int *piSplat, float *pfSplatRatio);
     CArea::TCRCWithNumberVector &GetRenderedGraphicThingInstanceNum(DWORD *pdwGraphicThingInstanceNum,
-                                                                    DWORD *pdwCRCNum);
+                                                                    DWORD *pdwCRCNum) const;
 
     bool LoadSetting(const char *c_szFileName);
 
-    void ApplyLight(DWORD dwVersion, const D3DLIGHT9 &c_rkLight);
+    void ApplyLight(DWORD dwVersion, const D3DLIGHT9 &c_rkLight) override;
     void SetEnvironmentScreenFilter();
     void SetEnvironmentSkyBox();
     void SetEnvironmentLensFlare();
@@ -130,12 +130,12 @@ class CMapOutdoor : public CMapBase
     void RenderScreenFiltering();
 
     void SetWireframe(bool bWireFrame);
-    bool IsWireframe();
+    bool IsWireframe() const;
 
     bool GetPickingPointWithRay(const CRay &rRay, D3DXVECTOR3 *v3IntersectPt);
     bool GetPickingPointWithRayOnlyTerrain(const CRay &rRay, D3DXVECTOR3 *v3IntersectPt);
     bool GetPickingPoint(D3DXVECTOR3 *v3IntersectPt);
-    void GetTerrainCount(short *psTerrainCountX, short *psTerrainCountY)
+    void GetTerrainCount(short *psTerrainCountX, short *psTerrainCountY) const
     {
         *psTerrainCountX = m_sTerrainCountX;
         *psTerrainCountY = m_sTerrainCountY;
@@ -182,26 +182,26 @@ class CMapOutdoor : public CMapBase
     //////////////////////////////////////////////////////////////////////////
     // Terrain
     //////////////////////////////////////////////////////////////////////////
-  protected:
+
     // 데이터
-    CTerrain *m_pTerrain[AROUND_AREA_NUM];        // Terrain
-    CTerrainPatchProxy *m_pTerrainPatchProxyList; // CTerrain을 랜더링 할때 실제로 랜더링하는
-                                                  // 폴리곤 패치들... Seamless Map 을 위해
-                                                  // CTerrain으로부터 독립...
+    CTerrain *m_pTerrain[AROUND_AREA_NUM]{};                // Terrain
+    CTerrainPatchProxy *m_pTerrainPatchProxyList = nullptr; // CTerrain을 랜더링 할때 실제로 랜더링하는
+                                                            // 폴리곤 패치들... Seamless Map 을 위해
+                                                            // CTerrain으로부터 독립...
 
-    long m_lViewRadius;   // 시야 거리.. 셀단위임..
-    float m_fHeightScale; // 높이 스케일... 1.0일때 0~655.35미터까지 표현 가능.
+    long m_lViewRadius = 0L;     // 시야 거리.. 셀단위임..
+    float m_fHeightScale = 0.0F; // 높이 스케일... 1.0일때 0~655.35미터까지 표현 가능.
 
-    short m_sTerrainCountX,
-        m_sTerrainCountY; // seamless map 안에 들어가는 Terrain개수
+    short m_sTerrainCountX = 0,
+          m_sTerrainCountY = 0; // seamless map 안에 들어가는 Terrain개수
 
-    TOutdoorMapCoordinate m_CurCoordinate; // 현재의 좌표
+    TOutdoorMapCoordinate m_CurCoordinate{}; // 현재의 좌표
 
-    long m_lCurCoordStartX, m_lCurCoordStartY;
-    TOutdoorMapCoordinate m_PrevCoordinate; // 현재의 좌표
+    long m_lCurCoordStartX = 0L, m_lCurCoordStartY = 0L;
+    TOutdoorMapCoordinate m_PrevCoordinate{}; // 현재의 좌표
     TOutdoorMapCoordinateMap m_EntryPointMap;
 
-    WORD m_wPatchCount;
+    WORD m_wPatchCount = 0U;
 
     //////////////////////////////////////////////////////////////////////////
     // Index Buffer
@@ -211,10 +211,10 @@ class CMapOutdoor : public CMapBase
     CGraphicIndexBuffer m_IndexBuffer;
     WORD m_wNumIndices;
 #else
-    WORD *m_pwaIndices[TERRAINPATCH_LODMAX];
+    WORD *m_pwaIndices[TERRAINPATCH_LODMAX]{};
 
     CGraphicIndexBuffer m_IndexBuffer[TERRAINPATCH_LODMAX];
-    WORD m_wNumIndices[TERRAINPATCH_LODMAX];
+    WORD m_wNumIndices[TERRAINPATCH_LODMAX]{};
 #endif
     virtual void DestroyTerrain();
 
@@ -249,18 +249,18 @@ class CMapOutdoor : public CMapBase
     void ADDLvl2M(WORD *pIndices, WORD &rwCount, const WORD &c_rwCurCount, const BYTE &c_rucNumLineWarp);
 
   public:
-    BOOL GetTerrainPointer(BYTE c_ucTerrainNum, CTerrain **ppTerrain);
+    BOOL GetTerrainPointer(BYTE c_byTerrainNum, CTerrain **ppTerrain);
     float GetTerrainHeight(float fx, float fy);
     bool GetWaterHeight(int iX, int iY, long *plWaterHeight);
     bool GetNormal(int ix, int iy, D3DXVECTOR3 *pv3Normal);
 
     void RenderTerrain();
 
-    const long GetViewRadius()
+    long GetViewRadius() const
     {
         return m_lViewRadius;
     }
-    const float GetHeightScale()
+    float GetHeightScale() const
     {
         return m_fHeightScale;
     }
@@ -280,7 +280,7 @@ class CMapOutdoor : public CMapBase
     // Area
     //////////////////////////////////////////////////////////////////////////
   protected:
-    CArea *m_pArea[AROUND_AREA_NUM]; // Data
+    CArea *m_pArea[AROUND_AREA_NUM]{}; // Data
 
     virtual void DestroyArea();
 
@@ -303,7 +303,7 @@ class CMapOutdoor : public CMapBase
                             WORD *pwTerrainNumX, WORD *pwTerrainNumY);
 
   public:
-    BOOL GetAreaPointer(const BYTE c_ucAreaNum, CArea **ppArea);
+    BOOL GetAreaPointer(BYTE c_byAreaNum, CArea **ppArea);
     void RenderArea(bool bRenderAmbience = true);
     void RenderBlendArea();
     void RenderDungeon();
@@ -311,7 +311,6 @@ class CMapOutdoor : public CMapBase
     void RenderPCBlocker();
     void RenderTree();
 
-  public:
     //////////////////////////////////////////////////////////////////////////
     // For Grass
     //////////////////////////////////////////////////////////////////////////
@@ -327,22 +326,22 @@ class CMapOutdoor : public CMapBase
     void SetTerrainMaterial(const PR_MATERIAL *pMaterial);
 
     bool GetTerrainNum(float fx, float fy, BYTE *pbyTerrainNum);
-    bool GetTerrainNumFromCoord(WORD wCoordX, WORD wCoordY, BYTE *pbyTerrainNum);
+    bool GetTerrainNumFromCoord(WORD wCoordX, WORD wCoordY, BYTE *pbyTerrainNum) const;
 
   protected:
     //////////////////////////////////////////////////////////////////////////
     // New
     //////////////////////////////////////////////////////////////////////////
-    long m_lCenterX, m_lCenterY;   // Terrain 좌표 내의 셀 좌표...
-    long m_lOldReadX, m_lOldReadY; /* Last center */
+    long m_lCenterX = 0L, m_lCenterY = 0L;   // Terrain 좌표 내의 셀 좌표...
+    long m_lOldReadX = 0L, m_lOldReadY = 0L; /* Last center */
 
     //////////////////////////////////////////////////////////////////////////
     // Octree
     //////////////////////////////////////////////////////////////////////////
-    CTerrainQuadtreeNode *m_pRootNode;
+    CTerrainQuadtreeNode *m_pRootNode = nullptr;
 
     void BuildQuadTree();
-    CTerrainQuadtreeNode *AllocQuadTreeNode(long x0, long y0, long x1, long y1);
+    CTerrainQuadtreeNode *AllocQuadTreeNode(long x0, long y0, long x1, long y1) const;
     void SubDivideNode(CTerrainQuadtreeNode *Node);
     void UpdateQuadTreeHeights(CTerrainQuadtreeNode *Node);
 
@@ -362,7 +361,7 @@ class CMapOutdoor : public CMapBase
     };
 
   public:
-    typedef std::vector<BYTE> TTerrainNumVector;
+    using TTerrainNumVector = std::vector<BYTE>;
     struct FSortPatchDrawStructWithTerrainNum
     {
         static TTerrainNumVector m_TerrainNumVector;
@@ -373,14 +372,13 @@ class CMapOutdoor : public CMapBase
 
         bool operator()(const TPatchDrawStruct &lhs, const TPatchDrawStruct &rhs)
         {
-            DWORD lhsTerrainNumOrder = 0, rhsTerrainNumOrder = 0;
+            DWORD lhsTerrainNumOrder = 0;
+            DWORD rhsTerrainNumOrder = 0;
             bool blhsOrderFound = false;
             bool brhsOrderFound = false;
 
-            TTerrainNumVector::iterator lhsIterator =
-                std::find(m_TerrainNumVector.begin(), m_TerrainNumVector.end(), lhs.byTerrainNum);
-            TTerrainNumVector::iterator rhsIterator =
-                std::find(m_TerrainNumVector.begin(), m_TerrainNumVector.end(), rhs.byTerrainNum);
+            auto lhsIterator = std::ranges::find(m_TerrainNumVector, lhs.byTerrainNum);
+            auto rhsIterator = std::ranges::find(m_TerrainNumVector, rhs.byTerrainNum);
 
             if (lhsIterator != m_TerrainNumVector.end())
             {
@@ -399,7 +397,7 @@ class CMapOutdoor : public CMapBase
             }
             if (!blhsOrderFound)
             {
-                lhsIterator = std::find(m_TerrainNumVector.begin(), m_TerrainNumVector.end(), lhs.byTerrainNum);
+                lhsIterator = std::ranges::find(m_TerrainNumVector, lhs.byTerrainNum);
                 if (lhsIterator != m_TerrainNumVector.end())
                 {
                     blhsOrderFound = true;
@@ -423,14 +421,14 @@ class CMapOutdoor : public CMapBase
     void SetPatchDrawVector();
 
     void NEW_DrawWireFrame(CTerrainPatchProxy *pTerrainPatchProxy, WORD wPrimitiveCount,
-                           D3DPRIMITIVETYPE ePrimitiveType);
+                           D3DPRIMITIVETYPE ePrimitiveType) const;
 
     void DrawWireFrame(long patchnum, WORD wPrimitiveCount, D3DPRIMITIVETYPE ePrimitiveType);
     void DrawWater(long patchnum);
 
-    bool m_bDrawWireFrame;
-    bool m_bDrawShadow;
-    bool m_bDrawChrShadow;
+    bool m_bDrawWireFrame = false;
+    bool m_bDrawShadow = false;
+    bool m_bDrawChrShadow = false;
 
     //////////////////////////////////////////////////////////////////////////
     // Water
@@ -449,16 +447,16 @@ class CMapOutdoor : public CMapBase
 
     //////////////////////////////////////////////////////////////////////////
     // Character Shadow
-    LPDIRECT3DTEXTURE9 m_lpCharacterShadowMapTexture;
-    LPDIRECT3DSURFACE9 m_lpCharacterShadowMapRenderTargetSurface;
-    LPDIRECT3DSURFACE9 m_lpCharacterShadowMapDepthSurface;
-    D3DVIEWPORT9 m_ShadowMapViewport;
-    WORD m_wShadowMapSize;
+    LPDIRECT3DTEXTURE9 m_lpCharacterShadowMapTexture = nullptr;
+    LPDIRECT3DSURFACE9 m_lpCharacterShadowMapRenderTargetSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpCharacterShadowMapDepthSurface = nullptr;
+    D3DVIEWPORT9 m_ShadowMapViewport{};
+    WORD m_wShadowMapSize = 0U;
 
     // Backup Device Context
-    LPDIRECT3DSURFACE9 m_lpBackupRenderTargetSurface;
-    LPDIRECT3DSURFACE9 m_lpBackupDepthSurface;
-    D3DVIEWPORT9 m_BackupViewport;
+    LPDIRECT3DSURFACE9 m_lpBackupRenderTargetSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpBackupDepthSurface = nullptr;
+    D3DVIEWPORT9 m_BackupViewport{};
 
     // Character Shadow
     //////////////////////////////////////////////////////////////////////////
@@ -470,12 +468,10 @@ class CMapOutdoor : public CMapBase
 
     CTextureSet m_TextureSet;
 
-  protected:
     CSkyBox m_SkyBox;
     CLensFlare m_LensFlare;
     CScreenFilter m_ScreenFilter;
 
-  protected:
     void SetIndexBuffer();
     void SelectIndexBuffer(BYTE byLODLevel, WORD *pwPrimitiveCount, D3DPRIMITIVETYPE *pePrimitiveType);
 
@@ -488,16 +484,15 @@ class CMapOutdoor : public CMapBase
     D3DXMATRIX m_matDynamicShadowScale;
     D3DXMATRIX m_matLightView;
 
-    float m_fTerrainTexCoordBase;
-    float m_fWaterTexCoordBase;
+    float m_fTerrainTexCoordBase = 0.0F;
+    float m_fWaterTexCoordBase = 0.0F;
 
-    float m_fXforDistanceCaculation, m_fYforDistanceCaculation;
+    float m_fXforDistanceCaculation = 0.0F, m_fYforDistanceCaculation = 0.0F;
 
-  protected:
-    typedef std::vector<CTerrain *> TTerrainPtrVector;
-    typedef TTerrainPtrVector::iterator TTerrainPtrVectorIterator;
-    typedef std::vector<CArea *> TAreaPtrVector;
-    typedef TAreaPtrVector::iterator TAreaPtrVectorIterator;
+    using TTerrainPtrVector = std::vector<CTerrain *>;
+    using TTerrainPtrVectorIterator = TTerrainPtrVector::iterator;
+    using TAreaPtrVector = std::vector<CArea *>;
+    using TAreaPtrVectorIterator = TAreaPtrVector::iterator;
 
     TTerrainPtrVector m_TerrainVector;
     TTerrainPtrVector m_TerrainDeleteVector;
@@ -523,13 +518,11 @@ class CMapOutdoor : public CMapBase
 
         EDeleteDir m_eLRDeleteDir;
         EDeleteDir m_eTBDeleteDir;
-        TOutdoorMapCoordinate m_CurCoordinate;
+        TOutdoorMapCoordinate m_CurCoordinate{};
 
         FPushToDeleteVector(EDeleteDir eLRDeleteDir, EDeleteDir eTBDeleteDir, TOutdoorMapCoordinate CurCoord)
+            : m_eLRDeleteDir(eLRDeleteDir), m_CurCoordinate(CurCoord), m_eTBDeleteDir(eTBDeleteDir)
         {
-            m_eLRDeleteDir = eLRDeleteDir;
-            m_eTBDeleteDir = eTBDeleteDir;
-            m_CurCoordinate = CurCoord;
         }
     };
 
@@ -559,35 +552,31 @@ class CMapOutdoor : public CMapBase
         void operator()(CArea *pArea);
     };
 
-  protected:
     void InitializeVisibleParts();
-    bool IsVisiblePart(int ePart);
+    bool IsVisiblePart(int ePart) const;
 
-    float __GetNoFogDistance();
-    float __GetFogDistance();
+    float __GetNoFogDistance() const;
+    float __GetFogDistance() const;
 
-  protected:
-    DWORD m_dwVisiblePartFlags;
+    DWORD m_dwVisiblePartFlags = 0U;
 
-    int m_iRenderedSplatNumSqSum;
-    int m_iRenderedSplatNum;
-    int m_iRenderedPatchNum;
+    int m_iRenderedSplatNumSqSum = 0;
+    int m_iRenderedSplatNum = 0;
+    int m_iRenderedPatchNum = 0;
     std::vector<int> m_RenderedTextureNumVector;
-    int m_iSplatLimit;
+    int m_iSplatLimit = 0;
 
-  protected:
-    int m_iPatchTerrainVertexCount;
-    int m_iPatchWaterVertexCount;
+    int m_iPatchTerrainVertexCount = 0;
+    int m_iPatchWaterVertexCount = 0;
 
-    int m_iPatchTerrainVertexSize;
-    int m_iPatchWaterVertexSize;
+    int m_iPatchTerrainVertexSize = 0;
+    int m_iPatchWaterVertexSize = 0;
 
-    DWORD m_dwRenderedCRCNum;
-    DWORD m_dwRenderedGraphicThingInstanceNum;
+    DWORD m_dwRenderedCRCNum = 0U;
+    DWORD m_dwRenderedGraphicThingInstanceNum = 0U;
 
     std::list<RECT> m_rkList_kGuildArea;
 
-  protected:
     void __RenderTerrain_RecurseRenderQuadTree(CTerrainQuadtreeNode *Node, bool bCullCheckNeed = true);
     int __RenderTerrain_RecurseRenderQuadTree_CheckBoundingCircle(const D3DXVECTOR3 &c_v3Center,
                                                                   const float &c_fRadius);
@@ -597,12 +586,10 @@ class CMapOutdoor : public CMapBase
     void __RenderTerrain_RenderSoftwareTransformPatch();
     void __RenderTerrain_RenderHardwareTransformPatch();
 
-  protected:
     void __HardwareTransformPatch_RenderPatchSplat(long patchnum, WORD wPrimitiveCount,
                                                    D3DPRIMITIVETYPE ePrimitiveType);
     void __HardwareTransformPatch_RenderPatchNone(long patchnum, WORD wPrimitiveCount, D3DPRIMITIVETYPE ePrimitiveType);
 
-  protected:
     struct SoftwareTransformPatch_SData
     {
         enum
@@ -616,25 +603,25 @@ class CMapOutdoor : public CMapBase
         DWORD m_dwSplatPos;
         DWORD m_dwNonePos;
         DWORD m_dwLightVersion;
-    } m_kSTPD;
+    } m_kSTPD{};
 
     struct SoftwareTransformPatch_SRenderState
     {
         D3DXMATRIX m_m4Proj;
         D3DXMATRIX m_m4Frustum;
         D3DXMATRIX m_m4DynamicShadow;
-        D3DLIGHT9 m_kLight;
-        D3DMATERIAL9 m_kMtrl;
+        D3DLIGHT9 m_kLight{};
+        D3DMATERIAL9 m_kMtrl{};
         D3DXVECTOR3 m_v3Player;
-        DWORD m_dwFogColor;
-        float m_fScreenHalfWidth;
-        float m_fScreenHalfHeight;
+        DWORD m_dwFogColor = 0U;
+        float m_fScreenHalfWidth = 0.0F;
+        float m_fScreenHalfHeight = 0.0F;
 
-        float m_fFogNearDistance;
-        float m_fFogFarDistance;
-        float m_fFogNearTransZ;
-        float m_fFogFarTransZ;
-        float m_fFogLenInv;
+        float m_fFogNearDistance = 0.0F;
+        float m_fFogFarDistance = 0.0F;
+        float m_fFogNearTransZ = 0.0F;
+        float m_fFogFarTransZ = 0.0F;
+        float m_fFogLenInv = 0.0F;
     };
 
     struct SoftwareTransformPatch_STVertex
@@ -645,8 +632,8 @@ class CMapOutdoor : public CMapBase
     struct SoftwareTransformPatch_STLVertex
     {
         D3DXVECTOR4 kPosition;
-        DWORD dwDiffuse;
-        DWORD dwFog;
+        DWORD dwDiffuse = 0U;
+        DWORD dwFog = 0U;
         D3DXVECTOR2 kTexTile;
         D3DXVECTOR2 kTexAlpha;
         D3DXVECTOR2 kTexStaticShadow;
@@ -666,8 +653,8 @@ class CMapOutdoor : public CMapBase
                                                CTerrainPatchProxy &rkTerrainPatchProxy, UINT uTerrainX, UINT uTerrainY,
                                                bool isFogEnable, bool isDynamicShadow);
 
-    bool __SoftwareTransformPatch_SetSplatStream(SoftwareTransformPatch_STLVertex *akTransVertex);
-    bool __SoftwareTransformPatch_SetShadowStream(SoftwareTransformPatch_STLVertex *akTransVertex);
+    bool __SoftwareTransformPatch_SetSplatStream(SoftwareTransformPatch_STLVertex *akSrcVertex);
+    bool __SoftwareTransformPatch_SetShadowStream(SoftwareTransformPatch_STLVertex *akSrcVertex);
 
     void __SoftwareTransformPatch_ApplyStaticShadowRenderState();
     void __SoftwareTransformPatch_RestoreStaticShadowRenderState();
@@ -682,16 +669,14 @@ class CMapOutdoor : public CMapBase
     void __SoftwareTransformPatch_RenderPatchNone(SoftwareTransformPatch_SRenderState &rkTPRS, long patchnum,
                                                   WORD wPrimitiveCount, D3DPRIMITIVETYPE ePrimitiveType);
 
-  protected:
     std::vector<CGraphicObjectInstance *> m_ShadowReceiverVector;
     std::vector<CGraphicObjectInstance *> m_PCBlockerVector;
 
-  protected:
-    float m_fOpaqueWaterDepth;
+    float m_fOpaqueWaterDepth = 0.0F;
     CGraphicImageInstance m_WaterInstances[30];
 
   public:
-    float GetOpaqueWaterDepth()
+    float GetOpaqueWaterDepth() const
     {
         return m_fOpaqueWaterDepth;
     }
@@ -711,12 +696,10 @@ class CMapOutdoor : public CMapBase
   protected:
     ETerrainRenderSort m_eTerrainRenderSort;
 
-  protected:
     CGraphicImageInstance m_attrImageInstance;
     CGraphicImageInstance m_BuildingTransparentImageInstance;
     D3DXMATRIX m_matBuildingTransparent;
 
-  protected:
     CDynamicPool<CMonsterAreaInfo> m_kPool_kMonsterAreaInfo;
     TMonsterAreaInfoPtrVector m_MonsterAreaInfoPtrVector;
     TMonsterAreaInfoPtrVectorIterator m_MonsterAreaInfoPtrVectorIterator;
@@ -737,8 +720,7 @@ class CMapOutdoor : public CMapBase
                                             CMonsterAreaInfo::EMonsterAreaInfoType eMonsterAreaInfoType, DWORD dwVID,
                                             DWORD dwCount, CMonsterAreaInfo::EMonsterDir eMonsterDir);
 
-  public:
-    void GetBaseXY(DWORD *pdwBaseX, DWORD *pdwBaseY);
+    void GetBaseXY(DWORD *pdwBaseX, DWORD *pdwBaseY) const;
     void SetBaseXY(DWORD dwBaseX, DWORD dwBaseY);
 
     void SetTransparentTree(bool bTransparentTree)
@@ -750,21 +732,21 @@ class CMapOutdoor : public CMapBase
         m_bEnableTerrainOnlyForHeight = bFlag;
     }
     void EnablePortal(bool bFlag);
-    bool IsEnablePortal()
+    bool IsEnablePortal() const
     {
         return m_bEnablePortal;
     }
 
   protected:
-    DWORD m_dwBaseX;
-    DWORD m_dwBaseY;
+    DWORD m_dwBaseX = 0U;
+    DWORD m_dwBaseY = 0U;
 
     D3DXVECTOR3 m_v3Player;
 
-    bool m_bShowEntirePatchTextureCount;
-    bool m_bTransparentTree;
-    bool m_bEnableTerrainOnlyForHeight;
-    bool m_bEnablePortal;
+    bool m_bShowEntirePatchTextureCount = false;
+    bool m_bTransparentTree = false;
+    bool m_bEnableTerrainOnlyForHeight = false;
+    bool m_bEnablePortal = false;
 
     // XMas
   private:
@@ -772,7 +754,7 @@ class CMapOutdoor : public CMapBase
     {
         CSpeedTreeWrapper *m_pkTree;
         int m_iEffectID;
-    } m_kXMas;
+    } m_kXMas{};
 
     void __XMasTree_Initialize();
     void __XMasTree_Create(float x, float y, float z, const char *c_szTreeName, const char *c_szEffName);
@@ -783,7 +765,7 @@ class CMapOutdoor : public CMapBase
 
     // Special Effect
   private:
-    typedef std::map<DWORD, int> TSpecialEffectMap;
+    using TSpecialEffectMap = std::map<DWORD, int>;
     TSpecialEffectMap m_kMap_dwID_iEffectID;
 
   public:
@@ -807,7 +789,7 @@ class CMapOutdoor : public CMapBase
 
         std::vector<SItem> m_akVct_kItem[HASH_SIZE];
 
-        bool m_isUpdated;
+        bool m_isUpdated = false;
     } m_kHeightCache;
 
     void __HeightCache_Init();
@@ -822,5 +804,5 @@ class CMapOutdoor : public CMapBase
     std::string m_envDataName;
 
   private:
-    bool m_bSettingTerrainVisible;
+    bool m_bSettingTerrainVisible = false;
 };

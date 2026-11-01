@@ -1,7 +1,7 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 #include <Neoeter/Platform/Base/error.h>
 
-#if defined(_WIN32)
+#ifdef _WIN32
 
 #include <stdio.h>
 #include <time.h>
@@ -160,6 +160,7 @@ void SetEterExceptionHandler()
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <print>
 #include <unistd.h>
 #include <execinfo.h>
 
@@ -168,14 +169,14 @@ static void PosixSignalHandler(int sig)
     FILE *f = fopen("ErrorLog.txt", "wt");
     if (f)
     {
-        fprintf(f, "Fatal Signal: %d\n", sig);
+        std::println(f, "Fatal Signal: {}", sig);
         void *buffer[64];
-        int nptrs = backtrace(buffer, 64);
+        int const nptrs = backtrace(buffer, 64);
         char **strings = backtrace_symbols(buffer, nptrs);
         if (strings)
         {
             for (int i = 0; i < nptrs; ++i)
-                fprintf(f, "%s\n", strings[i]);
+                std::println(f, "{}", strings[i]);
             free(strings);
         }
         fclose(f);
@@ -185,13 +186,13 @@ static void PosixSignalHandler(int sig)
 
 void SetEterExceptionHandler()
 {
-    struct sigaction sa;
+    struct sigaction sa{};
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = PosixSignalHandler;
-    sigaction(SIGSEGV, &sa, NULL);
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGFPE, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGSEGV, &sa, nullptr);
+    sigaction(SIGABRT, &sa, nullptr);
+    sigaction(SIGFPE, &sa, nullptr);
+    sigaction(SIGILL, &sa, nullptr);
 }
 
 #endif

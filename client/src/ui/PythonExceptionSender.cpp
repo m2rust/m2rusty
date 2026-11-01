@@ -59,9 +59,5 @@ void CPythonExceptionSender::Send()
     // m_kSet_dwSendedExceptionCRC.insert(dwCRC32);
 }
 
-CPythonExceptionSender::CPythonExceptionSender()
-{
-}
-CPythonExceptionSender::~CPythonExceptionSender()
-{
-}
+CPythonExceptionSender::CPythonExceptionSender() = default;
+CPythonExceptionSender::~CPythonExceptionSender() = default;

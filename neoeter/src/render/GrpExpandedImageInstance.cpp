@@ -1,6 +1,6 @@
 #include <Neoeter/Render/StdAfx.h>
 #include <Neoeter/Platform/Base/CRC32.h>
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
 #include <Platform/GLCompat.h>
 #endif
 #include <Neoeter/Render/GrpExpandedImageInstance.h>
@@ -35,12 +35,12 @@ void CGraphicExpandedImageInstance::OnRender()
     CGraphicTexture *pTexture = pImage->GetTexturePointer();
 
     const RECT &c_rRect = pImage->GetRectReference();
-    float texReverseWidth = 1.0f / float(pTexture->GetWidth());
-    float texReverseHeight = 1.0f / float(pTexture->GetHeight());
-    float su = (c_rRect.left - m_RenderingRect.left) * texReverseWidth;
-    float sv = (c_rRect.top - m_RenderingRect.top) * texReverseHeight;
-    float eu = (c_rRect.left + m_RenderingRect.right + (c_rRect.right - c_rRect.left)) * texReverseWidth;
-    float ev = (c_rRect.top + m_RenderingRect.bottom + (c_rRect.bottom - c_rRect.top)) * texReverseHeight;
+    float const texReverseWidth = 1.0f / static_cast<float>(pTexture->GetWidth());
+    float const texReverseHeight = 1.0f / static_cast<float>(pTexture->GetHeight());
+    float const su = (c_rRect.left - m_RenderingRect.left) * texReverseWidth;
+    float const sv = (c_rRect.top - m_RenderingRect.top) * texReverseHeight;
+    float const eu = (c_rRect.left + m_RenderingRect.right + (c_rRect.right - c_rRect.left)) * texReverseWidth;
+    float const ev = (c_rRect.top + m_RenderingRect.bottom + (c_rRect.bottom - c_rRect.top)) * texReverseHeight;
 
     TPDTVertex vertices[4];
     vertices[0].position.x = m_v2Position.x - 0.5f;
@@ -69,8 +69,8 @@ void CGraphicExpandedImageInstance::OnRender()
 
     if (0.0f == m_fRotation)
     {
-        float fimgWidth = float(pImage->GetWidth()) * m_v2Scale.x;
-        float fimgHeight = float(pImage->GetHeight()) * m_v2Scale.y;
+        float const fimgWidth = static_cast<float>(pImage->GetWidth()) * m_v2Scale.x;
+        float const fimgHeight = static_cast<float>(pImage->GetHeight()) * m_v2Scale.y;
 
         vertices[0].position.x -= m_RenderingRect.left;
         vertices[0].position.y -= m_RenderingRect.top;
@@ -87,16 +87,16 @@ void CGraphicExpandedImageInstance::OnRender()
     }
     else
     {
-        float fimgHalfWidth = float(pImage->GetWidth()) / 2.0f * m_v2Scale.x;
-        float fimgHalfHeight = float(pImage->GetHeight()) / 2.0f * m_v2Scale.y;
+        float const fimgHalfWidth = static_cast<float>(pImage->GetWidth()) / 2.0f * m_v2Scale.x;
+        float const fimgHalfHeight = static_cast<float>(pImage->GetHeight()) / 2.0f * m_v2Scale.y;
 
-        for (int i = 0; i < 4; ++i)
+        for (auto &vertice : vertices)
         {
-            vertices[i].position.x += m_v2Origin.x;
-            vertices[i].position.y += m_v2Origin.y;
+            vertice.position.x += m_v2Origin.x;
+            vertice.position.y += m_v2Origin.y;
         }
 
-        float fRadian = D3DXToRadian(m_fRotation);
+        float const fRadian = D3DXToRadian(m_fRotation);
         vertices[0].position.x += (-fimgHalfWidth * cosf(fRadian)) - (-fimgHalfHeight * sinf(fRadian));
         vertices[0].position.y += (-fimgHalfWidth * sinf(fRadian)) + (-fimgHalfHeight * cosf(fRadian));
         vertices[1].position.x += (+fimgHalfWidth * cosf(fRadian)) - (-fimgHalfHeight * sinf(fRadian));
@@ -126,21 +126,21 @@ void CGraphicExpandedImageInstance::OnRender()
         CGraphicBase::SetDefaultIndexBuffer(CGraphicBase::DEFAULT_IB_FILL_RECT);
 
         STATEMANAGER.SetTexture(0, pTexture->GetD3DTexture());
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
 
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
         // Set wrap modes dynamically: clamp non-repeating axes to avoid 1px
         // border bleed
-        GLint wrapS = (su < -0.001f || eu > 1.001f) ? GL_REPEAT : GL_CLAMP_TO_EDGE;
-        GLint wrapT = (sv < -0.001f || ev > 1.001f) ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+        GLint const wrapS = (su < -0.001f || eu > 1.001f) ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+        GLint const wrapT = (sv < -0.001f || ev > 1.001f) ? GL_REPEAT : GL_CLAMP_TO_EDGE;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 #endif
 
         STATEMANAGER.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 4, 0, 2);
 
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
         if (wrapS == GL_REPEAT)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         if (wrapT == GL_REPEAT)
@@ -170,7 +170,7 @@ void CGraphicExpandedImageInstance::SetDepth(float fDepth)
 
 void CGraphicExpandedImageInstance::SetOrigin()
 {
-    SetOrigin(float(GetWidth()) / 2.0f, float(GetHeight()) / 2.0f);
+    SetOrigin(static_cast<float>(GetWidth()) / 2.0f, static_cast<float>(GetHeight()) / 2.0f);
 }
 
 void CGraphicExpandedImageInstance::SetOrigin(float fx, float fy)
@@ -195,8 +195,8 @@ void CGraphicExpandedImageInstance::SetRenderingRect(float fLeft, float fTop, fl
     if (IsEmpty())
         return;
 
-    float fWidth = float(GetWidth());
-    float fHeight = float(GetHeight());
+    auto fWidth = static_cast<float>(GetWidth());
+    auto fHeight = static_cast<float>(GetHeight());
 
     m_RenderingRect.left = fWidth * fLeft;
     m_RenderingRect.top = fHeight * fTop;
@@ -211,7 +211,7 @@ void CGraphicExpandedImageInstance::SetRenderingMode(int iMode)
 
 DWORD CGraphicExpandedImageInstance::Type()
 {
-    static DWORD s_dwType = GetCRC32("CGraphicExpandedImageInstance", strlen("CGraphicExpandedImageInstance"));
+    static DWORD const s_dwType = GetCRC32("CGraphicExpandedImageInstance", strlen("CGraphicExpandedImageInstance"));
     return (s_dwType);
 }
 
@@ -220,7 +220,7 @@ void CGraphicExpandedImageInstance::OnSetImagePointer()
     if (IsEmpty())
         return;
 
-    SetOrigin(float(GetWidth()) / 2.0f, float(GetHeight()) / 2.0f);
+    SetOrigin(static_cast<float>(GetWidth()) / 2.0f, static_cast<float>(GetHeight()) / 2.0f);
 }
 
 BOOL CGraphicExpandedImageInstance::OnIsType(DWORD dwType)

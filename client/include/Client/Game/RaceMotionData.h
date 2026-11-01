@@ -56,104 +56,104 @@ class CRaceMotionData
 
     enum EName
     {
-        NAME_NONE,               // 0 없음
-        NAME_WAIT,               // 1 대기          (00.msa)
-        NAME_WALK,               // 2 걷기          (02.msa)
-        NAME_RUN,                // 3 뛰기          (03.msa)
-        NAME_CHANGE_WEAPON,      // 4 무기바꾸기
-        NAME_DAMAGE,             // 5 정면맞기      (30.msa)
-        NAME_DAMAGE_FLYING,      // 6 정면날아가기  (32.msa)
-        NAME_STAND_UP,           // 7 정면일어나기  (33.msa)
-        NAME_DAMAGE_BACK,        // 8 후면맞기      (34.msa)
-        NAME_DAMAGE_FLYING_BACK, // 9 후면날아가기  (35.msa)
-        NAME_STAND_UP_BACK,      // 10 후면일어나기 (36.msa)
-        NAME_DEAD,               // 11 죽기         (31.msa)
-        NAME_DEAD_BACK,          // 12 후면죽기     (37.msa)
-        NAME_NORMAL_ATTACK,      // 13 공격         (20.msa)
-        NAME_COMBO_ATTACK_1,     // 14 콤보 공격
-        NAME_COMBO_ATTACK_2,     // 15 콤보 공격
-        NAME_COMBO_ATTACK_3,     // 16 콤보 공격
-        NAME_COMBO_ATTACK_4,     // 17 콤보 공격
-        NAME_COMBO_ATTACK_5,     // 18 콤보 공격
-        NAME_COMBO_ATTACK_6,     // 19 콤보 공격
-        NAME_COMBO_ATTACK_7,     // 20 콤보 공격
-        NAME_COMBO_ATTACK_8,     // 21 콤보 공격
-        NAME_INTRO_WAIT,         // 22 선택화면 대기
-        NAME_INTRO_SELECTED,     // 23 선택화면 선택
-        NAME_INTRO_NOT_SELECTED, // 24 선택화면 비선택
-        NAME_SPAWN,              // 25 소환
-        NAME_FISHING_THROW,      // 26 낚시 던지기
-        NAME_FISHING_WAIT,       // 27 낚시 대기
-        NAME_FISHING_STOP,       // 28 낚시 그만두기
-        NAME_FISHING_REACT,      // 29 낚시 반응
-        NAME_FISHING_CATCH,      // 30 낚시 잡기
-        NAME_FISHING_FAIL,       // 31 낚시 실패
-        NAME_STOP,               // 32 말 멈추기
-        NAME_SPECIAL_1,          // 33 몬스터/NPC 특수 동작 (24.msa)
-        NAME_SPECIAL_2,          // 34 몬스터/NPC 특수 동작 (25.msa)
-        NAME_SPECIAL_3,
-        NAME_SPECIAL_4,
-        NAME_SPECIAL_5,
-        NAME_SPECIAL_6,
+        NAME_NONE = 0,                // 0 없음
+        NAME_WAIT = 1,                // 1 대기          (00.msa)
+        NAME_WALK = 2,                // 2 걷기          (02.msa)
+        NAME_RUN = 3,                 // 3 뛰기          (03.msa)
+        NAME_CHANGE_WEAPON = 4,       // 4 무기바꾸기
+        NAME_DAMAGE = 5,              // 5 정면맞기      (30.msa)
+        NAME_DAMAGE_FLYING = 6,       // 6 정면날아가기  (32.msa)
+        NAME_STAND_UP = 7,            // 7 정면일어나기  (33.msa)
+        NAME_DAMAGE_BACK = 8,         // 8 후면맞기      (34.msa)
+        NAME_DAMAGE_FLYING_BACK = 9,  // 9 후면날아가기  (35.msa)
+        NAME_STAND_UP_BACK = 10,      // 10 후면일어나기 (36.msa)
+        NAME_DEAD = 11,               // 11 죽기         (31.msa)
+        NAME_DEAD_BACK = 12,          // 12 후면죽기     (37.msa)
+        NAME_NORMAL_ATTACK = 13,      // 13 공격         (20.msa)
+        NAME_COMBO_ATTACK_1 = 14,     // 14 콤보 공격
+        NAME_COMBO_ATTACK_2 = 15,     // 15 콤보 공격
+        NAME_COMBO_ATTACK_3 = 16,     // 16 콤보 공격
+        NAME_COMBO_ATTACK_4 = 17,     // 17 콤보 공격
+        NAME_COMBO_ATTACK_5 = 18,     // 18 콤보 공격
+        NAME_COMBO_ATTACK_6 = 19,     // 19 콤보 공격
+        NAME_COMBO_ATTACK_7 = 20,     // 20 콤보 공격
+        NAME_COMBO_ATTACK_8 = 21,     // 21 콤보 공격
+        NAME_INTRO_WAIT = 22,         // 22 선택화면 대기
+        NAME_INTRO_SELECTED = 23,     // 23 선택화면 선택
+        NAME_INTRO_NOT_SELECTED = 24, // 24 선택화면 비선택
+        NAME_SPAWN = 25,              // 25 소환
+        NAME_FISHING_THROW = 26,      // 26 낚시 던지기
+        NAME_FISHING_WAIT = 27,       // 27 낚시 대기
+        NAME_FISHING_STOP = 28,       // 28 낚시 그만두기
+        NAME_FISHING_REACT = 29,      // 29 낚시 반응
+        NAME_FISHING_CATCH = 30,      // 30 낚시 잡기
+        NAME_FISHING_FAIL = 31,       // 31 낚시 실패
+        NAME_STOP = 32,               // 32 말 멈추기
+        NAME_SPECIAL_1 = 33,          // 33 몬스터/NPC 특수 동작 (24.msa)
+        NAME_SPECIAL_2 = 34,          // 34 몬스터/NPC 특수 동작 (25.msa)
+        NAME_SPECIAL_3 = 35,
+        NAME_SPECIAL_4 = 36,
+        NAME_SPECIAL_5 = 37,
+        NAME_SPECIAL_6 = 38,
         NAME_SKILL = 50,
         NAME_SKILL_END = NAME_SKILL + SKILL_NUM,
 
         // CLAP
-        NAME_CLAP,
+        NAME_CLAP = 306,
 
         // CHEERS
-        NAME_CHEERS_1,
-        NAME_CHEERS_2,
+        NAME_CHEERS_1 = 307,
+        NAME_CHEERS_2 = 308,
 
         // KISS
-        NAME_KISS_START,
+        NAME_KISS_START = 309,
         NAME_KISS_WITH_WARRIOR = NAME_KISS_START + 0,
         NAME_KISS_WITH_ASSASSIN = NAME_KISS_START + 1,
         NAME_KISS_WITH_SURA = NAME_KISS_START + 2,
         NAME_KISS_WITH_SHAMAN = NAME_KISS_START + 3,
 
         // FRENCH_KISS
-        NAME_FRENCH_KISS_START,
+        NAME_FRENCH_KISS_START = 313,
         NAME_FRENCH_KISS_WITH_WARRIOR = NAME_FRENCH_KISS_START + 0,
         NAME_FRENCH_KISS_WITH_ASSASSIN = NAME_FRENCH_KISS_START + 1,
         NAME_FRENCH_KISS_WITH_SURA = NAME_FRENCH_KISS_START + 2,
         NAME_FRENCH_KISS_WITH_SHAMAN = NAME_FRENCH_KISS_START + 3,
 
         // SLAP
-        NAME_SLAP_HIT_START,
+        NAME_SLAP_HIT_START = 317,
         NAME_SLAP_HIT_WITH_WARRIOR = NAME_SLAP_HIT_START + 0,
         NAME_SLAP_HIT_WITH_ASSASSIN = NAME_SLAP_HIT_START + 1,
         NAME_SLAP_HIT_WITH_SURA = NAME_SLAP_HIT_START + 2,
         NAME_SLAP_HIT_WITH_SHAMAN = NAME_SLAP_HIT_START + 3,
 
-        NAME_SLAP_HURT_START,
+        NAME_SLAP_HURT_START = 321,
         NAME_SLAP_HURT_WITH_WARRIOR = NAME_SLAP_HURT_START + 0,
         NAME_SLAP_HURT_WITH_ASSASSIN = NAME_SLAP_HURT_START + 1,
         NAME_SLAP_HURT_WITH_SURA = NAME_SLAP_HURT_START + 2,
         NAME_SLAP_HURT_WITH_SHAMAN = NAME_SLAP_HURT_START + 3,
 
-        NAME_DIG,
+        NAME_DIG = 325,
 
-        NAME_DANCE_1,
-        NAME_DANCE_2,
-        NAME_DANCE_3,
-        NAME_DANCE_4,
-        NAME_DANCE_5,
-        NAME_DANCE_6, // 강남스타일
+        NAME_DANCE_1 = 326,
+        NAME_DANCE_2 = 327,
+        NAME_DANCE_3 = 328,
+        NAME_DANCE_4 = 329,
+        NAME_DANCE_5 = 330,
+        NAME_DANCE_6 = 331, // 강남스타일
 
         NAME_DANCE_END = NAME_DANCE_1 + 16,
 
-        NAME_CONGRATULATION,
-        NAME_FORGIVE,
-        NAME_ANGRY,
-        NAME_ATTRACTIVE,
-        NAME_SAD,
-        NAME_SHY,
-        NAME_CHEERUP,
-        NAME_BANTER,
-        NAME_JOY,
+        NAME_CONGRATULATION = 343,
+        NAME_FORGIVE = 344,
+        NAME_ANGRY = 345,
+        NAME_ATTRACTIVE = 346,
+        NAME_SAD = 347,
+        NAME_SHY = 348,
+        NAME_CHEERUP = 349,
+        NAME_BANTER = 350,
+        NAME_JOY = 351,
 
-        NAME_MAX_NUM,
+        NAME_MAX_NUM = 352,
     };
 
     enum EMotionEventType
@@ -174,34 +174,32 @@ class CRaceMotionData
         MOTION_EVENT_TYPE_MAX_NUM,
     };
 
-    typedef struct SComboInputData
+    using TComboInputData = struct SComboInputData
     {
         float fInputStartTime;
         float fNextComboTime;
         float fInputEndTime;
-    } TComboInputData;
+    };
 
-    typedef struct NMotionEvent::SMotionEventData TMotionEventData;
-    typedef struct NMotionEvent::SMotionEventDataScreenWaving TScreenWavingEventData;
-    typedef struct NMotionEvent::SMotionEventDataScreenFlashing TScreenFlashingEventData;
-    typedef struct NMotionEvent::SMotionEventDataEffect TMotionEffectEventData;
-    typedef struct NMotionEvent::SMotionEventDataFly TMotionFlyEventData;
-    typedef struct NMotionEvent::SMotionEventDataAttack TMotionAttackingEventData;
-    typedef struct NMotionEvent::SMotionEventDataSound TMotionSoundEventData;
-    typedef struct NMotionEvent::SMotionEventDataCharacterShow TMotionCharacterShowEventData;
-    typedef struct NMotionEvent::SMotionEventDataCharacterHide TMotionCharacterHideEventData;
-    typedef struct NMotionEvent::SMotionEventDataWarp TMotionWarpEventData;
-    typedef struct NMotionEvent::SMotionEventDataEffectToTarget TMotionEffectToTargetEventData;
-    typedef std::vector<TMotionEventData *> TMotionEventDataVector;
+    using TMotionEventData = struct NMotionEvent::SMotionEventData;
+    using TScreenWavingEventData = struct NMotionEvent::SMotionEventDataScreenWaving;
+    using TScreenFlashingEventData = struct NMotionEvent::SMotionEventDataScreenFlashing;
+    using TMotionEffectEventData = struct NMotionEvent::SMotionEventDataEffect;
+    using TMotionFlyEventData = struct NMotionEvent::SMotionEventDataFly;
+    using TMotionAttackingEventData = struct NMotionEvent::SMotionEventDataAttack;
+    using TMotionSoundEventData = struct NMotionEvent::SMotionEventDataSound;
+    using TMotionCharacterShowEventData = struct NMotionEvent::SMotionEventDataCharacterShow;
+    using TMotionCharacterHideEventData = struct NMotionEvent::SMotionEventDataCharacterHide;
+    using TMotionWarpEventData = struct NMotionEvent::SMotionEventDataWarp;
+    using TMotionEffectToTargetEventData = struct NMotionEvent::SMotionEventDataEffectToTarget;
+    using TMotionEventDataVector = std::vector<TMotionEventData *>;
 
-  public:
     static CRaceMotionData *New();
     static void Delete(CRaceMotionData *pkData);
 
     static void CreateSystem(UINT uCapacity);
     static void DestroySystem();
 
-  public:
     CRaceMotionData();
     virtual ~CRaceMotionData();
 
@@ -219,7 +217,7 @@ class CRaceMotionData
     const char *GetSoundScriptFileName() const;
 
     void SetMotionDuration(float fDur);
-    float GetMotionDuration();
+    float GetMotionDuration() const;
 
     bool IsAccumulationMotion() const
     {
@@ -254,8 +252,8 @@ class CRaceMotionData
     // Motion Event Data
     DWORD GetMotionEventDataCount() const;
     BOOL GetMotionEventDataPointer(BYTE byIndex, const CRaceMotionData::TMotionEventData **c_ppData) const;
-    BOOL GetMotionAttackingEventDataPointer(
-        BYTE byIndex, const CRaceMotionData::TMotionAttackingEventData **c_ppMotionEventData) const;
+    BOOL GetMotionAttackingEventDataPointer(BYTE byIndex,
+                                            const CRaceMotionData::TMotionAttackingEventData **c_ppData) const;
     int GetEventType(DWORD dwIndex) const;
     float GetEventStartTime(DWORD dwIndex) const;
 
@@ -272,36 +270,35 @@ class CRaceMotionData
   protected:
     void SetType(UINT eType);
 
-  protected:
-    UINT m_eType;
-    UINT m_eName;
-    BOOL m_isLock;
-    int m_iLoopCount;
+    UINT m_eType = 0U;
+    UINT m_eName = 0U;
+    BOOL m_isLock = 0;
+    int m_iLoopCount = 0;
 
     std::string m_strMotionFileName;
     std::string m_strSoundScriptDataFileName;
-    float m_fMotionDuration;
+    float m_fMotionDuration = 0.0F;
 
-    BOOL m_isAccumulationMotion;
+    BOOL m_isAccumulationMotion = 0;
     TPixelPosition m_accumulationPosition;
 
-    BOOL m_isComboMotion;
-    TComboInputData m_ComboInputData;
+    BOOL m_isComboMotion = 0;
+    TComboInputData m_ComboInputData{};
 
-    BOOL m_isLoopMotion;
-    float m_fLoopStartTime;
-    float m_fLoopEndTime;
+    BOOL m_isLoopMotion = 0;
+    float m_fLoopStartTime = 0.0F;
+    float m_fLoopEndTime = 0.0F;
 
-    BOOL m_isAttackingMotion;
+    BOOL m_isAttackingMotion = 0;
     NRaceData::TMotionAttackData m_MotionAttackData;
 
-    BOOL m_bCancelEnableSkill;
+    BOOL m_bCancelEnableSkill = 0;
 
     TMotionEventDataVector m_MotionEventDataVector;
     NSound::TSoundInstanceVector m_SoundInstanceVector;
 
   private:
-    BOOL m_hasSplashEvent;
+    BOOL m_hasSplashEvent = 0;
 
   protected:
     static CDynamicPool<CRaceMotionData> ms_kPool;

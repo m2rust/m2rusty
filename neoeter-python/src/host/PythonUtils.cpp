@@ -4,7 +4,7 @@
 #define PyLong_AsLong PyLong_AsLongLong
 #define Pylong_AsUnsignedLong PyLong_AsUnsignedLongLong
 
-IPythonExceptionSender *g_pkExceptionSender = NULL;
+IPythonExceptionSender *g_pkExceptionSender = nullptr;
 
 bool __PyCallClassMemberFunc_ByCString(PyObject *poClass, const char *c_szFunc, PyObject *poArgs, PyObject **poRet);
 bool __PyCallClassMemberFunc_ByPyString(PyObject *poClass, PyObject *poFuncName, PyObject *poArgs, PyObject **poRet);
@@ -13,13 +13,15 @@ bool __PyCallClassMemberFunc(PyObject *poClass, PyObject *poFunc, PyObject *poAr
 PyObject *Py_BadArgument()
 {
     PyErr_BadArgument();
-    return NULL;
+    return nullptr;
 }
 
 PyObject *Py_BuildException(const char *c_pszErr, ...)
 {
     if (!c_pszErr)
+    {
         PyErr_Clear();
+    }
     else
     {
         char szErrBuf[512 + 1];
@@ -98,31 +100,31 @@ bool PyTuple_GetFloat(PyObject *poArgs, int pos, float *ret)
     if (!poItem)
         return false;
 
-    *ret = float(PyFloat_AsDouble(poItem));
+    *ret = static_cast<float>(PyFloat_AsDouble(poItem));
     return true;
 }
 
 bool PyTuple_GetByte(PyObject *poArgs, int pos, unsigned char *ret)
 {
-    int val;
-    bool result = PyTuple_GetInteger(poArgs, pos, &val);
+    int val = 0;
+    bool const result = PyTuple_GetInteger(poArgs, pos, &val);
     *ret = static_cast<unsigned char>(val);
     return result;
 }
 
 bool PyTuple_GetInteger(PyObject *poArgs, int pos, unsigned char *ret)
 {
-    int val;
-    bool result = PyTuple_GetInteger(poArgs, pos, &val);
+    int val = 0;
+    bool const result = PyTuple_GetInteger(poArgs, pos, &val);
     *ret = static_cast<unsigned char>(val);
     return result;
 }
 
 bool PyTuple_GetInteger(PyObject *poArgs, int pos, WORD *ret)
 {
-    int val;
-    bool result = PyTuple_GetInteger(poArgs, pos, &val);
-    *ret = WORD(val);
+    int val = 0;
+    bool const result = PyTuple_GetInteger(poArgs, pos, &val);
+    *ret = static_cast<WORD>(val);
     return result;
 }
 
@@ -195,13 +197,13 @@ bool PyTuple_GetBoolean(PyObject *poArgs, int pos, bool *ret)
     if (!poItem)
         return false;
 
-    *ret = PyLong_AsLong(poItem) ? true : false;
+    *ret = PyLong_AsLong(poItem) != 0;
     return true;
 }
 
 bool PyCallClassMemberFunc(PyObject *poClass, PyObject *poFunc, PyObject *poArgs)
 {
-    PyObject *poRet;
+    PyObject *poRet = nullptr;
 
     // NOTE : NULL 체크 추가.. - [levites]
     if (!poClass)
@@ -219,7 +221,7 @@ bool PyCallClassMemberFunc(PyObject *poClass, PyObject *poFunc, PyObject *poArgs
 
 bool PyCallClassMemberFunc(PyObject *poClass, const char *c_szFunc, PyObject *poArgs)
 {
-    PyObject *poRet;
+    PyObject *poRet = nullptr;
 
     // NOTE : NULL 체크 추가.. - [levites]
     if (!poClass)
@@ -237,7 +239,7 @@ bool PyCallClassMemberFunc(PyObject *poClass, const char *c_szFunc, PyObject *po
 
 bool PyCallClassMemberFunc_ByPyString(PyObject *poClass, PyObject *poFuncName, PyObject *poArgs)
 {
-    PyObject *poRet;
+    PyObject *poRet = nullptr;
 
     // NOTE : NULL 체크 추가.. - [levites]
     if (!poClass)
@@ -255,15 +257,19 @@ bool PyCallClassMemberFunc_ByPyString(PyObject *poClass, PyObject *poFuncName, P
 
 bool PyCallClassMemberFunc(PyObject *poClass, const char *c_szFunc, PyObject *poArgs, bool *pisRet)
 {
-    PyObject *poRet;
+    PyObject *poRet = nullptr;
 
     if (!__PyCallClassMemberFunc_ByCString(poClass, c_szFunc, poArgs, &poRet))
         return false;
 
     if (PyNumber_Check(poRet))
+    {
         *pisRet = (PyLong_AsLong(poRet) != 0);
+    }
     else
+    {
         *pisRet = true;
+    }
 
     Py_DECREF(poRet);
     return true;
@@ -271,7 +277,7 @@ bool PyCallClassMemberFunc(PyObject *poClass, const char *c_szFunc, PyObject *po
 
 bool PyCallClassMemberFunc(PyObject *poClass, const char *c_szFunc, PyObject *poArgs, long *plRetValue)
 {
-    PyObject *poRet;
+    PyObject *poRet = nullptr;
 
     if (!__PyCallClassMemberFunc_ByCString(poClass, c_szFunc, poArgs, &poRet))
         return false;
@@ -300,7 +306,7 @@ bool __PyCallClassMemberFunc_ByCString(PyObject *poClass, const char *c_szFunc, 
         return false;
     }
 
-    PyObject *poFunc = PyObject_GetAttrString(poClass, (char *)c_szFunc); // New Reference
+    PyObject *poFunc = PyObject_GetAttrString(poClass, const_cast<char *>(c_szFunc)); // New Reference
 
     if (!poFunc)
     {

@@ -63,16 +63,15 @@ class CGuildMarkUploader : public CNetworkStream, public CSingleton<CGuildMarkUp
         SEND_TYPE_SYMBOL,
     };
 
-  public:
     CGuildMarkUploader();
-    virtual ~CGuildMarkUploader();
+    ~CGuildMarkUploader() override;
 
     void Disconnect();
     bool Connect(const CNetworkAddress &c_rkNetAddr, DWORD dwHandle, DWORD dwRandomKey, DWORD dwGuildID,
                  const char *c_szFileName, UINT *peError);
     bool ConnectToSendSymbol(const CNetworkAddress &c_rkNetAddr, DWORD dwHandle, DWORD dwRandomKey, DWORD dwGuildID,
                              const char *c_szFileName, UINT *peError);
-    bool IsCompleteUploading();
+    bool IsCompleteUploading() const;
 
     void Process();
 
@@ -84,11 +83,10 @@ class CGuildMarkUploader : public CNetworkStream, public CSingleton<CGuildMarkUp
         STATE_COMPLETE,
     };
 
-  private:
-    void OnConnectFailure();
-    void OnConnectSuccess();
-    void OnRemoteDisconnect();
-    void OnDisconnect();
+    void OnConnectFailure() override;
+    void OnConnectSuccess() override;
+    void OnRemoteDisconnect() override;
+    void OnDisconnect() override;
 
     bool __Load(const char *c_szFileName, UINT *peError);
     bool __LoadSymbol(const char *c_szFileName, UINT *peError);
@@ -112,18 +110,17 @@ class CGuildMarkUploader : public CNetworkStream, public CSingleton<CGuildMarkUp
     bool __SendMarkPacket();
     bool __SendSymbolPacket();
 
-  private:
-    UINT m_eState;
+    UINT m_eState = 0U;
 
-    DWORD m_dwSendType;
-    DWORD m_dwHandle;
-    DWORD m_dwRandomKey;
-    DWORD m_dwGuildID;
+    DWORD m_dwSendType = 0U;
+    DWORD m_dwHandle = 0U;
+    DWORD m_dwRandomKey = 0U;
+    DWORD m_dwGuildID = 0U;
 
-    SGuildMark m_kMark;
+    SGuildMark m_kMark{};
 
-    DWORD m_dwSymbolBufSize;
-    DWORD m_dwSymbolCRC32;
+    DWORD m_dwSymbolBufSize = 0U;
+    DWORD m_dwSymbolCRC32 = 0U;
     BYTE *m_pbySymbolBuf;
 };
 

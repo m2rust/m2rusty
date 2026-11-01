@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <fstream>
 #include <algorithm>
+#include <numbers>
 
 // Static member definitions
 std::string CSpeedTreeRT::ms_strError;
@@ -19,62 +20,33 @@ unsigned int CSpeedTreeRT::ms_unNumWindMatrices = 4;
 
 // SGeometry implementations
 CSpeedTreeRT::SGeometry::SIndexed::SIndexed()
-    : m_nDiscreteLodLevel(-1), m_usNumStrips(0), m_pStripLengths(nullptr), m_pStrips(nullptr), m_usVertexCount(0),
-      m_pColors(nullptr), m_pNormals(nullptr), m_pBinormals(nullptr), m_pTangents(nullptr), m_pCoords(nullptr),
-      m_pTexCoords0(nullptr), m_pTexCoords1(nullptr), m_pWindWeights(nullptr), m_pWindMatrixIndices(nullptr)
-{
-}
 
-CSpeedTreeRT::SGeometry::SIndexed::~SIndexed()
 {
 }
 
 CSpeedTreeRT::SGeometry::SLeaf::SLeaf()
-    : m_bIsActive(false), m_fAlphaTestValue(0.0f), m_nDiscreteLodLevel(-1), m_usLeafCount(0),
-      m_pLeafMapIndices(nullptr), m_pLeafClusterIndices(nullptr), m_pCenterCoords(nullptr),
-      m_pLeafMapTexCoords(nullptr), m_pLeafMapCoords(nullptr), m_pColors(nullptr), m_pNormals(nullptr),
-      m_pBinormals(nullptr), m_pTangents(nullptr), m_pWindWeights(nullptr), m_pWindMatrixIndices(nullptr)
-{
-}
 
-CSpeedTreeRT::SGeometry::SLeaf::~SLeaf()
 {
 }
 
 CSpeedTreeRT::SGeometry::SBillboard::SBillboard()
-    : m_bIsActive(false), m_pTexCoords(nullptr), m_pCoords(nullptr), m_fAlphaTestValue(0.0f)
+
 {
 }
 
-CSpeedTreeRT::SGeometry::SBillboard::~SBillboard()
+CSpeedTreeRT::SGeometry::SGeometry()
 {
 }
 
-CSpeedTreeRT::SGeometry::SGeometry() : m_fBranchAlphaTestValue(0.0f), m_fFrondAlphaTestValue(0.0f)
-{
-}
-
-CSpeedTreeRT::SGeometry::~SGeometry()
-{
-}
+CSpeedTreeRT::SGeometry::~SGeometry() = default;
 
 CSpeedTreeRT::STextures::STextures()
-    : m_pBranchTextureFilename(nullptr), m_uiLeafTextureCount(0), m_pLeafTextureFilenames(nullptr),
-      m_uiFrondTextureCount(0), m_pFrondTextureFilenames(nullptr), m_pCompositeFilename(nullptr),
-      m_pSelfShadowFilename(nullptr)
-{
-}
 
-CSpeedTreeRT::STextures::~STextures()
 {
 }
 
 CSpeedTreeRT::CSpeedTreeRT()
-    : m_fSize(400.0f), m_fSizeVariance(0.0f), m_nSeed(1), m_fWindStrength(0.0f), m_fLeafLightingAdjustment(1.0f),
-      m_eBranchLighting(LIGHT_STATIC), m_eLeafLighting(LIGHT_STATIC), m_eFrondLighting(LIGHT_STATIC),
-      m_eBranchWind(WIND_NONE), m_eLeafWind(WIND_NONE), m_eFrondWind(WIND_NONE), m_pInstanceOf(nullptr),
-      m_eShape(SHAPE_BROADLEAF), m_bGeometryGenerated(false), m_bBakedGeometry(false), m_fBranchAlpha(1.0f),
-      m_fFrondAlpha(0.0f), m_fLeafAlpha(128.0f), m_usBranchStripLength(0), m_usFrondStripLength(0)
+
 {
     m_afPos[0] = m_afPos[1] = m_afPos[2] = 0.0f;
     m_afBoundingBox[0] = -100.0f;
@@ -92,7 +64,7 @@ CSpeedTreeRT::CSpeedTreeRT()
     std::memcpy(m_afFrondMaterial, defaultMat, sizeof(defaultMat));
 
     // Default trunk collision cylinder
-    SCollisionObj obj;
+    SCollisionObj obj{};
     obj.m_eType = CO_CYLINDER;
     obj.m_afPos[0] = 0.0f;
     obj.m_afPos[1] = 0.0f;
@@ -103,9 +75,7 @@ CSpeedTreeRT::CSpeedTreeRT()
     m_vCollisions.push_back(obj);
 }
 
-CSpeedTreeRT::~CSpeedTreeRT()
-{
-}
+CSpeedTreeRT::~CSpeedTreeRT() = default;
 
 bool CSpeedTreeRT::Compute(const float *pTransform, unsigned int nSeed, bool bCompositeStrips)
 {
@@ -121,20 +91,20 @@ bool CSpeedTreeRT::Compute(const float *pTransform, unsigned int nSeed, bool bCo
 
 CSpeedTreeRT *CSpeedTreeRT::Clone(float x, float y, float z, unsigned int nSeed) const
 {
-    CSpeedTreeRT *pClone = new CSpeedTreeRT(*this);
+    auto *pClone = new CSpeedTreeRT(*this);
     pClone->SetTreePosition(x, y, z);
     pClone->m_nSeed = nSeed;
     return pClone;
 }
 
-const CSpeedTreeRT *CSpeedTreeRT::InstanceOf(void) const
+const CSpeedTreeRT *CSpeedTreeRT::InstanceOf() const
 {
     return m_pInstanceOf;
 }
 
-CSpeedTreeRT *CSpeedTreeRT::MakeInstance(void)
+CSpeedTreeRT *CSpeedTreeRT::MakeInstance()
 {
-    CSpeedTreeRT *pInstance = new CSpeedTreeRT();
+    auto *pInstance = new CSpeedTreeRT();
     pInstance->m_pInstanceOf = this;
     pInstance->m_fSize = m_fSize;
     pInstance->m_fSizeVariance = m_fSizeVariance;
@@ -155,13 +125,13 @@ CSpeedTreeRT *CSpeedTreeRT::MakeInstance(void)
     return pInstance;
 }
 
-void CSpeedTreeRT::DeleteTransientData(void)
+void CSpeedTreeRT::DeleteTransientData()
 {
 }
 
 static std::string ExtractBaseName(const std::string &path)
 {
-    size_t lastSlash = path.find_last_of("/\\");
+    size_t const lastSlash = path.find_last_of("/\\");
     std::string filename = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
     return filename;
 }
@@ -179,7 +149,7 @@ bool CSpeedTreeRT::LoadTree(const unsigned char *pBlock, unsigned int nNumBytes)
     std::string current;
     for (unsigned int i = 0; i < nNumBytes; ++i)
     {
-        char c = static_cast<char>(pBlock[i]);
+        char const c = static_cast<char>(pBlock[i]);
         if (std::isprint(static_cast<unsigned char>(c)) && c != ' ' && c != '\t' && c != '\r' && c != '\n' &&
             c != '"' && c != '\'')
         {
@@ -208,13 +178,17 @@ bool CSpeedTreeRT::LoadTree(const unsigned char *pBlock, unsigned int nNumBytes)
         {
             const std::string::size_type dotPos = tok.find_last_of('.');
             if (dotPos != std::string::npos && dotPos > hashPos)
+            {
                 tok = tok.substr(0, hashPos) + tok.substr(dotPos);
+            }
             else
+            {
                 tok = tok.substr(0, hashPos);
+            }
         }
 
         std::string lower;
-        for (char ch : tok)
+        for (char const ch : tok)
             lower += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
 
         if (lower.find("compositeshadowmap") != std::string::npos ||
@@ -250,24 +224,36 @@ bool CSpeedTreeRT::LoadTree(const unsigned char *pBlock, unsigned int nNumBytes)
     // archetype (broadleaf, birch, conifer, palm, baobab, small plant).
     {
         std::string lower;
-        for (char ch : m_strBranchTexture)
+        for (char const ch : m_strBranchTexture)
             lower += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
 
         if (lower.find("palm") != std::string::npos || lower.find("banana") != std::string::npos ||
             lower.find("palmetto") != std::string::npos)
+        {
             m_eShape = SHAPE_PALM;
+        }
         else if (lower.find("spruce") != std::string::npos || lower.find("cypress") != std::string::npos ||
                  lower.find("pine") != std::string::npos || lower.find("cedar") != std::string::npos ||
                  lower.find("juniper") != std::string::npos || lower.find("christmas") != std::string::npos)
+        {
             m_eShape = SHAPE_CONIFER;
+        }
         else if (lower.find("baobab") != std::string::npos)
+        {
             m_eShape = SHAPE_BAOBAB;
+        }
         else if (lower.find("fern") != std::string::npos || lower.find("aloe") != std::string::npos)
+        {
             m_eShape = SHAPE_SMALL;
+        }
         else if (lower.find("birch") != std::string::npos)
+        {
             m_eShape = SHAPE_BIRCH;
+        }
         else
+        {
             m_eShape = SHAPE_BROADLEAF;
+        }
     }
 
     // Try the baked geometry cache produced from the original SpeedTreeRT SDK.
@@ -309,7 +295,7 @@ bool CSpeedTreeRT::LoadTree(const char *pFilename)
     }
 
     std::fseek(fp, 0, SEEK_END);
-    long sz = std::ftell(fp);
+    long const sz = std::ftell(fp);
     std::fseek(fp, 0, SEEK_SET);
 
     if (sz <= 0)
@@ -320,7 +306,7 @@ bool CSpeedTreeRT::LoadTree(const char *pFilename)
     }
 
     std::vector<unsigned char> buf(static_cast<size_t>(sz));
-    size_t readBytes = std::fread(buf.data(), 1, buf.size(), fp);
+    size_t const readBytes = std::fread(buf.data(), 1, buf.size(), fp);
     std::fclose(fp);
 
     return LoadTree(buf.data(), static_cast<unsigned int>(readBytes));
@@ -360,7 +346,7 @@ unsigned int CSpeedTreeRT::GetSeed() const
     return m_nSeed;
 }
 
-const float *CSpeedTreeRT::GetTreePosition(void) const
+const float *CSpeedTreeRT::GetTreePosition() const
 {
     return m_afPos;
 }
@@ -376,7 +362,7 @@ void CSpeedTreeRT::SetLeafTargetAlphaMask(unsigned char ucMask)
 {
 }
 
-CSpeedTreeRT::ELightingMethod CSpeedTreeRT::GetBranchLightingMethod(void) const
+CSpeedTreeRT::ELightingMethod CSpeedTreeRT::GetBranchLightingMethod() const
 {
     return m_eBranchLighting;
 }
@@ -384,7 +370,7 @@ void CSpeedTreeRT::SetBranchLightingMethod(ELightingMethod eMethod)
 {
     m_eBranchLighting = eMethod;
 }
-CSpeedTreeRT::ELightingMethod CSpeedTreeRT::GetLeafLightingMethod(void) const
+CSpeedTreeRT::ELightingMethod CSpeedTreeRT::GetLeafLightingMethod() const
 {
     return m_eLeafLighting;
 }
@@ -392,7 +378,7 @@ void CSpeedTreeRT::SetLeafLightingMethod(ELightingMethod eMethod)
 {
     m_eLeafLighting = eMethod;
 }
-CSpeedTreeRT::ELightingMethod CSpeedTreeRT::GetFrondLightingMethod(void) const
+CSpeedTreeRT::ELightingMethod CSpeedTreeRT::GetFrondLightingMethod() const
 {
     return m_eFrondLighting;
 }
@@ -401,7 +387,7 @@ void CSpeedTreeRT::SetFrondLightingMethod(ELightingMethod eMethod)
     m_eFrondLighting = eMethod;
 }
 
-CSpeedTreeRT::EStaticLightingStyle CSpeedTreeRT::GetStaticLightingStyle(void) const
+CSpeedTreeRT::EStaticLightingStyle CSpeedTreeRT::GetStaticLightingStyle() const
 {
     return SLS_BASIC;
 }
@@ -436,7 +422,7 @@ void CSpeedTreeRT::SetLightAttributes(unsigned int nLightIndex, const float *pLi
         std::memcpy(ms_afLightAttrs, pLightAttributes, sizeof(ms_afLightAttrs));
 }
 
-const float *CSpeedTreeRT::GetBranchMaterial(void) const
+const float *CSpeedTreeRT::GetBranchMaterial() const
 {
     return m_afBranchMaterial;
 }
@@ -446,7 +432,7 @@ void CSpeedTreeRT::SetBranchMaterial(const float *pMaterial)
         std::memcpy(m_afBranchMaterial, pMaterial, sizeof(m_afBranchMaterial));
 }
 
-const float *CSpeedTreeRT::GetLeafMaterial(void) const
+const float *CSpeedTreeRT::GetLeafMaterial() const
 {
     return m_afLeafMaterial;
 }
@@ -456,7 +442,7 @@ void CSpeedTreeRT::SetLeafMaterial(const float *pMaterial)
         std::memcpy(m_afLeafMaterial, pMaterial, sizeof(m_afLeafMaterial));
 }
 
-const float *CSpeedTreeRT::GetFrondMaterial(void) const
+const float *CSpeedTreeRT::GetFrondMaterial() const
 {
     return m_afFrondMaterial;
 }
@@ -488,10 +474,10 @@ void CSpeedTreeRT::SetTime(float fTime)
 void CSpeedTreeRT::ComputeWindEffects(bool bBranches, bool bLeaves, bool bFronds)
 {
 }
-void CSpeedTreeRT::ResetLeafWindState(void)
+void CSpeedTreeRT::ResetLeafWindState()
 {
 }
-bool CSpeedTreeRT::GetLeafRockingState(void) const
+bool CSpeedTreeRT::GetLeafRockingState() const
 {
     return true;
 }
@@ -502,7 +488,7 @@ void CSpeedTreeRT::SetNumLeafRockingGroups(unsigned int nRockingGroups)
 {
 }
 
-CSpeedTreeRT::EWindMethod CSpeedTreeRT::GetLeafWindMethod(void) const
+CSpeedTreeRT::EWindMethod CSpeedTreeRT::GetLeafWindMethod() const
 {
     return m_eLeafWind;
 }
@@ -510,7 +496,7 @@ void CSpeedTreeRT::SetLeafWindMethod(EWindMethod eMethod)
 {
     m_eLeafWind = eMethod;
 }
-CSpeedTreeRT::EWindMethod CSpeedTreeRT::GetBranchWindMethod(void) const
+CSpeedTreeRT::EWindMethod CSpeedTreeRT::GetBranchWindMethod() const
 {
     return m_eBranchWind;
 }
@@ -518,7 +504,7 @@ void CSpeedTreeRT::SetBranchWindMethod(EWindMethod eMethod)
 {
     m_eBranchWind = eMethod;
 }
-CSpeedTreeRT::EWindMethod CSpeedTreeRT::GetFrondWindMethod(void) const
+CSpeedTreeRT::EWindMethod CSpeedTreeRT::GetFrondWindMethod() const
 {
     return m_eFrondWind;
 }
@@ -527,7 +513,7 @@ void CSpeedTreeRT::SetFrondWindMethod(EWindMethod eMethod)
     m_eFrondWind = eMethod;
 }
 
-float CSpeedTreeRT::GetWindStrength(void) const
+float CSpeedTreeRT::GetWindStrength() const
 {
     return m_fWindStrength;
 }
@@ -553,10 +539,10 @@ void CSpeedTreeRT::SetLocalMatrices(unsigned int nStartingMatrix, unsigned int n
 {
 }
 
-void CSpeedTreeRT::ComputeLodLevel(void)
+void CSpeedTreeRT::ComputeLodLevel()
 {
 }
-float CSpeedTreeRT::GetLodLevel(void) const
+float CSpeedTreeRT::GetLodLevel() const
 {
     return 1.0f;
 }
@@ -590,23 +576,23 @@ short CSpeedTreeRT::GetDiscreteFrondLodLevel(float fLodLevel) const
     return 0;
 }
 
-unsigned short CSpeedTreeRT::GetNumBranchLodLevels(void) const
+unsigned short CSpeedTreeRT::GetNumBranchLodLevels() const
 {
     return 1;
 }
-unsigned short CSpeedTreeRT::GetNumLeafLodLevels(void) const
+unsigned short CSpeedTreeRT::GetNumLeafLodLevels() const
 {
     return 1;
 }
-unsigned short CSpeedTreeRT::GetNumFrondLodLevels(void) const
+unsigned short CSpeedTreeRT::GetNumFrondLodLevels() const
 {
     return 1;
 }
 
-void CSpeedTreeRT::DeleteBranchGeometry(void)
+void CSpeedTreeRT::DeleteBranchGeometry()
 {
 }
-void CSpeedTreeRT::DeleteFrondGeometry(void)
+void CSpeedTreeRT::DeleteFrondGeometry()
 {
 }
 unsigned char *CSpeedTreeRT::GetFrondGeometryMapIndexes(int nLodLevel) const
@@ -618,7 +604,7 @@ const float *CSpeedTreeRT::GetLeafBillboardTable(unsigned int &nEntryCount) cons
     nEntryCount = 0;
     return nullptr;
 }
-const float *CSpeedTreeRT::GetLeafLodSizeAdjustments(void)
+const float *CSpeedTreeRT::GetLeafLodSizeAdjustments()
 {
     return nullptr;
 }
@@ -654,56 +640,62 @@ void CSpeedTreeRT::GenerateGeometry()
     // ------------------------------------------------------------------
     auto addTube = [&](float sx, float sy, float sz, float ex, float ey, float ez, float r0, float r1, float vTile,
                        bool bFlip) {
-        float dx = ex - sx, dy = ey - sy, dz = ez - sz;
-        float len = std::sqrt(dx * dx + dy * dy + dz * dz);
+        float dx = ex - sx;
+        float dy = ey - sy;
+        float dz = ez - sz;
+        float const len = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
         if (len < 1e-4f)
             return;
         dx /= len;
         dy /= len;
         dz /= len;
 
-        float rx = 0.0f, ry = 0.0f, rz = 1.0f;
+        float rx = 0.0f;
+        float const ry = 0.0f;
+        float rz = 1.0f;
         if (std::fabs(dz) > 0.9f)
         {
             rx = 1.0f;
             rz = 0.0f;
         }
 
-        float rght[3] = {ry * dz - rz * dy, rz * dx - rx * dz, rx * dy - ry * dx};
-        float rl = std::sqrt(rght[0] * rght[0] + rght[1] * rght[1] + rght[2] * rght[2]);
+        float rght[3] = {(ry * dz) - (rz * dy), (rz * dx) - (rx * dz), (rx * dy) - (ry * dx)};
+        float const rl = std::sqrt((rght[0] * rght[0]) + (rght[1] * rght[1]) + (rght[2] * rght[2]));
         if (rl < 1e-6f)
             return;
         rght[0] /= rl;
         rght[1] /= rl;
         rght[2] /= rl;
 
-        float up[3] = {dy * rght[2] - dz * rght[1], dz * rght[0] - dx * rght[2], dx * rght[1] - dy * rght[0]};
+        float const up[3] = {(dy * rght[2]) - (dz * rght[1]), (dz * rght[0]) - (dx * rght[2]),
+                             (dx * rght[1]) - (dy * rght[0])};
 
         const int sides = 6;
-        const unsigned short base = static_cast<unsigned short>(m_vBranchCoords.size() / 3);
+        const auto base = static_cast<unsigned short>(m_vBranchCoords.size() / 3);
         const float sign = bFlip ? 1.0f : -1.0f;
 
         for (int i = 0; i <= sides; ++i)
         {
-            const float a = sign * 2.0f * 3.14159265358979f * static_cast<float>(i) / static_cast<float>(sides);
-            const float ca = std::cos(a), sa = std::sin(a);
-            const float ox = rght[0] * ca + up[0] * sa;
-            const float oy = rght[1] * ca + up[1] * sa;
-            const float oz = rght[2] * ca + up[2] * sa;
+            const float a = sign * 2.0f * std::numbers::pi_v<float> * static_cast<float>(i) / static_cast<float>(sides);
+            const float ca = std::cos(a);
+            const float sa = std::sin(a);
+            const float ox = (rght[0] * ca) + (up[0] * sa);
+            const float oy = (rght[1] * ca) + (up[1] * sa);
+            const float oz = (rght[2] * ca) + (up[2] * sa);
             const float u = static_cast<float>(i) / static_cast<float>(sides);
 
-            m_vBranchCoords.push_back(sx + ox * r0);
-            m_vBranchCoords.push_back(sy + oy * r0);
-            m_vBranchCoords.push_back(sz + oz * r0);
+            m_vBranchCoords.push_back(sx + (ox * r0));
+            m_vBranchCoords.push_back(sy + (oy * r0));
+            m_vBranchCoords.push_back(sz + (oz * r0));
             m_vBranchColors.push_back(0xFFFFFFFFul);
             m_vBranchTexCoords0.push_back(u);
             m_vBranchTexCoords0.push_back(0.0f);
             m_vBranchTexCoords1.push_back(u);
             m_vBranchTexCoords1.push_back(0.0f);
 
-            m_vBranchCoords.push_back(ex + ox * r1);
-            m_vBranchCoords.push_back(ey + oy * r1);
-            m_vBranchCoords.push_back(ez + oz * r1);
+            m_vBranchCoords.push_back(ex + (ox * r1));
+            m_vBranchCoords.push_back(ey + (oy * r1));
+            m_vBranchCoords.push_back(ez + (oz * r1));
             m_vBranchColors.push_back(0xFFFFFFFFul);
             m_vBranchTexCoords0.push_back(u);
             m_vBranchTexCoords0.push_back(vTile);
@@ -723,7 +715,7 @@ void CSpeedTreeRT::GenerateGeometry()
             m_vBranchStrip.push_back(last); // degenerate stitch
             m_vBranchStrip.push_back(base);
             m_vBranchStrip.push_back(base);
-            for (unsigned short k = static_cast<unsigned short>(base + 1); k < endIdx; ++k)
+            for (auto k = static_cast<unsigned short>(base + 1); k < endIdx; ++k)
                 m_vBranchStrip.push_back(k);
         }
     };
@@ -739,7 +731,7 @@ void CSpeedTreeRT::GenerateGeometry()
     unsigned int seed = 0x9E3779B9u ^ m_nSeed ^ (static_cast<unsigned int>(m_afPos[0] * 13.0f) * 2654435761u) ^
                         (static_cast<unsigned int>(m_afPos[1] * 7.0f) * 40503u);
     auto rnd = [&seed]() -> float {
-        seed = seed * 1664525u + 1013904223u;
+        seed = (seed * 1664525u) + 1013904223u;
         return static_cast<float>((seed >> 8) & 0xFFFFFF) / 16777216.0f;
     };
 
@@ -792,19 +784,22 @@ void CSpeedTreeRT::GenerateGeometry()
         for (int t = 0; t < nTiers; ++t)
         {
             const float z = (0.22f + 0.09f * static_cast<float>(t)) * H;
-            const float f = 1.0f - 0.72f * (z / H);
+            const float f = 1.0f - (0.72f * (z / H));
             const float len = 0.30f * H * f;
             const int nPerTier = 5;
             for (int b = 0; b < nPerTier; ++b)
             {
-                const float a = 2.0f * 3.14159265358979f * static_cast<float>(b) / static_cast<float>(nPerTier) +
-                                0.7f * static_cast<float>(t);
-                float dx = std::cos(a), dy = std::sin(a), dz = -0.40f;
-                const float dl = std::sqrt(dx * dx + dy * dy + dz * dz);
+                const float a =
+                    (2.0f * std::numbers::pi_v<float> * static_cast<float>(b) / static_cast<float>(nPerTier)) +
+                    (0.7f * static_cast<float>(t));
+                float dx = std::cos(a);
+                float dy = std::sin(a);
+                float dz = -0.40f;
+                const float dl = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
                 dx /= dl;
                 dy /= dl;
                 dz /= dl;
-                addTaperedTube(0.0f, 0.0f, z, dx * len, dy * len, z + dz * len, 0.006f * H, 0.0015f * H,
+                addTaperedTube(0.0f, 0.0f, z, dx * len, dy * len, z + (dz * len), 0.006f * H, 0.0015f * H,
                                0.22f * H / 250.0f);
             }
         }
@@ -828,17 +823,19 @@ void CSpeedTreeRT::GenerateGeometry()
         const int nFronds = 9;
         for (int f = 0; f < nFronds; ++f)
         {
-            const float a = 2.0f * 3.14159265358979f * static_cast<float>(f) / static_cast<float>(nFronds) + 0.3f;
+            const float a =
+                (2.0f * std::numbers::pi_v<float> * static_cast<float>(f) / static_cast<float>(nFronds)) + 0.3f;
             for (int k = 0; k < 4; ++k)
             {
-                const float t = 0.18f + 0.24f * static_cast<float>(k);
+                const float t = 0.18f + (0.24f * static_cast<float>(k));
                 const float rad = t * 0.46f * H;
-                const float z = 0.86f * H + 0.10f * H * (1.0f - t) - 0.22f * H * t * t;
+                const float z = (0.86f * H) + (0.10f * H * (1.0f - t)) - (0.22f * H * t * t);
                 addLeaf(std::cos(a) * rad, std::sin(a) * rad, z, (0.22f - 0.03f * static_cast<float>(k)) * H);
             }
         }
         for (int i = 0; i < 8; ++i)
-            addLeaf((rnd() - 0.5f) * 0.14f * H, (rnd() - 0.5f) * 0.14f * H, 0.86f * H + 0.05f * H * rnd(), 0.16f * H);
+            addLeaf((rnd() - 0.5f) * 0.14f * H, (rnd() - 0.5f) * 0.14f * H, (0.86f * H) + (0.05f * H * rnd()),
+                    0.16f * H);
         break;
     }
 
@@ -847,24 +844,26 @@ void CSpeedTreeRT::GenerateGeometry()
 
         for (int i = 0; i < 5; ++i)
         {
-            const float a = 2.0f * 3.14159265358979f * static_cast<float>(i) / 5.0f + 0.4f;
+            const float a = (2.0f * std::numbers::pi_v<float> * static_cast<float>(i) / 5.0f) + 0.4f;
             const float h0 = (0.28f + 0.02f * static_cast<float>(i)) * H;
-            float dx = std::cos(a) * 0.80f, dy = std::sin(a) * 0.80f, dz = 0.60f;
-            const float dl = std::sqrt(dx * dx + dy * dy + dz * dz);
+            float dx = std::cos(a) * 0.80f;
+            float dy = std::sin(a) * 0.80f;
+            float dz = 0.60f;
+            const float dl = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
             dx /= dl;
             dy /= dl;
             dz /= dl;
             const float len = 0.32f * H;
-            addTaperedTube(0.0f, 0.0f, h0, dx * len, dy * len, h0 + dz * len, 0.030f * H, 0.008f * H,
+            addTaperedTube(0.0f, 0.0f, h0, dx * len, dy * len, h0 + (dz * len), 0.030f * H, 0.008f * H,
                            0.30f * H / 250.0f);
         }
 
         for (int i = 0; i < 70; ++i)
         {
             const float a = rnd() * 6.2831853f;
-            const float zc = rnd() * 2.0f - 1.0f;
-            const float rr = std::sqrt(std::max(0.0f, 1.0f - zc * zc));
-            addLeaf(0.38f * H * rr * std::cos(a), 0.38f * H * rr * std::sin(a), 0.62f * H + 0.22f * H * zc,
+            const float zc = (rnd() * 2.0f) - 1.0f;
+            const float rr = std::sqrt(std::max(0.0f, 1.0f - (zc * zc)));
+            addLeaf(0.38f * H * rr * std::cos(a), 0.38f * H * rr * std::sin(a), (0.62f * H) + (0.22f * H * zc),
                     (0.18f + 0.08f * rnd()) * H);
         }
         break;
@@ -875,7 +874,7 @@ void CSpeedTreeRT::GenerateGeometry()
 
         for (int i = 0; i < 30; ++i)
         {
-            const float a = 2.0f * 3.14159265358979f * static_cast<float>(i) / 30.0f + rnd() * 0.25f;
+            const float a = (2.0f * std::numbers::pi_v<float> * static_cast<float>(i) / 30.0f) + (rnd() * 0.25f);
             const float rad = (0.10f + 0.24f * rnd()) * H;
             const float z = (0.08f + 0.38f * rnd()) * H;
             addLeaf(std::cos(a) * rad, std::sin(a) * rad, z, (0.18f + 0.12f * rnd()) * H);
@@ -888,24 +887,26 @@ void CSpeedTreeRT::GenerateGeometry()
 
         for (int i = 0; i < 4; ++i)
         {
-            const float a = 1.5707963f * static_cast<float>(i) + 0.5f;
+            const float a = (1.5707963f * static_cast<float>(i)) + 0.5f;
             const float h0 = (0.42f + 0.04f * static_cast<float>(i)) * H;
-            float dx = std::cos(a) * 0.55f, dy = std::sin(a) * 0.55f, dz = 0.85f;
-            const float dl = std::sqrt(dx * dx + dy * dy + dz * dz);
+            float dx = std::cos(a) * 0.55f;
+            float dy = std::sin(a) * 0.55f;
+            float dz = 0.85f;
+            const float dl = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
             dx /= dl;
             dy /= dl;
             dz /= dl;
             const float len = 0.24f * H;
-            addTaperedTube(0.0f, 0.0f, h0, dx * len, dy * len, h0 + dz * len, 0.010f * H, 0.004f * H,
+            addTaperedTube(0.0f, 0.0f, h0, dx * len, dy * len, h0 + (dz * len), 0.010f * H, 0.004f * H,
                            0.24f * H / 250.0f);
         }
 
         for (int i = 0; i < 84; ++i)
         {
             const float a = rnd() * 6.2831853f;
-            const float zc = rnd() * 2.0f - 1.0f;
-            const float rr = std::sqrt(std::max(0.0f, 1.0f - zc * zc));
-            addLeaf(0.25f * H * rr * std::cos(a), 0.25f * H * rr * std::sin(a), 0.72f * H + 0.26f * H * zc,
+            const float zc = (rnd() * 2.0f) - 1.0f;
+            const float rr = std::sqrt(std::max(0.0f, 1.0f - (zc * zc)));
+            addLeaf(0.25f * H * rr * std::cos(a), 0.25f * H * rr * std::sin(a), (0.72f * H) + (0.26f * H * zc),
                     (0.12f + 0.06f * rnd()) * H);
         }
         break;
@@ -918,17 +919,19 @@ void CSpeedTreeRT::GenerateGeometry()
         float limbTips[5][3];
         for (int i = 0; i < 5; ++i)
         {
-            const float a = 2.0f * 3.14159265358979f * static_cast<float>(i) / 5.0f + 0.35f;
+            const float a = (2.0f * std::numbers::pi_v<float> * static_cast<float>(i) / 5.0f) + 0.35f;
             const float h0 = (0.36f + 0.035f * static_cast<float>(i)) * H;
-            float dx = std::cos(a) * 0.62f, dy = std::sin(a) * 0.62f, dz = 0.78f;
-            const float dl = std::sqrt(dx * dx + dy * dy + dz * dz);
+            float dx = std::cos(a) * 0.62f;
+            float dy = std::sin(a) * 0.62f;
+            float dz = 0.78f;
+            const float dl = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
             dx /= dl;
             dy /= dl;
             dz /= dl;
             const float len = 0.32f * H;
             limbTips[i][0] = dx * len;
             limbTips[i][1] = dy * len;
-            limbTips[i][2] = h0 + dz * len;
+            limbTips[i][2] = h0 + (dz * len);
             addTaperedTube(0.0f, 0.0f, h0, limbTips[i][0], limbTips[i][1], limbTips[i][2], 0.016f * H, 0.005f * H,
                            0.32f * H / 250.0f);
         }
@@ -938,24 +941,26 @@ void CSpeedTreeRT::GenerateGeometry()
             const int li = i % 5;
             const float sx = limbTips[li][0] * 0.6f;
             const float sy = limbTips[li][1] * 0.6f;
-            const float sz = limbTips[li][2] - 0.04f * H;
-            const float a = 1.2566371f * static_cast<float>(i) + 0.9f;
-            float dx = std::cos(a) * 0.9f, dy = std::sin(a) * 0.9f, dz = 0.5f;
-            const float dl = std::sqrt(dx * dx + dy * dy + dz * dz);
+            const float sz = limbTips[li][2] - (0.04f * H);
+            const float a = (1.2566371f * static_cast<float>(i)) + 0.9f;
+            float dx = std::cos(a) * 0.9f;
+            float dy = std::sin(a) * 0.9f;
+            float dz = 0.5f;
+            const float dl = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
             dx /= dl;
             dy /= dl;
             dz /= dl;
             const float len = 0.18f * H;
-            addTaperedTube(sx, sy, sz, sx + dx * len, sy + dy * len, sz + dz * len, 0.006f * H, 0.002f * H,
+            addTaperedTube(sx, sy, sz, sx + (dx * len), sy + (dy * len), sz + (dz * len), 0.006f * H, 0.002f * H,
                            0.18f * H / 250.0f);
         }
 
         for (int i = 0; i < 96; ++i)
         {
             const float a = rnd() * 6.2831853f;
-            const float zc = rnd() * 2.0f - 1.0f;
-            const float rr = std::sqrt(std::max(0.0f, 1.0f - zc * zc));
-            addLeaf(0.32f * H * rr * std::cos(a), 0.32f * H * rr * std::sin(a), 0.70f * H + 0.24f * H * zc,
+            const float zc = (rnd() * 2.0f) - 1.0f;
+            const float rr = std::sqrt(std::max(0.0f, 1.0f - (zc * zc)));
+            addLeaf(0.32f * H * rr * std::cos(a), 0.32f * H * rr * std::sin(a), (0.70f * H) + (0.24f * H * zc),
                     (0.15f + 0.09f * rnd()) * H);
         }
         break;
@@ -985,7 +990,7 @@ void CSpeedTreeRT::GenerateGeometry()
     m_afBoundingBox[5] = 1.0f * H;
 
     m_vCollisions.clear();
-    SCollisionObj obj;
+    SCollisionObj obj{};
     obj.m_eType = CO_CYLINDER;
     obj.m_afPos[0] = 0.0f;
     obj.m_afPos[1] = 0.0f;
@@ -1003,9 +1008,9 @@ struct SBakedReader
 {
     const unsigned char *m_pData;
     size_t m_nSize;
-    size_t m_nPos;
+    size_t m_nPos = 0;
 
-    SBakedReader(const unsigned char *p, size_t n) : m_pData(p), m_nSize(n), m_nPos(0)
+    SBakedReader(const unsigned char *p, size_t n) : m_pData(p), m_nSize(n)
     {
     }
 
@@ -1026,7 +1031,7 @@ struct SBakedReader
     }
     unsigned char U8()
     {
-        unsigned char v = Valid(1) ? m_pData[m_nPos] : 0;
+        unsigned char const v = Valid(1) ? m_pData[m_nPos] : 0;
         m_nPos += 1;
         return v;
     }
@@ -1073,7 +1078,7 @@ struct SBakedReader
 // state. Rejecting a malformed cache here is important: a failed load must
 // not leave a partially parsed bounding box or collision list behind,
 // because the caller falls back to generated geometry.
-static bool ValidateBakedGeometry(SBakedReader &r, unsigned int nHash)
+bool ValidateBakedGeometry(SBakedReader &r, unsigned int nHash)
 {
     if (r.U32() != TreeCache::kMagic || r.U32() != nHash)
         return false;
@@ -1101,7 +1106,7 @@ static bool ValidateBakedGeometry(SBakedReader &r, unsigned int nHash)
         if (nIndexCount > 0 && nNumStrips == 0)
             return false;
 
-        const size_t nBytes = static_cast<size_t>(nIndexCount) * 2 + static_cast<size_t>(nVertexCount) * 44;
+        const size_t nBytes = (static_cast<size_t>(nIndexCount) * 2) + (static_cast<size_t>(nVertexCount) * 44);
         if (!r.Skip(nBytes))
             return false;
     }
@@ -1165,8 +1170,8 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
         return false;
 
     float fBBox[6];
-    for (int i = 0; i < 6; ++i)
-        fBBox[i] = r.F32();
+    for (float &i : fBBox)
+        i = r.F32();
     std::memcpy(m_afBoundingBox, fBBox, sizeof(m_afBoundingBox));
 
     m_vCollisions.clear();
@@ -1177,8 +1182,8 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
         return false;
     for (uint32_t i = 0; i < nColl; ++i)
     {
-        SCollisionObj obj;
-        obj.m_eType = (ECollisionObjectType)r.I32();
+        SCollisionObj obj{};
+        obj.m_eType = static_cast<ECollisionObjectType>(r.I32());
         obj.m_afPos[0] = r.F32();
         obj.m_afPos[1] = r.F32();
         obj.m_afPos[2] = r.F32();
@@ -1235,7 +1240,7 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
         if (nIndexBytes + nVertexBytes > r.Remaining())
             return false;
 
-        const unsigned short nVertexCount = static_cast<unsigned short>(nVertexRaw);
+        const auto nVertexCount = static_cast<unsigned short>(nVertexRaw);
 
         // Read the strips. The library composites branch geometry into a
         // single strip (Compute(..., bCompositeStrips=true)); fronds may have
@@ -1245,7 +1250,7 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
         const uint32_t nPerStrip = (nNumStrips > 0) ? (nIndexCount / nNumStrips) : 0;
         for (uint32_t s = 0; s < nNumStrips; ++s)
         {
-            const uint32_t nCount = (s + 1 == nNumStrips) ? (nIndexCount - s * nPerStrip) : nPerStrip;
+            const uint32_t nCount = (s + 1 == nNumStrips) ? (nIndexCount - (s * nPerStrip)) : nPerStrip;
             std::vector<unsigned short> stripIndices(nCount);
             for (uint32_t k = 0; k < nCount; ++k)
                 stripIndices[k] = r.U16();
@@ -1265,17 +1270,17 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
         }
 
         std::vector<float> coords(nVertexCount * 3);
-        for (size_t i = 0; i < coords.size(); ++i)
-            coords[i] = r.F32();
+        for (float &coord : coords)
+            coord = r.F32();
         std::vector<unsigned long> colors(nVertexCount);
         for (unsigned short i = 0; i < nVertexCount; ++i)
             colors[i] = r.U32();
         std::vector<float> tex0(nVertexCount * 2);
-        for (size_t i = 0; i < tex0.size(); ++i)
-            tex0[i] = r.F32();
+        for (float &i : tex0)
+            i = r.F32();
         std::vector<float> tex1(nVertexCount * 2);
-        for (size_t i = 0; i < tex1.size(); ++i)
-            tex1[i] = r.F32();
+        for (float &i : tex1)
+            i = r.F32();
         for (unsigned short i = 0; i < nVertexCount * 3; ++i)
             (void)r.F32(); // normals
 
@@ -1303,9 +1308,9 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
     }
 
     m_vpBranchStrips.push_back(m_vBranchStrip.data());
-    m_usBranchStripLength = (unsigned short)m_vBranchStrip.size();
+    m_usBranchStripLength = static_cast<unsigned short>(m_vBranchStrip.size());
     m_vpFrondStrips.push_back(m_vFrondStrip.data());
-    m_usFrondStripLength = (unsigned short)m_vFrondStrip.size();
+    m_usFrondStripLength = static_cast<unsigned short>(m_vFrondStrip.size());
 
     for (int nLeafSet = 0; nLeafSet < 2; ++nLeafSet)
     {
@@ -1328,7 +1333,8 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
 
         std::vector<std::array<float, 16>> coords(nCount);
         std::vector<std::array<float, 8>> texCoords(nCount);
-        std::vector<unsigned char> mapIdx(nCount), clusterIdx(nCount);
+        std::vector<unsigned char> mapIdx(nCount);
+        std::vector<unsigned char> clusterIdx(nCount);
         for (uint32_t i = 0; i < nCount; ++i)
         {
             for (int k = 0; k < 16; ++k)
@@ -1356,10 +1362,14 @@ bool CSpeedTreeRT::LoadBakedGeometry(unsigned int nHash)
         for (uint32_t i = 0; i < nCount; ++i)
         {
             const std::array<float, 16> &c = coords[i];
-            const float dx = c[4] - c[0], dy = c[5] - c[1], dz = c[6] - c[2];
-            const float ux = c[12] - c[0], uy = c[13] - c[1], uz = c[14] - c[2];
-            const float fW = std::sqrt(dx * dx + dy * dy + dz * dz);
-            const float fH = std::sqrt(ux * ux + uy * uy + uz * uz);
+            const float dx = c[4] - c[0];
+            const float dy = c[5] - c[1];
+            const float dz = c[6] - c[2];
+            const float ux = c[12] - c[0];
+            const float uy = c[13] - c[1];
+            const float uz = c[14] - c[2];
+            const float fW = std::sqrt((dx * dx) + (dy * dy) + (dz * dz));
+            const float fH = std::sqrt((ux * ux) + (uy * uy) + (uz * uz));
             m_vLeafHalfW[i] = fW * 0.5f;
             m_vLeafHalfH[i] = fH * 0.5f;
             m_vLeafSize[i] = std::max(fW, fH);
@@ -1396,7 +1406,7 @@ void CSpeedTreeRT::UpdateLeafBillboardsAt(const float *pTreePos)
     float vx = pTreePos[0] - ms_afCameraPos[0];
     float vy = pTreePos[1] - ms_afCameraPos[1];
     float vz = pTreePos[2] - ms_afCameraPos[2];
-    float vl = std::sqrt(vx * vx + vy * vy + vz * vz);
+    float const vl = std::sqrt((vx * vx) + (vy * vy) + (vz * vz));
     if (vl < 1e-4f)
     {
         vx = 0.0f;
@@ -1411,8 +1421,8 @@ void CSpeedTreeRT::UpdateLeafBillboardsAt(const float *pTreePos)
     }
 
     // right = normalize(cross(worldUp, view))
-    float rght[3] = {0.0f * vz - 1.0f * vy, 1.0f * vx - 0.0f * vz, 0.0f * vy - 0.0f * vx};
-    float rl = std::sqrt(rght[0] * rght[0] + rght[1] * rght[1] + rght[2] * rght[2]);
+    float rght[3] = {(0.0f * vz) - (1.0f * vy), (1.0f * vx) - (0.0f * vz), (0.0f * vy) - (0.0f * vx)};
+    float rl = std::sqrt((rght[0] * rght[0]) + (rght[1] * rght[1]) + (rght[2] * rght[2]));
     if (rl < 1e-4f)
     {
         rght[0] = 1.0f;
@@ -1425,18 +1435,19 @@ void CSpeedTreeRT::UpdateLeafBillboardsAt(const float *pTreePos)
     rght[2] /= rl;
 
     // up = cross(view, right)
-    const float up[3] = {vy * rght[2] - vz * rght[1], vz * rght[0] - vx * rght[2], vx * rght[1] - vy * rght[0]};
+    const float up[3] = {(vy * rght[2]) - (vz * rght[1]), (vz * rght[0]) - (vx * rght[2]),
+                         (vx * rght[1]) - (vy * rght[0])};
 
     for (size_t i = 0; i < nLeafCount; ++i)
     {
         const float ca = std::cos(m_vLeafAngle[i]);
         const float sa = std::sin(m_vLeafAngle[i]);
-        const float rx = rght[0] * ca + up[0] * sa;
-        const float ry = rght[1] * ca + up[1] * sa;
-        const float rz = rght[2] * ca + up[2] * sa;
-        const float ux = up[0] * ca - rght[0] * sa;
-        const float uy = up[1] * ca - rght[1] * sa;
-        const float uz = up[2] * ca - rght[2] * sa;
+        const float rx = (rght[0] * ca) + (up[0] * sa);
+        const float ry = (rght[1] * ca) + (up[1] * sa);
+        const float rz = (rght[2] * ca) + (up[2] * sa);
+        const float ux = (up[0] * ca) - (rght[0] * sa);
+        const float uy = (up[1] * ca) - (rght[1] * sa);
+        const float uz = (up[2] * ca) - (rght[2] * sa);
 
         const float hw = (i < m_vLeafHalfW.size()) ? m_vLeafHalfW[i] : (m_vLeafSize[i] * 0.5f);
         const float hh = (i < m_vLeafHalfH.size()) ? m_vLeafHalfH[i] : (m_vLeafSize[i] * 0.5f);
@@ -1444,21 +1455,21 @@ void CSpeedTreeRT::UpdateLeafBillboardsAt(const float *pTreePos)
         std::array<float, 16> &c = m_vLeafCoords[i];
         // Baked corner order: 0 = top-left, 1 = top-right,
         //                     2 = bottom-right, 3 = bottom-left.
-        c[0] = -rx * hw + ux * hh;
-        c[1] = -ry * hw + uy * hh;
-        c[2] = -rz * hw + uz * hh;
+        c[0] = (-rx * hw) + (ux * hh);
+        c[1] = (-ry * hw) + (uy * hh);
+        c[2] = (-rz * hw) + (uz * hh);
         c[3] = 0.0f;
-        c[4] = rx * hw + ux * hh;
-        c[5] = ry * hw + uy * hh;
-        c[6] = rz * hw + uz * hh;
+        c[4] = (rx * hw) + (ux * hh);
+        c[5] = (ry * hw) + (uy * hh);
+        c[6] = (rz * hw) + (uz * hh);
         c[7] = 0.0f;
-        c[8] = rx * hw - ux * hh;
-        c[9] = ry * hw - uy * hh;
-        c[10] = rz * hw - uz * hh;
+        c[8] = (rx * hw) - (ux * hh);
+        c[9] = (ry * hw) - (uy * hh);
+        c[10] = (rz * hw) - (uz * hh);
         c[11] = 0.0f;
-        c[12] = -rx * hw - ux * hh;
-        c[13] = -ry * hw - uy * hh;
-        c[14] = -rz * hw - uz * hh;
+        c[12] = (-rx * hw) - (ux * hh);
+        c[13] = (-ry * hw) - (uy * hh);
+        c[14] = (-rz * hw) - (uz * hh);
         c[15] = 0.0f;
     }
 }
@@ -1474,7 +1485,7 @@ void CSpeedTreeRT::GetGeometry(SGeometry &sGeometry, unsigned long ulBitVector, 
     // are re-oriented for the instance position.
     if (m_pInstanceOf)
     {
-        CSpeedTreeRT *pParent = const_cast<CSpeedTreeRT *>(m_pInstanceOf);
+        auto *pParent = const_cast<CSpeedTreeRT *>(m_pInstanceOf);
         pParent->GetGeometry(sGeometry, ulBitVector);
         if (ulBitVector & SpeedTree_LeafGeometry)
             pParent->UpdateLeafBillboardsAt(m_afPos);
@@ -1590,7 +1601,7 @@ void CSpeedTreeRT::SetLeafTextureCoords(unsigned int nLeafMapIndex, const float 
 void CSpeedTreeRT::SetFrondTextureCoords(unsigned int nFrondMapIndex, const float *pTexCoords)
 {
 }
-bool CSpeedTreeRT::GetTextureFlip(void)
+bool CSpeedTreeRT::GetTextureFlip()
 {
     return ms_bTextureFlip;
 }
@@ -1619,15 +1630,15 @@ void CSpeedTreeRT::SetFrondTextureFilename(unsigned int nFrondMapIndex, const ch
 void CSpeedTreeRT::Authorize(const char *pKey)
 {
 }
-bool CSpeedTreeRT::IsAuthorized(void)
+bool CSpeedTreeRT::IsAuthorized()
 {
     return true;
 }
-const char *CSpeedTreeRT::GetCurrentError(void)
+const char *CSpeedTreeRT::GetCurrentError()
 {
     return ms_strError.c_str();
 }
-void CSpeedTreeRT::ResetError(void)
+void CSpeedTreeRT::ResetError()
 {
     ms_strError.clear();
 }
@@ -1641,19 +1652,19 @@ void CSpeedTreeRT::GetBoundingBox(float *pBounds) const
 unsigned int CSpeedTreeRT::GetLeafTriangleCount(float fLodLevel) const
 {
     (void)fLodLevel;
-    return (unsigned int)(m_vLeafCenters.size() / 3) * 2;
+    return static_cast<unsigned int>(m_vLeafCenters.size() / 3) * 2;
 }
 unsigned int CSpeedTreeRT::GetBranchTriangleCount(float fLodLevel) const
 {
     (void)fLodLevel;
-    return m_usBranchStripLength > 2 ? (unsigned int)(m_usBranchStripLength - 2) : 0;
+    return m_usBranchStripLength > 2 ? static_cast<unsigned int>(m_usBranchStripLength - 2) : 0;
 }
 unsigned int CSpeedTreeRT::GetFrondTriangleCount(float fLodLevel) const
 {
     return 0;
 }
 
-unsigned int CSpeedTreeRT::GetCollisionObjectCount(void)
+unsigned int CSpeedTreeRT::GetCollisionObjectCount()
 {
     return static_cast<unsigned int>(m_vCollisions.size());
 }
@@ -1671,7 +1682,7 @@ void CSpeedTreeRT::GetCollisionObject(unsigned int nIndex, ECollisionObjectType 
     }
 }
 
-const char *CSpeedTreeRT::GetUserData(void) const
+const char *CSpeedTreeRT::GetUserData() const
 {
     return nullptr;
 }

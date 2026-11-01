@@ -1,14 +1,14 @@
 #include <Neoeter/Image/StdAfx.h>
 
-#include <assert.h>
+#include <cassert>
 #include <Neoeter/Image/Image.h>
 
 CImage::CImage(CImage &image)
 {
     Initialize();
 
-    int w = image.GetWidth();
-    int h = image.GetHeight();
+    int const w = image.GetWidth();
+    int const h = image.GetHeight();
 
     Create(w, h);
 
@@ -33,7 +33,7 @@ void CImage::PutImage(int x, int y, CImage *pImage)
     assert(x >= 0 && x + pImage->GetWidth() <= GetWidth());
     assert(y >= 0 && y + pImage->GetHeight() <= GetHeight());
 
-    int len = pImage->GetWidth() * sizeof(DWORD);
+    int const len = pImage->GetWidth() * sizeof(DWORD);
 
     for (int j = 0; j < pImage->GetHeight(); ++j)
     {
@@ -44,31 +44,31 @@ void CImage::PutImage(int x, int y, CImage *pImage)
 
 DWORD *CImage::GetBasePointer()
 {
-    assert(m_pdwColors != NULL);
+    assert(m_pdwColors != nullptr);
     return m_pdwColors;
 }
 
 DWORD *CImage::GetLinePointer(int line)
 {
-    assert(m_pdwColors != NULL);
-    return m_pdwColors + line * m_width;
+    assert(m_pdwColors != nullptr);
+    return m_pdwColors + (line * m_width);
 }
 
 int CImage::GetWidth() const
 {
-    assert(m_pdwColors != NULL);
+    assert(m_pdwColors != nullptr);
     return m_width;
 }
 
 int CImage::GetHeight() const
 {
-    assert(m_pdwColors != NULL);
+    assert(m_pdwColors != nullptr);
     return m_height;
 }
 
 void CImage::Clear(DWORD color)
 {
-    assert(m_pdwColors != NULL);
+    assert(m_pdwColors != nullptr);
 
     for (int y = 0; y < m_height; ++y)
     {
@@ -93,31 +93,31 @@ void CImage::Destroy()
     if (m_pdwColors)
     {
         delete[] m_pdwColors;
-        m_pdwColors = NULL;
+        m_pdwColors = nullptr;
     }
 }
 
 void CImage::Initialize()
 {
-    m_pdwColors = NULL;
+    m_pdwColors = nullptr;
     m_width = 0;
     m_height = 0;
 }
 
 bool CImage::IsEmpty() const
 {
-    return (m_pdwColors == NULL) ? true : false;
+    return m_pdwColors == nullptr;
 }
 
 void CImage::FlipTopToBottom()
 {
-    DWORD *swap = new DWORD[m_width * m_height];
+    auto *swap = new DWORD[m_width * m_height];
 
-    int row;
-    UINT width = GetWidth();
-    UINT height = GetHeight();
-    DWORD *end_row;
-    DWORD *start_row;
+    int row = 0;
+    UINT const width = GetWidth();
+    UINT const height = GetHeight();
+    DWORD *end_row = nullptr;
+    DWORD *start_row = nullptr;
 
     for (row = 0; row < GetHeight() / 2; row++)
     {

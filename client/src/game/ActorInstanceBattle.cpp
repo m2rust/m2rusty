@@ -40,7 +40,7 @@ bool CActorInstance::CanUseSkill()
     if (!CanAct())
         return false;
 
-    DWORD dwCurMotionIndex = __GetCurrentMotionIndex();
+    DWORD const dwCurMotionIndex = __GetCurrentMotionIndex();
 
     // Locked during attack
     switch (dwCurMotionIndex)
@@ -119,7 +119,7 @@ BOOL CActorInstance::IsClickableDistanceDestInstance(CActorInstance &rkInstDst, 
     TPixelPosition kPPosSrc;
     GetPixelPosition(&kPPosSrc);
 
-    D3DXVECTOR3 kD3DVct3Src(kPPosSrc);
+    D3DXVECTOR3 const kD3DVct3Src(kPPosSrc);
 
     TCollisionPointInstanceList &rkLstkDefPtInst = rkInstDst.m_DefendingPointInstanceList;
     TCollisionPointInstanceList::iterator i;
@@ -131,10 +131,10 @@ BOOL CActorInstance::IsClickableDistanceDestInstance(CActorInstance &rkInstDst, 
         CDynamicSphereInstanceVector::iterator j;
         for (j = rkVctkDefSphere.begin(); j != rkVctkDefSphere.end(); ++j)
         {
-            CDynamicSphereInstance &rkSphere = (*j);
+            CDynamicSphereInstance const &rkSphere = (*j);
 
-            float fMovDistance = D3DXVec3Length(&D3DXVECTOR3(rkSphere.v3Position - kD3DVct3Src));
-            float fAtkDistance = rkSphere.fRadius + fDistance;
+            float const fMovDistance = D3DXVec3Length(&D3DXVECTOR3(rkSphere.v3Position - kD3DVct3Src));
+            float const fAtkDistance = rkSphere.fRadius + fDistance;
 
             if (fAtkDistance > fMovDistance)
                 return TRUE;
@@ -168,10 +168,10 @@ bool CActorInstance::InputComboAttackCommand(float fDirRot)
         __RunNextCombo();
         return true;
     }
-    else if (m_pkCurRaceMotionData->IsComboInputTimeData())
+    if (m_pkCurRaceMotionData->IsComboInputTimeData())
     {
         // 동작 경과 시간
-        float fElapsedTime = GetAttackingElapsedTime();
+        float const fElapsedTime = GetAttackingElapsedTime();
 
         // 이미 입력 한계 시간이 지났다면..
         if (fElapsedTime > m_pkCurRaceMotionData->GetComboInputEndTime())
@@ -198,7 +198,7 @@ bool CActorInstance::InputComboAttackCommand(float fDirRot)
     }
     else
     {
-        float fElapsedTime = GetAttackingElapsedTime();
+        float const fElapsedTime = GetAttackingElapsedTime();
         if (fElapsedTime > m_pkCurRaceMotionData->GetMotionDuration() * 0.9f) // 콤보 발동 시간 이 후라면
         {
             // Tracen("Next combo action");
@@ -224,7 +224,7 @@ void CActorInstance::ComboProcess()
             return;
         }
 
-        float fElapsedTime = GetAttackingElapsedTime();
+        float const fElapsedTime = GetAttackingElapsedTime();
 
         // Process PreInput
         if (m_isPreInput)
@@ -244,12 +244,14 @@ void CActorInstance::ComboProcess()
     {
         m_isPreInput = FALSE;
 
-        if (!IsUsingSkill())      // m_isNextPreInput는 활모드 일때만 사용하는 변수
+        if (!IsUsingSkill())
+        {                         // m_isNextPreInput는 활모드 일때만 사용하는 변수
             if (m_isNextPreInput) // 활일때만 스킬이 캔슬 되는건 이곳 때문임
             {
                 __RunNextCombo();
                 m_isNextPreInput = FALSE;
             }
+        }
     }
 }
 
@@ -258,8 +260,8 @@ void CActorInstance::__RunNextCombo()
     ++m_dwcurComboIndex;
     ///////////////////////////
 
-    WORD wComboIndex = m_dwcurComboIndex;
-    WORD wComboType = __GetCurrentComboType();
+    WORD const wComboIndex = m_dwcurComboIndex;
+    WORD const wComboType = __GetCurrentComboType();
 
     if (wComboIndex == 0)
     {
@@ -267,9 +269,9 @@ void CActorInstance::__RunNextCombo()
         return;
     }
 
-    DWORD dwComboArrayIndex = wComboIndex - 1;
+    DWORD const dwComboArrayIndex = wComboIndex - 1;
 
-    CRaceData::TComboData *pComboData;
+    CRaceData::TComboData *pComboData = nullptr;
 
     if (!m_pkCurRaceData->GetComboDataPointer(m_wcurMotionMode, wComboType, &pComboData))
     {
@@ -289,7 +291,7 @@ void CActorInstance::__RunNextCombo()
         return;
     }
 
-    WORD wcurComboMotionIndex = pComboData->ComboIndexVector[dwComboArrayIndex];
+    WORD const wcurComboMotionIndex = pComboData->ComboIndexVector[dwComboArrayIndex];
     ComboAttack(wcurComboMotionIndex, m_fAtkDirRot, 0.1f);
 
     ////////////////////////////////
@@ -316,7 +318,7 @@ void CActorInstance::__ClearCombo()
 {
     m_dwcurComboIndex = 0;
     m_isPreInput = FALSE;
-    m_pkCurRaceMotionData = NULL;
+    m_pkCurRaceMotionData = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -344,8 +346,8 @@ BOOL CActorInstance::isValidAttacking()
         return FALSE;
 
     const NRaceData::TMotionAttackData *c_pData = m_pkCurRaceMotionData->GetMotionAttackDataPointer();
-    float fElapsedTime = GetAttackingElapsedTime();
-    NRaceData::THitDataContainer::const_iterator itor = c_pData->HitDataContainer.begin();
+    float const fElapsedTime = GetAttackingElapsedTime();
+    auto itor = c_pData->HitDataContainer.begin();
     for (; itor != c_pData->HitDataContainer.end(); ++itor)
     {
         const NRaceData::THitData &c_rHitData = *itor;
@@ -358,18 +360,12 @@ BOOL CActorInstance::isValidAttacking()
 
 BOOL CActorInstance::CanCheckAttacking()
 {
-    if (isAttacking())
-        return true;
-
-    return false;
+    return isAttacking() != 0;
 }
 
 bool CActorInstance::__IsInSplashTime()
 {
-    if (m_kSplashArea.fDisappearingTime > GetLocalTime())
-        return true;
-
-    return false;
+    return m_kSplashArea.fDisappearingTime > GetLocalTime();
 }
 
 BOOL CActorInstance::isNormalAttacking()
@@ -425,7 +421,7 @@ BOOL CActorInstance::__IsMovingSkill(WORD wSkillNumber)
 
 BOOL CActorInstance::IsActEmotion()
 {
-    DWORD dwCurMotionIndex = __GetCurrentMotionIndex();
+    DWORD const dwCurMotionIndex = __GetCurrentMotionIndex();
     switch (dwCurMotionIndex)
     {
     case CRaceMotionData::NAME_FRENCH_KISS_START + 0:
@@ -448,7 +444,7 @@ BOOL CActorInstance::IsUsingMovingSkill()
     return __IsMovingSkill(m_kCurMotNode.uSkill);
 }
 
-DWORD CActorInstance::GetComboIndex()
+DWORD CActorInstance::GetComboIndex() const
 {
     return m_dwcurComboIndex;
 }
@@ -466,7 +462,7 @@ bool CActorInstance::__CanInputNormalAttackCommand()
 
     if (isNormalAttacking())
     {
-        float fElapsedTime = GetAttackingElapsedTime();
+        float const fElapsedTime = GetAttackingElapsedTime();
 
         if (fElapsedTime > m_pkCurRaceMotionData->GetMotionDuration() * 0.9f)
             return true;
@@ -477,7 +473,7 @@ bool CActorInstance::__CanInputNormalAttackCommand()
 
 BOOL CActorInstance::NormalAttack(float fDirRot, float fBlendTime)
 {
-    WORD wMotionIndex;
+    WORD wMotionIndex = 0;
     if (!m_pkCurRaceData->GetNormalAttackIndex(m_wcurMotionMode, &wMotionIndex))
         return FALSE;
 
@@ -508,7 +504,7 @@ BOOL CActorInstance::ComboAttack(DWORD dwMotionIndex, float fDirRot, float fBlen
 
 void CActorInstance::__ProcessMotionEventAttackSuccess(DWORD dwMotionKey, BYTE byEventIndex, CActorInstance &rVictim)
 {
-    CRaceMotionData *pMotionData;
+    CRaceMotionData *pMotionData = nullptr;
 
     if (!m_pkCurRaceData->GetMotionDataPointer(dwMotionKey, &pMotionData))
         return;
@@ -516,7 +512,7 @@ void CActorInstance::__ProcessMotionEventAttackSuccess(DWORD dwMotionKey, BYTE b
     if (byEventIndex >= pMotionData->GetMotionEventDataCount())
         return;
 
-    const CRaceMotionData::TMotionAttackingEventData *pMotionEventData;
+    const CRaceMotionData::TMotionAttackingEventData *pMotionEventData = nullptr;
     if (!pMotionData->GetMotionAttackingEventDataPointer(byEventIndex, &pMotionEventData))
         return;
 
@@ -526,7 +522,7 @@ void CActorInstance::__ProcessMotionEventAttackSuccess(DWORD dwMotionKey, BYTE b
 
 void CActorInstance::__ProcessMotionAttackSuccess(DWORD dwMotionKey, CActorInstance &rVictim)
 {
-    CRaceMotionData *c_pMotionData;
+    CRaceMotionData *c_pMotionData = nullptr;
 
     if (!m_pkCurRaceData->GetMotionDataPointer(dwMotionKey, &c_pMotionData))
         return;
@@ -535,7 +531,7 @@ void CActorInstance::__ProcessMotionAttackSuccess(DWORD dwMotionKey, CActorInsta
     __ProcessDataAttackSuccess(c_pMotionData->GetMotionAttackDataReference(), rVictim, c_rv3VictimPos);
 }
 
-DWORD CActorInstance::__GetOwnerVID()
+DWORD CActorInstance::__GetOwnerVID() const
 {
     return m_dwOwnerVID;
 }
@@ -570,7 +566,7 @@ bool CActorInstance::__CanPushDestActor(CActorInstance &rkActorDst)
         return false;
 
     // 거대 몬스터 밀림 제외
-    extern bool IS_HUGE_RACE(unsigned int vnum);
+
     if (IS_HUGE_RACE(rkActorDst.GetRace()))
         return false;
 
@@ -630,9 +626,11 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData &c_
         if (uiSkill) // 파티 사냥 몬스터라도 스킬이면 무적시간 적용
             rVictim.m_fInvisibleTime = CTimer::Instance().GetCurrentSecond() + c_rAttackData.fInvisibleTime;
 
-        if (m_isMain) // #0000794: [M2KR] 폴리모프 - 밸런싱 문제 타인 공격에 의한
-                      // 무적 타임은 고려하지 않고 자신 공격에 의한것만 체크한다
+        if (m_isMain)
+        {   // #0000794: [M2KR] 폴리모프 - 밸런싱 문제 타인 공격에 의한
+            // 무적 타임은 고려하지 않고 자신 공격에 의한것만 체크한다
             rVictim.m_fInvisibleTime = CTimer::Instance().GetCurrentSecond() + c_rAttackData.fInvisibleTime;
+        }
     }
     else // 파티 사냥 몬스터가 아닐 경우만 적용
     {
@@ -646,7 +644,7 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData &c_
     D3DXVECTOR3 vec3Effect(rVictim.m_x, rVictim.m_y, rVictim.m_z);
 
     // #0000780: [M2KR] 수룡 타격구 문제
-    extern bool IS_HUGE_RACE(unsigned int vnum);
+
     if (IS_HUGE_RACE(rVictim.GetRace()))
     {
         vec3Effect = c_rv3Position;
@@ -654,7 +652,7 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData &c_
 
     const D3DXVECTOR3 &v3Pos = GetPosition();
 
-    float fHeight = D3DXToDegree(atan2(-vec3Effect.x + v3Pos.x, +vec3Effect.y - v3Pos.y));
+    float const fHeight = D3DXToDegree(atan2(-vec3Effect.x + v3Pos.x, +vec3Effect.y - v3Pos.y));
 
     // 2004.08.03.myevan.빌딩이나 문의 경우 타격 효과가 보이지 않는다
     if (rVictim.IsBuilding() || rVictim.IsDoor())
@@ -673,7 +671,7 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData &c_
         if (m_dwBattleHitEffectID)
             rkEftMgr.CreateEffect(m_dwBattleHitEffectID, vec3Effect, D3DXVECTOR3(0.0f, 0.0f, fHeight));
         if (m_dwBattleAttachEffectID)
-            rVictim.AttachEffectByID(0, NULL, m_dwBattleAttachEffectID);
+            rVictim.AttachEffectByID(0, nullptr, m_dwBattleAttachEffectID);
     }
 
     if (rVictim.IsBuilding())
@@ -727,7 +725,7 @@ void CActorInstance::OnShootDamage()
 
 void CActorInstance::__Shake(DWORD dwDuration)
 {
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
     m_dwShakeTime = dwCurTime + dwDuration;
 }
 
@@ -737,7 +735,7 @@ void CActorInstance::ShakeProcess()
     {
         D3DXVECTOR3 v3Pos(0.0f, 0.0f, 0.0f);
 
-        DWORD dwCurTime = ELTimer_GetMSec();
+        DWORD const dwCurTime = ELTimer_GetMSec();
 
         if (m_dwShakeTime < dwCurTime)
         {
@@ -745,7 +743,7 @@ void CActorInstance::ShakeProcess()
         }
         else
         {
-            int nShakeSize = 10;
+            int const nShakeSize = 10;
 
             switch (rand() % 2)
             {
@@ -811,8 +809,8 @@ void CActorInstance::__HitGood(CActorInstance &rVictim)
 
         if (!rVictim.isLock())
         {
-            float fRotRad = D3DXToRadian(GetRotation());
-            float fVictimRotRad = D3DXToRadian(rVictim.GetRotation());
+            float const fRotRad = D3DXToRadian(GetRotation());
+            float const fVictimRotRad = D3DXToRadian(rVictim.GetRotation());
 
             D3DXVECTOR2 v2Normal(sin(fRotRad), cos(fRotRad));
             D3DXVECTOR2 v2VictimNormal(sin(fVictimRotRad), cos(fVictimRotRad));
@@ -820,7 +818,7 @@ void CActorInstance::__HitGood(CActorInstance &rVictim)
             D3DXVec2Normalize(&v2Normal, &v2Normal);
             D3DXVec2Normalize(&v2VictimNormal, &v2VictimNormal);
 
-            float fScalar = D3DXVec2Dot(&v2Normal, &v2VictimNormal);
+            float const fScalar = D3DXVec2Dot(&v2Normal, &v2VictimNormal);
 
             if (fScalar < 0.0f)
             {
@@ -830,9 +828,13 @@ void CActorInstance::__HitGood(CActorInstance &rVictim)
             else
             {
                 if (rVictim.InterceptOnceMotion(CRaceMotionData::NAME_DAMAGE_BACK))
+                {
                     rVictim.PushLoopMotion(CRaceMotionData::NAME_WAIT);
+                }
                 else if (rVictim.InterceptOnceMotion(CRaceMotionData::NAME_DAMAGE))
+                {
                     rVictim.PushLoopMotion(CRaceMotionData::NAME_WAIT);
+                }
             }
         }
     }
@@ -847,8 +849,8 @@ void CActorInstance::__HitGreate(CActorInstance &rVictim)
         return;
     // END_OF_DISABLE_KNOCKDOWN_ATTACK
 
-    float fRotRad = D3DXToRadian(GetRotation());
-    float fVictimRotRad = D3DXToRadian(rVictim.GetRotation());
+    float const fRotRad = D3DXToRadian(GetRotation());
+    float const fVictimRotRad = D3DXToRadian(rVictim.GetRotation());
 
     D3DXVECTOR2 v2Normal(sin(fRotRad), cos(fRotRad));
     D3DXVECTOR2 v2VictimNormal(sin(fVictimRotRad), cos(fVictimRotRad));
@@ -856,7 +858,7 @@ void CActorInstance::__HitGreate(CActorInstance &rVictim)
     D3DXVec2Normalize(&v2Normal, &v2Normal);
     D3DXVec2Normalize(&v2VictimNormal, &v2VictimNormal);
 
-    float fScalar = D3DXVec2Dot(&v2Normal, &v2VictimNormal);
+    float const fScalar = D3DXVec2Dot(&v2Normal, &v2VictimNormal);
 
     rVictim.__Shake(100);
 
@@ -866,7 +868,9 @@ void CActorInstance::__HitGreate(CActorInstance &rVictim)
     if (rVictim.IsStun())
     {
         if (fScalar < 0.0f)
+        {
             rVictim.InterceptOnceMotion(CRaceMotionData::NAME_DAMAGE_FLYING);
+        }
         else
         {
             if (!rVictim.InterceptOnceMotion(CRaceMotionData::NAME_DAMAGE_FLYING_BACK))
@@ -942,7 +946,7 @@ void CActorInstance::__PushCircle(CActorInstance &rVictim)
 {
     const TPixelPosition &c_rkPPosAtk = NEW_GetAtkPixelPositionRef();
 
-    D3DXVECTOR3 v3SrcPos(c_rkPPosAtk.x, -c_rkPPosAtk.y, c_rkPPosAtk.z);
+    D3DXVECTOR3 const v3SrcPos(c_rkPPosAtk.x, -c_rkPPosAtk.y, c_rkPPosAtk.z);
 
     const D3DXVECTOR3 &c_rv3SrcPos = v3SrcPos;
     const D3DXVECTOR3 &c_rv3DstPos = rVictim.GetPosition();
@@ -956,7 +960,7 @@ void CActorInstance::__PushCircle(CActorInstance &rVictim)
     rVictim.__SetFallingDirection(v3Direction.x, v3Direction.y);
 }
 
-void CActorInstance::__PushDirect(CActorInstance &rVictim)
+void CActorInstance::__PushDirect(CActorInstance &rVictim) const
 {
     D3DXVECTOR3 v3Direction;
     v3Direction.x = cosf(D3DXToRadian(m_fcurRotation + 270.0f));

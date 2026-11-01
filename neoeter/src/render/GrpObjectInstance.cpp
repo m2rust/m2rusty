@@ -1,6 +1,7 @@
 #include <Neoeter/Render/StdAfx.h>
 #include <Neoeter/Render/GrpObjectInstance.h>
 #include <Neoeter/Platform/Base/Timer.h>
+#include <math.h>
 
 void CGraphicObjectInstance::OnInitialize()
 {
@@ -12,7 +13,7 @@ void CGraphicObjectInstance::Clear()
     if (m_CullingHandle)
     {
         CCullingManager::Instance().Unregister(m_CullingHandle);
-        m_CullingHandle = NULL;
+        m_CullingHandle = nullptr;
     }
 
     ClearHeightInstance();
@@ -122,17 +123,17 @@ float CGraphicObjectInstance::GetRotation()
     return GetRoll();
 }
 
-float CGraphicObjectInstance::GetYaw()
+float CGraphicObjectInstance::GetYaw() const
 {
     return m_fYaw;
 }
 
-float CGraphicObjectInstance::GetPitch()
+float CGraphicObjectInstance::GetPitch() const
 {
     return m_fPitch;
 }
 
-float CGraphicObjectInstance::GetRoll()
+float CGraphicObjectInstance::GetRoll() const
 {
     return m_fRoll;
 }
@@ -199,7 +200,7 @@ void CGraphicObjectInstance::Hide()
 {
     m_isVisible = false;
 }
-bool CGraphicObjectInstance::isShow()
+bool CGraphicObjectInstance::isShow() const
 {
     return m_isVisible;
 }
@@ -215,8 +216,9 @@ D3DXVECTOR4 &CGraphicObjectInstance::GetWTBBoxVertex(const unsigned char &c_rucN
 
 bool CGraphicObjectInstance::isIntersect(const CRay &c_rRay, float *pu, float *pv, float *pt)
 {
-    D3DXVECTOR3 v3Start, v3Dir;
-    float fRayRange;
+    D3DXVECTOR3 v3Start;
+    D3DXVECTOR3 v3Dir;
+    float fRayRange = NAN;
     c_rRay.GetStartPoint(&v3Start);
     c_rRay.GetDirection(&v3Dir, &fRayRange);
 
@@ -251,9 +253,9 @@ bool CGraphicObjectInstance::isIntersect(const CRay &c_rRay, float *pu, float *p
     return false;
 }
 
-CGraphicObjectInstance::CGraphicObjectInstance()
+CGraphicObjectInstance::CGraphicObjectInstance() : m_CullingHandle(nullptr)
 {
-    m_CullingHandle = 0;
+
     Initialize();
 }
 
@@ -261,9 +263,9 @@ void CGraphicObjectInstance::Initialize()
 {
     if (m_CullingHandle)
         CCullingManager::Instance().Unregister(m_CullingHandle);
-    m_CullingHandle = 0;
+    m_CullingHandle = nullptr;
 
-    m_pHeightAttributeInstance = NULL;
+    m_pHeightAttributeInstance = nullptr;
 
     m_isVisible = TRUE;
 
@@ -289,12 +291,16 @@ void CGraphicObjectInstance::UpdateBoundingSphere()
     if (m_CullingHandle)
     {
         Vector3d center;
-        float radius;
+        float radius = NAN;
         GetBoundingSphere(center, radius);
         if (radius != m_CullingHandle->GetRadius())
+        {
             m_CullingHandle->NewPosRadius(center, radius);
+        }
         else
+        {
             m_CullingHandle->NewPos(center);
+        }
     }
 }
 
@@ -352,7 +358,7 @@ D3DXVECTOR3 CGraphicObjectInstance::GetCollisionMovementAdjust(const CDynamicSph
             return (*it)->GetCollisionMovementAdjust(s);
     }
 
-    return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+    return {0.0f, 0.0f, 0.0f};
 }
 
 void CGraphicObjectInstance::UpdateCollisionData(const CStaticCollisionDataVector *pscdVector)
@@ -370,7 +376,7 @@ CBaseCollisionInstance *CGraphicObjectInstance::GetCollisionInstanceData(DWORD d
 {
     if (dwIndex > m_StaticCollisionInstanceVector.size())
     {
-        return 0;
+        return nullptr;
     }
     return m_StaticCollisionInstanceVector[dwIndex];
 }
@@ -385,7 +391,7 @@ void CGraphicObjectInstance::SetHeightInstance(CAttributeInstance *pAttributeIns
 
 void CGraphicObjectInstance::ClearHeightInstance()
 {
-    m_pHeightAttributeInstance = NULL;
+    m_pHeightAttributeInstance = nullptr;
 }
 
 void CGraphicObjectInstance::UpdateHeightInstance(CAttributeInstance *pAttributeInstance)
@@ -396,10 +402,7 @@ void CGraphicObjectInstance::UpdateHeightInstance(CAttributeInstance *pAttribute
 
 bool CGraphicObjectInstance::IsObjectHeight()
 {
-    if (m_pHeightAttributeInstance)
-        return true;
-
-    return false;
+    return m_pHeightAttributeInstance != nullptr;
 }
 
 bool CGraphicObjectInstance::GetObjectHeight(float fX, float fY, float *pfHeight)

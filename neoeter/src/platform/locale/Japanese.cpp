@@ -10,23 +10,24 @@
 
 BOOL ShiftJIS_IsLeadByte(const char chByte)
 {
-    const unsigned char byByte = (const unsigned char)chByte;
+    const auto byByte = static_cast<const unsigned char>(chByte);
 
     return MACRO_IsLeadByte(byByte);
 }
 
 BOOL ShiftJIS_IsTrailByte(const char chByte)
 {
-    const unsigned char byByte = (const unsigned char)chByte;
+    const auto byByte = static_cast<const unsigned char>(chByte);
 
     return MACRO_IsTailByte(byByte);
 }
 
 int ShiftJIS_StringCompareCI(LPCSTR szStringLeft, LPCSTR szStringRight, size_t sizeLength)
 {
-    const unsigned char *uszString1 = (const unsigned char *)szStringLeft;
-    const unsigned char *uszString2 = (const unsigned char *)szStringRight;
-    unsigned short c1, c2;
+    const auto *uszString1 = reinterpret_cast<const unsigned char *>(szStringLeft);
+    const auto *uszString2 = reinterpret_cast<const unsigned char *>(szStringRight);
+    unsigned short c1 = 0;
+    unsigned short c2 = 0;
 
     if (sizeLength == 0)
         return 0;
@@ -42,14 +43,18 @@ int ShiftJIS_StringCompareCI(LPCSTR szStringLeft, LPCSTR szStringRight, size_t s
                 goto test;
             }
             if (*uszString1 == '\0')
+            {
                 c1 = 0;
+            }
             else
             {
                 c1 = ((c1 << 8) | *uszString1++);
             }
         }
         else
+        {
             c1 = tolower(c1);
+        }
 
         c2 = *uszString2++;
         if (MACRO_IsLeadByte(c2))
@@ -61,14 +66,18 @@ int ShiftJIS_StringCompareCI(LPCSTR szStringLeft, LPCSTR szStringRight, size_t s
             }
             sizeLength--;
             if (*uszString2 == '\0')
+            {
                 c2 = 0;
+            }
             else
             {
                 c2 = ((c2 << 8) | *uszString2++);
             }
         }
         else
+        {
             c2 = tolower(c2);
+        }
     test:
         if (c1 != c2)
             return ((c1 > c2) ? 1 : -1);

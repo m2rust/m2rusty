@@ -31,9 +31,13 @@ void CShaderStats::OnCreated(bool isVertex, const char *fileName)
 {
     SShaderStatsState &state = GetState();
     if (isVertex)
+    {
         ++state.counters.vertexCreated;
+    }
     else
+    {
         ++state.counters.pixelCreated;
+    }
 
     const std::string name = (fileName && fileName[0]) ? fileName : "<memory>";
     if (state.files.insert(name).second)
@@ -48,23 +52,31 @@ void CShaderStats::OnBound(bool isVertex)
 {
     SShaderStatsState &state = GetState();
     if (isVertex)
+    {
         ++state.counters.vertexBound;
+    }
     else
+    {
         ++state.counters.pixelBound;
+    }
 }
 
 void CShaderStats::OnConstants(bool isVertex)
 {
     SShaderStatsState &state = GetState();
     if (isVertex)
+    {
         ++state.counters.vertexConstantUploads;
+    }
     else
+    {
         ++state.counters.pixelConstantUploads;
+    }
 }
 
 CShaderStats::SCounters CShaderStats::Get()
 {
-    SShaderStatsState &state = GetState();
+    SShaderStatsState const &state = GetState();
     SCounters counters = state.counters;
     counters.ignoredFiles = state.files.size();
     return counters;
@@ -72,6 +84,6 @@ CShaderStats::SCounters CShaderStats::Get()
 
 std::vector<std::string> CShaderStats::GetIgnoredFiles()
 {
-    SShaderStatsState &state = GetState();
+    SShaderStatsState const &state = GetState();
     return std::vector<std::string>(state.files.begin(), state.files.end());
 }

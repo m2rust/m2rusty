@@ -22,7 +22,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
         SERVER_COMMAND_RETURN_TO_SELECT_CHARACTER = 1,
         SERVER_COMMAND_QUIT = 2,
 
-        MAX_ACCOUNT_PLAYER
+        MAX_ACCOUNT_PLAYER = 3
     };
 
     enum
@@ -72,9 +72,8 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
         PHASE_WINDOW_NUM,
     };
 
-  public:
     CPythonNetworkStream();
-    virtual ~CPythonNetworkStream();
+    ~CPythonNetworkStream() override;
 
     bool SendSpecial(int nLen, void *pvBuf);
 
@@ -96,10 +95,10 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     bool IsChatInsultIn(const char *c_szMsg);
     bool IsInsultIn(const char *c_szMsg);
 
-    DWORD GetGuildID();
+    DWORD GetGuildID() const;
 
     UINT UploadMark(const char *c_szImageFileName);
-    UINT UploadSymbol(const char *c_szImageFileName);
+    UINT UploadSymbol(const char *c_szImageFileName) const;
 
     bool LoadInsultList(const char *c_szInsultListFileName);
     bool LoadConvertTable(DWORD dwEmpireID, const char *c_szFileName);
@@ -112,7 +111,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     float GetFieldMusicVolume();
     // END_OF_SUPPORT_BGM
 
-    bool IsSelectedEmpire();
+    bool IsSelectedEmpire() const;
 
     void ToggleGameDebugInfo();
 
@@ -122,12 +121,12 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
 
     void SetLoginInfo(const char *c_szID, const char *c_szPassword);
     void SetLoginKey(DWORD dwLoginKey);
-    void ClearLoginInfo(void);
+    void ClearLoginInfo();
 
     void SetHandler(PyObject *poHandler);
     void SetPhaseWindow(UINT ePhaseWnd, PyObject *poPhaseWnd);
     void ClearPhaseWindow(UINT ePhaseWnd, PyObject *poPhaseWnd);
-    void SetServerCommandParserWindow(PyObject *poPhaseWnd);
+    void SetServerCommandParserWindow(PyObject *poWnd);
 
     bool SendSyncPositionElementPacket(DWORD dwVictimVID, DWORD dwVictimX, DWORD dwVictimY);
 
@@ -159,7 +158,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
 
     // Shop
     bool SendShopEndPacket();
-    bool SendShopBuyPacket(BYTE byCount);
+    bool SendShopBuyPacket(BYTE bPos);
     bool SendShopSellPacket(BYTE bySlot);
     bool SendShopSellPacketNew(BYTE bySlot, BYTE byCount);
 
@@ -195,7 +194,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
 
     // Party
     bool SendPartyInvitePacket(DWORD dwVID);
-    bool SendPartyInviteAnswerPacket(DWORD dwLeaderVID, BYTE byAccept);
+    bool SendPartyInviteAnswerPacket(DWORD dwLeaderVID, BYTE byAnswer);
     bool SendPartyRemovePacket(DWORD dwPID);
     bool SendPartySetStatePacket(DWORD dwVID, BYTE byState, BYTE byFlag);
     bool SendPartyUseSkillPacket(BYTE bySkillIndex, DWORD dwVID);
@@ -265,18 +264,18 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     bool RecvHandshakeOKPacket();
 
     // ETC
-    DWORD GetMainActorVID();
-    DWORD GetMainActorRace();
-    DWORD GetMainActorEmpire();
-    DWORD GetMainActorSkillGroup();
+    DWORD GetMainActorVID() const;
+    DWORD GetMainActorRace() const;
+    DWORD GetMainActorEmpire() const;
+    DWORD GetMainActorSkillGroup() const;
     void SetEmpireID(DWORD dwEmpireID);
-    DWORD GetEmpireID();
+    DWORD GetEmpireID() const;
     void __TEST_SetSkillGroupFake(int iIndex);
 
     //////////////////////////////////////////////////////////////////////////
     // Phase 관련
     //////////////////////////////////////////////////////////////////////////
-  public:
+
     void SetOffLinePhase();
     void SetHandShakePhase();
     void SetLoginPhase();
@@ -291,7 +290,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     bool SendChinaMatrixCardPacket(const char *c_szMatrixCardString);
     bool SendRunupMatrixAnswerPacket(const char *c_szMatrixCardString);
     bool SendNEWCIBNPasspodAnswerPacket(const char *answer);
-    bool SendDirectEnterPacket(const char *c_szName, const char *c_szPassword, UINT uChrSlot);
+    bool SendDirectEnterPacket(const char *c_szID, const char *c_szPassword, UINT uChrSlot);
 
     bool SendEnterGame();
 
@@ -299,8 +298,8 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     bool SendSelectEmpirePacket(DWORD dwEmpireID);
     bool SendSelectCharacterPacket(BYTE account_Index);
     bool SendChangeNamePacket(BYTE index, const char *name);
-    bool SendCreateCharacterPacket(BYTE index, const char *name, BYTE job, BYTE shape, BYTE byStat1, BYTE byStat2,
-                                   BYTE byStat3, BYTE byStat4);
+    bool SendCreateCharacterPacket(BYTE index, const char *name, BYTE job, BYTE shape, BYTE byCON, BYTE byINT,
+                                   BYTE bySTR, BYTE byDEX);
     bool SendDestroyCharacterPacket(BYTE index, const char *szPrivateCode);
 
     // Main Game Phase
@@ -312,7 +311,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     bool SendMessengerRemovePacket(const char *c_szKey, const char *c_szName);
 
   protected:
-    bool OnProcess(); // State들을 실제로 실행한다.
+    bool OnProcess() override; // State들을 실제로 실행한다.
     void OffLinePhase();
     void HandShakePhase();
     void LoginPhase();
@@ -322,8 +321,8 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
 
     bool __IsNotPing();
 
-    void __DownloadMark();
-    void __DownloadSymbol(const std::vector<DWORD> &c_rkVec_dwGuildID);
+    void __DownloadMark() const;
+    void __DownloadSymbol(const std::vector<DWORD> &c_rkVec_dwGuildID) const;
 
     void __PlayInventoryItemUseSound(TItemPos uSlotPos);
     void __PlayInventoryItemDropSound(TItemPos uSlotPos);
@@ -376,7 +375,6 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
 
     bool __SendHack(const char *c_szMsg);
 
-  protected:
     bool RecvObserverAddPacket();
     bool RecvObserverRemovePacket();
     bool RecvObserverMovePacket();
@@ -547,22 +545,20 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     // Channel
     bool RecvChannelPacket();
 
-  protected:
     // 이모티콘
     bool ParseEmoticon(const char *pChatMsg, DWORD *pdwEmoticon);
 
     // 파이썬으로 보내는 콜들
-    void OnConnectFailure();
+    void OnConnectFailure() override;
     void OnScriptEventStart(int iSkin, int iIndex);
 
-    void OnRemoteDisconnect();
-    void OnDisconnect();
+    void OnRemoteDisconnect() override;
+    void OnDisconnect() override;
 
     void SetGameOnline();
     void SetGameOffline();
-    BOOL IsGameOnline();
+    BOOL IsGameOnline() const;
 
-  protected:
     bool CheckPacket(TPacketHeader *pRetHeader);
 
     void __InitializeGamePhase();
@@ -571,7 +567,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     void __LocalPositionToGlobalPosition(LONG &rLocalX, LONG &rLocalY);
 
     bool __IsPlayerAttacking();
-    bool __IsEquipItemInSlot(TItemPos Cell);
+    bool __IsEquipItemInSlot(TItemPos uSlotPos);
 
     void __ShowMapName(LONG lLocalX, LONG lLocalY);
 
@@ -608,15 +604,14 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
 
     void __SetGuildID(DWORD id);
 
-  protected:
-    TPacketGCHandshake m_HandshakeData;
-    DWORD m_dwChangingPhaseTime;
-    DWORD m_dwBindupRetryCount;
+    TPacketGCHandshake m_HandshakeData{};
+    DWORD m_dwChangingPhaseTime = 0U;
+    DWORD m_dwBindupRetryCount = 0U;
     DWORD m_dwMainActorVID;
     DWORD m_dwMainActorRace;
     DWORD m_dwMainActorEmpire;
     DWORD m_dwMainActorSkillGroup;
-    BOOL m_isGameOnline;
+    BOOL m_isGameOnline = 0;
     BOOL m_isStartGame;
 
     DWORD m_dwGuildID;
@@ -626,7 +621,7 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     {
         DWORD m_dwChangeServerTime;
         DWORD m_dwChangeClientTime;
-    } m_kServerTimeSync;
+    } m_kServerTimeSync{};
 
     void __ServerTimeSync_Initialize();
     // DWORD m_dwBaseServerTime;
@@ -647,31 +642,31 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     CFuncObject<CPythonNetworkStream> m_phaseLeaveFunc;
 
     PyObject *m_poHandler;
-    PyObject *m_apoPhaseWnd[PHASE_WINDOW_NUM];
+    PyObject *m_apoPhaseWnd[PHASE_WINDOW_NUM]{};
     PyObject *m_poSerCommandParserWnd;
 
-    TSimplePlayerInformation m_akSimplePlayerInfo[PLAYER_PER_ACCOUNT4];
-    DWORD m_adwGuildID[PLAYER_PER_ACCOUNT4];
+    TSimplePlayerInformation m_akSimplePlayerInfo[PLAYER_PER_ACCOUNT4]{};
+    DWORD m_adwGuildID[PLAYER_PER_ACCOUNT4]{};
     std::string m_astrGuildName[PLAYER_PER_ACCOUNT4];
-    bool m_bSimplePlayerInfo;
+    bool m_bSimplePlayerInfo = false;
 
     CRef<CNetworkActorManager> m_rokNetActorMgr;
 
-    bool m_isRefreshStatus;
-    bool m_isRefreshCharacterWnd;
-    bool m_isRefreshEquipmentWnd;
-    bool m_isRefreshInventoryWnd;
-    bool m_isRefreshExchangeWnd;
-    bool m_isRefreshSkillWnd;
-    bool m_isRefreshSafeboxWnd;
-    bool m_isRefreshMallWnd;
-    bool m_isRefreshMessengerWnd;
-    bool m_isRefreshGuildWndInfoPage;
-    bool m_isRefreshGuildWndBoardPage;
-    bool m_isRefreshGuildWndMemberPage;
-    bool m_isRefreshGuildWndMemberPageGradeComboBox;
-    bool m_isRefreshGuildWndSkillPage;
-    bool m_isRefreshGuildWndGradePage;
+    bool m_isRefreshStatus = false;
+    bool m_isRefreshCharacterWnd = false;
+    bool m_isRefreshEquipmentWnd = false;
+    bool m_isRefreshInventoryWnd = false;
+    bool m_isRefreshExchangeWnd = false;
+    bool m_isRefreshSkillWnd = false;
+    bool m_isRefreshSafeboxWnd = false;
+    bool m_isRefreshMallWnd = false;
+    bool m_isRefreshMessengerWnd = false;
+    bool m_isRefreshGuildWndInfoPage = false;
+    bool m_isRefreshGuildWndBoardPage = false;
+    bool m_isRefreshGuildWndMemberPage = false;
+    bool m_isRefreshGuildWndMemberPageGradeComboBox = false;
+    bool m_isRefreshGuildWndSkillPage = false;
+    bool m_isRefreshGuildWndGradePage = false;
 
     // Emoticon
     std::vector<std::string> m_EmoticonStringVector;
@@ -681,16 +676,16 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
         char acUpper[26];
         char acLower[26];
         BYTE aacHan[5000][2];
-    } m_aTextConvTable[3];
+    } m_aTextConvTable[3]{};
 
     struct SMarkAuth
     {
         CNetworkAddress m_kNetAddr;
-        DWORD m_dwHandle;
-        DWORD m_dwRandomKey;
+        DWORD m_dwHandle = 0U;
+        DWORD m_dwRandomKey = 0U;
     } m_kMarkAuth;
 
-    DWORD m_dwSelectedCharacterIndex;
+    DWORD m_dwSelectedCharacterIndex = 0U;
 
     CInsultChecker m_kInsultChecker;
 
@@ -704,23 +699,23 @@ class CPythonNetworkStream : public CNetworkStream, public CSingleton<CPythonNet
     {
         bool m_isSet;
         DWORD m_dwChrSlotIndex;
-    } m_kDirectEnterMode;
+    } m_kDirectEnterMode{};
 
     void __DirectEnterMode_Initialize();
     void __DirectEnterMode_Set(UINT uChrSlotIndex);
-    bool __DirectEnterMode_IsSet();
+    bool __DirectEnterMode_IsSet() const;
 
   public:
-    DWORD EXPORT_GetBettingGuildWarValue(const char *c_szValueName);
+    DWORD EXPORT_GetBettingGuildWarValue(const char *c_szValueName) const;
 
   private:
     struct SBettingGuildWar
     {
         DWORD m_dwBettingMoney;
         DWORD m_dwObserverCount;
-    } m_kBettingGuildWar;
+    } m_kBettingGuildWar{};
 
-    CInstanceBase *m_pInstTarget;
+    CInstanceBase *m_pInstTarget = nullptr;
 
     void __BettingGuildWar_Initialize();
     void __BettingGuildWar_SetObserverCount(UINT uObserverCount);

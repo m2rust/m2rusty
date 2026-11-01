@@ -1,8 +1,9 @@
 #include <Neoeter/Python/Bindings/StdAfx.h>
+#include <math.h>
 
 bool PyTuple_GetThingInstance(PyObject *poArgs, int pos, CGraphicThingInstance **ppRetThingInstance)
 {
-    long handle;
+    long handle = 0;
     if (!PyTuple_GetLong(poArgs, pos, &handle))
         return false;
 
@@ -15,12 +16,12 @@ bool PyTuple_GetThingInstance(PyObject *poArgs, int pos, CGraphicThingInstance *
 
 PyObject *grpThingGenerate(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
     if (strlen(szFileName) <= 0)
-        return Py_BuildValue("l", (intptr_t)0);
+        return Py_BuildValue("l", static_cast<intptr_t>(0));
 
     CResource *pResource = CResourceManager::Instance().GetResourcePointer(szFileName);
 
@@ -37,7 +38,7 @@ PyObject *grpThingGenerate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpThingDelete(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
@@ -47,11 +48,11 @@ PyObject *grpThingDelete(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpThingSetFileName(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BuildException();
 
@@ -70,7 +71,7 @@ PyObject *grpThingSetFileName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpThingRender(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
@@ -80,7 +81,7 @@ PyObject *grpThingRender(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpThingUpdate(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
@@ -91,19 +92,19 @@ PyObject *grpThingUpdate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetThingPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
-    float x;
+    float x = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &x))
         return Py_BuildException();
 
-    float y;
+    float y = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &y))
         return Py_BuildException();
 
-    float z;
+    float z = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &z))
         return Py_BuildException();
 
@@ -113,11 +114,11 @@ PyObject *grpSetThingPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetThingRotation(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
-    float fDegree;
+    float fDegree = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fDegree))
         return Py_BuildException();
 
@@ -127,17 +128,17 @@ PyObject *grpSetThingRotation(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetThingScale(PyObject *poSelf, PyObject *poArgs)
 {
-    CGraphicThingInstance *pThingInstance;
+    CGraphicThingInstance *pThingInstance = nullptr;
     if (!PyTuple_GetThingInstance(poArgs, 0, &pThingInstance))
         return Py_BuildException();
 
-    float x;
+    float x = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &x))
         return Py_BuildException();
-    float y;
+    float y = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &y))
         return Py_BuildException();
-    float z;
+    float z = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &z))
         return Py_BuildException();
 
@@ -156,7 +157,7 @@ void initgrpThing()
         {"SetFileName", grpThingSetFileName, METH_VARARGS},
         {"SetRotation", grpSetThingRotation, METH_VARARGS},
         {"SetScale", grpSetThingScale, METH_VARARGS},
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     Py_InitModule("grpThing", s_methods);

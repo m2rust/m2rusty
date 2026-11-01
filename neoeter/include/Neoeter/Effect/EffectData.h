@@ -9,11 +9,10 @@
 class CEffectData
 {
   public:
-    typedef std::vector<CParticleSystemData *> TParticleVector;
-    typedef std::vector<CEffectMeshScript *> TMeshVector;
-    typedef std::vector<CLightData *> TLightVector;
+    using TParticleVector = std::vector<CParticleSystemData *>;
+    using TMeshVector = std::vector<CEffectMeshScript *>;
+    using TLightVector = std::vector<CLightData *>;
 
-  public:
     CEffectData();
     virtual ~CEffectData();
 
@@ -32,7 +31,7 @@ class CEffectData
 
     NSound::TSoundInstanceVector *GetSoundInstanceVector();
 
-    float GetBoundingSphereRadius();
+    float GetBoundingSphereRadius() const;
     D3DXVECTOR3 GetBoundingSpherePosition();
 
     const char *GetFileName() const;
@@ -50,7 +49,6 @@ class CEffectData
     virtual CEffectMeshScript *AllocMesh();
     virtual CLightData *AllocLight();
 
-  protected:
     TParticleVector m_ParticleVector;
     TMeshVector m_MeshVector;
     TLightVector m_LightVector;

@@ -24,9 +24,9 @@ class CTerrain : public CTerrainImpl, public CGraphicBase
     };
 
     CTerrain();
-    virtual ~CTerrain();
+    ~CTerrain() override;
 
-    virtual void Clear();
+    void Clear() override;
 
     void SetMapOutDoor(CMapOutdoor *pOwnerOutdoorMap);
 
@@ -43,7 +43,7 @@ class CTerrain : public CTerrainImpl, public CGraphicBase
 
     WORD WE_GetHeightMapValue(short sX, short sY);
 
-    bool IsReady()
+    bool IsReady() const
     {
         return m_bReady;
     }
@@ -91,20 +91,20 @@ class CTerrain : public CTerrainImpl, public CGraphicBase
     bool GetWaterHeight(WORD wCoordX, WORD wCoordY, long *plWaterHeight);
 
     // Shadow Texture
-    void LoadShadowTexture(const char *c_pszFileName);
+    void LoadShadowTexture(const char *ShadowFileName);
 
     // Shadow Map
     bool LoadShadowMap(const char *c_pszFileName);
 
     // MiniMap
-    void LoadMiniMapTexture(const char *c_pszFileName);
-    inline LPDIRECT3DTEXTURE9 GetMiniMapTexture()
+    void LoadMiniMapTexture(const char *c_pchMiniMapFileName);
+    LPDIRECT3DTEXTURE9 GetMiniMapTexture()
     {
         return m_lpMiniMapTexture;
     }
 
     // Marked Area
-    BOOL IsMarked()
+    BOOL IsMarked() const
     {
         return m_bMarked;
     }
@@ -116,7 +116,7 @@ class CTerrain : public CTerrainImpl, public CGraphicBase
     }
 
     // Coordinate
-    void GetCoordinate(WORD *usCoordX, WORD *usCoordY)
+    void GetCoordinate(WORD *usCoordX, WORD *usCoordY) const
     {
         *usCoordX = m_wX;
         *usCoordY = m_wY;
@@ -128,7 +128,7 @@ class CTerrain : public CTerrainImpl, public CGraphicBase
     {
         return m_strName;
     }
-    void SetName(const std::string c_strName)
+    void SetName(const std::string &c_strName)
     {
         m_strName = c_strName;
     }
@@ -146,42 +146,39 @@ class CTerrain : public CTerrainImpl, public CGraphicBase
     virtual void RAW_CountTiles();
 
     LPDIRECT3DTEXTURE9 AddTexture32(BYTE byImageNum, BYTE *pbyImage, long lTextureWidth, long lTextureHeight);
-    void PutImage32(BYTE *pbySrc, BYTE *pbyDst, long src_pitch, long dst_pitch, long lTextureWidth, long lTextureHeight,
-                    bool bResize = false);
-    void PutImage16(BYTE *pbySrc, BYTE *pbyDst, long src_pitch, long dst_pitch, long lTextureWidth, long lTextureHeight,
-                    bool bResize = false);
+    void PutImage32(const BYTE *pbySrc, BYTE *pbyDst, long src_pitch, long dst_pitch, long lTextureWidth,
+                    long lTextureHeight, bool bResize = false);
+    void PutImage16(const BYTE *pbySrc, BYTE *pbyDst, long src_pitch, long dst_pitch, long lTextureWidth,
+                    long lTextureHeight, bool bResize = false);
 
-  protected:
     void CalculateNormal(long x, long y);
 
-  protected:
     std::string m_strName;
-    WORD m_wX;
-    WORD m_wY;
+    WORD m_wX = 0U;
+    WORD m_wY = 0U;
 
-  protected:
-    bool m_bReady;
+    bool m_bReady = false;
 
     CGraphicImageInstance m_ShadowGraphicImageInstance;
 
     // MiniMap
     CGraphicImageInstance m_MiniMapGraphicImageInstance;
-    LPDIRECT3DTEXTURE9 m_lpMiniMapTexture;
+    LPDIRECT3DTEXTURE9 m_lpMiniMapTexture = nullptr;
 
     // Owner COutdoorMap poineter
-    CMapOutdoor *m_pOwnerOutdoorMap;
+    CMapOutdoor *m_pOwnerOutdoorMap = nullptr;
 
     // Picking
     D3DXVECTOR3 m_v3Pick;
 
-    DWORD m_dwNumTexturesShow;
+    DWORD m_dwNumTexturesShow = 0U;
     std::vector<DWORD> m_VectorNumShowTexture;
 
     CTerrainPatch m_TerrainPatchList[PATCH_XCOUNT * PATCH_YCOUNT];
 
-    BOOL m_bMarked;
-    TTerrainSplatPatch m_MarkedSplatPatch;
-    LPDIRECT3DTEXTURE9 m_lpMarkedTexture;
+    BOOL m_bMarked = 0;
+    TTerrainSplatPatch m_MarkedSplatPatch{};
+    LPDIRECT3DTEXTURE9 m_lpMarkedTexture = nullptr;
 
   public:
     CTerrainPatch *GetTerrainPatchPtr(BYTE byPatchNumX, BYTE byPatchNumY);

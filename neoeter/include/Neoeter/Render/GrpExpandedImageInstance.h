@@ -20,9 +20,8 @@ class CGraphicExpandedImageInstance : public CGraphicImageInstance
         RENDERING_MODE_MODULATE,
     };
 
-  public:
     CGraphicExpandedImageInstance();
-    virtual ~CGraphicExpandedImageInstance();
+    ~CGraphicExpandedImageInstance() override;
 
     void Destroy();
 
@@ -37,18 +36,17 @@ class CGraphicExpandedImageInstance : public CGraphicImageInstance
   protected:
     void Initialize();
 
-    void OnRender();
-    void OnSetImagePointer();
+    void OnRender() override;
+    void OnSetImagePointer() override;
 
-    BOOL OnIsType(DWORD dwType);
+    BOOL OnIsType(DWORD dwType) override;
 
-  protected:
-    float m_fDepth;
+    float m_fDepth = 0.0F;
     D3DXVECTOR2 m_v2Origin;
     D3DXVECTOR2 m_v2Scale;
-    float m_fRotation;
-    RECT m_RenderingRect;
-    int m_iRenderingMode;
+    float m_fRotation = 0.0F;
+    RECT m_RenderingRect{};
+    int m_iRenderingMode = 0;
 
   public:
     static void CreateSystem(UINT uCapacity);

@@ -12,15 +12,15 @@
 #define AILCALLBACK
 #endif
 
-typedef uint32_t U32;
-typedef int32_t S32;
-typedef uint16_t U16;
-typedef int16_t S16;
-typedef uint8_t U8;
-typedef int8_t S8;
+using U32 = uint32_t;
+using S32 = int32_t;
+using U16 = uint16_t;
+using S16 = int16_t;
+using U8 = uint8_t;
+using S8 = int8_t;
 
-typedef uintptr_t HPROVIDER;
-typedef int32_t HPROENUM;
+using HPROVIDER = uintptr_t;
+using HPROENUM = int32_t;
 
 #define HPROENUM_FIRST 0
 #define M3D_NOERR 0
@@ -69,12 +69,12 @@ struct AIL_DigitalDriver
     S32 channels;
     U32 flags;
 };
-typedef AIL_DigitalDriver *HDIGDRIVER;
+using HDIGDRIVER = AIL_DigitalDriver *;
 
-typedef U32(AILCALLBACK *AIL_file_open_callback)(char const *filename, U32 *file_handle);
-typedef void(AILCALLBACK *AIL_file_close_callback)(U32 file_handle);
-typedef S32(AILCALLBACK *AIL_file_seek_callback)(U32 file_handle, S32 offset, U32 type);
-typedef U32(AILCALLBACK *AIL_file_read_callback)(U32 file_handle, void *buffer, U32 bytes);
+using AIL_file_open_callback = U32(AILCALLBACK *)(char const *filename, U32 *file_handle);
+using AIL_file_close_callback = void(AILCALLBACK *)(U32 file_handle);
+using AIL_file_seek_callback = S32(AILCALLBACK *)(U32 file_handle, S32 offset, U32 type);
+using AIL_file_read_callback = U32(AILCALLBACK *)(U32 file_handle, void *buffer, U32 bytes);
 
 namespace MilesCompatInternal
 {
@@ -111,9 +111,9 @@ inline bool UseNullAudioBackend()
 
 struct EngineHolder
 {
-    ma_context context;
+    ma_context context{};
     bool contextInitialized = false;
-    ma_engine engine;
+    ma_engine engine{};
     bool initialized = false;
 
     EngineHolder()
@@ -125,7 +125,7 @@ struct EngineHolder
         if (UseNullAudioBackend())
         {
             ma_backend backends[1] = {ma_backend_null};
-            ma_context_config contextConfig = ma_context_config_init();
+            ma_context_config const contextConfig = ma_context_config_init();
             if (ma_context_init(backends, 1, &contextConfig, &context) == MA_SUCCESS)
             {
                 contextInitialized = true;
@@ -180,9 +180,9 @@ struct AIL_Sample2D
     float volume = 1.0f;
     float pan = 0.5f;
 
-    ma_decoder decoder;
+    ma_decoder decoder{};
     bool decoder_initialized = false;
-    ma_sound sound;
+    ma_sound sound{};
     bool sound_initialized = false;
 
     void cleanup()
@@ -204,7 +204,7 @@ struct AIL_Sample2D
         cleanup();
     }
 };
-typedef AIL_Sample2D *HSAMPLE;
+using HSAMPLE = AIL_Sample2D *;
 
 struct AIL_Object3D
 {
@@ -221,9 +221,9 @@ struct AIL_Object3D
     float ux = 0.0f, uy = 1.0f, uz = 0.0f;
     S32 auto_update = 0;
 
-    ma_decoder decoder;
+    ma_decoder decoder{};
     bool decoder_initialized = false;
-    ma_sound sound;
+    ma_sound sound{};
     bool sound_initialized = false;
 
     void cleanup()
@@ -245,8 +245,8 @@ struct AIL_Object3D
         cleanup();
     }
 };
-typedef AIL_Object3D *H3DPOBJECT;
-typedef AIL_Object3D *H3DSAMPLE;
+using H3DPOBJECT = AIL_Object3D *;
+using H3DSAMPLE = AIL_Object3D *;
 
 struct AIL_Stream
 {
@@ -257,7 +257,7 @@ struct AIL_Stream
     float left_vol = 1.0f;
     float right_vol = 1.0f;
 
-    ma_sound sound;
+    ma_sound sound{};
     bool sound_initialized = false;
 
     void cleanup()
@@ -274,7 +274,7 @@ struct AIL_Stream
         cleanup();
     }
 };
-typedef AIL_Stream *HSTREAM;
+using HSTREAM = AIL_Stream *;
 
 inline char *AIL_set_redist_directory(const char * /*dir*/)
 {
@@ -319,13 +319,13 @@ inline void *AIL_file_read(const char *filename, void *dest)
         U32 handle = 0;
         if (MilesCompatInternal::OpenCb()(filename, &handle))
         {
-            S32 endPos = MilesCompatInternal::SeekCb()(handle, 0, 2 /* SEEK_END */);
+            S32 const endPos = MilesCompatInternal::SeekCb()(handle, 0, 2 /* SEEK_END */);
             MilesCompatInternal::SeekCb()(handle, 0, 0 /* SEEK_SET */);
             if (endPos >= 0)
             {
                 U32 fileSize = static_cast<U32>(endPos);
-                size_t allocSize = withSize ? (sizeof(U32) + fileSize) : fileSize;
-                uint8_t *buf = static_cast<uint8_t *>(std::malloc(allocSize ? allocSize : 4));
+                size_t const allocSize = withSize ? (sizeof(U32) + fileSize) : fileSize;
+                auto *buf = static_cast<uint8_t *>(std::malloc(allocSize ? allocSize : 4));
                 if (!buf)
                 {
                     MilesCompatInternal::CloseCb()(handle);
@@ -353,7 +353,7 @@ inline void *AIL_file_read(const char *filename, void *dest)
         return nullptr;
 
     std::fseek(fp, 0, SEEK_END);
-    long len = std::ftell(fp);
+    long const len = std::ftell(fp);
     std::fseek(fp, 0, SEEK_SET);
     if (len < 0)
     {
@@ -362,8 +362,8 @@ inline void *AIL_file_read(const char *filename, void *dest)
     }
 
     U32 fileSize = static_cast<U32>(len);
-    size_t allocSize = withSize ? (sizeof(U32) + fileSize) : fileSize;
-    uint8_t *buf = static_cast<uint8_t *>(std::malloc(allocSize ? allocSize : 4));
+    size_t const allocSize = withSize ? (sizeof(U32) + fileSize) : fileSize;
+    auto *buf = static_cast<uint8_t *>(std::malloc(allocSize ? allocSize : 4));
     if (!buf)
     {
         std::fclose(fp);
@@ -377,7 +377,7 @@ inline void *AIL_file_read(const char *filename, void *dest)
     }
     if (fileSize > 0)
     {
-        size_t nread = std::fread(writePtr, 1, fileSize, fp);
+        size_t const nread = std::fread(writePtr, 1, fileSize, fp);
         (void)nread;
     }
     std::fclose(fp);
@@ -393,7 +393,7 @@ inline S32 AIL_file_type(const void *data, U32 size)
 {
     if (!data || size < 4)
         return AILFILETYPE_PCM_WAV;
-    const uint8_t *bytes = static_cast<const uint8_t *>(data);
+    const auto *bytes = static_cast<const uint8_t *>(data);
     if (bytes[0] == 'I' && bytes[1] == 'D' && bytes[2] == '3')
         return AILFILETYPE_MPEG_L3_AUDIO;
     if (bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0)
@@ -418,7 +418,7 @@ inline S32 AIL_decompress_ADPCM(const AILSOUNDINFO *info, void **outData, U32 *o
 {
     if (!outData || !outSize)
         return 0;
-    U32 sz = (info && info->data_len > 0) ? info->data_len : 64;
+    U32 const sz = (info && info->data_len > 0) ? info->data_len : 64;
     void *buf = std::calloc(1, sz);
     *outData = buf;
     *outSize = sz;
@@ -430,7 +430,7 @@ inline S32 AIL_decompress_ASI(const void *inData, U32 inSize, const char * /*fil
 {
     if (!outData || !outSize)
         return 0;
-    U32 sz = inSize > 0 ? inSize : 64;
+    U32 const sz = inSize > 0 ? inSize : 64;
     void *buf = std::malloc(sz);
     if (buf && inData && inSize > 0)
         std::memcpy(buf, inData, inSize);
@@ -444,7 +444,7 @@ inline HDIGDRIVER AIL_open_digital_driver(U32 freq, S32 bits, S32 chans, U32 fla
 {
     (void)flags;
     (void)bits;
-    HDIGDRIVER drv = new AIL_DigitalDriver{freq, bits, chans, flags};
+    auto *drv = new AIL_DigitalDriver{.frequency = freq, .bits = bits, .channels = chans, .flags = flags};
     MilesCompatInternal::GetEngine();
     return drv;
 }
@@ -456,7 +456,7 @@ inline void AIL_close_digital_driver(HDIGDRIVER drv)
 
 inline HSAMPLE AIL_allocate_sample_handle(HDIGDRIVER drv)
 {
-    HSAMPLE s = new AIL_Sample2D();
+    auto *s = new AIL_Sample2D();
     s->driver = drv;
     s->status = SMP_DONE;
     return s;
@@ -497,7 +497,7 @@ inline S32 AIL_set_sample_file(HSAMPLE s, const void *file_image, S32 block)
         const char *p = static_cast<const char *>(file_image);
         if (p[0] == 'R' && p[1] == 'I' && p[2] == 'F' && p[3] == 'F')
         {
-            uint32_t riffSize = *reinterpret_cast<const uint32_t *>(p + 4);
+            uint32_t const riffSize = *reinterpret_cast<const uint32_t *>(p + 4);
             s->size = static_cast<S32>(riffSize + 8);
         }
     }
@@ -505,15 +505,15 @@ inline S32 AIL_set_sample_file(HSAMPLE s, const void *file_image, S32 block)
     ma_engine *engine = MilesCompatInternal::GetEngine();
     if (engine && s->size > 0)
     {
-        ma_decoder_config dcfg = ma_decoder_config_init(ma_format_f32, 2, 44100);
+        ma_decoder_config const dcfg = ma_decoder_config_init(ma_format_f32, 2, 44100);
         if (ma_decoder_init_memory(s->data, s->size, &dcfg, &s->decoder) == MA_SUCCESS)
         {
             s->decoder_initialized = true;
-            if (ma_sound_init_from_data_source(engine, &s->decoder, 0, NULL, &s->sound) == MA_SUCCESS)
+            if (ma_sound_init_from_data_source(engine, &s->decoder, 0, nullptr, &s->sound) == MA_SUCCESS)
             {
                 s->sound_initialized = true;
                 ma_sound_set_volume(&s->sound, s->volume);
-                ma_sound_set_pan(&s->sound, s->pan * 2.0f - 1.0f);
+                ma_sound_set_pan(&s->sound, (s->pan * 2.0f) - 1.0f);
                 ma_sound_set_looping(&s->sound, s->loop_count == 0 ? MA_TRUE : MA_FALSE);
             }
         }
@@ -619,7 +619,7 @@ inline void AIL_set_sample_volume_pan(HSAMPLE s, float volume, float pan)
     if (s->sound_initialized)
     {
         ma_sound_set_volume(&s->sound, volume);
-        ma_sound_set_pan(&s->sound, pan * 2.0f - 1.0f);
+        ma_sound_set_pan(&s->sound, (pan * 2.0f) - 1.0f);
     }
 }
 
@@ -650,7 +650,7 @@ inline void AIL_close_3D_provider(HPROVIDER /*lib*/)
 
 inline H3DPOBJECT AIL_open_3D_listener(HPROVIDER lib)
 {
-    H3DPOBJECT listener = new AIL_Object3D();
+    auto *listener = new AIL_Object3D();
     listener->provider = lib;
     listener->is_listener = true;
     return listener;
@@ -663,7 +663,7 @@ inline void AIL_close_3D_listener(H3DPOBJECT listener)
 
 inline H3DSAMPLE AIL_allocate_3D_sample_handle(HPROVIDER lib)
 {
-    H3DSAMPLE s = new AIL_Object3D();
+    auto *s = new AIL_Object3D();
     s->provider = lib;
     s->status = SMP_DONE;
     return s;
@@ -689,7 +689,7 @@ inline S32 AIL_set_3D_sample_file(H3DSAMPLE s, const void *file_image)
     const char *p = static_cast<const char *>(file_image);
     if (p[0] == 'R' && p[1] == 'I' && p[2] == 'F' && p[3] == 'F')
     {
-        uint32_t riffSize = *reinterpret_cast<const uint32_t *>(p + 4);
+        uint32_t const riffSize = *reinterpret_cast<const uint32_t *>(p + 4);
         s->size = static_cast<S32>(riffSize + 8);
     }
     else
@@ -702,11 +702,11 @@ inline S32 AIL_set_3D_sample_file(H3DSAMPLE s, const void *file_image)
     {
         // 3D sounds must be mono so the spatializer can pan them. Keep the
         // native sample rate and let miniaudio resample to the engine rate.
-        ma_decoder_config dcfg = ma_decoder_config_init(ma_format_f32, 1, 0);
+        ma_decoder_config const dcfg = ma_decoder_config_init(ma_format_f32, 1, 0);
         if (ma_decoder_init_memory(s->data, s->size, &dcfg, &s->decoder) == MA_SUCCESS)
         {
             s->decoder_initialized = true;
-            if (ma_sound_init_from_data_source(engine, &s->decoder, 0, NULL, &s->sound) == MA_SUCCESS)
+            if (ma_sound_init_from_data_source(engine, &s->decoder, 0, nullptr, &s->sound) == MA_SUCCESS)
             {
                 s->sound_initialized = true;
                 ma_sound_set_spatialization_enabled(&s->sound, MA_TRUE);
@@ -926,7 +926,7 @@ inline HSTREAM AIL_open_stream(HDIGDRIVER drv, const char *filename, S32 /*strea
 {
     if (!filename || !*filename)
         return nullptr;
-    HSTREAM st = new AIL_Stream();
+    auto *st = new AIL_Stream();
     st->driver = drv;
     std::strncpy(st->filename, filename, sizeof(st->filename) - 1);
     st->status = -1;
@@ -941,7 +941,8 @@ inline HSTREAM AIL_open_stream(HDIGDRIVER drv, const char *filename, S32 /*strea
     ma_engine *engine = MilesCompatInternal::GetEngine();
     if (engine)
     {
-        ma_result res = ma_sound_init_from_file(engine, normPath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &st->sound);
+        ma_result res =
+            ma_sound_init_from_file(engine, normPath.c_str(), MA_SOUND_FLAG_STREAM, nullptr, nullptr, &st->sound);
         if (res != MA_SUCCESS)
         {
             if (normPath.length() >= 4 && (normPath[0] == 'b' || normPath[0] == 'B') &&
@@ -949,22 +950,24 @@ inline HSTREAM AIL_open_stream(HDIGDRIVER drv, const char *filename, S32 /*strea
                 normPath[3] == '/')
             {
                 std::string alt = "BGM/" + normPath.substr(4);
-                res = ma_sound_init_from_file(engine, alt.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &st->sound);
+                res = ma_sound_init_from_file(engine, alt.c_str(), MA_SOUND_FLAG_STREAM, nullptr, nullptr, &st->sound);
                 if (res != MA_SUCCESS)
                 {
                     alt = "bgm/" + normPath.substr(4);
-                    res = ma_sound_init_from_file(engine, alt.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &st->sound);
+                    res = ma_sound_init_from_file(engine, alt.c_str(), MA_SOUND_FLAG_STREAM, nullptr, nullptr,
+                                                  &st->sound);
                 }
             }
             else if (normPath.find('/') == std::string::npos)
             {
                 std::string bgmPath = "BGM/" + normPath;
-                res = ma_sound_init_from_file(engine, bgmPath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &st->sound);
+                res = ma_sound_init_from_file(engine, bgmPath.c_str(), MA_SOUND_FLAG_STREAM, nullptr, nullptr,
+                                              &st->sound);
                 if (res != MA_SUCCESS)
                 {
                     bgmPath = "bgm/" + normPath;
-                    res =
-                        ma_sound_init_from_file(engine, bgmPath.c_str(), MA_SOUND_FLAG_STREAM, NULL, NULL, &st->sound);
+                    res = ma_sound_init_from_file(engine, bgmPath.c_str(), MA_SOUND_FLAG_STREAM, nullptr, nullptr,
+                                                  &st->sound);
                 }
             }
         }

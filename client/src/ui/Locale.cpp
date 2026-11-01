@@ -33,7 +33,7 @@ void LocaleService_LoadConfig(const char *fileName)
     {
         char line[256];
         char name[256];
-        int code;
+        int code = 0;
         if (fgets(line, sizeof(line) - 1, fp))
         {
             line[sizeof(line) - 1] = '\0';
@@ -53,7 +53,7 @@ unsigned LocaleService_GetLastExp(int level)
 
     if (LocaleService_IsCHEONMA())
     {
-        static DWORD CHEONMA_GUILDEXP_LIST[GUILD_LEVEL_MAX + 1] = {
+        static DWORD const CHEONMA_GUILDEXP_LIST[GUILD_LEVEL_MAX + 1] = {
             0,          // 0
             15000ul,    // 1
             45000ul,    // 2
@@ -82,7 +82,7 @@ unsigned LocaleService_GetLastExp(int level)
         return CHEONMA_GUILDEXP_LIST[level];
     }
 
-    static DWORD INTERNATIONAL_GUILDEXP_LIST[GUILD_LEVEL_MAX + 1] = {
+    static DWORD const INTERNATIONAL_GUILDEXP_LIST[GUILD_LEVEL_MAX + 1] = {
         0,         // 0
         6000UL,    // 1
         18000UL,   // 2
@@ -121,7 +121,7 @@ int LocaleService_GetSkillPower(unsigned level)
 
     if (LocaleService_IsCHEONMA())
     {
-        static unsigned CHEONMA_SKILL_POWERS[SKILL_POWER_NUM] = {
+        static unsigned const CHEONMA_SKILL_POWERS[SKILL_POWER_NUM] = {
             0,   5,  7,  9,  11, 13,  15,  17,  19,  20,  22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 50, // master
             52,  55, 58, 61, 63, 66,  69,  72,  75,  80,                                              // grand_master
             82,  84, 87, 90, 95, 100, 110, 120, 130, 150,                                             // perfect_master
@@ -132,7 +132,7 @@ int LocaleService_GetSkillPower(unsigned level)
 
     // 0 5 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 50 52 54 56 58 60
     // 63 66 69 72 82 85 88 91 94 98 102 106 110 115 125 125 125 125 125
-    static unsigned INTERNATIONAL_SKILL_POWERS[SKILL_POWER_NUM] = {
+    static unsigned const INTERNATIONAL_SKILL_POWERS[SKILL_POWER_NUM] = {
         0,   5,  6,  8,  10, 12,  14,  16,  18,  20,  22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 50, // master
         52,  54, 56, 58, 60, 63,  66,  69,  72,  82,                                              // grand_master
         85,  88, 91, 94, 98, 102, 106, 110, 115, 125,                                             // perfect_master
@@ -159,7 +159,7 @@ bool LocaleService_IsCHEONMA()
     defined(LOCALE_SERVICE_NEWCIBN)
 #define _LSS_USE_LOCALE_CFG 1
 #define _LSS_SERVICE_NAME LSS_EUROPE
-#elif defined(LOCALE_SERVICE_ITALY)
+#elifdef LOCALE_SERVICE_ITALY
 #define _LSS_SERVICE_NAME LSS_ITALY
 #define _LSS_SERVICE_CODEPAGE CP_LATIN
 #define _LSS_SERVICE_LOCALE_NAME "it"
@@ -196,8 +196,8 @@ bool LocaleService_IsCHEONMA()
 #define _LSS_SERVICE_LOCALE_PATH "locale/newcibn"
 #endif
 
-#if defined(_LSS_USE_LOCALE_CFG)
-#if defined(_LSS_SERVICE_NAME)
+#ifdef _LSS_USE_LOCALE_CFG
+#ifdef _LSS_SERVICE_NAME
 const char *LocaleService_GetName()
 {
     return _LSS_SERVICE_NAME;
@@ -220,7 +220,7 @@ const char *LocaleService_GetLocalePath()
 {
     return MULTI_LOCALE_PATH;
 }
-#elif defined(_LSS_SERVICE_NAME)
+#elifdef _LSS_SERVICE_NAME
 const char *LocaleService_GetName()
 {
     return _LSS_SERVICE_NAME;
@@ -245,7 +245,7 @@ void LocaleService_ForceSetLocale(const char *name, const char *localePath)
     strcpy(MULTI_LOCALE_PATH, localePath);
 }
 
-#if defined(LOCALE_SERVICE_GLOBAL)
+#ifdef LOCALE_SERVICE_GLOBAL
 struct SLOCALEDATA
 {
     const char *szServiceName;
@@ -416,7 +416,7 @@ bool LocaleService_IsNEWCIBN()
     return (stricmp(LocaleService_GetName(), LSS_NEWCIBN) == 0);
 }
 
-#if defined(LOCALE_SERVICE_WE_JAPAN)
+#ifdef LOCALE_SERVICE_WE_JAPAN
 BOOL LocaleService_IsLeadByte(const char chByte)
 {
     return ShiftJIS_IsLeadByte(chByte);
@@ -429,7 +429,7 @@ int LocaleService_StringCompareCI(LPCSTR szStringLeft, LPCSTR szStringRight, siz
 #else
 BOOL LocaleService_IsLeadByte(const char chByte)
 {
-    return (((unsigned char)chByte) & 0x80) != 0;
+    return ((static_cast<unsigned char>(chByte)) & 0x80) != 0;
 }
 
 int LocaleService_StringCompareCI(LPCSTR szStringLeft, LPCSTR szStringRight, size_t sizeLength)

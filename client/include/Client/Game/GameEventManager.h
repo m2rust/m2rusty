@@ -18,7 +18,7 @@ class CGameEventManager : public CSingleton<CGameEventManager>, public CScreen
 {
   public:
     CGameEventManager();
-    virtual ~CGameEventManager();
+    ~CGameEventManager() override;
 
     void SetCenterPosition(float fx, float fy, float fz);
     void Update();

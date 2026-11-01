@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_PYTHONBACKGROUND_H__A202CB18_9553_4CF3_8500_5D7062B55432__INCLUDED_)
+#ifndef AFX_PYTHONBACKGROUND_H__A202CB18_9553_4CF3_8500_5D7062B55432__INCLUDED_
 #define AFX_PYTHONBACKGROUND_H__A202CB18_9553_4CF3_8500_5D7062B55432__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -44,36 +44,35 @@ class CPythonBackground : public CMapManager, public CSingleton<CPythonBackgroun
         DAY_MODE_DARK,
     };
 
-    typedef struct SVIEWDISTANCESET
+    using TVIEWDISTANCESET = struct SVIEWDISTANCESET
     {
-        float m_fFogStart;
-        float m_fFogEnd;
-        float m_fFarClip;
+        float m_fFogStart = 0.0F;
+        float m_fFogEnd = 0.0F;
+        float m_fFarClip = 0.0F;
         D3DXVECTOR3 m_v3SkyBoxScale;
-    } TVIEWDISTANCESET;
+    };
 
-  public:
     CPythonBackground();
-    virtual ~CPythonBackground();
+    ~CPythonBackground() override;
 
     void Initialize();
 
     void Destroy();
     void Create();
 
-    void GlobalPositionToLocalPosition(LONG &rGlobalX, LONG &rGlobalY);
-    void LocalPositionToGlobalPosition(LONG &rLocalX, LONG &rLocalY);
+    void GlobalPositionToLocalPosition(LONG &rGlobalX, LONG &rGlobalY) const;
+    void LocalPositionToGlobalPosition(LONG &rLocalX, LONG &rLocalY) const;
 
     void EnableTerrainOnlyForHeight();
     bool SetSplatLimit(int iSplatNum);
-    bool SetVisiblePart(int ePart, bool isVisible);
+    bool SetVisiblePart(int eMapOutDoorPart, bool isVisible);
     bool SetShadowLevel(int eLevel);
     void RefreshShadowLevel();
     void SelectViewDistanceNum(int eNum);
     void SetViewDistanceSet(int eNum, float fFarClip);
     float GetFarClip();
 
-    DWORD GetRenderShadowTime();
+    DWORD GetRenderShadowTime() const;
     void GetDistanceSetInfo(int *peNum, float *pfStart, float *pfEnd, float *pfFarClip);
 
     bool GetPickingPoint(D3DXVECTOR3 *v3IntersectPt);
@@ -131,7 +130,6 @@ class CPythonBackground : public CMapManager, public CSingleton<CPythonBackgroun
     void __CreateProperty();
     bool __IsSame(std::set<int> &rleft, std::set<int> &rright);
 
-  protected:
     std::string m_strMapName;
 
   private:
@@ -166,17 +164,13 @@ class CPythonBackground : public CMapManager, public CSingleton<CPythonBackgroun
     struct FFindWarpMapName
     {
         DWORD m_dwX, m_dwY;
-        FFindWarpMapName(DWORD dwX, DWORD dwY)
+        FFindWarpMapName(DWORD dwX, DWORD dwY) : m_dwX(dwX), m_dwY(dwY)
         {
-            m_dwX = dwX;
-            m_dwY = dwY;
         }
-        bool operator()(TMapInfo &rMapInfo)
+        bool operator()(TMapInfo &rMapInfo) const
         {
-            if (m_dwX < rMapInfo.m_dwBaseX || m_dwX >= rMapInfo.m_dwEndX || m_dwY < rMapInfo.m_dwBaseY ||
-                m_dwY >= rMapInfo.m_dwEndY)
-                return false;
-            return true;
+            return !(m_dwX < rMapInfo.m_dwBaseX || m_dwX >= rMapInfo.m_dwEndX || m_dwY < rMapInfo.m_dwBaseY ||
+                     m_dwY >= rMapInfo.m_dwEndY);
         }
     };
 };

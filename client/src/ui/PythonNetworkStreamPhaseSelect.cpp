@@ -29,15 +29,19 @@ void CPythonNetworkStream::SetSelectPhase()
     else
     {
         if (IsSelectedEmpire())
+        {
             PyCallClassMemberFunc(m_poHandler, "SetSelectCharacterPhase", Py_BuildValue("()"));
+        }
         else
+        {
             PyCallClassMemberFunc(m_poHandler, "SetSelectEmpirePhase", Py_BuildValue("()"));
+        }
     }
 }
 
 void CPythonNetworkStream::SelectPhase()
 {
-    TPacketHeader header;
+    TPacketHeader header = 0;
 
     if (!CheckPacket(&header))
         return;

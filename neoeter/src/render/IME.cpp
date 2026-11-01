@@ -2,7 +2,7 @@
 
 // The SDL implementation lives in IME_Sdl.cpp (T1.6); this legacy IMM/TSF
 // path is only compiled for a non-SDL Windows build.
-#if !defined(OPENMT2_SDL_WINDOW)
+#ifndef OPENMT2_SDL_WINDOW
 
 #include <Neoeter/Render/IME.h>
 #if defined(_WIN32)

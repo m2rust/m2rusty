@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_TERRAINPATCH_H__CDD52438_D542_433C_8748_3A15C910A65E__INCLUDED_)
+#ifndef AFX_TERRAINPATCH_H__CDD52438_D542_433C_8748_3A15C910A65E__INCLUDED_
 #define AFX_TERRAINPATCH_H__CDD52438_D542_433C_8748_3A15C910A65E__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -25,7 +25,7 @@ struct SoftwareTransformPatch_SSourceVertex
 {
     D3DXVECTOR3 kPosition;
     D3DXVECTOR3 kNormal;
-    DWORD dwDiffuse;
+    DWORD dwDiffuse = 0U;
 };
 
 struct SWaterVertex
@@ -52,7 +52,6 @@ class CTerrainPatch
 
     static bool SOFTWARE_TRANSFORM_PATCH_ENABLE;
 
-  public:
     CTerrainPatch()
     {
         Clear();
@@ -73,7 +72,7 @@ class CTerrainPatch
     {
         m_fMinX = fMinX;
     }
-    float GetMinX()
+    float GetMinX() const
     {
         return m_fMinX;
     }
@@ -82,7 +81,7 @@ class CTerrainPatch
     {
         m_fMaxX = fMaxX;
     }
-    float GetMaxX()
+    float GetMaxX() const
     {
         return m_fMaxX;
     }
@@ -91,7 +90,7 @@ class CTerrainPatch
     {
         m_fMinY = fMinY;
     }
-    float GetMinY()
+    float GetMinY() const
     {
         return m_fMinY;
     }
@@ -100,7 +99,7 @@ class CTerrainPatch
     {
         m_fMaxY = fMaxY;
     }
-    float GetMaxY()
+    float GetMaxY() const
     {
         return m_fMaxY;
     }
@@ -109,7 +108,7 @@ class CTerrainPatch
     {
         m_fMinZ = fMinZ;
     }
-    float GetMinZ()
+    float GetMinZ() const
     {
         return m_fMinZ;
     }
@@ -118,12 +117,12 @@ class CTerrainPatch
     {
         m_fMaxZ = fMaxZ;
     }
-    float GetMaxZ()
+    float GetMaxZ() const
     {
         return m_fMaxZ;
     }
 
-    bool IsUse()
+    bool IsUse() const
     {
         return m_bUse;
     }
@@ -132,7 +131,7 @@ class CTerrainPatch
         m_bUse = bUse;
     }
 
-    bool IsWaterExist()
+    bool IsWaterExist() const
     {
         return m_bWaterExist;
     }
@@ -141,7 +140,7 @@ class CTerrainPatch
         m_bWaterExist = bWaterExist;
     }
 
-    DWORD GetID()
+    DWORD GetID() const
     {
         return m_dwID;
     }
@@ -154,7 +153,7 @@ class CTerrainPatch
     {
         m_byType = byType;
     }
-    BYTE GetType()
+    BYTE GetType() const
     {
         return m_byType;
     }
@@ -163,12 +162,12 @@ class CTerrainPatch
     {
         m_bNeedUpdate = bNeedUpdate;
     }
-    bool NeedUpdate()
+    bool NeedUpdate() const
     {
         return m_bNeedUpdate;
     }
 
-    UINT GetWaterFaceCount();
+    UINT GetWaterFaceCount() const;
 
     void SoftwareTransformPatch_UpdateTerrainLighting(DWORD dwVersion, const D3DLIGHT9 &c_rkLight,
                                                       const D3DMATERIAL9 &c_rkMtrl);
@@ -181,22 +180,22 @@ class CTerrainPatch
     void __BuildSoftwareTerrainVertexBuffer(HardwareTransformPatch_SSourceVertex *akSrcVertex);
 
   private:
-    float m_fMinX;
-    float m_fMaxX;
-    float m_fMinY;
-    float m_fMaxY;
-    float m_fMinZ;
-    float m_fMaxZ;
-    bool m_bUse;
-    bool m_bWaterExist;
-    DWORD m_dwID;
-    DWORD m_dwWaterPriCount;
+    float m_fMinX = 0.0F;
+    float m_fMaxX = 0.0F;
+    float m_fMinY = 0.0F;
+    float m_fMaxY = 0.0F;
+    float m_fMinZ = 0.0F;
+    float m_fMaxZ = 0.0F;
+    bool m_bUse = false;
+    bool m_bWaterExist = false;
+    DWORD m_dwID = 0U;
+    DWORD m_dwWaterPriCount = 0U;
 
     CGraphicVertexBuffer m_WaterVertexBuffer;
-    BYTE m_byType;
+    BYTE m_byType = 0U;
 
-    bool m_bNeedUpdate;
-    DWORD m_dwVersion;
+    bool m_bNeedUpdate = false;
+    DWORD m_dwVersion = 0U;
 
   public:
     CGraphicVertexBuffer *GetWaterVertexBufferPointer()
@@ -204,7 +203,6 @@ class CTerrainPatch
         return &m_WaterVertexBuffer;
     }
 
-  public:
     CGraphicVertexBuffer *HardwareTransformPatch_GetVertexBufferPtr()
     {
         return &m_kHT.m_kVB;
@@ -217,7 +215,7 @@ class CTerrainPatch
     } m_kHT;
 
   public:
-    SoftwareTransformPatch_SSourceVertex *SoftwareTransformPatch_GetTerrainVertexDataPtr()
+    SoftwareTransformPatch_SSourceVertex *SoftwareTransformPatch_GetTerrainVertexDataPtr() const
     {
         return m_kST.m_akTerrainVertex;
     }
@@ -225,7 +223,7 @@ class CTerrainPatch
   protected:
     struct SSoftwareTransformPatch
     {
-        SoftwareTransformPatch_SSourceVertex *m_akTerrainVertex;
+        SoftwareTransformPatch_SSourceVertex *m_akTerrainVertex = nullptr;
 
         SSoftwareTransformPatch();
         ~SSoftwareTransformPatch();
@@ -249,7 +247,7 @@ class CTerrainPatchProxy
 
     bool IsIn(const D3DXVECTOR3 &c_rv3Target, float fRadius);
 
-    bool isUsed()
+    bool isUsed() const
     {
         return m_bUsed;
     }
@@ -258,7 +256,7 @@ class CTerrainPatchProxy
         m_bUsed = bUsed;
     }
 
-    short GetPatchNum()
+    short GetPatchNum() const
     {
         return m_sPatchNum;
     }
@@ -267,7 +265,7 @@ class CTerrainPatchProxy
         m_sPatchNum = sPatchNum;
     }
 
-    BYTE GetTerrainNum()
+    BYTE GetTerrainNum() const
     {
         return m_byTerrainNum;
     }
@@ -301,12 +299,12 @@ class CTerrainPatchProxy
                                                       const D3DMATERIAL9 &c_rkMtrl);
 
   protected:
-    bool m_bUsed;
-    short m_sPatchNum; // Patch Number
+    bool m_bUsed = false;
+    short m_sPatchNum = 0; // Patch Number
 
-    BYTE m_byTerrainNum;
+    BYTE m_byTerrainNum = 0U;
 
-    CTerrainPatch *m_pTerrainPatch;
+    CTerrainPatch *m_pTerrainPatch = nullptr;
 
     D3DXVECTOR3 m_v3Center;
 };

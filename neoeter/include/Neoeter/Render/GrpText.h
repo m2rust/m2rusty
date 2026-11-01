@@ -7,26 +7,23 @@
 class CGraphicText : public CResource
 {
   public:
-    typedef CRef<CGraphicText> TRef;
+    using TRef = CRef<CGraphicText>;
 
-  public:
     static TType Type();
 
-  public:
     CGraphicText(const char *c_szFileName);
-    virtual ~CGraphicText();
+    ~CGraphicText() override;
 
-    virtual bool CreateDeviceObjects();
-    virtual void DestroyDeviceObjects();
+    bool CreateDeviceObjects() override;
+    void DestroyDeviceObjects() override;
 
     CGraphicFontTexture *GetFontTexturePointer();
 
   protected:
-    bool OnLoad(int iSize, const void *c_pvBuf);
-    void OnClear();
-    bool OnIsEmpty() const;
-    bool OnIsType(TType type);
+    bool OnLoad(int iSize, const void *c_pvBuf) override;
+    void OnClear() override;
+    bool OnIsEmpty() const override;
+    bool OnIsType(TType type) override;
 
-  protected:
     CGraphicFontTexture m_fontTexture;
 };

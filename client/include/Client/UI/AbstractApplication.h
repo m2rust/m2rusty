@@ -7,11 +7,11 @@ class IAbstractApplication : public TAbstractSingleton<IAbstractApplication>
   public:
     struct SCameraPos
     {
-        float m_fUpDir;
-        float m_fViewDir;
-        float m_fCrossDir;
+        float m_fUpDir = 0.0f;
+        float m_fViewDir = 0.0f;
+        float m_fCrossDir = 0.0f;
 
-        SCameraPos() : m_fUpDir(0.0f), m_fViewDir(0.0f), m_fCrossDir(0.0f)
+        SCameraPos()
         {
         }
     };
@@ -20,22 +20,17 @@ class IAbstractApplication : public TAbstractSingleton<IAbstractApplication>
     {
         D3DXVECTOR3 v3CenterPosition;
         SCameraPos kCmrPos;
-        float fRotation;
-        float fPitch;
-        float fZoom;
+        float fRotation = 0.0f;
+        float fPitch = 0.0f;
+        float fZoom = 0.0f;
 
-        SCameraSetting() : v3CenterPosition(0.0f, 0.0f, 0.0f), fRotation(0.0f), fPitch(0.0f), fZoom(0.0f)
+        SCameraSetting() : v3CenterPosition(0.0f, 0.0f, 0.0f)
         {
         }
     };
 
-  public:
-    IAbstractApplication()
-    {
-    }
-    virtual ~IAbstractApplication()
-    {
-    }
+    IAbstractApplication() = default;
+    ~IAbstractApplication() override = default;
 
     virtual void GetMousePosition(POINT *ppt) = 0;
     virtual float GetGlobalTime() = 0;

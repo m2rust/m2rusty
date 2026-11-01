@@ -1,5 +1,5 @@
 #include <Client/Game/StdAfx.h>
-#include <string.h>
+#include <cstring>
 #include <Neoeter/Platform/Base/TempFile.h>
 
 #include <Client/Game/PropertyManager.h>
@@ -12,24 +12,25 @@
  *
  *  그 이후의 바이트들은 텍스트 파일 로더와 같은 구조
  */
-CProperty::CProperty(const char *c_pszFileName) : mc_pFileName(NULL), m_dwCRC(0)
+CProperty::CProperty(const char *c_pszFileName)
+    : m_stFileName(c_pszFileName), mc_pFileName(strrchr(m_stFileName.c_str(), '/'))
 {
-    m_stFileName = c_pszFileName;
+
     StringPath(m_stFileName);
 
-    mc_pFileName = strrchr(m_stFileName.c_str(), '/');
-
     if (!mc_pFileName)
+    {
         mc_pFileName = m_stFileName.c_str();
+    }
     else
+    {
         ++mc_pFileName;
+    }
 }
 
-CProperty::~CProperty()
-{
-}
+CProperty::~CProperty() = default;
 
-DWORD CProperty::GetCRC()
+DWORD CProperty::GetCRC() const
 {
     return m_dwCRC;
 }
@@ -43,7 +44,7 @@ bool CProperty::GetString(const char *c_pszKey, const char **c_ppString)
 {
     std::string stTempKey = c_pszKey;
     stl_lowers(stTempKey);
-    CTokenVectorMap::iterator it = m_stTokenMap.find(stTempKey.c_str());
+    auto it = m_stTokenMap.find(stTempKey);
 
     //	printf("GetString %s %d\n", stTempKey.c_str(), m_stTokenMap.size());
 
@@ -63,7 +64,7 @@ bool CProperty::GetVector(const char *c_pszKey, CTokenVector &rTokenVector)
 {
     std::string stTempKey = c_pszKey;
     stl_lowers(stTempKey);
-    CTokenVectorMap::iterator it = m_stTokenMap.find(stTempKey.c_str());
+    auto it = m_stTokenMap.find(stTempKey);
 
     if (m_stTokenMap.end() == it)
         return false;
@@ -88,7 +89,7 @@ bool CProperty::GetVector(const char *c_pszKey, CTokenVector &rTokenVector)
     // 결국 이렇게.. - [levites]
     // 현재 사용하는 곳 : WorldEditor/Dialog/MapObjectPropertyPageBuilding.cpp
     CTokenVector &rSourceTokenVector = it->second;
-    CTokenVector::iterator itor = rSourceTokenVector.begin();
+    auto itor = rSourceTokenVector.begin();
     for (; itor != rSourceTokenVector.end(); ++itor)
     {
         rTokenVector.push_back(*itor);
@@ -103,13 +104,13 @@ void CProperty::PutString(const char *c_pszKey, const char *c_pszString)
     stl_lowers(stTempKey);
 
     // 이미 있는걸 지움
-    CTokenVectorMap::iterator itor = m_stTokenMap.find(stTempKey);
+    auto itor = m_stTokenMap.find(stTempKey);
 
     if (itor != m_stTokenMap.end())
         m_stTokenMap.erase(itor);
 
     CTokenVector tokenVector;
-    tokenVector.push_back(c_pszString);
+    tokenVector.emplace_back(c_pszString);
 
     m_stTokenMap.insert(CTokenVectorMap::value_type(stTempKey, tokenVector));
 }
@@ -124,7 +125,7 @@ void CProperty::PutVector(const char *c_pszKey, const CTokenVector &c_rTokenVect
 
 void GetTimeString(char *str, time_t ct)
 {
-    struct tm tm;
+    struct tm tm{};
     tm = *localtime(&ct);
 
     _snprintf(str, 15, "%04d%02d%02d%02d%02d%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min,
@@ -133,7 +134,7 @@ void GetTimeString(char *str, time_t ct)
 
 bool CProperty::ReadFromMemory(const void *c_pvData, int iLen, const char *c_pszFileName)
 {
-    const char *pcData = (const char *)c_pvData;
+    const char *pcData = static_cast<const char *>(c_pvData);
 
     if (*(DWORD *)pcData != MAKEFOURCC('Y', 'P', 'R', 'T'))
         return false;
@@ -214,7 +215,7 @@ bool CProperty::ReadFromMemory(const void *c_pvData, int iLen, const char *c_psz
             continue;
 
         stl_lowers(stTokenVector[0]);
-        std::string stKey = stTokenVector[0];
+        std::string const stKey = stTokenVector[0];
 
         stTokenVector.erase(stTokenVector.begin());
         PutVector(stKey.c_str(), stTokenVector);

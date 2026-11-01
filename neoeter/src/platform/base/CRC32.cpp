@@ -1,7 +1,7 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 #include <Neoeter/Platform/Base/CRC32.h>
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -39,19 +39,19 @@ static unsigned long CRCTable[256] = {
     0x24B4A3A6, 0xBAD03605, 0xCDD70693, 0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94,
     0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D};
 
-#define DO1(buf, i) crc = CRCTable[(crc ^ buf[i]) & 0xff] ^ (crc >> 8)
+#define DO1(buf, i) crc = CRCTable[(crc ^ (buf)[i]) & 0xff] ^ (crc >> 8)
 #define DO2(buf, i)                                                                                                    \
     DO1(buf, i);                                                                                                       \
-    DO1(buf, i + 1);
+    DO1(buf, (i) + 1);
 #define DO4(buf, i)                                                                                                    \
     DO2(buf, i);                                                                                                       \
-    DO2(buf, i + 2);
+    DO2(buf, (i) + 2);
 #define DO8(buf, i)                                                                                                    \
     DO4(buf, i);                                                                                                       \
-    DO4(buf, i + 4);
+    DO4(buf, (i) + 4);
 #define DO16(buf, i)                                                                                                   \
     DO8(buf, i);                                                                                                       \
-    DO8(buf, i + 8);
+    DO8(buf, (i) + 8);
 
 DWORD GetCRC32(const char *buf, size_t len)
 {
@@ -96,7 +96,7 @@ DWORD GetCaseCRC32(const char *buf, size_t len)
     return crc;
 }
 
-#if defined(_WIN32)
+#ifdef _WIN32
 
 DWORD GetHFILECRC32(HANDLE hFile)
 {
@@ -162,36 +162,36 @@ DWORD GetFileSize(const char *c_szFileName)
 
 DWORD GetHFILECRC32(HANDLE hFile)
 {
-    int fd = (int)(intptr_t)hFile;
-    struct stat st;
+    int const fd = static_cast<int>((intptr_t)hFile);
+    struct stat st{};
     if (fstat(fd, &st) != 0 || st.st_size == 0)
         return 0;
 
-    void *p = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    void *p = mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (p == MAP_FAILED)
         return 0;
 
-    DWORD crc = GetCRC32((const char *)p, st.st_size);
+    DWORD const crc = GetCRC32(static_cast<const char *>(p), st.st_size);
     munmap(p, st.st_size);
     return crc;
 }
 
 DWORD GetFileCRC32(const char *c_szFileName)
 {
-    int fd = open(c_szFileName, O_RDONLY);
+    int const fd = open(c_szFileName, O_RDONLY);
     if (fd < 0)
         return 0;
-    DWORD crc = GetHFILECRC32((HANDLE)(intptr_t)fd);
+    DWORD const crc = GetHFILECRC32((HANDLE) static_cast<intptr_t>(fd));
     close(fd);
     return crc;
 }
 
 DWORD GetFileSize(const char *c_szFileName)
 {
-    struct stat st;
+    struct stat st{};
     if (stat(c_szFileName, &st) != 0)
         return 0;
-    return (DWORD)st.st_size;
+    return static_cast<DWORD>(st.st_size);
 }
 
 #endif

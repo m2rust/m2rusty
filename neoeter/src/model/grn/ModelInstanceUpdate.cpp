@@ -8,7 +8,7 @@ void CGrannyModelInstance::Update(DWORD dwAniFPS)
     if (!dwAniFPS)
         return;
 
-    const DWORD c_dwCurUpdateFrame = (DWORD)(GetLocalTime() * ANIFPS_MAX);
+    const auto c_dwCurUpdateFrame = static_cast<DWORD>(GetLocalTime() * ANIFPS_MAX);
     const DWORD ANIFPS_STEP = ANIFPS_MAX / dwAniFPS;
     if (c_dwCurUpdateFrame > ANIFPS_STEP && c_dwCurUpdateFrame / ANIFPS_STEP == m_dwOldUpdateFrame / ANIFPS_STEP)
         return;
@@ -46,7 +46,8 @@ void CGrannyModelInstance::UpdateTransform(D3DXMATRIX *pMatrix, float fSecondsEl
         TraceError("CGrannyModelIstance::UpdateTransform - m_pgrnModelInstance = NULL");
         return;
     }
-    GrannyUpdateModelMatrix(m_pgrnModelInstance, fSecondsElapsed, (const float *)pMatrix, (float *)pMatrix);
+    GrannyUpdateModelMatrix(m_pgrnModelInstance, fSecondsElapsed, reinterpret_cast<const float *>(pMatrix),
+                            reinterpret_cast<float *>(pMatrix));
     // Tracef("%f %f %f",pMatrix->_41,pMatrix->_42,pMatrix->_43);
 }
 
@@ -66,8 +67,9 @@ void CGrannyModelInstance::Deform(const D3DXMATRIX *c_pWorldMatrix)
     {
         // WORK
         CGraphicVertexBuffer &rkDeformableVertexBuffer = __GetDeformableVertexBufferRef();
-        TPNTVertex *pntVertices;
-        if (rkDeformableVertexBuffer.LockRange(m_pModel->GetDeformVertexCount(), (void **)&pntVertices))
+        TPNTVertex *pntVertices = nullptr;
+        if (rkDeformableVertexBuffer.LockRange(m_pModel->GetDeformVertexCount(),
+                                               reinterpret_cast<void **>(&pntVertices)))
         {
             DeformPNTVertices(pntVertices);
             rkDeformableVertexBuffer.Unlock();
@@ -84,10 +86,8 @@ void CGrannyModelInstance::Deform(const D3DXMATRIX *c_pWorldMatrix)
 class CGrannyLocalPose
 {
   public:
-    CGrannyLocalPose()
+    CGrannyLocalPose() : m_pgrnLocalPose(nullptr), m_boneCount(0)
     {
-        m_pgrnLocalPose = NULL;
-        m_boneCount = 0;
     }
 
     virtual ~CGrannyLocalPose()
@@ -133,8 +133,10 @@ void CGrannyModelInstance::UpdateWorldPose()
     // Hair	= UpdateWorldPose(X)
 
     if (m_ppkSkeletonInst)
+    {
         if (*m_ppkSkeletonInst != this)
             return;
+    }
 
     static CGrannyLocalPose s_SharedLocalPose;
 
@@ -142,7 +144,7 @@ void CGrannyModelInstance::UpdateWorldPose()
     granny_local_pose *pgrnLocalPose = s_SharedLocalPose.Get(pgrnSkeleton->BoneCount);
 
     const float *pAttachBoneMatrix =
-        (mc_pParentInstance) ? mc_pParentInstance->GetBoneMatrixPointer(m_iParentBoneIndex) : NULL;
+        (mc_pParentInstance) ? mc_pParentInstance->GetBoneMatrixPointer(m_iParentBoneIndex) : nullptr;
 
     GrannySampleModelAnimationsAccelerated(m_pgrnModelInstance, pgrnSkeleton->BoneCount, pAttachBoneMatrix,
                                            pgrnLocalPose, __GetWorldPosePtr());
@@ -161,13 +163,13 @@ void CGrannyModelInstance::UpdateWorldMatrices(const D3DXMATRIX *c_pWorldMatrix)
         return;
     // END_OF_NO_MESH_BUG_FIX
 
-    assert(m_pModel != NULL);
-    assert(ms_lpd3dMatStack != NULL);
+    assert(m_pModel != nullptr);
+    assert(ms_lpd3dMatStack != nullptr);
 
-    int meshCount = m_pModel->GetMeshCount();
+    int const meshCount = m_pModel->GetMeshCount();
 
     granny_matrix_4x4 *pgrnMatCompositeBuffer = GrannyGetWorldPoseComposite4x4Array(__GetWorldPosePtr());
-    D3DXMATRIX *boneMatrices = (D3DXMATRIX *)pgrnMatCompositeBuffer;
+    auto *boneMatrices = reinterpret_cast<D3DXMATRIX *>(pgrnMatCompositeBuffer);
 
     for (int i = 0; i < meshCount; ++i)
     {
@@ -185,7 +187,7 @@ void CGrannyModelInstance::UpdateWorldMatrices(const D3DXMATRIX *c_pWorldMatrix)
         }
         else
         {
-            int iBone = *boneIndices;
+            int const iBone = *boneIndices;
             D3DXMatrixMultiply(&rWorldMatrix, &boneMatrices[iBone], c_pWorldMatrix);
         }
     }
@@ -197,11 +199,12 @@ void CGrannyModelInstance::UpdateWorldMatrices(const D3DXMATRIX *c_pWorldMatrix)
 
 void CGrannyModelInstance::DeformPNTVertices(void *pvDest)
 {
-    assert(m_pModel != NULL);
+    assert(m_pModel != nullptr);
     assert(m_pModel->CanDeformPNTVertices());
 
     // WORK
-    m_pModel->DeformPNTVertices(pvDest, (D3DXMATRIX *)GrannyGetWorldPoseComposite4x4Array(__GetWorldPosePtr()),
-                                m_vct_pgrnMeshBinding);
+    m_pModel->DeformPNTVertices(
+        pvDest, reinterpret_cast<D3DXMATRIX *>(GrannyGetWorldPoseComposite4x4Array(__GetWorldPosePtr())),
+        m_vct_pgrnMeshBinding);
     // END_OF_WORK
 }

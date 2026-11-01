@@ -4,10 +4,12 @@
 #include <Neoeter/Platform/Base/Debug.h>
 #include <Neoeter/Render/ResourceManager.h>
 #include <Neoeter/Render/Util.h>
+#include <math.h>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <print>
 
 CTextureSet::CTextureSet()
 {
@@ -45,13 +47,13 @@ bool CTextureSet::Load(const char *c_szTextureSetFileName, float fTerrainTexCoor
         return false;
     }
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("textureset"))
+    if (!stTokenVectorMap.contains("textureset"))
     {
         TraceError("TextureSet::Load : syntax error, TextureSet (filename: %s)", c_szTextureSetFileName);
         return false;
     }
 
-    if (stTokenVectorMap.end() == stTokenVectorMap.find("texturecount"))
+    if (!stTokenVectorMap.contains("texturecount"))
     {
         TraceError("TextureSet::Load : syntax error, TextureCount (filename: %s)", c_szTextureSetFileName);
         return false;
@@ -61,7 +63,7 @@ bool CTextureSet::Load(const char *c_szTextureSetFileName, float fTerrainTexCoor
 
     const std::string &c_rstrCount = stTokenVectorMap["texturecount"][0];
 
-    long lCount = atol(c_rstrCount.c_str());
+    long const lCount = atol(c_rstrCount.c_str());
     char szTextureName[32 + 1];
 
     m_Textures.resize(lCount + 1);
@@ -70,7 +72,7 @@ bool CTextureSet::Load(const char *c_szTextureSetFileName, float fTerrainTexCoor
     {
         _snprintf(szTextureName, sizeof(szTextureName), "texture%03d", i + 1);
 
-        if (stTokenVectorMap.end() == stTokenVectorMap.find(szTextureName))
+        if (!stTokenVectorMap.contains(szTextureName))
             continue;
 
         const CTokenVector &rVector = stTokenVectorMap[szTextureName];
@@ -84,9 +86,13 @@ bool CTextureSet::Load(const char *c_szTextureSetFileName, float fTerrainTexCoor
         const std::string &c_rstrBegin = rVector[6];
         const std::string &c_rstrEnd = rVector[7];
 
-        float fuScale, fvScale, fuOffset, fvOffset;
-        bool bSplat;
-        unsigned short usBegin, usEnd;
+        float fuScale = NAN;
+        float fvScale = NAN;
+        float fuOffset = NAN;
+        float fvOffset = NAN;
+        bool bSplat = false;
+        unsigned short usBegin = 0;
+        unsigned short usEnd = 0;
 
         fuScale = atof(c_rstrUScale.c_str());
         fvScale = atof(c_rstrVScale.c_str());
@@ -115,7 +121,7 @@ void CTextureSet::Clear()
 
 void CTextureSet::AddEmptyTexture()
 {
-    TTerrainTexture eraser;
+    TTerrainTexture const eraser;
     m_Textures.push_back(eraser);
 }
 
@@ -208,7 +214,7 @@ bool CTextureSet::AddTexture(const char *c_szFileName, float fuScale, float fvSc
 
     for (unsigned long i = 1; i < GetTextureCount(); ++i)
     {
-        if (0 == m_Textures[i].stFilename.compare(c_szFileName))
+        if (c_szFileName == m_Textures[i].stFilename)
         {
             LogBox("There is already a texture with the same name.", "Duplicate");
             return false;
@@ -238,7 +244,7 @@ bool CTextureSet::RemoveTexture(unsigned long ulIndex)
     if (GetTextureCount() <= ulIndex)
         return false;
 
-    TTextureVector::iterator itor = m_Textures.begin() + ulIndex;
+    auto itor = m_Textures.begin() + ulIndex;
     m_Textures.erase(itor);
     return true;
 }
@@ -250,27 +256,27 @@ bool CTextureSet::Save(const char *c_pszFileName)
     if (!pFile)
         return false;
 
-    fprintf(pFile, "TextureSet\n");
-    fprintf(pFile, "\n");
+    std::println(pFile, "TextureSet");
+    std::println(pFile, "");
 
-    fprintf(pFile, "TextureCount %ld\n",
-            static_cast<long>(GetTextureCount() - 1)); // -1 을 하는 이유는 지우개 때문임
-    fprintf(pFile, "\n");
+    std::println(pFile, "TextureCount {}",
+                 static_cast<long>(GetTextureCount() - 1)); // -1 을 하는 이유는 지우개 때문임
+    std::println(pFile, "");
 
     for (DWORD i = 1; i < GetTextureCount(); ++i)
     {
         TTerrainTexture &rTex = m_Textures[i];
 
-        fprintf(pFile, "Start Texture%03d\n", i);
-        fprintf(pFile, "    \"%s\"\n", rTex.stFilename.c_str());
-        fprintf(pFile, "    %f\n", rTex.UScale);
-        fprintf(pFile, "    %f\n", rTex.VScale);
-        fprintf(pFile, "    %f\n", rTex.UOffset);
-        fprintf(pFile, "    %f\n", rTex.VOffset);
-        fprintf(pFile, "    %d\n", rTex.bSplat ? 1 : 0);
-        fprintf(pFile, "    %hu\n", rTex.Begin);
-        fprintf(pFile, "    %hu\n", rTex.End);
-        fprintf(pFile, "End Texture%03d\n", i);
+        std::println(pFile, "Start Texture{:03}", i);
+        std::println(pFile, "    \"{}\"", rTex.stFilename);
+        std::println(pFile, "    {:f}", rTex.UScale);
+        std::println(pFile, "    {:f}", rTex.VScale);
+        std::println(pFile, "    {:f}", rTex.UOffset);
+        std::println(pFile, "    {:f}", rTex.VOffset);
+        std::println(pFile, "    {}", rTex.bSplat ? 1 : 0);
+        std::println(pFile, "    {}", rTex.Begin);
+        std::println(pFile, "    {}", rTex.End);
+        std::println(pFile, "End Texture{:03}", i);
     }
 
     fclose(pFile);

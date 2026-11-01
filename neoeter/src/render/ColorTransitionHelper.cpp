@@ -1,5 +1,8 @@
 #include <Neoeter/Render/StdAfx.h>
 #include <Neoeter/Render/ColorTransitionHelper.h>
+#include <math.h>
+
+#include <algorithm>
 
 void CColorTransitionHelper::Clear(const float &c_rfRed, const float &c_rfGreen, const float &c_rfBlue,
                                    const float &c_rfAlpha)
@@ -50,24 +53,27 @@ bool CColorTransitionHelper::Update()
     //	if (!m_bTransitionStarted)
     //		return false;
 
-    DWORD dwCurTime = GetCurrentTime();
-    DWORD dwElapsedTime = dwCurTime - m_dwStartTime;
+    DWORD const dwCurTime = GetCurrentTime();
+    DWORD const dwElapsedTime = dwCurTime - m_dwStartTime;
 
-    float fpercent = (float)(dwElapsedTime) / (float)(m_dwDuration);
-    if (fpercent <= 0.0f)
-        fpercent = 0.0f;
-    if (fpercent >= 1.0f)
-        fpercent = 1.0f;
-    float fCurRed, fCurGreen, fCurBlue, fCurAlpha;
-    fCurRed = m_fSrcRed + (m_fDstRed - m_fSrcRed) * fpercent;
-    fCurGreen = m_fSrcGreen + (m_fDstGreen - m_fSrcGreen) * fpercent;
-    fCurBlue = m_fSrcBlue + (m_fDstBlue - m_fSrcBlue) * fpercent;
-    fCurAlpha = m_fSrcAlpha + (m_fDstAlpha - m_fSrcAlpha) * fpercent;
+    float fpercent = static_cast<float>(dwElapsedTime) / static_cast<float>(m_dwDuration);
+    fpercent = std::max(fpercent, 0.0f);
+    fpercent = std::min(fpercent, 1.0f);
+    float fCurRed = NAN;
+    float fCurGreen = NAN;
+    float fCurBlue = NAN;
+    float fCurAlpha = NAN;
+    fCurRed = m_fSrcRed + ((m_fDstRed - m_fSrcRed) * fpercent);
+    fCurGreen = m_fSrcGreen + ((m_fDstGreen - m_fSrcGreen) * fpercent);
+    fCurBlue = m_fSrcBlue + ((m_fDstBlue - m_fSrcBlue) * fpercent);
+    fCurAlpha = m_fSrcAlpha + ((m_fDstAlpha - m_fSrcAlpha) * fpercent);
 
     // 	Tracef("%f, %f, %f, %f\n", fCurRed, fCurGreen, fCurBlue, fCurAlpha);
 
-    m_dwCurColor = (((DWORD)(fCurAlpha * 255.0f) & 0xff) << 24) | (((DWORD)(fCurRed * 255.0f) & 0xff) << 16) |
-                   (((DWORD)(fCurGreen * 255.0f) & 0xff) << 8) | ((DWORD)(fCurBlue * 255.0f) & 0xff);
+    m_dwCurColor = ((static_cast<DWORD>(fCurAlpha * 255.0f) & 0xff) << 24) |
+                   ((static_cast<DWORD>(fCurRed * 255.0f) & 0xff) << 16) |
+                   ((static_cast<DWORD>(fCurGreen * 255.0f) & 0xff) << 8) |
+                   (static_cast<DWORD>(fCurBlue * 255.0f) & 0xff);
 
     if ((1.0f == fpercent) && (fCurAlpha == m_fDstAlpha) && (fCurRed == m_fDstRed) && (fCurGreen == m_fDstGreen) &&
         (fCurBlue == m_fDstBlue))
@@ -79,12 +85,12 @@ bool CColorTransitionHelper::Update()
     return true;
 }
 
-const D3DCOLOR &CColorTransitionHelper::GetCurColor()
+const D3DCOLOR &CColorTransitionHelper::GetCurColor() const
 {
     return m_dwCurColor;
 }
 
-CColorTransitionHelper::CColorTransitionHelper() : m_bTransitionStarted(false)
+CColorTransitionHelper::CColorTransitionHelper()
 {
     Clear(0.0f, 0.0f, 0.0f, 0.0f);
 }

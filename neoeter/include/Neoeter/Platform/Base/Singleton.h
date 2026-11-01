@@ -9,17 +9,19 @@ template <typename T> class CSingleton
     static T *ms_singleton;
 
   public:
+  private:
     CSingleton()
     {
         assert(!ms_singleton);
-        intptr_t offset = (intptr_t)(T *)1 - (intptr_t)(CSingleton<T> *)(T *)1;
+        intptr_t const offset = (intptr_t)(T *)1 - (intptr_t)(CSingleton<T> *)(T *)1;
         ms_singleton = (T *)((intptr_t)this + offset);
     }
 
+  public:
     virtual ~CSingleton()
     {
         assert(ms_singleton);
-        ms_singleton = 0;
+        ms_singleton = nullptr;
     }
 
     __forceinline static T &Instance()
@@ -38,9 +40,10 @@ template <typename T> class CSingleton
         assert(ms_singleton);
         return (*ms_singleton);
     }
+    friend T;
 };
 
-template <typename T> T *CSingleton<T>::ms_singleton = 0;
+template <typename T> T *CSingleton<T>::ms_singleton = nullptr;
 
 //
 // singleton for non-hungarian
@@ -50,17 +53,19 @@ template <typename T> class singleton
     static T *ms_singleton;
 
   public:
+  private:
     singleton()
     {
         assert(!ms_singleton);
-        intptr_t offset = (intptr_t)(T *)1 - (intptr_t)(singleton<T> *)(T *)1;
+        intptr_t const offset = (intptr_t)(T *)1 - (intptr_t)(singleton<T> *)(T *)1;
         ms_singleton = (T *)((intptr_t)this + offset);
     }
 
+  public:
     virtual ~singleton()
     {
         assert(ms_singleton);
-        ms_singleton = 0;
+        ms_singleton = nullptr;
     }
 
     __forceinline static T &Instance()
@@ -79,8 +84,9 @@ template <typename T> class singleton
         assert(ms_singleton);
         return (*ms_singleton);
     }
+    friend T;
 };
 
-template <typename T> T *singleton<T>::ms_singleton = 0;
+template <typename T> T *singleton<T>::ms_singleton = nullptr;
 
 #endif

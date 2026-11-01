@@ -2,6 +2,9 @@
 #include <Neoeter/Render/GrpLightManager.h>
 
 #include <Neoeter/Effect/SimpleLightInstance.h>
+#include <math.h>
+
+#include <algorithm>
 
 CDynamicPool<CLightInstance> CLightInstance::ms_kPool;
 
@@ -46,8 +49,7 @@ bool CLightInstance::OnUpdate(float fElapsedTime)
     {
         if (m_pData->isLoop() && --m_iLoopCount != 0)
         {
-            if (m_iLoopCount < 0)
-                m_iLoopCount = 0;
+            m_iLoopCount = std::max<DWORD>(m_iLoopCount, 0);
             m_fLocalTime -= m_pData->GetDuration();
         }
         else
@@ -100,7 +102,7 @@ bool CLightInstance::OnUpdate(float fElapsedTime)
             m_dwRangeIndex++;
         }*/
 
-        float fRange;
+        float fRange = NAN;
         m_pData->GetRange(m_fLocalTime, fRange);
         pLight->SetRange(fRange);
 

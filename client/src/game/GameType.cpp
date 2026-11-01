@@ -1,6 +1,7 @@
 #include <Client/Game/StdAfx.h>
 #include <Client/Game/GameType.h>
 #include <Neoeter/Effect/EffectManager.h>
+#include <math.h>
 
 extern float g_fGameFPS = 60.0f;
 
@@ -53,14 +54,14 @@ bool NRaceData::THitData::Load(CTextFileLoader &rTextFileLoader)
 
     mapHitPosition.clear();
 
-    CTokenVector *tv;
+    CTokenVector *tv = nullptr;
     if (rTextFileLoader.GetTokenVector("hitposition", &tv))
     {
-        CTokenVector::iterator it = tv->begin();
+        auto it = tv->begin();
 
         while (it != tv->end())
         {
-            float time;
+            float time = NAN;
             NRaceData::THitTimePosition hp;
             time = atof(it++->c_str());
             hp.v3LastPosition.x = atof(it++->c_str());
@@ -92,10 +93,10 @@ BOOL NRaceData::LoadMotionAttackData(CTextFileLoader &rTextFileLoader, TMotionAt
 
     pData->HitDataContainer.clear();
 
-    DWORD dwHitDataCount;
+    DWORD dwHitDataCount = 0;
     if (!rTextFileLoader.GetTokenDoubleWord("hitdatacount", &dwHitDataCount))
     {
-        pData->HitDataContainer.push_back(SHitData());
+        pData->HitDataContainer.emplace_back();
         THitData &rHitData = *(pData->HitDataContainer.rbegin());
         if (!rHitData.Load(rTextFileLoader))
             return FALSE;
@@ -107,7 +108,7 @@ BOOL NRaceData::LoadMotionAttackData(CTextFileLoader &rTextFileLoader, TMotionAt
             if (!rTextFileLoader.SetChildNode(i))
                 return FALSE;
 
-            pData->HitDataContainer.push_back(SHitData());
+            pData->HitDataContainer.emplace_back();
             THitData &rHitData = *(pData->HitDataContainer.rbegin());
             if (!rHitData.Load(rTextFileLoader))
                 return FALSE;
@@ -124,7 +125,7 @@ BOOL NRaceData::LoadCollisionData(CTextFileLoader &rTextFileLoader, TCollisionDa
     if (!rTextFileLoader.GetTokenInteger("collisiontype", &pCollisionData->iCollisionType))
         return false;
 
-    DWORD dwSphereDataCount;
+    DWORD dwSphereDataCount = 0;
     if (!rTextFileLoader.GetTokenDoubleWord("spheredatacount", &dwSphereDataCount))
         return false;
 
@@ -189,10 +190,7 @@ BOOL NRaceData::LoadEffectData(CTextFileLoader &rTextFileLoader, TAttachingEffec
 
 BOOL NRaceData::LoadObjectData(CTextFileLoader &rTextFileLoader, TAttachingObjectData *pObjectData)
 {
-    if (!rTextFileLoader.GetTokenString("objectscriptname", &pObjectData->strFileName))
-        return false;
-
-    return true;
+    return rTextFileLoader.GetTokenString("objectscriptname", &pObjectData->strFileName) != 0;
 }
 
 void NRaceData::SaveAttackData(FILE *File, int iTabCount, const TAttackData &c_rData)
@@ -214,7 +212,7 @@ void NRaceData::SaveMotionAttackData(FILE *File, int iTabCount, const TMotionAtt
     PrintfTabs(File, iTabCount, "HitDataCount         %d\n", c_rData.HitDataContainer.size());
 
     DWORD dwHitDataNumber = 0;
-    THitDataContainer::const_iterator itor = c_rData.HitDataContainer.begin();
+    auto itor = c_rData.HitDataContainer.begin();
     for (; itor != c_rData.HitDataContainer.end(); ++itor, ++dwHitDataNumber)
     {
         const THitData &c_rHitData = *itor;
@@ -271,7 +269,7 @@ void NRaceData::SaveCollisionData(FILE *File, int iTabCount, const TCollisionDat
 // Attaching Data
 void NRaceData::SaveAttachingData(FILE *File, int iTabCount, const TAttachingDataVector &c_rAttachingDataVector)
 {
-    DWORD dwAttachingDataCount = c_rAttachingDataVector.size();
+    DWORD const dwAttachingDataCount = c_rAttachingDataVector.size();
 
     PrintfTabs(File, iTabCount, "AttachingDataCount       %d\n", dwAttachingDataCount);
     PrintfTabs(File, iTabCount, "\n");
@@ -313,7 +311,7 @@ void NRaceData::SaveAttachingData(FILE *File, int iTabCount, const TAttachingDat
 
 BOOL NRaceData::LoadAttachingData(CTextFileLoader &rTextFileLoader, TAttachingDataVector *pAttachingDataVector)
 {
-    DWORD dwDataCount;
+    DWORD dwDataCount = 0;
     if (!rTextFileLoader.GetTokenDoubleWord("attachingdatacount", &dwDataCount))
         return false;
 

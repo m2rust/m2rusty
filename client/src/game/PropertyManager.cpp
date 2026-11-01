@@ -4,9 +4,7 @@
 #include <Client/Game/PropertyManager.h>
 #include <Client/Game/Property.h>
 
-CPropertyManager::CPropertyManager()
-{
-}
+CPropertyManager::CPropertyManager() = default;
 
 CPropertyManager::~CPropertyManager()
 {
@@ -19,13 +17,13 @@ void CPropertyManager::Initialize()
 
     for (auto &itor : fileMap)
     {
-        if (itor.first.rfind("property/reserve", 0) == 0)
+        if (itor.first.starts_with("property/reserve"))
         {
             LoadReservedCRC(itor.first.c_str());
             continue;
         }
 
-        if (itor.first.rfind("property/", 0) == 0)
+        if (itor.first.starts_with("property/"))
         {
             if (!Register(itor.first.c_str()))
                 continue;
@@ -65,12 +63,11 @@ DWORD CPropertyManager::GetUniqueCRC(const char *c_szSeed)
 {
     std::string stTmp = c_szSeed;
 
-    while (1)
+    while (true)
     {
-        DWORD dwCRC = GetCRC32(stTmp.c_str(), stTmp.length());
+        DWORD const dwCRC = GetCRC32(stTmp.c_str(), stTmp.length());
 
-        if (m_ReservedCRCSet.find(dwCRC) == m_ReservedCRCSet.end() &&
-            m_PropertyByCRCMap.find(dwCRC) == m_PropertyByCRCMap.end())
+        if (!m_ReservedCRCSet.contains(dwCRC) && !m_PropertyByCRCMap.contains(dwCRC))
             return dwCRC;
 
         char szAdd[2];
@@ -85,7 +82,7 @@ bool CPropertyManager::Register(const char *c_pszFileName, CProperty **ppPropert
     if (!CEterPackManager::Instance().Get(c_pszFileName, data))
         return false;
 
-    CProperty *pProperty = new CProperty(c_pszFileName);
+    auto *pProperty = new CProperty(c_pszFileName);
 
     if (!pProperty->ReadFromMemory(data->data(), data->size(), c_pszFileName))
     {
@@ -93,9 +90,9 @@ bool CPropertyManager::Register(const char *c_pszFileName, CProperty **ppPropert
         return false;
     }
 
-    DWORD dwCRC = pProperty->GetCRC();
+    DWORD const dwCRC = pProperty->GetCRC();
 
-    TPropertyCRCMap::iterator itor = m_PropertyByCRCMap.find(dwCRC);
+    auto itor = m_PropertyByCRCMap.find(dwCRC);
 
     if (m_PropertyByCRCMap.end() != itor)
     {
@@ -105,7 +102,9 @@ bool CPropertyManager::Register(const char *c_pszFileName, CProperty **ppPropert
         itor->second = pProperty;
     }
     else
+    {
         m_PropertyByCRCMap.insert(TPropertyCRCMap::value_type(dwCRC, pProperty));
+    }
 
     if (ppProperty)
         *ppProperty = pProperty;
@@ -120,7 +119,7 @@ bool CPropertyManager::Get(const char *c_pszFileName, CProperty **ppProperty)
 
 bool CPropertyManager::Get(DWORD dwCRC, CProperty **ppProperty)
 {
-    TPropertyCRCMap::iterator itor = m_PropertyByCRCMap.find(dwCRC);
+    auto itor = m_PropertyByCRCMap.find(dwCRC);
 
     if (m_PropertyByCRCMap.end() == itor)
         return false;

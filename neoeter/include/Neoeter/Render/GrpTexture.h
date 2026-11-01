@@ -17,16 +17,15 @@ class CGraphicTexture : public CGraphicBase
 
   protected:
     CGraphicTexture();
-    virtual ~CGraphicTexture();
+    ~CGraphicTexture() override;
 
     void Destroy();
     void Initialize();
 
-  protected:
-    bool m_bEmpty;
+    bool m_bEmpty = false;
 
-    int m_width;
-    int m_height;
+    int m_width = 0;
+    int m_height = 0;
 
-    LPDIRECT3DTEXTURE9 m_lpd3dTexture;
+    LPDIRECT3DTEXTURE9 m_lpd3dTexture = nullptr;
 };

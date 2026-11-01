@@ -11,7 +11,7 @@ class CSoundManager : public CSingleton<CSoundManager>
 {
   public:
     CSoundManager();
-    virtual ~CSoundManager();
+    ~CSoundManager() override;
 
     BOOL Create();
     void Destroy();
@@ -20,7 +20,7 @@ class CSoundManager : public CSingleton<CSoundManager>
     void SetDirection(float fxDir, float fyDir, float fzDir, float fxUp, float fyUp, float fzUp);
     void Update();
 
-    float GetSoundScale();
+    float GetSoundScale() const;
     void SetSoundScale(float fScale);
     void SetAmbienceSoundScale(float fScale);
     void SetSoundVolume(float fVolume);
@@ -31,8 +31,8 @@ class CSoundManager : public CSingleton<CSoundManager>
     void SetMusicVolumeGrade(int iGrade);
     void SaveVolume();
     void RestoreVolume();
-    float GetSoundVolume();
-    float GetMusicVolume();
+    float GetSoundVolume() const;
+    float GetMusicVolume() const;
 
     // Sound
     void PlaySound2D(const char *c_szFileName);
@@ -41,7 +41,7 @@ class CSoundManager : public CSingleton<CSoundManager>
     int PlayAmbienceSound3D(float fx, float fy, float fz, const char *c_szFileName, int iPlayCount = 1);
     void PlayCharacterSound3D(float fx, float fy, float fz, const char *c_szFileName, BOOL bCheckFrequency = FALSE);
     void SetSoundVolume3D(int iIndex, float fVolume);
-    void UpdateAmbienceSound3D(int iIndex, float fx, float fy, float fz);
+    void UpdateAmbienceSound3D(int iIndex, float fx, float fy, float fz) const;
     void StopAllSound3D();
 
     // Music
@@ -69,27 +69,25 @@ class CSoundManager : public CSingleton<CSoundManager>
         MUSIC_STATE_FADE_OUT,
         MUSIC_STATE_FADE_LIMIT_OUT,
     };
-    typedef struct SMusicInstance
+    using TMusicInstance = struct SMusicInstance
     {
         DWORD dwMusicFileNameCRC;
         EMusicState MusicState;
         float fVolume;
         float fLimitVolume;
         float fVolumeSpeed;
-    } TMusicInstance;
+    };
 
     void PlayMusic(DWORD dwIndex, const char *c_szFileName, float fVolume, float fVolumeSpeed);
     void StopMusic(DWORD dwIndex);
     BOOL GetMusicIndex(const char *c_szFileName, DWORD *pdwIndex);
 
-  protected:
-    float __ConvertGradeVolumeToApplyVolume(int nVolumeGrade);
-    float __ConvertRatioVolumeToApplyVolume(float fVolumeRatio);
+    float __ConvertGradeVolumeToApplyVolume(int nGradeVolume);
+    float __ConvertRatioVolumeToApplyVolume(float fRatioVolume);
     void __SetMusicVolume(float fVolume);
     BOOL GetSoundInstance2D(const char *c_szSoundFileName, ISoundInstance **ppInstance);
     BOOL GetSoundInstance3D(const char *c_szFileName, ISoundInstance **ppInstance);
 
-  protected:
     BOOL m_bInitialized;
     BOOL m_isSoundDisable;
 
@@ -105,7 +103,7 @@ class CSoundManager : public CSingleton<CSoundManager>
     float m_fBackupMusicVolume;
     float m_fBackupSoundVolume;
 
-    TMusicInstance m_MusicInstances[CSoundManagerStream::MUSIC_INSTANCE_MAX_NUM];
+    TMusicInstance m_MusicInstances[CSoundManagerStream::MUSIC_INSTANCE_MAX_NUM]{};
     std::map<std::string, float> m_PlaySoundHistoryMap;
 
     static CSoundManager2D ms_SoundManager2D;

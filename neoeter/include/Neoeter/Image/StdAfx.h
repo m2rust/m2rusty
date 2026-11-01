@@ -1,4 +1,4 @@
-#if !defined(AFX_STDAFX_H__BCF68E23_E7D8_4BF3_A905_AFDBEF92B0F6__INCLUDED_)
+#ifndef AFX_STDAFX_H__BCF68E23_E7D8_4BF3_A905_AFDBEF92B0F6__INCLUDED_
 #define AFX_STDAFX_H__BCF68E23_E7D8_4BF3_A905_AFDBEF92B0F6__INCLUDED_
 
 #pragma once
@@ -14,6 +14,7 @@
 #include <cstdarg>
 #endif
 
+#include <print>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,7 @@ inline void _TraceForImage(const char *c_szFormat, ...)
     OutputDebugString(szBuf);
 #endif
     va_end(args);
-    printf("%s", szBuf);
+    std::print("{}", szBuf);
 }
 
 #endif // !defined(AFX_STDAFX_H__BCF68E23_E7D8_4BF3_A905_AFDBEF92B0F6__INCLUDED_)

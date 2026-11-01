@@ -13,11 +13,10 @@ class CGrannyLODController : public CGraphicBase
   public:
     static void SetMinLODMode(bool isEnable);
 
-  public:
     struct FSetLocalTime
     {
         float fLocalTime;
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             pController->SetLocalTime(fLocalTime);
         }
@@ -27,7 +26,7 @@ class CGrannyLODController : public CGraphicBase
     {
         float fElapsedTime;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->UpdateTime(fElapsedTime);
@@ -39,7 +38,7 @@ class CGrannyLODController : public CGraphicBase
         float fDistanceFromCenter;
         float fDistanceFromCamera;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->UpdateLODLevel(fDistanceFromCenter, fDistanceFromCamera);
@@ -104,7 +103,7 @@ class CGrannyLODController : public CGraphicBase
     {
         const D3DXMATRIX *mc_pWorldMatrix;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->Deform(mc_pWorldMatrix);
@@ -114,7 +113,7 @@ class CGrannyLODController : public CGraphicBase
     {
         const D3DXMATRIX *mc_pWorldMatrix;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->DeformNoSkin(mc_pWorldMatrix);
@@ -124,7 +123,7 @@ class CGrannyLODController : public CGraphicBase
     {
         const D3DXMATRIX *mc_pWorldMatrix;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->DeformAll(mc_pWorldMatrix);
@@ -154,13 +153,11 @@ class CGrannyLODController : public CGraphicBase
         D3DXVECTOR3 *m_vtMin;
         D3DXVECTOR3 *m_vtMax;
 
-        FBoundBox(D3DXVECTOR3 *vtMin, D3DXVECTOR3 *vtMax)
+        FBoundBox(D3DXVECTOR3 *vtMin, D3DXVECTOR3 *vtMax) : m_vtMin(vtMin), m_vtMax(vtMax)
         {
-            m_vtMin = vtMin;
-            m_vtMax = vtMax;
         }
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->GetBoundBox(m_vtMin, m_vtMax);
@@ -192,7 +189,7 @@ class CGrannyLODController : public CGraphicBase
         float m_blendTime;
         int m_loopCount;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->SetMotionPointer(m_pMotion, m_blendTime, m_loopCount, m_speedRatio);
@@ -205,7 +202,7 @@ class CGrannyLODController : public CGraphicBase
         float m_speedRatio;
         int m_loopCount;
 
-        void operator()(CGrannyLODController *pController)
+        void operator()(CGrannyLODController *pController) const
         {
             if (pController->isModelInstance())
                 pController->ChangeMotionPointer(m_pMotion, m_loopCount, m_speedRatio);
@@ -224,19 +221,19 @@ class CGrannyLODController : public CGraphicBase
     };
 
     CGrannyLODController();
-    virtual ~CGrannyLODController();
+    ~CGrannyLODController() override;
 
     void Clear();
 
     void CreateDeviceObjects();
     void DestroyDeviceObjects();
 
-    void AddModel(CGraphicThing *pThing, int iSrcModel, CGrannyLODController *pSkelLODController = NULL);
+    void AddModel(CGraphicThing *pThing, int iSrcModel, CGrannyLODController *pSkelLODController = nullptr);
     void AttachModelInstance(CGrannyLODController *pSrcLODController, const char *c_szBoneName);
     void DetachModelInstance(CGrannyLODController *pSrcLODController);
     void SetLODLimits(float fNearLOD, float fFarLOD);
     void SetLODLevel(BYTE bLODLevel);
-    BYTE GetLODLevel()
+    BYTE GetLODLevel() const
     {
         return m_bLODLevel;
     }
@@ -276,7 +273,7 @@ class CGrannyLODController : public CGraphicBase
     CGrannyModelInstance *GetModelInstance();
     bool HaveBlendThing()
     {
-        return 0 != GetModelInstance() ? GetModelInstance()->HaveBlendThing() : false;
+        return nullptr != GetModelInstance() ? GetModelInstance()->HaveBlendThing() : false;
     } // NOTE: GetModelInstance() == 0일 때 클라 크래쉬나는 문제 수정(2012. 05. 07)
 
   protected:
@@ -285,23 +282,22 @@ class CGrannyLODController : public CGraphicBase
 
     void __ReserveSharedDeformableVertexBuffer(DWORD deformableVertexCount);
 
-  protected:
-    float m_fLODDistance;
-    DWORD m_dwLODAniFPS;
+    float m_fLODDistance = 0.0f;
+    DWORD m_dwLODAniFPS = CGrannyModelInstance::ANIFPS_MAX;
 
     //// Attaching Link Data
     // Data of Parent Side
-    typedef struct SAttachingModelData
+    using TAttachingModelData = struct SAttachingModelData
     {
-        CGrannyLODController *pkLODController;
+        CGrannyLODController *pkLODController = nullptr;
         std::string strBoneName;
-    } TAttachingModelData;
+    };
 
     std::vector<TAttachingModelData> m_AttachedModelDataVector;
     // Data of Child Side
     CGrannyLODController *m_pAttachedParentModel;
 
-    BYTE m_bLODLevel;
+    BYTE m_bLODLevel = 0;
     CGrannyModelInstance *m_pCurrentModelInstance;
 
     // WORK

@@ -2,6 +2,7 @@
 #include "Neoeter/Model/Grn/Gr2Decompress.h"
 #include "Neoeter/Model/Grn/GrannyCompat.h"
 
+#include <utility>
 #include <vector>
 #include <deque>
 #include <map>
@@ -16,7 +17,7 @@ namespace
 struct GR2ParsedContext
 {
     granny_file file;
-    granny_file_info fileInfo;
+    granny_file_info fileInfo{};
     std::vector<std::vector<uint8_t>> sections;
     std::vector<std::unique_ptr<granny_model>> models;
     std::vector<granny_model *> modelPtrs;
@@ -50,17 +51,17 @@ struct GR2ParsedContext
     }
 };
 
-static const char *ResolveString(const std::vector<std::vector<uint8_t>> &sections,
-                                 const std::vector<std::map<uint32_t, std::pair<uint32_t, uint32_t>>> &fixups,
-                                 uint32_t secIdx, uint32_t offset)
+const char *ResolveString(const std::vector<std::vector<uint8_t>> &sections,
+                          const std::vector<std::map<uint32_t, std::pair<uint32_t, uint32_t>>> &fixups, uint32_t secIdx,
+                          uint32_t offset)
 {
     if (secIdx >= fixups.size())
         return "";
     auto it = fixups[secIdx].find(offset);
     if (it == fixups[secIdx].end())
         return "";
-    uint32_t toSec = it->second.first;
-    uint32_t toOff = it->second.second;
+    uint32_t const toSec = it->second.first;
+    uint32_t const toOff = it->second.second;
     if (toSec >= sections.size() || toOff >= sections[toSec].size())
         return "";
 
@@ -84,7 +85,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
     if (!memory || size < 88)
         return nullptr;
 
-    const uint8_t *buf = static_cast<const uint8_t *>(memory);
+    const auto *buf = static_cast<const uint8_t *>(memory);
 
     // Granny magic check: B8 67 B0 CA F8 6D B1 0F 84 72 8C 7E 5E 19 00 1E
     static const uint8_t GR2_MAGIC[16] = {0xb8, 0x67, 0xb0, 0xca, 0xf8, 0x6d, 0xb1, 0x0f,
@@ -93,12 +94,12 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
     if (std::memcmp(buf, GR2_MAGIC, 16) != 0)
         return nullptr;
 
-    uint32_t secOffset = *reinterpret_cast<const uint32_t *>(&buf[32 + 12]);
-    uint32_t numSec = *reinterpret_cast<const uint32_t *>(&buf[32 + 16]);
-    uint32_t rootTypeSec = *reinterpret_cast<const uint32_t *>(&buf[32 + 20]);
-    uint32_t rootTypeOff = *reinterpret_cast<const uint32_t *>(&buf[32 + 24]);
-    uint32_t rootNodeSec = *reinterpret_cast<const uint32_t *>(&buf[32 + 28]);
-    uint32_t rootNodeOff = *reinterpret_cast<const uint32_t *>(&buf[32 + 32]);
+    uint32_t const secOffset = *reinterpret_cast<const uint32_t *>(&buf[32 + 12]);
+    uint32_t const numSec = *reinterpret_cast<const uint32_t *>(&buf[32 + 16]);
+    uint32_t const rootTypeSec = *reinterpret_cast<const uint32_t *>(&buf[32 + 20]);
+    uint32_t const rootTypeOff = *reinterpret_cast<const uint32_t *>(&buf[32 + 24]);
+    uint32_t const rootNodeSec = *reinterpret_cast<const uint32_t *>(&buf[32 + 28]);
+    uint32_t const rootNodeOff = *reinterpret_cast<const uint32_t *>(&buf[32 + 32]);
 
     if (numSec == 0 || numSec > kMaxSections)
         return nullptr;
@@ -116,15 +117,15 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
     for (uint32_t i = 0; i < numSec; ++i)
     {
-        const uint8_t *pSec = &buf[32 + secOffset + i * 44];
-        uint32_t fmt = *reinterpret_cast<const uint32_t *>(pSec + 0);
-        uint32_t off = *reinterpret_cast<const uint32_t *>(pSec + 4);
-        uint32_t compSz = *reinterpret_cast<const uint32_t *>(pSec + 8);
-        uint32_t uncompSz = *reinterpret_cast<const uint32_t *>(pSec + 12);
-        uint32_t f16 = *reinterpret_cast<const uint32_t *>(pSec + 20);
-        uint32_t f8 = *reinterpret_cast<const uint32_t *>(pSec + 24);
-        uint32_t relocOff = *reinterpret_cast<const uint32_t *>(pSec + 28);
-        uint32_t numReloc = *reinterpret_cast<const uint32_t *>(pSec + 32);
+        const uint8_t *pSec = &buf[32 + secOffset + (i * 44)];
+        uint32_t const fmt = *reinterpret_cast<const uint32_t *>(pSec + 0);
+        uint32_t const off = *reinterpret_cast<const uint32_t *>(pSec + 4);
+        uint32_t const compSz = *reinterpret_cast<const uint32_t *>(pSec + 8);
+        uint32_t const uncompSz = *reinterpret_cast<const uint32_t *>(pSec + 12);
+        uint32_t const f16 = *reinterpret_cast<const uint32_t *>(pSec + 20);
+        uint32_t const f8 = *reinterpret_cast<const uint32_t *>(pSec + 24);
+        uint32_t const relocOff = *reinterpret_cast<const uint32_t *>(pSec + 28);
+        uint32_t const numReloc = *reinterpret_cast<const uint32_t *>(pSec + 32);
 
         if (uncompSz > kMaxSectionBytes)
             return nullptr;
@@ -157,10 +158,10 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
             for (uint32_t r = 0; r < numReloc; ++r)
             {
-                const uint8_t *pReloc = &buf[relocOff + r * 12];
-                uint32_t fromOff = *reinterpret_cast<const uint32_t *>(pReloc + 0);
-                uint32_t toSec = *reinterpret_cast<const uint32_t *>(pReloc + 4);
-                uint32_t toOff = *reinterpret_cast<const uint32_t *>(pReloc + 8);
+                const uint8_t *pReloc = &buf[relocOff + (r * 12)];
+                uint32_t const fromOff = *reinterpret_cast<const uint32_t *>(pReloc + 0);
+                uint32_t const toSec = *reinterpret_cast<const uint32_t *>(pReloc + 4);
+                uint32_t const toOff = *reinterpret_cast<const uint32_t *>(pReloc + 8);
                 fixups[i][fromOff] = {toSec, toOff};
             }
         }
@@ -183,12 +184,12 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
         while (curTypeOff + 32 <= typeSec.size())
         {
-            uint32_t mType = *reinterpret_cast<const uint32_t *>(&typeSec[curTypeOff]);
+            uint32_t const mType = *reinterpret_cast<const uint32_t *>(&typeSec[curTypeOff]);
             if (mType == 0)
                 break; // GrannyEndMember
 
             std::string mName;
-            if (fixups[rootTypeSec].count(curTypeOff + 4))
+            if (fixups[rootTypeSec].contains(curTypeOff + 4))
             {
                 auto [nSec, nOff] = fixups[rootTypeSec][curTypeOff + 4];
                 if (nSec < ctx->sections.size() && nOff < ctx->sections[nSec].size())
@@ -270,7 +271,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
     ctx->fileInfo.AnimationCount = std::max(0, animCount);
 
     // Unmarshal Models
-    if (modelCount > 0 && fixups[rootNodeSec].count(modelsOffset + 4))
+    if (modelCount > 0 && fixups[rootNodeSec].contains(modelsOffset + 4))
     {
         auto [mArrSec, mArrOff] = fixups[rootNodeSec][modelsOffset + 4];
         ctx->models.reserve(modelCount);
@@ -278,9 +279,9 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
         for (int m = 0; m < modelCount; ++m)
         {
-            if (!fixups[mArrSec].count(mArrOff + m * 4))
+            if (!fixups[mArrSec].contains(mArrOff + (m * 4)))
                 continue;
-            auto [mSec, mOff] = fixups[mArrSec][mArrOff + m * 4];
+            auto [mSec, mOff] = fixups[mArrSec][mArrOff + (m * 4)];
             if (mSec >= ctx->sections.size() || mOff + 84 > ctx->sections[mSec].size())
                 continue;
 
@@ -291,7 +292,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
             std::memcpy(&model->InitialPlacement, pModel + 8, sizeof(granny_transform));
 
             // Skeleton
-            if (fixups[mSec].count(mOff + 4))
+            if (fixups[mSec].contains(mOff + 4))
             {
                 auto [skSec, skOff] = fixups[mSec][mOff + 4];
                 if (skSec < ctx->sections.size() && skOff + 12 <= ctx->sections[skSec].size())
@@ -300,19 +301,19 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                     auto skel = std::make_unique<granny_skeleton>();
                     std::memset(skel.get(), 0, sizeof(granny_skeleton));
                     skel->Name = ctx->StoreString(ResolveString(ctx->sections, fixups, skSec, skOff + 0));
-                    int32_t boneCount = *reinterpret_cast<const int32_t *>(pSkel + 4);
+                    int32_t const boneCount = *reinterpret_cast<const int32_t *>(pSkel + 4);
                     if (boneCount > kMaxRecords)
                         return nullptr;
                     skel->BoneCount = std::max(0, boneCount);
 
-                    if (boneCount > 0 && fixups[skSec].count(skOff + 8))
+                    if (boneCount > 0 && fixups[skSec].contains(skOff + 8))
                     {
                         auto [bnSec, bnOff] = fixups[skSec][skOff + 8];
                         ctx->skeletonBones.emplace_back(boneCount);
                         auto &bones = ctx->skeletonBones.back();
                         for (int b = 0; b < boneCount; ++b)
                         {
-                            uint32_t bOff = bnOff + b * 156;
+                            uint32_t const bOff = bnOff + (b * 156);
                             if (bnSec < ctx->sections.size() && bOff + 140 <= ctx->sections[bnSec].size())
                             {
                                 const uint8_t *pBone = &ctx->sections[bnSec][bOff];
@@ -330,11 +331,11 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
             }
 
             // Mesh Bindings
-            int32_t mbCount = *reinterpret_cast<const int32_t *>(pModel + 76);
+            int32_t const mbCount = *reinterpret_cast<const int32_t *>(pModel + 76);
             if (mbCount > kMaxRecords)
                 return nullptr;
             model->MeshBindingCount = std::max(0, mbCount);
-            if (mbCount > 0 && fixups[mSec].count(mOff + 80))
+            if (mbCount > 0 && fixups[mSec].contains(mOff + 80))
             {
                 auto [mbSec, mbOff] = fixups[mSec][mOff + 80];
                 auto &bindings = ctx->modelMeshBindings[m];
@@ -342,9 +343,9 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
                 for (int b = 0; b < mbCount; ++b)
                 {
-                    if (!fixups[mbSec].count(mbOff + b * 4))
+                    if (!fixups[mbSec].contains(mbOff + (b * 4)))
                         continue;
-                    auto [meshSec, meshOff] = fixups[mbSec][mbOff + b * 4];
+                    auto [meshSec, meshOff] = fixups[mbSec][mbOff + (b * 4)];
                     if (meshSec >= ctx->sections.size() || meshOff + 36 > ctx->sections[meshSec].size())
                         continue;
 
@@ -354,7 +355,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                     mesh->Name = ctx->StoreString(ResolveString(ctx->sections, fixups, meshSec, meshOff + 0));
 
                     // Vertex Data
-                    if (fixups[meshSec].count(meshOff + 4))
+                    if (fixups[meshSec].contains(meshOff + 4))
                     {
                         auto [vtxSec, vtxOff] = fixups[meshSec][meshOff + 4];
                         if (vtxSec < ctx->sections.size() && vtxOff + 12 <= ctx->sections[vtxSec].size())
@@ -363,7 +364,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                             auto vData = std::make_unique<granny_vertex_data>();
                             std::memset(vData.get(), 0, sizeof(granny_vertex_data));
                             vData->VertexCount = *reinterpret_cast<const int32_t *>(pVtx + 4);
-                            if (fixups[vtxSec].count(vtxOff + 8))
+                            if (fixups[vtxSec].contains(vtxOff + 8))
                             {
                                 auto [dSec, dOff] = fixups[vtxSec][vtxOff + 8];
                                 if (dSec < ctx->sections.size() && dOff < ctx->sections[dSec].size())
@@ -377,7 +378,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                     }
 
                     // Topology
-                    if (fixups[meshSec].count(meshOff + 16))
+                    if (fixups[meshSec].contains(meshOff + 16))
                     {
                         auto [topoSec, topoOff] = fixups[meshSec][meshOff + 16];
                         if (topoSec < ctx->sections.size() && topoOff + 24 <= ctx->sections[topoSec].size())
@@ -385,13 +386,13 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                             const uint8_t *pTopo = &ctx->sections[topoSec][topoOff];
                             auto topo = std::make_unique<granny_tri_topology>();
                             std::memset(topo.get(), 0, sizeof(granny_tri_topology));
-                            int32_t grpCount = *reinterpret_cast<const int32_t *>(pTopo + 0);
-                            int32_t idxCount = *reinterpret_cast<const int32_t *>(pTopo + 8);
-                            int32_t idxCount16 = *reinterpret_cast<const int32_t *>(pTopo + 16);
+                            int32_t const grpCount = *reinterpret_cast<const int32_t *>(pTopo + 0);
+                            int32_t const idxCount = *reinterpret_cast<const int32_t *>(pTopo + 8);
+                            int32_t const idxCount16 = *reinterpret_cast<const int32_t *>(pTopo + 16);
                             if (grpCount > kMaxRecords || idxCount > kMaxRecords || idxCount16 > kMaxRecords)
                                 return nullptr;
 
-                            if (idxCount16 > 0 && fixups[topoSec].count(topoOff + 20))
+                            if (idxCount16 > 0 && fixups[topoSec].contains(topoOff + 20))
                             {
                                 auto [iSec, iOff] = fixups[topoSec][topoOff + 20];
                                 if (iSec < ctx->sections.size() && iOff <= ctx->sections[iSec].size() &&
@@ -402,7 +403,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                                     topo->IndexCount = idxCount16;
                                 }
                             }
-                            else if (idxCount > 0 && fixups[topoSec].count(topoOff + 12))
+                            else if (idxCount > 0 && fixups[topoSec].contains(topoOff + 12))
                             {
                                 auto [iSec, iOff] = fixups[topoSec][topoOff + 12];
                                 if (iSec < ctx->sections.size() && iOff <= ctx->sections[iSec].size() &&
@@ -414,11 +415,11 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                                 }
                             }
 
-                            if (grpCount > 0 && fixups[topoSec].count(topoOff + 4))
+                            if (grpCount > 0 && fixups[topoSec].contains(topoOff + 4))
                             {
                                 auto [gSec, gOff] = fixups[topoSec][topoOff + 4];
                                 if (gSec < ctx->sections.size() &&
-                                    gOff + grpCount * sizeof(granny_tri_material_group) <= ctx->sections[gSec].size())
+                                    gOff + (grpCount * sizeof(granny_tri_material_group)) <= ctx->sections[gSec].size())
                                 {
                                     ctx->triGroups.emplace_back(grpCount);
                                     auto &groups = ctx->triGroups.back();
@@ -434,11 +435,11 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                     }
 
                     // Materials
-                    int32_t matCount = *reinterpret_cast<const int32_t *>(pMesh + 20);
+                    int32_t const matCount = *reinterpret_cast<const int32_t *>(pMesh + 20);
                     if (matCount > kMaxRecords)
                         return nullptr;
                     mesh->MaterialBindingCount = std::max(0, matCount);
-                    if (matCount > 0 && fixups[meshSec].count(meshOff + 24))
+                    if (matCount > 0 && fixups[meshSec].contains(meshOff + 24))
                     {
                         auto [matArrSec, matArrOff] = fixups[meshSec][meshOff + 24];
                         ctx->meshMaterialBindings.emplace_back(matCount);
@@ -446,9 +447,9 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
                         for (int m_idx = 0; m_idx < matCount; ++m_idx)
                         {
-                            if (!fixups[matArrSec].count(matArrOff + m_idx * 4))
+                            if (!fixups[matArrSec].contains(matArrOff + (m_idx * 4)))
                                 continue;
-                            auto [matSec, matOff] = fixups[matArrSec][matArrOff + m_idx * 4];
+                            auto [matSec, matOff] = fixups[matArrSec][matArrOff + (m_idx * 4)];
                             if (matSec >= ctx->sections.size() || matOff + 12 > ctx->sections[matSec].size())
                                 continue;
 
@@ -456,27 +457,27 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                             auto mat = std::make_unique<granny_material>();
                             std::memset(mat.get(), 0, sizeof(granny_material));
                             mat->Name = ctx->StoreString(ResolveString(ctx->sections, fixups, matSec, matOff + 0));
-                            int32_t mapCount = *reinterpret_cast<const int32_t *>(pMat + 4);
+                            int32_t const mapCount = *reinterpret_cast<const int32_t *>(pMat + 4);
                             if (mapCount > kMaxRecords)
                                 return nullptr;
                             mat->MapCount = std::max(0, mapCount);
 
-                            if (mapCount > 0 && fixups[matSec].count(matOff + 8))
+                            if (mapCount > 0 && fixups[matSec].contains(matOff + 8))
                             {
                                 auto [mapSec, mapOff] = fixups[matSec][matOff + 8];
                                 ctx->materialMaps.emplace_back(mapCount);
                                 auto &maps = ctx->materialMaps.back();
                                 for (int mp = 0; mp < mapCount; ++mp)
                                 {
-                                    uint32_t curMapOff = mapOff + mp * 8;
+                                    uint32_t const curMapOff = mapOff + (mp * 8);
                                     maps[mp].Usage =
                                         ctx->StoreString(ResolveString(ctx->sections, fixups, mapSec, curMapOff + 0));
-                                    if (fixups[mapSec].count(curMapOff + 4))
+                                    if (fixups[mapSec].contains(curMapOff + 4))
                                     {
                                         auto [subMSec, subMOff] = fixups[mapSec][curMapOff + 4];
                                         auto subMat = std::make_unique<granny_material>();
                                         std::memset(subMat.get(), 0, sizeof(granny_material));
-                                        if (fixups[subMSec].count(subMOff + 12))
+                                        if (fixups[subMSec].contains(subMOff + 12))
                                         {
                                             auto [texSec, texOff] = fixups[subMSec][subMOff + 12];
                                             auto tex = std::make_unique<granny_texture>();
@@ -499,18 +500,18 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                     }
 
                     // Bone Bindings
-                    int32_t bbCount = *reinterpret_cast<const int32_t *>(pMesh + 28);
+                    int32_t const bbCount = *reinterpret_cast<const int32_t *>(pMesh + 28);
                     if (bbCount > kMaxRecords)
                         return nullptr;
                     mesh->BoneBindingCount = std::max(0, bbCount);
-                    if (bbCount > 0 && fixups[meshSec].count(meshOff + 32))
+                    if (bbCount > 0 && fixups[meshSec].contains(meshOff + 32))
                     {
                         auto [bbArrSec, bbArrOff] = fixups[meshSec][meshOff + 32];
                         ctx->meshBoneBindings.emplace_back(bbCount);
                         auto &bBindings = ctx->meshBoneBindings.back();
                         for (int bb = 0; bb < bbCount; ++bb)
                         {
-                            uint32_t curBbOff = bbArrOff + bb * 36;
+                            uint32_t const curBbOff = bbArrOff + (bb * 36);
                             if (bbArrSec < ctx->sections.size() && curBbOff + 28 <= ctx->sections[bbArrSec].size())
                             {
                                 const uint8_t *pBb = &ctx->sections[bbArrSec][curBbOff];
@@ -550,16 +551,16 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
     }
 
     // Unmarshal Animations
-    if (animCount > 0 && fixups[rootNodeSec].count(animsOffset + 4))
+    if (animCount > 0 && fixups[rootNodeSec].contains(animsOffset + 4))
     {
         auto [aArrSec, aArrOff] = fixups[rootNodeSec][animsOffset + 4];
         ctx->animations.reserve(animCount);
 
         for (int a = 0; a < animCount; ++a)
         {
-            if (!fixups[aArrSec].count(aArrOff + a * 4))
+            if (!fixups[aArrSec].contains(aArrOff + (a * 4)))
                 continue;
-            auto [aSec, aOff] = fixups[aArrSec][aArrOff + a * 4];
+            auto [aSec, aOff] = fixups[aArrSec][aArrOff + (a * 4)];
             if (aSec >= ctx->sections.size() || aOff + 16 > ctx->sections[aSec].size())
                 continue;
 
@@ -571,22 +572,22 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
             anim->TimeStep = *reinterpret_cast<const float *>(pAnim + 8);
             anim->Oversampling = 0.0f;
 
-            int32_t tgCount = *reinterpret_cast<const int32_t *>(pAnim + 12);
+            int32_t const tgCount = *reinterpret_cast<const int32_t *>(pAnim + 12);
             if (tgCount > kMaxRecords)
                 return nullptr;
             anim->TrackGroupCount = 0;
             anim->TrackGroups = nullptr;
 
-            if (tgCount > 0 && fixups[aSec].count(aOff + 16))
+            if (tgCount > 0 && fixups[aSec].contains(aOff + 16))
             {
                 auto [tgArrSec, tgArrOff] = fixups[aSec][aOff + 16];
-                size_t tgStartIdx = ctx->tgPtrs.size();
+                size_t const tgStartIdx = ctx->tgPtrs.size();
 
                 for (int tgIdx = 0; tgIdx < tgCount; ++tgIdx)
                 {
-                    if (!fixups[tgArrSec].count(tgArrOff + tgIdx * 4))
+                    if (!fixups[tgArrSec].contains(tgArrOff + (tgIdx * 4)))
                         continue;
-                    auto [tgSec, tgOff] = fixups[tgArrSec][tgArrOff + tgIdx * 4];
+                    auto [tgSec, tgOff] = fixups[tgArrSec][tgArrOff + (tgIdx * 4)];
                     if (tgSec >= ctx->sections.size() || tgOff + 20 > ctx->sections[tgSec].size())
                         continue;
 
@@ -597,16 +598,16 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
                     if (tgOff + 116 <= ctx->sections[tgSec].size())
                     {
-                        const float *pLoopTrans = reinterpret_cast<const float *>(pTG + 104);
+                        const auto *pLoopTrans = reinterpret_cast<const float *>(pTG + 104);
                         trackGroup->LoopTranslation[0] = pLoopTrans[0];
                         trackGroup->LoopTranslation[1] = pLoopTrans[1];
                         trackGroup->LoopTranslation[2] = pLoopTrans[2];
                     }
 
-                    int32_t ttCount = *reinterpret_cast<const int32_t *>(pTG + 12);
+                    int32_t const ttCount = *reinterpret_cast<const int32_t *>(pTG + 12);
                     if (ttCount > kMaxRecords)
                         return nullptr;
-                    if (ttCount > 0 && fixups[tgSec].count(tgOff + 16))
+                    if (ttCount > 0 && fixups[tgSec].contains(tgOff + 16))
                     {
                         // Plain variables, not a structured binding: C++17
                         // lambdas cannot capture structured bindings.
@@ -619,7 +620,7 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
 
                         for (int t = 0; t < ttCount; ++t)
                         {
-                            uint32_t curTTOff = ttArrOff + t * 64;
+                            uint32_t curTTOff = ttArrOff + (t * 64);
                             if (ttArrSec >= ctx->sections.size() || curTTOff + 64 > ctx->sections[ttArrSec].size())
                                 break;
                             const uint8_t *pTT = &ctx->sections[ttArrSec][curTTOff];
@@ -638,11 +639,11 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                                 curve.KnotCount = std::max(0, knotCount);
                                 curve.ControlCount = std::max(0, ctrlCount);
 
-                                if (knotCount > 0 && fixups[ttArrSec].count(curTTOff + curveOff + 8))
+                                if (knotCount > 0 && fixups[ttArrSec].contains(curTTOff + curveOff + 8))
                                 {
                                     auto [kSec, kOff] = fixups[ttArrSec][curTTOff + curveOff + 8];
                                     if (kSec < ctx->sections.size() &&
-                                        kOff + knotCount * 4 <= ctx->sections[kSec].size())
+                                        kOff + (knotCount * 4) <= ctx->sections[kSec].size())
                                     {
                                         ctx->curveKnots.emplace_back(knotCount);
                                         std::memcpy(ctx->curveKnots.back().data(), &ctx->sections[kSec][kOff],
@@ -650,11 +651,11 @@ extern "C" granny_file *GrannyParseGR2FromMemory(int size, const void *memory)
                                         curve.Knots = ctx->curveKnots.back().data();
                                     }
                                 }
-                                if (ctrlCount > 0 && fixups[ttArrSec].count(curTTOff + curveOff + 16))
+                                if (ctrlCount > 0 && fixups[ttArrSec].contains(curTTOff + curveOff + 16))
                                 {
                                     auto [cSec, cOff] = fixups[ttArrSec][curTTOff + curveOff + 16];
                                     if (cSec < ctx->sections.size() &&
-                                        cOff + ctrlCount * 4 <= ctx->sections[cSec].size())
+                                        cOff + (ctrlCount * 4) <= ctx->sections[cSec].size())
                                     {
                                         ctx->curveControls.emplace_back(ctrlCount);
                                         std::memcpy(ctx->curveControls.back().data(), &ctx->sections[cSec][cOff],

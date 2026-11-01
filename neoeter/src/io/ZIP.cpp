@@ -14,14 +14,14 @@ ZIP::ZIP(const std::string &archivePath)
         zip_error_t error;
 
         zip_error_init_with_code(&error, err);
-        std::string errorMessage = zip_error_strerror(&error);
+        std::string const errorMessage = zip_error_strerror(&error);
         zip_error_fini(&error);
 
         throw std::runtime_error("Cannot open ZIP archive '" + archivePath + "': " + errorMessage);
     }
 
     // Read the list of files in the archive
-    zip_int64_t numEntries = zip_get_num_entries(zipFile, 0);
+    zip_int64_t const numEntries = zip_get_num_entries(zipFile, 0);
     for (zip_int64_t index = 0; index < numEntries; index++)
     {
         zip_stat_t fileData;
@@ -41,7 +41,7 @@ ZIP::ZIP(const std::string &archivePath)
 
         fileName = CEterPackManager::Instance().ConvertFileName(fileName);
 
-        if (fileName.rfind("ymir work/", 0) == 0)
+        if (fileName.starts_with("ymir work/"))
         {
             fileName = "d:/" + fileName;
         }
@@ -62,6 +62,7 @@ ZIP::~ZIP()
 std::vector<std::string> ZIP::listFiles()
 {
     std::vector<std::string> result;
+    result.reserve(fileList.size());
     for (auto const &file : fileList)
         result.push_back(file.first);
     return result;
@@ -69,22 +70,19 @@ std::vector<std::string> ZIP::listFiles()
 
 bool ZIP::fileExists(const std::string &fileName)
 {
-    std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
+    std::string const normalized = CEterPackManager::Instance().ConvertFileName(fileName);
     auto it = fileList.find(normalized);
-    if (it == fileList.end())
-        return false;
-
-    return true;
+    return it != fileList.end();
 }
 
 bool ZIP::getFile(const std::string &fileName, std::shared_ptr<std::vector<char>> &fileData)
 {
-    std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
+    std::string const normalized = CEterPackManager::Instance().ConvertFileName(fileName);
     auto it = fileList.find(normalized);
     if (it == fileList.end())
         return false;
 
-    auto file = zip_fopen_index(zipFile, it->second, 0);
+    auto *file = zip_fopen_index(zipFile, it->second, 0);
     if (file == nullptr)
         return false;
 
@@ -108,8 +106,5 @@ bool ZIP::getFile(const std::string &fileName, std::shared_ptr<std::vector<char>
     // Close the file
     zip_fclose(file);
 
-    if (retval == -1)
-        return false;
-
-    return true;
+    return retval != -1;
 }

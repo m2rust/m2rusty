@@ -6,12 +6,8 @@
 class ISoundInstance : public CSoundBase
 {
   public:
-    ISoundInstance()
-    {
-    }
-    virtual ~ISoundInstance()
-    {
-    }
+    ISoundInstance() = default;
+    ~ISoundInstance() override = default;
 
     virtual bool Initialize() = 0;
     virtual void Destroy() = 0;
@@ -33,23 +29,24 @@ class CSoundInstance2D : public ISoundInstance
 {
   public:
     CSoundInstance2D();
-    virtual ~CSoundInstance2D();
+    ~CSoundInstance2D() override;
 
-  public: // from interface
-    bool Initialize();
-    void Destroy();
+    // from interface
+    bool Initialize() override;
+    void Destroy() override;
 
-    bool SetSound(CSoundData *pSound);
-    void Play(int iLoopCount = 1, DWORD dwPlayCycleTimeLimit = 0) const;
-    void Pause() const;
-    void Resume() const;
-    void Stop();
-    void GetVolume(float &rfVolume) const;
-    void SetVolume(float volume) const;
-    bool IsDone() const;
-    void SetPosition(float x, float y, float z) const;
-    void SetOrientation(float x_face, float y_face, float z_face, float x_normal, float y_normal, float z_normal) const;
-    void SetVelocity(float fx, float fy, float fz, float fMagnitude) const;
+    bool SetSound(CSoundData *pSound) override;
+    void Play(int iLoopCount = 1, DWORD dwPlayCycleTimeLimit = 0) const override;
+    void Pause() const override;
+    void Resume() const override;
+    void Stop() override;
+    void GetVolume(float &rfVolume) const override;
+    void SetVolume(float volume) const override;
+    bool IsDone() const override;
+    void SetPosition(float x, float y, float z) const override;
+    void SetOrientation(float x_face, float y_face, float z_face, float x_normal, float y_normal,
+                        float z_normal) const override;
+    void SetVelocity(float fx, float fy, float fz, float fMagnitude) const override;
 
   private:
     HSAMPLE m_sample;
@@ -60,24 +57,25 @@ class CSoundInstance3D : public ISoundInstance
 {
   public:
     CSoundInstance3D();
-    virtual ~CSoundInstance3D();
+    ~CSoundInstance3D() override;
 
-  public: // from interface
-    bool Initialize();
-    void Destroy();
+    // from interface
+    bool Initialize() override;
+    void Destroy() override;
 
-    bool SetSound(CSoundData *pSound);
-    void Play(int iLoopCount = 1, DWORD dwPlayCycleTimeLimit = 0) const;
-    void Pause() const;
-    void Resume() const;
-    void Stop();
-    void GetVolume(float &rfVolume) const;
-    void SetVolume(float volume) const;
-    bool IsDone() const;
+    bool SetSound(CSoundData *pSound) override;
+    void Play(int iLoopCount = 1, DWORD dwPlayCycleTimeLimit = 0) const override;
+    void Pause() const override;
+    void Resume() const override;
+    void Stop() override;
+    void GetVolume(float &rfVolume) const override;
+    void SetVolume(float volume) const override;
+    bool IsDone() const override;
 
-    void SetPosition(float x, float y, float z) const;
-    void SetOrientation(float x_face, float y_face, float z_face, float x_normal, float y_normal, float z_normal) const;
-    void SetVelocity(float fx, float fy, float fz, float fMagnitude) const;
+    void SetPosition(float x, float y, float z) const override;
+    void SetOrientation(float x_face, float y_face, float z_face, float x_normal, float y_normal,
+                        float z_normal) const override;
+    void SetVelocity(float fDistanceX, float fDistanceY, float fDistanceZ, float fNagnitude) const override;
 
     void UpdatePosition(float fElapsedTime);
 
@@ -90,27 +88,28 @@ class CSoundInstanceStream : public ISoundInstance
 {
   public:
     CSoundInstanceStream();
-    virtual ~CSoundInstanceStream();
+    ~CSoundInstanceStream() override;
 
-  public: // from interface
-    bool Initialize();
-    void Destroy();
+    // from interface
+    bool Initialize() override;
+    void Destroy() override;
 
     void SetStream(HSTREAM stream);
-    bool SetSound(CSoundData *pSound);
+    bool SetSound(CSoundData *pSound) override;
 
-    void Play(int iLoopCount = 1, DWORD dwPlayCycleTimeLimit = 0) const;
-    void Pause() const;
-    void Resume() const;
-    void Stop();
-    void GetVolume(float &rfVolume) const;
-    void SetVolume(float volume) const;
-    bool IsDone() const;
+    void Play(int iLoopCount = 1, DWORD dwPlayCycleTimeLimit = 0) const override;
+    void Pause() const override;
+    void Resume() const override;
+    void Stop() override;
+    void GetVolume(float &rfVolume) const override;
+    void SetVolume(float volume) const override;
+    bool IsDone() const override;
     bool IsData() const;
 
-    void SetPosition(float x, float y, float z) const;
-    void SetOrientation(float x_face, float y_face, float z_face, float x_normal, float y_normal, float z_normal) const;
-    void SetVelocity(float fx, float fy, float fz, float fMagnitude) const;
+    void SetPosition(float x, float y, float z) const override;
+    void SetOrientation(float x_face, float y_face, float z_face, float x_normal, float y_normal,
+                        float z_normal) const override;
+    void SetVelocity(float fx, float fy, float fz, float fMagnitude) const override;
 
   private:
     HSTREAM m_stream;

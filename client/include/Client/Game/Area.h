@@ -21,34 +21,34 @@ class CArea
         PITCH_STEP_AMOUNT = YAW_STEP_AMOUNT,
     };
 
-    typedef D3DXVECTOR3 TObjectPosition;
+    using TObjectPosition = D3DXVECTOR3;
 
     ///////////////////////////////////////////////////////////////////////////////////
     // Object Static Data
-    typedef struct SObjectData
+    using TObjectData = struct SObjectData
     {
         TObjectPosition Position;
-        DWORD dwCRC;
-        BYTE abyPortalID[PORTAL_ID_MAX_NUM];
+        DWORD dwCRC = 0U;
+        BYTE abyPortalID[PORTAL_ID_MAX_NUM]{};
 
         // For Tree
         //  - Nothing
 
         // For Granny Thing
-        float m_fYaw;
-        float m_fPitch;
-        float m_fRoll;
-        float m_fHeightBias;
+        float m_fYaw = 0.0F;
+        float m_fPitch = 0.0F;
+        float m_fRoll = 0.0F;
+        float m_fHeightBias = 0.0F;
 
         // For Effect
         //  - Nothing
 
         // For Ambience
-        DWORD dwRange;
-        float fMaxVolumeAreaPercentage;
+        DWORD dwRange = 0U;
+        float fMaxVolumeAreaPercentage = 0.0F;
 
         void InitializeRotation();
-    } TObjectData;
+    };
 
     struct ObjectDataComp
     {
@@ -58,16 +58,16 @@ class CArea
         }
     };
 
-    typedef std::vector<TObjectData> TObjectDataVector;
-    typedef TObjectDataVector::iterator TObjectDataIterator;
+    using TObjectDataVector = std::vector<TObjectData>;
+    using TObjectDataIterator = TObjectDataVector::iterator;
 
     ///////////////////////////////////////////////////////////////////////////////////
     // Object Dynamic Data
-    typedef struct SAmbienceInstance : public CScreen
+    using TAmbienceInstance = struct SAmbienceInstance : public CScreen
     {
         float fx, fy, fz;
         DWORD dwRange;
-        float fMaxVolumeAreaPercentage;
+        float fMaxVolumeAreaPercentage = 0.0F;
         int iPlaySoundIndex;
         float fNextPlayTime;
         prt::TPropertyAmbience AmbienceData;
@@ -77,36 +77,36 @@ class CArea
         {
         }
         void __Update(float fxCenter, float fyCenter, float fzCenter);
-        void (SAmbienceInstance::*Update)(float fxCenter, float fyCenter, float fzCenter);
+        void (SAmbienceInstance::*Update)(float fxCenter, float fyCenter, float fzCenter){};
         void UpdateOnceSound(float fxCenter, float fyCenter, float fzCenter);
         void UpdateStepSound(float fxCenter, float fyCenter, float fzCenter);
         void UpdateLoopSound(float fxCenter, float fyCenter, float fzCenter);
         void Render();
         bool Picking();
-        float __GetVolumeFromDistance(float fDistance);
-    } TAmbienceInstance;
+        float __GetVolumeFromDistance(float fDistance) const;
+    };
 
-    typedef struct SObjectInstance
+    using TObjectInstance = struct SObjectInstance
     {
-        DWORD dwType;
-        CAttributeInstance *pAttributeInstance;
+        DWORD dwType = 0U;
+        CAttributeInstance *pAttributeInstance = nullptr;
 
         // Data For Tree
-        CSpeedTreeWrapper *pTree;
+        CSpeedTreeWrapper *pTree = nullptr;
 
         // Data For Normal Object or Building
-        BOOL isShadowFlag;
-        CGraphicThingInstance *pThingInstance;
+        BOOL isShadowFlag = 0;
+        CGraphicThingInstance *pThingInstance = nullptr;
 
         // Data for Effect
-        DWORD dwEffectID;
-        DWORD dwEffectInstanceIndex;
+        DWORD dwEffectID = 0U;
+        DWORD dwEffectInstanceIndex = 0U;
 
         // Data For Ambience
-        TAmbienceInstance *pAmbienceInstance;
+        TAmbienceInstance *pAmbienceInstance = nullptr;
 
         // Dungeon
-        CDungeonBlock *pDungeonBlock;
+        CDungeonBlock *pDungeonBlock = nullptr;
 
         void Clear()
         {
@@ -152,36 +152,33 @@ class CArea
         virtual ~SObjectInstance()
         {
         }
-    } TObjectInstance;
+    };
 
-    typedef std::vector<CSpeedTreeWrapper *> TTreeInstanceVector;
-    typedef std::vector<CGraphicThingInstance *> TThingInstanceVector;
-    typedef std::vector<CDungeonBlock *> TDungeonBlockInstanceVector;
-    typedef std::vector<TObjectInstance *> TObjectInstanceVector;
-    typedef std::vector<TAmbienceInstance *> TAmbienceInstanceVector;
-    typedef std::map<CGraphicThingInstance *, DWORD> TGraphicThingInstanceCRCMap; // 최적화용 by 동현
-    typedef std::set<int> TShowingPortalIDSet;
+    using TTreeInstanceVector = std::vector<CSpeedTreeWrapper *>;
+    using TThingInstanceVector = std::vector<CGraphicThingInstance *>;
+    using TDungeonBlockInstanceVector = std::vector<CDungeonBlock *>;
+    using TObjectInstanceVector = std::vector<TObjectInstance *>;
+    using TAmbienceInstanceVector = std::vector<TAmbienceInstance *>;
+    using TGraphicThingInstanceCRCMap = std::map<CGraphicThingInstance *, DWORD>; // 최적화용 by 동현
+    using TShowingPortalIDSet = std::set<int>;
 
-    typedef struct SCRCWithNumber
+    using TCRCWithNumber = struct SCRCWithNumber
     {
         DWORD dwCRC;
         DWORD dwNumber;
-    } TCRCWithNumber;
+    };
 
-    typedef std::vector<TCRCWithNumber> TCRCWithNumberVector;
+    using TCRCWithNumberVector = std::vector<TCRCWithNumber>;
 
     struct FFindIfCRC
     {
-        FFindIfCRC(DWORD dwCRC)
+        FFindIfCRC(DWORD dwCRC) : m_dwCRC(dwCRC)
         {
-            m_dwCRC = dwCRC;
         }
 
-        bool operator()(TCRCWithNumber &rCRCWithNumber)
+        bool operator()(TCRCWithNumber &rCRCWithNumber) const
         {
-            if (rCRCWithNumber.dwCRC == m_dwCRC)
-                return true;
-            return false;
+            return rCRCWithNumber.dwCRC == m_dwCRC;
         }
 
         DWORD m_dwCRC;
@@ -195,7 +192,6 @@ class CArea
         }
     };
 
-  public:
     CArea();
     virtual ~CArea();
 
@@ -210,8 +206,8 @@ class CArea
     DWORD GetObjectDataCount();
     bool GetObjectDataPointer(DWORD dwIndex, const TObjectData **ppObjectData) const;
 
-    const DWORD GetObjectInstanceCount() const;
-    const bool GetObjectInstancePointer(const DWORD &dwIndex, const TObjectInstance **ppObjectInstance) const;
+    DWORD GetObjectInstanceCount() const;
+    bool GetObjectInstancePointer(const DWORD &dwIndex, const TObjectInstance **ppObjectInstance) const;
 
     void EnablePortal(BOOL bFlag = TRUE);
     void ClearPortal();
@@ -225,7 +221,7 @@ class CArea
 
     void Render();
     void RenderEffect();
-    void RenderCollision();
+    void RenderCollision() const;
     void RenderAmbience();
     void RenderDungeon();
     void Refresh();
@@ -233,7 +229,7 @@ class CArea
     //////////////////////////////////////////////////////////////////////////
 
     void SetCoordinate(const WORD &c_usCoordX, const WORD &c_usCoordY);
-    void GetCoordinate(WORD *usCoordX, WORD *usCoordY);
+    void GetCoordinate(WORD *usCoordX, WORD *usCoordY) const;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -258,7 +254,6 @@ class CArea
 
     void __LoadAttribute(TObjectInstance *pObjectInstance, const char *c_szAttributeFileName);
 
-  protected:
     void __Clear_DestroyObjectInstance(TObjectInstance *pObjectInstance);
 
     void __SetObjectInstance(TObjectInstance *pObjectInstance, const TObjectData *c_pData);
@@ -273,7 +268,6 @@ class CArea
     void __SetObjectInstance_SetDungeonBlock(TObjectInstance *pObjectInstance, const TObjectData *c_pData,
                                              CProperty *pProperty);
 
-  protected:
     // Static Data
     TObjectDataVector m_ObjectDataVector; // Area 상에 있는 오브젝트들
 
@@ -296,19 +290,18 @@ class CArea
     WORD m_wY;
 
     // Owner COutdoorMap poineter
-    CMapOutdoor *m_pOwnerOutdoorMap;
+    CMapOutdoor *m_pOwnerOutdoorMap = nullptr;
 
-  protected:
     static CDynamicPool<TObjectInstance> ms_ObjectInstancePool;
     static CDynamicPool<CAttributeInstance> ms_AttributeInstancePool;
     static CDynamicPool<TAmbienceInstance> ms_AmbienceInstancePool;
     static CDynamicPool<CDungeonBlock> ms_DungeonBlockInstancePool;
 
-    typedef std::map<DWORD, CEffectInstance *> TEffectInstanceMap;
-    typedef TEffectInstanceMap::iterator TEffectInstanceIterator;
+    using TEffectInstanceMap = std::map<DWORD, CEffectInstance *>;
+    using TEffectInstanceIterator = TEffectInstanceMap::iterator;
     TEffectInstanceMap m_EffectInstanceMap;
 
-    BOOL m_bPortalEnable;
+    BOOL m_bPortalEnable = 0;
     TShowingPortalIDSet m_kSet_ShowingPortalID;
 
   public:

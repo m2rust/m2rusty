@@ -7,14 +7,14 @@
 
 void SNetworkActorData::UpdatePosition()
 {
-    DWORD dwClientCurTime = ELTimer_GetMSec();
-    DWORD dwElapsedTime = dwClientCurTime - m_dwClientSrcTime;
+    DWORD const dwClientCurTime = ELTimer_GetMSec();
+    DWORD const dwElapsedTime = dwClientCurTime - m_dwClientSrcTime;
 
     if (dwElapsedTime < m_dwDuration)
     {
-        float fRate = float(dwElapsedTime) / float(m_dwDuration);
-        m_lCurX = LONG((m_lDstX - m_lSrcX) * fRate + m_lSrcX);
-        m_lCurY = LONG((m_lDstY - m_lSrcY) * fRate + m_lSrcY);
+        float const fRate = static_cast<float>(dwElapsedTime) / static_cast<float>(m_dwDuration);
+        m_lCurX = static_cast<LONG>(((m_lDstX - m_lSrcX) * fRate) + m_lSrcX);
+        m_lCurY = static_cast<LONG>(((m_lDstY - m_lSrcY) * fRate) + m_lSrcY);
     }
     else
     {
@@ -91,46 +91,22 @@ void SNetworkActorData::__copy__(const SNetworkActorData &src)
 // END_OF_NETWORK_ACTOR_DATA_COPY
 
 SNetworkActorData::SNetworkActorData()
+    : m_bType(0), m_byPKMode(0), m_dwArmor(0), m_dwAtkSpd(0), m_dwClientSrcTime(0), m_dwDuration(0), m_dwEmpireID(0),
+      m_dwHair(0), m_dwMountVnum(0), m_dwMovSpd(0), m_dwOwnerVID(0), m_dwRace(0), m_dwServerSrcTime(0),
+      m_dwStateFlags(0), m_dwVID(0), m_dwWeapon(0), m_fRot(0.0f), m_sAlignment(0), m_stName("")
 {
     SetPosition(0, 0);
-
-    m_bType = 0;
-    m_dwVID = 0;
-    m_dwStateFlags = 0;
-    m_dwRace = 0;
-    m_dwMovSpd = 0;
-    m_dwAtkSpd = 0;
-    m_fRot = 0.0f;
-    m_dwArmor = 0;
-    m_dwWeapon = 0;
-    m_dwHair = 0;
-    m_dwEmpireID = 0;
-
-    m_dwOwnerVID = 0;
-
-    m_dwDuration = 0;
-    m_dwClientSrcTime = 0;
-    m_dwServerSrcTime = 0;
-
-    m_sAlignment = 0;
-    m_byPKMode = 0;
-    m_dwMountVnum = 0;
-
-    m_stName = "";
 
     m_kAffectFlags.Clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-CNetworkActorManager::CNetworkActorManager()
+CNetworkActorManager::CNetworkActorManager() : m_dwMainVID(0)
 {
-    m_dwMainVID = 0;
 }
 
-CNetworkActorManager::~CNetworkActorManager()
-{
-}
+CNetworkActorManager::~CNetworkActorManager() = default;
 
 void CNetworkActorManager::Destroy()
 {
@@ -185,7 +161,7 @@ CInstanceBase *CNetworkActorManager::__FindActor(SNetworkActorData &rkNetActorDa
         if (__IsVisiblePos(lDstX, lDstY))
             return __AppendCharacterManagerActor(rkNetActorData);
 
-        return NULL;
+        return nullptr;
     }
 
     return pkInstFind;
@@ -200,7 +176,7 @@ CInstanceBase *CNetworkActorManager::__FindActor(SNetworkActorData &rkNetActorDa
         if (__IsVisibleActor(rkNetActorData))
             return __AppendCharacterManagerActor(rkNetActorData);
 
-        return NULL;
+        return nullptr;
     }
 
     return pkInstFind;
@@ -232,17 +208,17 @@ void CNetworkActorManager::__RemoveDynamicActors()
         dwCharacterVIDList.push_back((*i)->GetVirtualID());
     }
 
-    for (int i = 0; i < dwCharacterVIDList.size(); ++i)
+    for (unsigned int const i : dwCharacterVIDList)
     {
-        CInstanceBase *pkInstEach = rkChrMgr.GetInstancePtr(dwCharacterVIDList[i]);
+        CInstanceBase *pkInstEach = rkChrMgr.GetInstancePtr(i);
         if (!pkInstEach)
             continue;
 
         CActorInstance *rkActorEach = pkInstEach->GetGraphicThingInstancePtr();
         if (rkActorEach->IsPC() || rkActorEach->IsNPC() || rkActorEach->IsEnemy())
         {
-            rkChrMgr.DeleteInstance(dwCharacterVIDList[i]);
-            std::map<DWORD, SNetworkActorData>::iterator it = m_kNetActorDict.find(dwCharacterVIDList[i]);
+            rkChrMgr.DeleteInstance(i);
+            auto it = m_kNetActorDict.find(i);
             if (it != m_kNetActorDict.end())
             {
                 m_kNetActorDict.erase(it);
@@ -263,8 +239,8 @@ void CNetworkActorManager::__UpdateMainActor()
     TPixelPosition kPPosMain;
     pkInstMain->NEW_GetPixelPosition(&kPPosMain);
 
-    m_lMainPosX = LONG(kPPosMain.x);
-    m_lMainPosY = LONG(kPPosMain.y);
+    m_lMainPosX = static_cast<LONG>(kPPosMain.x);
+    m_lMainPosY = static_cast<LONG>(kPPosMain.y);
 }
 
 extern bool IsWall(unsigned race);
@@ -287,11 +263,11 @@ bool CNetworkActorManager::__IsVisibleActor(const SNetworkActorData &c_rkNetActo
     return false;
 }
 
-bool CNetworkActorManager::__IsVisiblePos(LONG lPosX, LONG lPosY)
+bool CNetworkActorManager::__IsVisiblePos(LONG lPosX, LONG lPosY) const
 {
-    LONG dx = lPosX - m_lMainPosX;
-    LONG dy = lPosY - m_lMainPosY;
-    LONG len = (LONG)sqrt(double(dx * dx + dy * dy));
+    LONG const dx = lPosX - m_lMainPosX;
+    LONG const dy = lPosY - m_lMainPosY;
+    LONG const len = static_cast<LONG>(sqrt(static_cast<double>((dx * dx) + (dy * dy))));
 
     extern int CHAR_STAGE_VIEW_BOUND;
     if (len < CHAR_STAGE_VIEW_BOUND) // 거리제한 cm
@@ -300,12 +276,9 @@ bool CNetworkActorManager::__IsVisiblePos(LONG lPosX, LONG lPosY)
     return false;
 }
 
-bool CNetworkActorManager::__IsMainActorVID(DWORD dwVID)
+bool CNetworkActorManager::__IsMainActorVID(DWORD dwVID) const
 {
-    if (dwVID == m_dwMainVID)
-        return true;
-
-    return false;
+    return dwVID == m_dwMainVID;
 }
 
 CPythonCharacterManager &CNetworkActorManager::__GetCharacterManager()
@@ -332,7 +305,7 @@ CInstanceBase *CNetworkActorManager::__AppendCharacterManagerActor(SNetworkActor
     Lognf(0, "CNetworkActorManager::__AppendCharacterManagerActor(%d, %s)", rkNetActorData.m_dwVID,
           rkNetActorData.m_stName.c_str());
 
-    DWORD dwVID = rkNetActorData.m_dwVID;
+    DWORD const dwVID = rkNetActorData.m_dwVID;
 
     CPythonCharacterManager &rkChrMgr = CPythonCharacterManager::Instance();
 
@@ -365,7 +338,7 @@ CInstanceBase *CNetworkActorManager::__AppendCharacterManagerActor(SNetworkActor
         TPixelPosition oldPos;
         pOldInstance->GetGraphicThingInstancePtr()->GetPixelPosition(&oldPos);
 
-        bool bIsMountingHorse = pOldInstance->IsMountingHorse();
+        bool const bIsMountingHorse = pOldInstance->IsMountingHorse();
         if ((bIsMountingHorse && kCreateData.m_dwMountVnum == 0) ||
             (!bIsMountingHorse && kCreateData.m_dwMountVnum != 0))
         {
@@ -379,7 +352,7 @@ CInstanceBase *CNetworkActorManager::__AppendCharacterManagerActor(SNetworkActor
 
     CInstanceBase *pNewInstance = rkChrMgr.CreateInstance(kCreateData);
     if (!pNewInstance)
-        return NULL;
+        return nullptr;
 
     if (kCreateData.m_isMain)
     {
@@ -390,14 +363,14 @@ CInstanceBase *CNetworkActorManager::__AppendCharacterManagerActor(SNetworkActor
         m_lMainPosY = rkNetActorData.m_lCurY;
     }
 
-    DWORD dwClientCurTime = ELTimer_GetMSec();
-    DWORD dwElapsedTime = dwClientCurTime - rkNetActorData.m_dwClientSrcTime;
+    DWORD const dwClientCurTime = ELTimer_GetMSec();
+    DWORD const dwElapsedTime = dwClientCurTime - rkNetActorData.m_dwClientSrcTime;
 
     if (dwElapsedTime < rkNetActorData.m_dwDuration)
     {
         TPixelPosition kPPosDst;
-        kPPosDst.x = float(rkNetActorData.m_lDstX);
-        kPPosDst.y = float(rkNetActorData.m_lDstY);
+        kPPosDst.x = static_cast<float>(rkNetActorData.m_lDstX);
+        kPPosDst.y = static_cast<float>(rkNetActorData.m_lDstY);
         kPPosDst.z = 0;
         pNewInstance->PushTCPState(rkNetActorData.m_dwServerSrcTime + dwElapsedTime, kPPosDst, rkNetActorData.m_fRot,
                                    CInstanceBase::FUNC_MOVE, 0);
@@ -414,7 +387,7 @@ void CNetworkActorManager::AppendActor(const SNetworkActorData &c_rkNetActorData
         CInstanceBase *pMainInstance = CPythonCharacterManager::Instance().GetInstancePtr(c_rkNetActorData.m_dwVID);
         if (pMainInstance)
         {
-            bool bIsMountingHorse = pMainInstance->IsMountingHorse();
+            bool const bIsMountingHorse = pMainInstance->IsMountingHorse();
             bChangeMountStatus = (bIsMountingHorse && c_rkNetActorData.m_dwMountVnum == 0) ||
                                  (!bIsMountingHorse && c_rkNetActorData.m_dwMountVnum != 0);
         }
@@ -439,7 +412,7 @@ void CNetworkActorManager::AppendActor(const SNetworkActorData &c_rkNetActorData
 
 void CNetworkActorManager::RemoveActor(DWORD dwVID)
 {
-    std::map<DWORD, SNetworkActorData>::iterator f = m_kNetActorDict.find(dwVID);
+    auto f = m_kNetActorDict.find(dwVID);
     if (m_kNetActorDict.end() == f)
     {
 #ifdef _DEBUG
@@ -456,7 +429,7 @@ void CNetworkActorManager::RemoveActor(DWORD dwVID)
 
 void CNetworkActorManager::UpdateActor(const SNetworkUpdateActorData &c_rkNetUpdateActorData)
 {
-    std::map<DWORD, SNetworkActorData>::iterator f = m_kNetActorDict.find(c_rkNetUpdateActorData.m_dwVID);
+    auto f = m_kNetActorDict.find(c_rkNetUpdateActorData.m_dwVID);
     if (m_kNetActorDict.end() == f)
     {
 #ifdef _DEBUG
@@ -508,7 +481,7 @@ void CNetworkActorManager::UpdateActor(const SNetworkUpdateActorData &c_rkNetUpd
 
 void CNetworkActorManager::MoveActor(const SNetworkMoveActorData &c_rkNetMoveActorData)
 {
-    std::map<DWORD, SNetworkActorData>::iterator f = m_kNetActorDict.find(c_rkNetMoveActorData.m_dwVID);
+    auto f = m_kNetActorDict.find(c_rkNetMoveActorData.m_dwVID);
     if (m_kNetActorDict.end() == f)
     {
 #ifdef _DEBUG
@@ -523,8 +496,8 @@ void CNetworkActorManager::MoveActor(const SNetworkMoveActorData &c_rkNetMoveAct
     if (pkInstFind)
     {
         TPixelPosition kPPosDst;
-        kPPosDst.x = float(c_rkNetMoveActorData.m_lPosX);
-        kPPosDst.y = float(c_rkNetMoveActorData.m_lPosY);
+        kPPosDst.x = static_cast<float>(c_rkNetMoveActorData.m_lPosX);
+        kPPosDst.y = static_cast<float>(c_rkNetMoveActorData.m_lPosY);
         kPPosDst.z = 0.0f;
 
         pkInstFind->PushTCPState(c_rkNetMoveActorData.m_dwTime, kPPosDst, c_rkNetMoveActorData.m_fRot,
@@ -538,7 +511,7 @@ void CNetworkActorManager::MoveActor(const SNetworkMoveActorData &c_rkNetMoveAct
 
 void CNetworkActorManager::SyncActor(DWORD dwVID, LONG lPosX, LONG lPosY)
 {
-    std::map<DWORD, SNetworkActorData>::iterator f = m_kNetActorDict.find(dwVID);
+    auto f = m_kNetActorDict.find(dwVID);
     if (m_kNetActorDict.end() == f)
     {
 #ifdef _DEBUG
@@ -560,7 +533,7 @@ void CNetworkActorManager::SyncActor(DWORD dwVID, LONG lPosX, LONG lPosY)
 
 void CNetworkActorManager::SetActorOwner(DWORD dwOwnerVID, DWORD dwVictimVID)
 {
-    std::map<DWORD, SNetworkActorData>::iterator f = m_kNetActorDict.find(dwVictimVID);
+    auto f = m_kNetActorDict.find(dwVictimVID);
     if (m_kNetActorDict.end() == f)
     {
 #ifdef _DEBUG

@@ -4,7 +4,7 @@
 
 void CInstanceBase::SCRIPT_SetPixelPosition(float fx, float fy)
 {
-    float fz = __GetBackgroundHeight(fx, fy);
+    float const fz = __GetBackgroundHeight(fx, fy);
     NEW_SetPixelPosition(TPixelPosition(fx, fy, fz));
 }
 
@@ -56,7 +56,7 @@ float CInstanceBase::GetAdvancingRotation()
 
 void CInstanceBase::SetDirection(int dir)
 {
-    float fDegree = GetDegreeFromDirection(dir);
+    float const fDegree = GetDegreeFromDirection(dir);
     SetRotation(fDegree);
     SetAdvancingRotation(fDegree);
 }
@@ -74,8 +74,8 @@ float CInstanceBase::GetDegreeFromDirection(int dir)
     if (dir >= DIR_MAX_NUM)
         return 0.0f;
 
-    static float s_dirRot[DIR_MAX_NUM] = {
-        +45.0f * 4, +45.0f * 3, +45.0f * 2, +45.0f, +0.0f, 360.0f - 45.0f, 360.0f - 45.0f * 2, 360.0f - 45.0f * 3,
+    static float const s_dirRot[DIR_MAX_NUM] = {
+        +45.0f * 4, +45.0f * 3, +45.0f * 2, +45.0f, +0.0f, 360.0f - 45.0f, 360.0f - (45.0f * 2), 360.0f - (45.0f * 3),
     };
 
     return s_dirRot[dir];

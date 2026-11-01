@@ -6,7 +6,7 @@ class CScreenFilter : public CScreen
 {
   public:
     CScreenFilter();
-    virtual ~CScreenFilter();
+    ~CScreenFilter() override;
 
     void SetEnable(BOOL bFlag);
     void SetBlendType(BYTE bySrcType, BYTE byDestType);

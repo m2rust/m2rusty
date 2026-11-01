@@ -6,9 +6,10 @@
 
 #include <Client/Game/ActorInstance.h>
 
-CFlyingManager::CFlyingManager()
+#include <algorithm>
+
+CFlyingManager::CFlyingManager() : m_pMapManager(nullptr)
 {
-    m_pMapManager = 0;
 }
 
 CFlyingManager::~CFlyingManager()
@@ -48,16 +49,16 @@ void CFlyingManager::Destroy()
     __DestroyFlyingInstanceList();
     __DestroyFlyingDataMap();
 
-    m_pMapManager = 0;
+    m_pMapManager = nullptr;
 }
 
 bool CFlyingManager::RegisterFlyingData(const char *c_szFilename)
 {
     std::string s;
     StringPath(c_szFilename, s);
-    DWORD dwRetCRC = GetCaseCRC32(s.c_str(), s.size());
+    DWORD const dwRetCRC = GetCaseCRC32(s.c_str(), s.size());
 
-    if (m_kMap_pkFlyData.find(dwRetCRC) != m_kMap_pkFlyData.end())
+    if (m_kMap_pkFlyData.contains(dwRetCRC))
     {
         return false;
     }
@@ -82,7 +83,7 @@ bool CFlyingManager::RegisterFlyingData(const char *c_szFilename, DWORD &r_dwRet
     StringPath(c_szFilename, s);
     r_dwRetCRC = GetCaseCRC32(s.c_str(), s.size());
 
-    if (m_kMap_pkFlyData.find(r_dwRetCRC) != m_kMap_pkFlyData.end())
+    if (m_kMap_pkFlyData.contains(r_dwRetCRC))
     {
         TraceError("CFlyingManager::RegisterFlyingData - Already exists flying "
                    "data named [%s]",
@@ -107,11 +108,11 @@ bool CFlyingManager::RegisterFlyingData(const char *c_szFilename, DWORD &r_dwRet
 CFlyingInstance *CFlyingManager::CreateFlyingInstanceFlyTarget(const DWORD dwID, const D3DXVECTOR3 &v3StartPosition,
                                                                const CFlyTarget &cr_FlyTarget, bool canAttack)
 {
-    if (m_kMap_pkFlyData.find(dwID) == m_kMap_pkFlyData.end())
+    if (!m_kMap_pkFlyData.contains(dwID))
     {
         // TraceError("CFlyingManager::CreateFlyingInstanceFlyTarget - No data
         // with CRC [%d]", dwID);
-        return NULL;
+        return nullptr;
     }
 
     CFlyingInstance *pFlyingInstance = CFlyingInstance::New();
@@ -125,7 +126,7 @@ CFlyingInstance *CFlyingManager::CreateFlyingInstanceFlyTarget(const DWORD dwID,
 
 void CFlyingManager::Update()
 {
-    TFlyingInstanceList::iterator i = m_kLst_pkFlyInst.begin();
+    auto i = m_kLst_pkFlyInst.begin();
 
     while (i != m_kLst_pkFlyInst.end())
     {
@@ -144,7 +145,7 @@ void CFlyingManager::Update()
 
 void CFlyingManager::Render()
 {
-    std::for_each(m_kLst_pkFlyInst.begin(), m_kLst_pkFlyInst.end(), std::void_mem_fun(&CFlyingInstance::Render));
+    std::ranges::for_each(m_kLst_pkFlyInst, std::void_mem_fun(&CFlyingInstance::Render));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,7 +154,7 @@ void CFlyingManager::Render()
 
 bool CFlyingManager::RegisterIndexedFlyData(DWORD dwIndex, BYTE byType, const char *c_szFileName)
 {
-    DWORD dwCRC;
+    DWORD dwCRC = 0;
     if (!RegisterFlyingData(c_szFileName, dwCRC))
     {
         TraceError("CFlyingManager::RegisterIndexFlyData(dwIndex=%d, "
@@ -172,7 +173,7 @@ bool CFlyingManager::RegisterIndexedFlyData(DWORD dwIndex, BYTE byType, const ch
 
 void CFlyingManager::CreateIndexedFly(DWORD dwIndex, CActorInstance *pStartActor, CActorInstance *pEndActor)
 {
-    if (m_kMap_dwIndexFlyData.end() == m_kMap_dwIndexFlyData.find(dwIndex))
+    if (!m_kMap_dwIndexFlyData.contains(dwIndex))
     {
         TraceError("CFlyingManager::CreateIndexedFly(dwIndex=%d) - Not registered index", dwIndex);
         return;
@@ -181,7 +182,7 @@ void CFlyingManager::CreateIndexedFly(DWORD dwIndex, CActorInstance *pStartActor
     TPixelPosition posStart;
     pStartActor->GetPixelPosition(&posStart);
 
-    TIndexFlyData &rIndexFlyData = m_kMap_dwIndexFlyData[dwIndex];
+    TIndexFlyData const &rIndexFlyData = m_kMap_dwIndexFlyData[dwIndex];
     switch (rIndexFlyData.byType)
     {
     case INDEX_FLY_TYPE_NORMAL: {
@@ -190,12 +191,12 @@ void CFlyingManager::CreateIndexedFly(DWORD dwIndex, CActorInstance *pStartActor
         break;
     }
     case INDEX_FLY_TYPE_FIRE_CRACKER: {
-        float fRot = fmod(pStartActor->GetRotation() - 90.0f + 360.0f, 360.0f) + frandom(-30.0f, 30.0f);
+        float const fRot = fmod(pStartActor->GetRotation() - 90.0f + 360.0f, 360.0f) + frandom(-30.0f, 30.0f);
 
-        float fDistance = frandom(2000.0f, 5000.0f);
-        float fxRand = fDistance * cosf(D3DXToRadian(fRot));
-        float fyRand = fDistance * sinf(D3DXToRadian(fRot));
-        float fzRand = frandom(1000.0f, 2500.0f);
+        float const fDistance = frandom(2000.0f, 5000.0f);
+        float const fxRand = fDistance * cosf(D3DXToRadian(fRot));
+        float const fyRand = fDistance * sinf(D3DXToRadian(fRot));
+        float const fzRand = frandom(1000.0f, 2500.0f);
 
         CreateFlyingInstanceFlyTarget(rIndexFlyData.dwCRC, D3DXVECTOR3(posStart.x, posStart.y, posStart.z + 200),
                                       D3DXVECTOR3(posStart.x + fxRand, posStart.y + fyRand, posStart.z + fzRand),

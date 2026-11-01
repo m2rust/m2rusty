@@ -3,7 +3,7 @@
 #include <Neoeter/Render/FileLoaderThread.h>
 #include <Neoeter/Render/ResourceManager.h>
 
-CFileLoaderThread::CFileLoaderThread() : m_bShutdowned(false), m_pArg(NULL), m_hThread(NULL), m_uThreadID(0)
+CFileLoaderThread::CFileLoaderThread() : m_pArg(nullptr), m_hThread(nullptr)
 {
 }
 
@@ -15,7 +15,7 @@ CFileLoaderThread::~CFileLoaderThread()
 int CFileLoaderThread::Create(void *arg)
 {
     Arg(arg);
-    m_hThread = (HANDLE)_beginthreadex(NULL, 0, EntryPoint, this, 0, &m_uThreadID);
+    m_hThread = (HANDLE)_beginthreadex(nullptr, 0, EntryPoint, this, 0, &m_uThreadID);
 
     if (!m_hThread)
         return false;
@@ -35,7 +35,7 @@ UINT CFileLoaderThread::Run(void *arg)
 /* Static */
 UINT CALLBACK CFileLoaderThread::EntryPoint(void *pThis)
 {
-    CFileLoaderThread *pThread = (CFileLoaderThread *)pThis;
+    auto *pThread = static_cast<CFileLoaderThread *>(pThis);
     return pThread->Run(pThread->Arg());
 }
 
@@ -45,16 +45,16 @@ void CFileLoaderThread::Destroy()
     if (m_hSemaphore)
     {
         CloseHandle(m_hSemaphore);
-        m_hSemaphore = NULL;
+        m_hSemaphore = nullptr;
     }
 }
 
 UINT CFileLoaderThread::Setup()
 {
-    m_hSemaphore = CreateSemaphore(NULL,  // no security attributes
-                                   0,     // initial count
-                                   65535, // maximum count
-                                   NULL); // unnamed semaphore
+    m_hSemaphore = CreateSemaphore(nullptr,  // no security attributes
+                                   0,        // initial count
+                                   65535,    // maximum count
+                                   nullptr); // unnamed semaphore
     if (!m_hSemaphore)
         return 0;
 
@@ -66,13 +66,13 @@ void CFileLoaderThread::Shutdown()
     if (!m_hSemaphore)
         return;
 
-    BOOL bRet;
+    BOOL bRet = 0;
 
     m_bShutdowned = true;
 
     do
     {
-        bRet = ReleaseSemaphore(m_hSemaphore, 1, NULL);
+        bRet = ReleaseSemaphore(m_hSemaphore, 1, nullptr);
     } while (!bRet);
 
     WaitForSingleObject(m_hThread, 10000); // 쓰레드가 종료 되기를 10초 기다림
@@ -82,7 +82,7 @@ UINT CFileLoaderThread::Execute(void * /*pvArg*/)
 {
     while (!m_bShutdowned)
     {
-        DWORD dwWaitResult;
+        DWORD dwWaitResult = 0;
 
         dwWaitResult = WaitForSingleObject(m_hSemaphore, INFINITE);
 
@@ -119,7 +119,7 @@ void CFileLoaderThread::Request(const std::string &c_rstFileName) // called in m
 
     ++m_iRestSemCount;
 
-    if (!ReleaseSemaphore(m_hSemaphore, m_iRestSemCount, NULL))
+    if (!ReleaseSemaphore(m_hSemaphore, m_iRestSemCount, nullptr))
         TraceError("CFileLoaderThread::Request: ReleaseSemaphore error");
 
     --m_iRestSemCount;

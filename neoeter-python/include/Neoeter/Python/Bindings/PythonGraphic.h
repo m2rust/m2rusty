@@ -11,7 +11,7 @@ class CPythonGraphic : public CScreen, public CSingleton<CPythonGraphic>
 {
   public:
     CPythonGraphic();
-    virtual ~CPythonGraphic();
+    ~CPythonGraphic() override;
 
     void Destroy();
 
@@ -20,7 +20,7 @@ class CPythonGraphic : public CScreen, public CSingleton<CPythonGraphic>
 
     LPDIRECT3D9 GetD3D();
 
-    float GetOrthoDepth();
+    float GetOrthoDepth() const;
     void SetInterfaceRenderState();
     void SetGameRenderState();
 
@@ -46,23 +46,22 @@ class CPythonGraphic : public CScreen, public CSingleton<CPythonGraphic>
     void SetGamma(float fGammaFactor = 1.0f);
 
   protected:
-    typedef struct SState
+    using TState = struct SState
     {
         D3DXMATRIX matView;
         D3DXMATRIX matProj;
-    } TState;
+    };
 
     DWORD m_lightColor;
     DWORD m_darkColor;
 
-  protected:
     std::stack<TState> m_stateStack;
 
     D3DXMATRIX m_SaveWorldMatrix;
 
     CCullingManager m_CullingManager;
 
-    D3DVIEWPORT9 m_backupViewport;
+    D3DVIEWPORT9 m_backupViewport{};
 
     float m_fOrthoDepth;
 };

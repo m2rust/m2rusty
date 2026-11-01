@@ -34,8 +34,8 @@ int split_string(const std::string &input, const std::string &delimiter, std::ve
 {
     int iPos = 0;
     int newPos = -1;
-    UINT sizeS2 = delimiter.size();
-    UINT isize = input.size();
+    UINT const sizeS2 = delimiter.size();
+    UINT const isize = input.size();
 
     if ((isize == 0) || (sizeS2 == 0))
     {
@@ -64,14 +64,14 @@ int split_string(const std::string &input, const std::string &delimiter, std::ve
 
     for (UINT i = 0; i <= positions.size(); ++i)
     {
-        std::string s("");
+        std::string s;
         if (i == 0)
         {
             s = input.substr(i, positions[i]);
         }
         else
         {
-            UINT offset = positions[i - 1] + sizeS2;
+            UINT const offset = positions[i - 1] + sizeS2;
 
             if (offset < isize)
             {
@@ -85,7 +85,7 @@ int split_string(const std::string &input, const std::string &delimiter, std::ve
                 }
             }
         }
-        if (includeEmpties || (s.size() > 0))
+        if (includeEmpties || (!s.empty()))
         {
             results.push_back(s);
         }

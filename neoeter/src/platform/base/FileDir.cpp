@@ -2,7 +2,7 @@
 #include <Neoeter/Platform/Base/FileDir.h>
 #include <string>
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 #include <filesystem>
 namespace fs = std::filesystem;
 #endif
@@ -19,7 +19,7 @@ CDir::~CDir()
 
 void CDir::Destroy()
 {
-#if defined(_WIN32)
+#ifdef _WIN32
     if (m_hFind)
         FindClose(m_hFind);
 #endif
@@ -33,7 +33,7 @@ bool CDir::Create(const char *c_szFilter, const char *c_szPath, BOOL bCheckedExt
 
     std::string stPath = c_szPath;
 
-#if defined(_WIN32)
+#ifdef _WIN32
     if (stPath.length())
     {
         char end = stPath[stPath.length() - 1];
@@ -96,14 +96,14 @@ bool CDir::Create(const char *c_szFilter, const char *c_szPath, BOOL bCheckedExt
 #else
     if (!stPath.empty())
     {
-        char end = stPath.back();
+        char const end = stPath.back();
         if (end != '/' && end != '\\')
             stPath += '/';
     }
 
-    std::string dirPath = stPath.empty() ? "." : stPath;
+    std::string const dirPath = stPath.empty() ? "." : stPath;
     std::error_code ec;
-    fs::directory_iterator it(dirPath, ec);
+    fs::directory_iterator const it(dirPath, ec);
     if (ec)
         return true;
 
@@ -116,11 +116,15 @@ bool CDir::Create(const char *c_szFilter, const char *c_szPath, BOOL bCheckedExt
         strncpy(m_wfd.cFileName, filename.c_str(), MAX_PATH);
         m_wfd.cFileName[MAX_PATH - 1] = '\0';
 
-        bool isDir = entry.is_directory(ec);
+        bool const isDir = entry.is_directory(ec);
         if (isDir)
+        {
             m_wfd.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+        }
         else
+        {
             m_wfd.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+        }
 
         if (isDir)
         {
@@ -135,12 +139,12 @@ bool CDir::Create(const char *c_szFilter, const char *c_szPath, BOOL bCheckedExt
 
             if (bCheckedExtension)
             {
-                std::string strFilter = c_szFilter;
-                size_t iPos = strFilter.find_first_of(';', 0);
+                std::string const strFilter = c_szFilter;
+                size_t const iPos = strFilter.find_first_of(';', 0);
                 if (iPos != std::string::npos)
                 {
-                    std::string strFirst = strFilter.substr(0, iPos);
-                    std::string strSecond = strFilter.substr(iPos + 1);
+                    std::string const strFirst = strFilter.substr(0, iPos);
+                    std::string const strSecond = strFilter.substr(iPos + 1);
                     if (strcasecmp(strFirst.c_str(), c_szExtension + 1) != 0 &&
                         strcasecmp(strSecond.c_str(), c_szExtension + 1) != 0)
                         continue;
@@ -160,16 +164,13 @@ bool CDir::Create(const char *c_szFilter, const char *c_szPath, BOOL bCheckedExt
 #endif
 }
 
-bool CDir::IsFolder()
+bool CDir::IsFolder() const
 {
-    if (m_wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        return true;
-
-    return false;
+    return (m_wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
 void CDir::Initialize()
 {
-    m_hFind = NULL;
+    m_hFind = nullptr;
     memset(&m_wfd, 0, sizeof(m_wfd));
 }

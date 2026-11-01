@@ -8,7 +8,7 @@
 #include <Platform/DirectXMathCompat.h>
 #include <Neoeter/Render/GrpImageInstance.h>
 
-typedef struct STerrainTexture
+using TTerrainTexture = struct STerrainTexture
 {
     STerrainTexture()
         : pd3dTexture(NULL), UScale(4.0f), VScale(4.0f), UOffset(0.0f), VOffset(0.0f), bSplat(true), Begin(0), End(0)
@@ -30,12 +30,12 @@ typedef struct STerrainTexture
     bool bSplat;
     unsigned short Begin, End; // 0 ~ 65535 의 16bit heightfield 높이값.
     D3DXMATRIX m_matTransform;
-} TTerrainTexture;
+};
 
 class CTextureSet
 {
   public:
-    typedef std::vector<TTerrainTexture> TTextureVector;
+    using TTextureVector = std::vector<TTerrainTexture>;
 
     CTextureSet();
     virtual ~CTextureSet();
@@ -45,7 +45,7 @@ class CTextureSet
 
     void Create();
 
-    bool Load(const char *c_pszFileName, float fTerrainTexCoordBase);
+    bool Load(const char *c_szTextureSetFileName, float fTerrainTexCoordBase);
     bool Save(const char *c_pszFileName);
 
     unsigned long GetTextureCount();
@@ -70,7 +70,6 @@ class CTextureSet
   protected:
     void AddEmptyTexture();
 
-  protected:
     TTextureVector m_Textures;
     TTerrainTexture m_ErrorTexture;
     std::string m_stFileName;

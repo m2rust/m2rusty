@@ -213,21 +213,21 @@ inline typename std::common_type<T, U>::type max(T a, U b)
 #include <atomic>
 
 // Basic Win32 Scalar Types
-typedef uint32_t DWORD;
-typedef uint16_t WORD;
-typedef uint8_t BYTE;
-typedef int32_t BOOL;
-typedef int32_t LONG;
-typedef uint32_t ULONG;
-typedef int16_t SHORT;
-typedef uint16_t USHORT;
-typedef uint32_t UINT;
-typedef int32_t INT;
-typedef int64_t LONGLONG;
-typedef uint64_t ULONGLONG;
-typedef int64_t __int64;
-typedef float FLOAT;
-typedef void VOID;
+using DWORD = uint32_t;
+using WORD = uint16_t;
+using BYTE = uint8_t;
+using BOOL = int32_t;
+using LONG = int32_t;
+using ULONG = uint32_t;
+using SHORT = int16_t;
+using USHORT = uint16_t;
+using UINT = uint32_t;
+using INT = int32_t;
+using LONGLONG = int64_t;
+using ULONGLONG = uint64_t;
+using __int64 = int64_t;
+using FLOAT = float;
+using VOID = void;
 
 #ifndef IN
 #define IN
@@ -235,35 +235,35 @@ typedef void VOID;
 #ifndef OUT
 #define OUT
 #endif
-typedef char CHAR;
-typedef wchar_t WCHAR;
-typedef char TCHAR;
+using CHAR = char;
+using WCHAR = wchar_t;
+using TCHAR = char;
 
 // Pointer-Sized Integer Types (64-bit safe)
-typedef intptr_t INT_PTR;
-typedef uintptr_t UINT_PTR;
-typedef intptr_t LONG_PTR;
-typedef uintptr_t ULONG_PTR;
-typedef uintptr_t DWORD_PTR;
-typedef size_t SIZE_T;
+using INT_PTR = intptr_t;
+using UINT_PTR = uintptr_t;
+using LONG_PTR = intptr_t;
+using ULONG_PTR = uintptr_t;
+using DWORD_PTR = uintptr_t;
+using SIZE_T = size_t;
 
-typedef UINT_PTR WPARAM;
-typedef LONG_PTR LPARAM;
-typedef LONG_PTR LRESULT;
+using WPARAM = UINT_PTR;
+using LPARAM = LONG_PTR;
+using LRESULT = LONG_PTR;
 
-typedef BYTE *LPBYTE;
-typedef BYTE *PBYTE;
-typedef WORD *LPWORD;
-typedef DWORD *LPDWORD;
-typedef BOOL *LPBOOL;
-typedef INT *PINT;
-typedef INT *LPINT;
-typedef UINT *PUINT;
-typedef UINT *LPUINT;
-typedef CHAR *PCHAR;
-typedef unsigned char *PUCHAR;
-typedef void *PVOID;
-typedef int BOOLEAN;
+using LPBYTE = BYTE *;
+using PBYTE = BYTE *;
+using LPWORD = WORD *;
+using LPDWORD = DWORD *;
+using LPBOOL = BOOL *;
+using PINT = INT *;
+using LPINT = INT *;
+using PUINT = UINT *;
+using LPUINT = UINT *;
+using PCHAR = CHAR *;
+using PUCHAR = unsigned char *;
+using PVOID = void *;
+using BOOLEAN = int;
 
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                                                                                 \
@@ -295,7 +295,7 @@ typedef int BOOLEAN;
 #define __max(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
-typedef union _LARGE_INTEGER {
+using LARGE_INTEGER = union _LARGE_INTEGER {
     struct
     {
         DWORD LowPart;
@@ -307,9 +307,10 @@ typedef union _LARGE_INTEGER {
         LONG HighPart;
     } u;
     LONGLONG QuadPart;
-} LARGE_INTEGER, *PLARGE_INTEGER;
+};
+using PLARGE_INTEGER = LARGE_INTEGER *;
 
-typedef struct _GUID
+using GUID = struct _GUID
 {
     DWORD Data1;
     WORD Data2;
@@ -323,11 +324,13 @@ typedef struct _GUID
     {
         return !(*this == other);
     }
-} GUID, IID, CLSID;
+};
+using IID = struct _GUID;
+using CLSID = struct _GUID;
 
-typedef const GUID &REFGUID;
-typedef const IID &REFIID;
-typedef const CLSID &REFCLSID;
+using REFGUID = const GUID &;
+using REFIID = const IID &;
+using REFCLSID = const CLSID &;
 inline bool IsEqualGUID(REFGUID rguid1, REFGUID rguid2)
 {
     return rguid1 == rguid2;
@@ -338,39 +341,39 @@ inline bool IsEqualIID(REFIID riid1, REFIID riid2)
 }
 
 // Handles & Pointers
-typedef void *HANDLE;
-typedef void *HWND;
-typedef void *HINSTANCE;
-typedef void *HMODULE;
-typedef void *HDC;
-typedef void *HFONT;
-typedef void *HBITMAP;
-typedef void *HRGN;
-typedef void *HMENU;
-typedef void *HICON;
-typedef void *HCURSOR;
-typedef void *HBRUSH;
-typedef void *HGDIOBJ;
-typedef void *HIMC;
-typedef void *HIMCC;
-typedef void *HKL;
-typedef void *HKEY;
-typedef void *LPVOID;
-typedef const void *LPCVOID;
+using HANDLE = void *;
+using HWND = void *;
+using HINSTANCE = void *;
+using HMODULE = void *;
+using HDC = void *;
+using HFONT = void *;
+using HBITMAP = void *;
+using HRGN = void *;
+using HMENU = void *;
+using HICON = void *;
+using HCURSOR = void *;
+using HBRUSH = void *;
+using HGDIOBJ = void *;
+using HIMC = void *;
+using HIMCC = void *;
+using HKL = void *;
+using HKEY = void *;
+using LPVOID = void *;
+using LPCVOID = const void *;
 
-typedef WORD LANGID;
-typedef DWORD LCID;
+using LANGID = WORD;
+using LCID = DWORD;
 
 // Strings
-typedef char *LPSTR;
-typedef const char *LPCSTR;
-typedef char *LPTSTR;
-typedef const char *LPCTSTR;
-typedef wchar_t *LPWSTR;
-typedef const wchar_t *LPCWSTR;
+using LPSTR = char *;
+using LPCSTR = const char *;
+using LPTSTR = char *;
+using LPCTSTR = const char *;
+using LPWSTR = wchar_t *;
+using LPCWSTR = const wchar_t *;
 
 // Win32 COM / HRESULT
-typedef int32_t HRESULT;
+using HRESULT = int32_t;
 #ifndef S_OK
 #define S_OK ((HRESULT)0L)
 #endif
@@ -430,7 +433,7 @@ typedef int32_t HRESULT;
 #define IDOK 1
 #endif
 
-inline int MessageBoxA(HWND, LPCSTR, LPCSTR, UINT)
+inline int MessageBoxA(HWND /*unused*/, LPCSTR /*unused*/, LPCSTR /*unused*/, UINT /*unused*/)
 {
     return IDOK;
 }
@@ -438,27 +441,27 @@ inline int MessageBoxA(HWND, LPCSTR, LPCSTR, UINT)
 #define MessageBox MessageBoxA
 #endif
 
-inline DWORD GetModuleFileNameA(HMODULE, LPSTR lpFilename, DWORD nSize)
+inline DWORD GetModuleFileNameA(HMODULE /*unused*/, LPSTR lpFilename, DWORD nSize)
 {
     if (!lpFilename || nSize == 0)
         return 0;
-    ssize_t len = readlink("/proc/self/exe", lpFilename, nSize - 1);
+    ssize_t const len = readlink("/proc/self/exe", lpFilename, nSize - 1);
     if (len != -1)
     {
         lpFilename[len] = '\0';
-        return (DWORD)len;
+        return static_cast<DWORD>(len);
     }
     strncpy(lpFilename, "metin2client", nSize - 1);
     lpFilename[nSize - 1] = '\0';
-    return (DWORD)strlen(lpFilename);
+    return static_cast<DWORD>(strlen(lpFilename));
 }
 #ifndef GetModuleFileName
 #define GetModuleFileName GetModuleFileNameA
 #endif
-inline void OutputDebugStringA(LPCSTR)
+inline void OutputDebugStringA(LPCSTR /*unused*/)
 {
 }
-inline void OutputDebugStringW(LPCWSTR)
+inline void OutputDebugStringW(LPCWSTR /*unused*/)
 {
 }
 #ifndef OutputDebugString
@@ -473,7 +476,7 @@ inline BOOL DeleteFileA(LPCSTR lpFileName)
 #define DeleteFile DeleteFileA
 #endif
 
-inline HMODULE GetModuleHandleA(LPCSTR)
+inline HMODULE GetModuleHandleA(LPCSTR /*unused*/)
 {
     return (HMODULE)1;
 }
@@ -503,7 +506,7 @@ inline void *GlobalAlloc(UINT uFlags, size_t dwBytes)
 inline void *GlobalFree(void *hMem)
 {
     free(hMem);
-    return NULL;
+    return nullptr;
 }
 inline void *GlobalLock(void *hMem)
 {
@@ -575,7 +578,7 @@ inline DWORD GetCurrentDirectoryA(DWORD nBufferLength, LPSTR lpBuffer)
         return 0;
     if (getcwd(lpBuffer, nBufferLength) == nullptr)
         return 0;
-    return (DWORD)strlen(lpBuffer);
+    return static_cast<DWORD>(strlen(lpBuffer));
 }
 #ifndef GetCurrentDirectory
 #define GetCurrentDirectory GetCurrentDirectoryA
@@ -589,7 +592,7 @@ inline BOOL MoveFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName)
 #define MoveFile MoveFileA
 #endif
 
-inline int LoadStringA(HINSTANCE, UINT, LPSTR, int)
+inline int LoadStringA(HINSTANCE /*unused*/, UINT /*unused*/, LPSTR /*unused*/, int /*unused*/)
 {
     return 0;
 }
@@ -606,7 +609,7 @@ inline DWORD GetPrivateProfileStringA(LPCSTR /*lpAppName*/, LPCSTR /*lpKeyName*/
     {
         strncpy(lpReturnedString, lpDefault, nSize - 1);
         lpReturnedString[nSize - 1] = '\0';
-        return (DWORD)strlen(lpReturnedString);
+        return static_cast<DWORD>(strlen(lpReturnedString));
     }
     lpReturnedString[0] = '\0';
     return 0;
@@ -616,25 +619,31 @@ inline DWORD GetPrivateProfileStringA(LPCSTR /*lpAppName*/, LPCSTR /*lpKeyName*/
 #endif
 
 // Structs
-typedef struct tagRECT
+using RECT = struct tagRECT
 {
     LONG left;
     LONG top;
     LONG right;
     LONG bottom;
-} RECT, *PRECT, *LPRECT;
+};
+using PRECT = RECT *;
+using LPRECT = RECT *;
 
-typedef struct tagPOINT
+using POINT = struct tagPOINT
 {
     LONG x;
     LONG y;
-} POINT, *PPOINT, *LPPOINT;
+};
+using PPOINT = POINT *;
+using LPPOINT = POINT *;
 
-typedef struct tagSIZE
+using SIZE = struct tagSIZE
 {
     LONG cx;
     LONG cy;
-} SIZE, *PSIZE, *LPSIZE;
+};
+using PSIZE = SIZE *;
+using LPSIZE = SIZE *;
 
 #ifndef FILE_ATTRIBUTE_DIRECTORY
 #define FILE_ATTRIBUTE_DIRECTORY 0x00000010
@@ -643,12 +652,14 @@ typedef struct tagSIZE
 #define FILE_ATTRIBUTE_NORMAL 0x00000080
 #endif
 
-typedef struct _WIN32_FIND_DATAA
+using WIN32_FIND_DATAA = struct _WIN32_FIND_DATAA
 {
     DWORD dwFileAttributes;
     char cFileName[MAX_PATH];
-} WIN32_FIND_DATAA, *PWIN32_FIND_DATAA, *LPWIN32_FIND_DATAA;
-typedef WIN32_FIND_DATAA WIN32_FIND_DATA;
+};
+using PWIN32_FIND_DATAA = WIN32_FIND_DATAA *;
+using LPWIN32_FIND_DATAA = WIN32_FIND_DATAA *;
+using WIN32_FIND_DATA = WIN32_FIND_DATAA;
 
 struct PlatformFindFileData
 {
@@ -660,7 +671,7 @@ inline HANDLE FindFirstFileA(const char *lpFileName, LPWIN32_FIND_DATAA lpFindFi
 {
     if (!lpFileName || !lpFindFileData)
         return INVALID_HANDLE_VALUE;
-    PlatformFindFileData *pfd = new PlatformFindFileData();
+    auto *pfd = new PlatformFindFileData();
     pfd->index = 0;
     std::string pattern = lpFileName;
     for (char &c : pattern)
@@ -686,7 +697,7 @@ inline BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData)
 {
     if (!hFindFile || hFindFile == INVALID_HANDLE_VALUE || !lpFindFileData)
         return FALSE;
-    PlatformFindFileData *pfd = (PlatformFindFileData *)(intptr_t)hFindFile;
+    auto *pfd = (PlatformFindFileData *)(intptr_t)hFindFile;
     pfd->index++;
     if (pfd->index >= pfd->glob_res.gl_pathc)
         return FALSE;
@@ -703,7 +714,7 @@ inline BOOL FindClose(HANDLE hFindFile)
 {
     if (!hFindFile || hFindFile == INVALID_HANDLE_VALUE)
         return FALSE;
-    PlatformFindFileData *pfd = (PlatformFindFileData *)(intptr_t)hFindFile;
+    auto *pfd = (PlatformFindFileData *)(intptr_t)hFindFile;
     globfree(&pfd->glob_res);
     delete pfd;
     return TRUE;
@@ -719,7 +730,9 @@ inline BOOL FindClose(HANDLE hFindFile)
 // ========================================================
 // Threading, Critical Section & Semaphore (POSIX pthreads)
 // ========================================================
-typedef pthread_mutex_t CRITICAL_SECTION, *PCRITICAL_SECTION, *LPCRITICAL_SECTION;
+using CRITICAL_SECTION = pthread_mutex_t;
+using PCRITICAL_SECTION = CRITICAL_SECTION *;
+using LPCRITICAL_SECTION = CRITICAL_SECTION *;
 
 inline void InitializeCriticalSection(LPCRITICAL_SECTION lpCriticalSection)
 {
@@ -744,7 +757,7 @@ inline void LeaveCriticalSection(LPCRITICAL_SECTION lpCriticalSection)
 
 inline void Sleep(DWORD dwMilliseconds)
 {
-    usleep((useconds_t)dwMilliseconds * 1000);
+    usleep(static_cast<useconds_t>(dwMilliseconds) * 1000);
 }
 
 #ifndef WAIT_OBJECT_0
@@ -786,7 +799,7 @@ struct PosixHandle
 
 inline void *ThreadTrampoline(void *param)
 {
-    PosixHandle *h = static_cast<PosixHandle *>(param);
+    auto *h = static_cast<PosixHandle *>(param);
     if (h && h->start_fn)
     {
         h->start_fn(h->arg);
@@ -798,7 +811,7 @@ inline void *ThreadTrampoline(void *param)
 inline uintptr_t _beginthreadex(void * /*security*/, unsigned /*stack_size*/, unsigned (*start_address)(void *),
                                 void *arglist, unsigned /*initflag*/, unsigned *thrdaddr)
 {
-    PlatformPosixSync::PosixHandle *h = new PlatformPosixSync::PosixHandle();
+    auto *h = new PlatformPosixSync::PosixHandle();
     h->kind = PlatformPosixSync::HANDLE_THREAD;
     h->joined = false;
     h->start_fn = start_address;
@@ -810,7 +823,7 @@ inline uintptr_t _beginthreadex(void * /*security*/, unsigned /*stack_size*/, un
     }
     if (thrdaddr)
     {
-        *thrdaddr = (unsigned)(uintptr_t)h->thread;
+        *thrdaddr = static_cast<unsigned>(static_cast<uintptr_t>(h->thread));
     }
     return (uintptr_t)h;
 }
@@ -823,7 +836,7 @@ inline BOOL SetThreadPriority(HANDLE /*hThread*/, int /*nPriority*/)
 inline HANDLE CreateSemaphoreA(void * /*lpSemaphoreAttributes*/, LONG lInitialCount, LONG lMaximumCount,
                                LPCSTR /*lpName*/)
 {
-    PlatformPosixSync::PosixHandle *h = new PlatformPosixSync::PosixHandle();
+    auto *h = new PlatformPosixSync::PosixHandle();
     h->kind = PlatformPosixSync::HANDLE_SEMAPHORE;
     h->joined = false;
     h->start_fn = nullptr;
@@ -842,7 +855,7 @@ inline BOOL ReleaseSemaphore(HANDLE hSemaphore, LONG lReleaseCount, LONG *lpPrev
 {
     if (!hSemaphore || lReleaseCount <= 0)
         return FALSE;
-    PlatformPosixSync::PosixHandle *h = static_cast<PlatformPosixSync::PosixHandle *>(hSemaphore);
+    auto *h = static_cast<PlatformPosixSync::PosixHandle *>(hSemaphore);
     if (h->kind != PlatformPosixSync::HANDLE_SEMAPHORE)
         return FALSE;
     pthread_mutex_lock(&h->mutex);
@@ -863,7 +876,7 @@ inline DWORD WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds)
 {
     if (!hHandle)
         return WAIT_FAILED;
-    PlatformPosixSync::PosixHandle *h = static_cast<PlatformPosixSync::PosixHandle *>(hHandle);
+    auto *h = static_cast<PlatformPosixSync::PosixHandle *>(hHandle);
     if (h->kind == PlatformPosixSync::HANDLE_THREAD)
     {
         if (!h->joined)
@@ -873,7 +886,7 @@ inline DWORD WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds)
         }
         return WAIT_OBJECT_0;
     }
-    else if (h->kind == PlatformPosixSync::HANDLE_SEMAPHORE)
+    if (h->kind == PlatformPosixSync::HANDLE_SEMAPHORE)
     {
         pthread_mutex_lock(&h->mutex);
         if (dwMilliseconds == INFINITE)
@@ -888,7 +901,7 @@ inline DWORD WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds)
         }
         else
         {
-            struct timespec ts;
+            struct timespec ts{};
             clock_gettime(CLOCK_REALTIME, &ts);
             ts.tv_sec += dwMilliseconds / 1000;
             ts.tv_nsec += (dwMilliseconds % 1000) * 1000000L;
@@ -919,7 +932,7 @@ inline BOOL CloseHandle(HANDLE hObject)
 {
     if (!hObject || hObject == INVALID_HANDLE_VALUE)
         return FALSE;
-    PlatformPosixSync::PosixHandle *h = static_cast<PlatformPosixSync::PosixHandle *>(hObject);
+    auto *h = static_cast<PlatformPosixSync::PosixHandle *>(hObject);
     if (h->kind == PlatformPosixSync::HANDLE_THREAD)
     {
         if (!h->joined)
@@ -929,7 +942,7 @@ inline BOOL CloseHandle(HANDLE hObject)
         delete h;
         return TRUE;
     }
-    else if (h->kind == PlatformPosixSync::HANDLE_SEMAPHORE)
+    if (h->kind == PlatformPosixSync::HANDLE_SEMAPHORE)
     {
         pthread_cond_destroy(&h->cond);
         pthread_mutex_destroy(&h->mutex);
@@ -939,33 +952,35 @@ inline BOOL CloseHandle(HANDLE hObject)
     return FALSE;
 }
 
-typedef struct _SECURITY_ATTRIBUTES
+using SECURITY_ATTRIBUTES = struct _SECURITY_ATTRIBUTES
 {
     DWORD nLength;
     LPVOID lpSecurityDescriptor;
     BOOL bInheritHandle;
-} SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
+};
+using PSECURITY_ATTRIBUTES = SECURITY_ATTRIBUTES *;
+using LPSECURITY_ATTRIBUTES = SECURITY_ATTRIBUTES *;
 
-inline HANDLE CreateMutexA(LPSECURITY_ATTRIBUTES, BOOL, LPCSTR)
+inline HANDLE CreateMutexA(LPSECURITY_ATTRIBUTES /*unused*/, BOOL /*unused*/, LPCSTR /*unused*/)
 {
-    return (HANDLE)(intptr_t)1;
+    return (HANDLE) static_cast<intptr_t>(1);
 }
 #ifndef CreateMutex
 #define CreateMutex CreateMutexA
 #endif
-inline BOOL ReleaseMutex(HANDLE)
+inline BOOL ReleaseMutex(HANDLE /*unused*/)
 {
     return TRUE;
 }
 inline HANDLE GetCurrentProcess()
 {
-    return (HANDLE)(intptr_t)getpid();
+    return (HANDLE) static_cast<intptr_t>(getpid());
 }
 
 // ========================================================
 // Networking Compatibility (Winsock -> POSIX BSD Sockets)
 // ========================================================
-typedef int SOCKET;
+using SOCKET = int;
 #ifndef INVALID_SOCKET
 #define INVALID_SOCKET (-1)
 #endif
@@ -973,14 +988,22 @@ typedef int SOCKET;
 #define SOCKET_ERROR (-1)
 #endif
 
-typedef struct sockaddr SOCKADDR, *PSOCKADDR, *LPSOCKADDR;
-typedef struct sockaddr_in SOCKADDR_IN, *PSOCKADDR_IN, *LPSOCKADDR_IN;
-typedef struct hostent HOSTENT, *PHOSTENT, *LPHOSTENT;
-typedef struct timeval TIMEVAL, *PTIMEVAL, *LPTIMEVAL;
+using SOCKADDR = struct sockaddr;
+using PSOCKADDR = SOCKADDR *;
+using LPSOCKADDR = SOCKADDR *;
+using SOCKADDR_IN = struct sockaddr_in;
+using PSOCKADDR_IN = SOCKADDR_IN *;
+using LPSOCKADDR_IN = SOCKADDR_IN *;
+using HOSTENT = struct hostent;
+using PHOSTENT = HOSTENT *;
+using LPHOSTENT = HOSTENT *;
+using TIMEVAL = struct timeval;
+using PTIMEVAL = TIMEVAL *;
+using LPTIMEVAL = TIMEVAL *;
 
 #define WSADESCRIPTION_LEN 256
 #define WSASYS_STATUS_LEN 128
-typedef struct WSAData
+using WSADATA = struct WSAData
 {
     WORD wVersion;
     WORD wHighVersion;
@@ -989,7 +1012,8 @@ typedef struct WSAData
     unsigned short iMaxSockets;
     unsigned short iMaxUdpDg;
     char *lpVendorInfo;
-} WSADATA, *LPWSADATA;
+};
+using LPWSADATA = WSADATA *;
 
 inline int WSAStartup(WORD /*wVersionRequested*/, LPWSADATA lpWSAData)
 {
@@ -1008,7 +1032,7 @@ inline int WSACleanup()
 
 inline int WSAGetLastError()
 {
-    int e = errno;
+    int const e = errno;
     if (e == EINPROGRESS || e == EAGAIN)
         return WSAEWOULDBLOCK;
     return e;
@@ -1019,18 +1043,18 @@ inline int closesocket(SOCKET s)
     return close(s);
 }
 
-inline int ioctlsocket(SOCKET s, long cmd, DWORD *argp)
+inline int ioctlsocket(SOCKET s, long cmd, const DWORD *argp)
 {
-    int flag = argp ? (int)(*argp) : 0;
-    return ioctl(s, (unsigned long)cmd, &flag);
+    int flag = argp ? static_cast<int>(*argp) : 0;
+    return ioctl(s, static_cast<unsigned long>(cmd), &flag);
 }
 
 // ========================================================
 // Win32 Windowing, GDI, Font & Input Stubs
 // ========================================================
-typedef LRESULT(CALLBACK *WNDPROC)(HWND, UINT, WPARAM, LPARAM);
+using WNDPROC = LRESULT(CALLBACK *)(HWND, UINT, WPARAM, LPARAM);
 
-typedef struct tagWNDCLASSA
+using WNDCLASSA = struct tagWNDCLASSA
 {
     UINT style;
     WNDPROC lpfnWndProc;
@@ -1042,9 +1066,12 @@ typedef struct tagWNDCLASSA
     HBRUSH hbrBackground;
     LPCSTR lpszMenuName;
     LPCSTR lpszClassName;
-} WNDCLASSA, WNDCLASS, *PWNDCLASS, *LPWNDCLASS;
+};
+using WNDCLASS = struct tagWNDCLASSA;
+using PWNDCLASS = WNDCLASSA *;
+using LPWNDCLASS = WNDCLASSA *;
 
-typedef struct tagMSG
+using MSG = struct tagMSG
 {
     HWND hwnd;
     UINT message;
@@ -1052,7 +1079,9 @@ typedef struct tagMSG
     LPARAM lParam;
     DWORD time;
     POINT pt;
-} MSG, *PMSG, *LPMSG;
+};
+using PMSG = MSG *;
+using LPMSG = MSG *;
 
 #ifndef WM_CREATE
 #define WM_CREATE 0x0001
@@ -1155,7 +1184,7 @@ typedef struct tagMSG
 #define MAKEINTRESOURCE(i) ((LPCSTR)(uintptr_t)((WORD)(i)))
 #define KL_NAMELENGTH 9
 
-typedef struct _OSVERSIONINFOA
+using OSVERSIONINFOA = struct _OSVERSIONINFOA
 {
     DWORD dwOSVersionInfoSize;
     DWORD dwMajorVersion;
@@ -1163,28 +1192,30 @@ typedef struct _OSVERSIONINFOA
     DWORD dwBuildNumber;
     DWORD dwPlatformId;
     CHAR szCSDVersion[128];
-} OSVERSIONINFOA, *POSVERSIONINFOA, *LPOSVERSIONINFOA;
+};
+using POSVERSIONINFOA = OSVERSIONINFOA *;
+using LPOSVERSIONINFOA = OSVERSIONINFOA *;
 
-inline LRESULT DefWindowProcA(HWND, UINT, WPARAM, LPARAM)
+inline LRESULT DefWindowProcA(HWND /*unused*/, UINT /*unused*/, WPARAM /*unused*/, LPARAM /*unused*/)
 {
     return 0;
 }
 #ifndef DefWindowProc
 #define DefWindowProc DefWindowProcA
 #endif
-inline LONG_PTR GetWindowLongPtrA(HWND, int)
+inline LONG_PTR GetWindowLongPtrA(HWND /*unused*/, int /*unused*/)
 {
     return 0;
 }
-inline LONG_PTR SetWindowLongPtrA(HWND, int, LONG_PTR)
+inline LONG_PTR SetWindowLongPtrA(HWND /*unused*/, int /*unused*/, LONG_PTR /*unused*/)
 {
     return 0;
 }
-inline LONG GetWindowLongA(HWND, int)
+inline LONG GetWindowLongA(HWND /*unused*/, int /*unused*/)
 {
     return 0;
 }
-inline LONG SetWindowLongA(HWND, int, LONG)
+inline LONG SetWindowLongA(HWND /*unused*/, int /*unused*/, LONG /*unused*/)
 {
     return 0;
 }
@@ -1199,20 +1230,22 @@ inline BOOL IsWindow(HWND hWnd)
 {
     return hWnd != nullptr;
 }
-inline BOOL DestroyWindow(HWND)
+inline BOOL DestroyWindow(HWND /*unused*/)
 {
     return TRUE;
 }
-inline HWND CreateWindowA(LPCSTR, LPCSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID)
+inline HWND CreateWindowA(LPCSTR /*unused*/, LPCSTR /*unused*/, DWORD /*unused*/, int /*unused*/, int /*unused*/,
+                          int /*unused*/, int /*unused*/, HWND /*unused*/, HMENU /*unused*/, HINSTANCE /*unused*/,
+                          LPVOID /*unused*/)
 {
     return (HWND)1;
 }
 #define CreateWindow CreateWindowA
-inline BOOL ShowWindow(HWND, int)
+inline BOOL ShowWindow(HWND /*unused*/, int /*unused*/)
 {
     return TRUE;
 }
-inline BOOL InvalidateRect(HWND, const RECT *, BOOL)
+inline BOOL InvalidateRect(HWND /*unused*/, const RECT * /*unused*/, BOOL /*unused*/)
 {
     return TRUE;
 }
@@ -1230,7 +1263,8 @@ struct PlatformWindowState
 };
 inline PlatformWindowState &GetPlatformWindowState()
 {
-    static PlatformWindowState s_ws = {0, 0, 1024, 768, (HWND)0};
+    static PlatformWindowState s_ws = {
+        .mouseX = 0, .mouseY = 0, .windowWidth = 1024, .windowHeight = 768, .capturedWnd = (HWND) nullptr};
     return s_ws;
 }
 inline void Platform_SetCursorPos(int x, int y)
@@ -1238,7 +1272,7 @@ inline void Platform_SetCursorPos(int x, int y)
     GetPlatformWindowState().mouseX = x;
     GetPlatformWindowState().mouseY = y;
 }
-typedef void (*Platform_WarpMouseCallback)(int x, int y);
+using Platform_WarpMouseCallback = void (*)(int x, int y);
 inline Platform_WarpMouseCallback &Platform_GetWarpMouseCallback()
 {
     static Platform_WarpMouseCallback s_cb = nullptr;
@@ -1266,7 +1300,7 @@ inline void Platform_GetWindowResolution(int *w, int *h)
     if (h)
         *h = GetPlatformWindowState().windowHeight;
 }
-inline BOOL GetWindowRect(HWND, LPRECT prc)
+inline BOOL GetWindowRect(HWND /*unused*/, LPRECT prc)
 {
     if (prc)
     {
@@ -1277,7 +1311,7 @@ inline BOOL GetWindowRect(HWND, LPRECT prc)
     }
     return TRUE;
 }
-inline BOOL GetClientRect(HWND, LPRECT prc)
+inline BOOL GetClientRect(HWND /*unused*/, LPRECT prc)
 {
     if (prc)
     {
@@ -1297,11 +1331,12 @@ inline BOOL GetCursorPos(LPPOINT ppt)
     }
     return TRUE;
 }
-inline BOOL ScreenToClient(HWND, LPPOINT)
+inline BOOL ScreenToClient(HWND /*unused*/, LPPOINT /*unused*/)
 {
     return TRUE;
 }
-inline BOOL SetWindowPos(HWND, HWND, int, int, int, int, UINT)
+inline BOOL SetWindowPos(HWND /*unused*/, HWND /*unused*/, int /*unused*/, int /*unused*/, int /*unused*/,
+                         int /*unused*/, UINT /*unused*/)
 {
     return TRUE;
 }
@@ -1315,62 +1350,62 @@ inline BOOL SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom)
     lprc->bottom = yBottom;
     return TRUE;
 }
-inline BOOL AdjustWindowRectEx(LPRECT, DWORD, BOOL, DWORD)
+inline BOOL AdjustWindowRectEx(LPRECT /*unused*/, DWORD /*unused*/, BOOL /*unused*/, DWORD /*unused*/)
 {
     return TRUE;
 }
-inline HMENU GetMenu(HWND)
+inline HMENU GetMenu(HWND /*unused*/)
 {
     return nullptr;
 }
-inline BOOL MoveWindow(HWND, int, int, int, int, BOOL)
+inline BOOL MoveWindow(HWND /*unused*/, int /*unused*/, int /*unused*/, int /*unused*/, int /*unused*/, BOOL /*unused*/)
 {
     return TRUE;
 }
-inline BOOL SetWindowTextA(HWND, LPCSTR)
+inline BOOL SetWindowTextA(HWND /*unused*/, LPCSTR /*unused*/)
 {
     return TRUE;
 }
 #define SetWindowText SetWindowTextA
-inline HCURSOR LoadCursorA(HINSTANCE, LPCSTR)
+inline HCURSOR LoadCursorA(HINSTANCE /*unused*/, LPCSTR /*unused*/)
 {
     return nullptr;
 }
 #define LoadCursor LoadCursorA
-inline HICON LoadIconA(HINSTANCE, LPCSTR)
+inline HICON LoadIconA(HINSTANCE /*unused*/, LPCSTR /*unused*/)
 {
     return nullptr;
 }
 #define LoadIcon LoadIconA
-inline HGDIOBJ GetStockObject(int)
+inline HGDIOBJ GetStockObject(int /*unused*/)
 {
     return nullptr;
 }
-inline WORD RegisterClassA(const WNDCLASSA *)
+inline WORD RegisterClassA(const WNDCLASSA * /*unused*/)
 {
     return 1;
 }
 #define RegisterClass RegisterClassA
-inline BOOL PeekMessageA(LPMSG, HWND, UINT, UINT, UINT)
+inline BOOL PeekMessageA(LPMSG /*unused*/, HWND /*unused*/, UINT /*unused*/, UINT /*unused*/, UINT /*unused*/)
 {
     return FALSE;
 }
 #define PeekMessage PeekMessageA
-inline BOOL GetMessageA(LPMSG, HWND, UINT, UINT)
+inline BOOL GetMessageA(LPMSG /*unused*/, HWND /*unused*/, UINT /*unused*/, UINT /*unused*/)
 {
     return FALSE;
 }
 #define GetMessage GetMessageA
-inline BOOL TranslateMessage(const MSG *)
+inline BOOL TranslateMessage(const MSG * /*unused*/)
 {
     return TRUE;
 }
-inline LRESULT DispatchMessageA(const MSG *)
+inline LRESULT DispatchMessageA(const MSG * /*unused*/)
 {
     return 0;
 }
 #define DispatchMessage DispatchMessageA
-typedef void (*Platform_QuitCallback)(int);
+using Platform_QuitCallback = void (*)(int);
 inline Platform_QuitCallback &Platform_GetQuitCallback()
 {
     static Platform_QuitCallback s_cb = nullptr;
@@ -1410,9 +1445,10 @@ inline BOOL ClientToScreen(HWND /*hWnd*/, LPPOINT /*lpPoint*/)
 {
     return TRUE;
 }
-inline HANDLE LoadImageA(HINSTANCE, LPCSTR, UINT, int, int, UINT)
+inline HANDLE LoadImageA(HINSTANCE /*unused*/, LPCSTR /*unused*/, UINT /*unused*/, int /*unused*/, int /*unused*/,
+                         UINT /*unused*/)
 {
-    return (HANDLE)(intptr_t)1;
+    return (HANDLE) static_cast<intptr_t>(1);
 }
 #ifndef LoadImage
 #define LoadImage LoadImageA
@@ -1421,10 +1457,10 @@ inline DWORD GetLastError()
 {
     return 0;
 }
-inline void SetLastError(DWORD)
+inline void SetLastError(DWORD /*unused*/)
 {
 }
-inline HWND FindWindowA(LPCSTR, LPCSTR)
+inline HWND FindWindowA(LPCSTR /*unused*/, LPCSTR /*unused*/)
 {
     return nullptr;
 }
@@ -1442,7 +1478,7 @@ struct STICKYKEYS
 #define SKF_AVAILABLE 0x00000002
 #define SKF_HOTKEYACTIVE 0x00000004
 
-inline BOOL SystemParametersInfoA(UINT, UINT, PVOID, UINT)
+inline BOOL SystemParametersInfoA(UINT /*unused*/, UINT /*unused*/, PVOID /*unused*/, UINT /*unused*/)
 {
     return TRUE;
 }
@@ -1458,7 +1494,7 @@ inline HWND SetCapture(HWND hWnd)
 }
 inline BOOL ReleaseCapture()
 {
-    GetPlatformWindowState().capturedWnd = (HWND)0;
+    GetPlatformWindowState().capturedWnd = (HWND) nullptr;
     return TRUE;
 }
 inline HWND GetCapture()
@@ -1466,7 +1502,7 @@ inline HWND GetCapture()
     return GetPlatformWindowState().capturedWnd;
 }
 
-typedef struct _devicemodeA
+using DEVMODEA = struct _devicemodeA
 {
     BYTE dmDeviceName[32];
     WORD dmSpecVersion;
@@ -1502,8 +1538,10 @@ typedef struct _devicemodeA
     DWORD dmReserved2;
     DWORD dmPanningWidth;
     DWORD dmPanningHeight;
-} DEVMODEA, *PDEVMODEA, *LPDEVMODEA;
-typedef DEVMODEA DEVMODE;
+};
+using PDEVMODEA = DEVMODEA *;
+using LPDEVMODEA = DEVMODEA *;
+using DEVMODE = DEVMODEA;
 
 #define DM_BITSPERPEL 0x00040000L
 #define DM_PELSWIDTH 0x00080000L
@@ -1511,9 +1549,9 @@ typedef DEVMODEA DEVMODE;
 #define CDS_FULLSCREEN 0x00000004
 #define DISP_CHANGE_SUCCESSFUL 0
 #define DISP_CHANGE_RESTART 1
-#define DISP_CHANGE_FAILED -1
+#define DISP_CHANGE_FAILED (-1)
 
-inline LONG ChangeDisplaySettingsA(DEVMODEA *, DWORD)
+inline LONG ChangeDisplaySettingsA(DEVMODEA * /*unused*/, DWORD /*unused*/)
 {
     return DISP_CHANGE_SUCCESSFUL;
 }
@@ -1554,7 +1592,7 @@ inline LONG ChangeDisplaySettingsA(DEVMODEA *, DWORD)
 #define RGB(r, g, b) ((DWORD)(((BYTE)(r) | ((WORD)((BYTE)(g)) << 8)) | (((DWORD)(BYTE)(b)) << 16)))
 #endif
 
-typedef struct tagBITMAPINFOHEADER
+using BITMAPINFOHEADER = struct tagBITMAPINFOHEADER
 {
     DWORD biSize;
     LONG biWidth;
@@ -1567,23 +1605,27 @@ typedef struct tagBITMAPINFOHEADER
     LONG biYPelsPerMeter;
     DWORD biClrUsed;
     DWORD biClrImportant;
-} BITMAPINFOHEADER, *LPBITMAPINFOHEADER, *PBITMAPINFOHEADER;
+};
+using LPBITMAPINFOHEADER = BITMAPINFOHEADER *;
+using PBITMAPINFOHEADER = BITMAPINFOHEADER *;
 
-typedef struct tagRGBQUAD
+using RGBQUAD = struct tagRGBQUAD
 {
     BYTE rgbBlue;
     BYTE rgbGreen;
     BYTE rgbRed;
     BYTE rgbReserved;
-} RGBQUAD;
+};
 
-typedef struct tagBITMAPINFO
+using BITMAPINFO = struct tagBITMAPINFO
 {
     BITMAPINFOHEADER bmiHeader;
     RGBQUAD bmiColors[1];
-} BITMAPINFO, *LPBITMAPINFO, *PBITMAPINFO;
+};
+using LPBITMAPINFO = BITMAPINFO *;
+using PBITMAPINFO = BITMAPINFO *;
 
-typedef struct tagLOGFONTA
+using LOGFONTA = struct tagLOGFONTA
 {
     LONG lfHeight;
     LONG lfWidth;
@@ -1599,9 +1641,12 @@ typedef struct tagLOGFONTA
     BYTE lfQuality;
     BYTE lfPitchAndFamily;
     CHAR lfFaceName[LF_FACESIZE];
-} LOGFONTA, LOGFONT, *PLOGFONT, *LPLOGFONT;
+};
+using LOGFONT = struct tagLOGFONTA;
+using PLOGFONT = LOGFONTA *;
+using LPLOGFONT = LOGFONTA *;
 
-typedef struct tagTEXTMETRICA
+using TEXTMETRICA = struct tagTEXTMETRICA
 {
     LONG tmHeight;
     LONG tmAscent;
@@ -1623,35 +1668,41 @@ typedef struct tagTEXTMETRICA
     BYTE tmStruckOut;
     BYTE tmPitchAndFamily;
     BYTE tmCharSet;
-} TEXTMETRICA, TEXTMETRIC, *PTEXTMETRIC, *LPTEXTMETRIC;
+};
+using TEXTMETRIC = struct tagTEXTMETRICA;
+using PTEXTMETRIC = TEXTMETRICA *;
+using LPTEXTMETRIC = TEXTMETRICA *;
 
-typedef struct _ABCFLOAT
+using ABCFLOAT = struct _ABCFLOAT
 {
     FLOAT abcfA;
     FLOAT abcfB;
     FLOAT abcfC;
-} ABCFLOAT, *PABCFLOAT, *LPABCFLOAT;
+};
+using PABCFLOAT = ABCFLOAT *;
+using LPABCFLOAT = ABCFLOAT *;
 
-typedef int(CALLBACK *FONTENUMPROCA)(const LOGFONTA *, const TEXTMETRICA *, DWORD, LPARAM);
-typedef FONTENUMPROCA FONTENUMPROC;
+using FONTENUMPROCA = int(CALLBACK *)(const LOGFONTA *, const TEXTMETRICA *, DWORD, LPARAM);
+using FONTENUMPROC = FONTENUMPROCA;
 
-inline HDC GetDC(HWND)
+inline HDC GetDC(HWND /*unused*/)
 {
     return (HDC)1;
 }
-inline int ReleaseDC(HWND, HDC)
+inline int ReleaseDC(HWND /*unused*/, HDC /*unused*/)
 {
     return 1;
 }
-inline HDC CreateCompatibleDC(HDC)
+inline HDC CreateCompatibleDC(HDC /*unused*/)
 {
     return (HDC)1;
 }
-inline BOOL DeleteDC(HDC)
+inline BOOL DeleteDC(HDC /*unused*/)
 {
     return TRUE;
 }
-inline HBITMAP CreateDIBSection(HDC, const BITMAPINFO *pbmi, UINT, void **ppvBits, HANDLE, DWORD)
+inline HBITMAP CreateDIBSection(HDC /*unused*/, const BITMAPINFO *pbmi, UINT /*unused*/, void **ppvBits,
+                                HANDLE /*unused*/, DWORD /*unused*/)
 {
     if (!pbmi || !ppvBits)
         return nullptr;
@@ -1661,9 +1712,9 @@ inline HBITMAP CreateDIBSection(HDC, const BITMAPINFO *pbmi, UINT, void **ppvBit
         w = 1;
     if (h <= 0)
         h = 1;
-    void *buf = std::calloc((size_t)w * (size_t)h, 4);
+    void *buf = std::calloc(static_cast<size_t>(w) * static_cast<size_t>(h), 4);
     *ppvBits = buf;
-    return (HBITMAP)buf;
+    return static_cast<HBITMAP>(buf);
 }
 inline BOOL DeleteObject(HGDIOBJ hObj)
 {
@@ -1675,41 +1726,43 @@ inline BOOL DeleteObject(HGDIOBJ hObj)
     }
     return TRUE;
 }
-inline HGDIOBJ SelectObject(HDC, HGDIOBJ h)
+inline HGDIOBJ SelectObject(HDC /*unused*/, HGDIOBJ h)
 {
     return h;
 }
-inline DWORD SetTextColor(HDC, DWORD c)
+inline DWORD SetTextColor(HDC /*unused*/, DWORD c)
 {
     return c;
 }
-inline DWORD SetBkColor(HDC, DWORD c)
+inline DWORD SetBkColor(HDC /*unused*/, DWORD c)
 {
     return c;
 }
-inline int SetBkMode(HDC, int m)
+inline int SetBkMode(HDC /*unused*/, int m)
 {
     return m;
 }
-inline BOOL TextOutA(HDC, int, int, LPCSTR, int)
+inline BOOL TextOutA(HDC /*unused*/, int /*unused*/, int /*unused*/, LPCSTR /*unused*/, int /*unused*/)
 {
     return TRUE;
 }
-inline BOOL TextOutW(HDC, int, int, LPCWSTR, int)
+inline BOOL TextOutW(HDC /*unused*/, int /*unused*/, int /*unused*/, LPCWSTR /*unused*/, int /*unused*/)
 {
     return TRUE;
 }
 #define TextOut TextOutA
-inline int SetDIBitsToDevice(HDC, int, int, DWORD, DWORD, int, int, UINT, UINT, const void *, const BITMAPINFO *, UINT)
+inline int SetDIBitsToDevice(HDC /*unused*/, int /*unused*/, int /*unused*/, DWORD /*unused*/, DWORD /*unused*/,
+                             int /*unused*/, int /*unused*/, UINT /*unused*/, UINT /*unused*/, const void * /*unused*/,
+                             const BITMAPINFO * /*unused*/, UINT /*unused*/)
 {
     return 0;
 }
-inline HFONT CreateFontIndirectA(const LOGFONTA *)
+inline HFONT CreateFontIndirectA(const LOGFONTA * /*unused*/)
 {
     return (HFONT)1;
 }
 #define CreateFontIndirect CreateFontIndirectA
-inline BOOL GetTextExtentPoint32A(HDC, LPCSTR lpString, int c, LPSIZE lpSize)
+inline BOOL GetTextExtentPoint32A(HDC /*unused*/, LPCSTR lpString, int c, LPSIZE lpSize)
 {
     if (lpSize)
     {
@@ -1719,7 +1772,7 @@ inline BOOL GetTextExtentPoint32A(HDC, LPCSTR lpString, int c, LPSIZE lpSize)
     (void)lpString;
     return TRUE;
 }
-inline BOOL GetTextExtentPoint32W(HDC, LPCWSTR lpString, int c, LPSIZE lpSize)
+inline BOOL GetTextExtentPoint32W(HDC /*unused*/, LPCWSTR lpString, int c, LPSIZE lpSize)
 {
     if (lpSize)
     {
@@ -1730,7 +1783,7 @@ inline BOOL GetTextExtentPoint32W(HDC, LPCWSTR lpString, int c, LPSIZE lpSize)
     return TRUE;
 }
 #define GetTextExtentPoint32 GetTextExtentPoint32A
-inline BOOL GetCharABCWidthsFloatW(HDC, UINT, UINT, LPABCFLOAT lpABCF)
+inline BOOL GetCharABCWidthsFloatW(HDC /*unused*/, UINT /*unused*/, UINT /*unused*/, LPABCFLOAT lpABCF)
 {
     if (lpABCF)
     {
@@ -1740,7 +1793,8 @@ inline BOOL GetCharABCWidthsFloatW(HDC, UINT, UINT, LPABCFLOAT lpABCF)
     }
     return TRUE;
 }
-inline int EnumFontFamiliesExA(HDC, LPLOGFONT, FONTENUMPROCA, LPARAM, DWORD)
+inline int EnumFontFamiliesExA(HDC /*unused*/, LPLOGFONT /*unused*/, FONTENUMPROCA /*unused*/, LPARAM /*unused*/,
+                               DWORD /*unused*/)
 {
     return 0;
 }
@@ -1751,7 +1805,7 @@ inline int EnumFontFamiliesExA(HDC, LPLOGFONT, FONTENUMPROCA, LPARAM, DWORD)
 #define CP_ACP 0
 #define CP_UTF8 65001
 
-inline BOOL OpenClipboard(HWND)
+inline BOOL OpenClipboard(HWND /*unused*/)
 {
     return FALSE;
 }
@@ -1759,7 +1813,7 @@ inline BOOL CloseClipboard()
 {
     return TRUE;
 }
-inline HANDLE GetClipboardData(UINT)
+inline HANDLE GetClipboardData(UINT /*unused*/)
 {
     return nullptr;
 }
@@ -1818,18 +1872,20 @@ int WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int
 
 inline DWORD GetTickCount()
 {
-    struct timespec ts;
+    struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (DWORD)((uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL);
+    return static_cast<DWORD>((static_cast<uint64_t>(ts.tv_sec) * 1000ULL) +
+                              (static_cast<uint64_t>(ts.tv_nsec) / 1000000ULL));
 }
 
 inline BOOL QueryPerformanceCounter(LARGE_INTEGER *lpPerformanceCount)
 {
     if (!lpPerformanceCount)
         return FALSE;
-    struct timespec ts;
+    struct timespec ts{};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    lpPerformanceCount->QuadPart = (LONGLONG)ts.tv_sec * 1000000000LL + (LONGLONG)ts.tv_nsec;
+    lpPerformanceCount->QuadPart =
+        (static_cast<LONGLONG>(ts.tv_sec) * 1000000000LL) + static_cast<LONGLONG>(ts.tv_nsec);
     return TRUE;
 }
 
@@ -1852,7 +1908,7 @@ inline DWORD timeGetTime()
 }
 #endif
 
-inline BOOL FreeLibrary(HMODULE)
+inline BOOL FreeLibrary(HMODULE /*unused*/)
 {
     return TRUE;
 }
@@ -1862,7 +1918,7 @@ inline BOOL FreeLibrary(HMODULE)
 
 inline HKL GetKeyboardLayout(DWORD /*idThread*/)
 {
-    return (HKL)(uintptr_t)0x04090409;
+    return (HKL) static_cast<uintptr_t>(0x04090409);
 }
 inline BOOL GetKeyboardLayoutNameA(LPSTR pwszKLID)
 {
@@ -1901,24 +1957,20 @@ inline LPSTR CharPrevExA(WORD /*CodePage*/, LPCSTR lpStart, LPCSTR lpCurrentChar
 #include <type_traits>
 using std::max;
 using std::min;
-template <
-    typename T, typename U,
-    typename std::enable_if<!std::is_same<T, U>::value && (std::is_arithmetic<T>::value || std::is_enum<T>::value) &&
-                                (std::is_arithmetic<U>::value || std::is_enum<U>::value),
-                            int>::type = 0>
-inline typename std::common_type<T, U>::type min(T a, U b)
+template <typename T, typename U>
+inline std::common_type_t<T, U> min(T a, U b)
+    requires(!std::is_same<T, U>::value && (std::is_arithmetic<T>::value || std::is_enum<T>::value) &&
+             (std::is_arithmetic<U>::value || std::is_enum<U>::value))
 {
-    using R = typename std::common_type<T, U>::type;
+    using R = std::common_type_t<T, U>;
     return (static_cast<R>(a) < static_cast<R>(b)) ? static_cast<R>(a) : static_cast<R>(b);
 }
-template <
-    typename T, typename U,
-    typename std::enable_if<!std::is_same<T, U>::value && (std::is_arithmetic<T>::value || std::is_enum<T>::value) &&
-                                (std::is_arithmetic<U>::value || std::is_enum<U>::value),
-                            int>::type = 0>
-inline typename std::common_type<T, U>::type max(T a, U b)
+template <typename T, typename U>
+inline std::common_type_t<T, U> max(T a, U b)
+    requires(!std::is_same<T, U>::value && (std::is_arithmetic<T>::value || std::is_enum<T>::value) &&
+             (std::is_arithmetic<U>::value || std::is_enum<U>::value))
 {
-    using R = typename std::common_type<T, U>::type;
+    using R = std::common_type_t<T, U>;
     return (static_cast<R>(a) > static_cast<R>(b)) ? static_cast<R>(a) : static_cast<R>(b);
 }
 #endif
@@ -1940,7 +1992,7 @@ struct TIMECAPS
     UINT wPeriodMax;
 };
 #define TIMERR_NOERROR 0
-inline UINT timeGetDevCaps(TIMECAPS *ptc, UINT)
+inline UINT timeGetDevCaps(TIMECAPS *ptc, UINT /*unused*/)
 {
     if (ptc)
     {
@@ -1949,17 +2001,17 @@ inline UINT timeGetDevCaps(TIMECAPS *ptc, UINT)
     }
     return TIMERR_NOERROR;
 }
-inline UINT timeBeginPeriod(UINT)
+inline UINT timeBeginPeriod(UINT /*unused*/)
 {
     return TIMERR_NOERROR;
 }
-inline UINT timeEndPeriod(UINT)
+inline UINT timeEndPeriod(UINT /*unused*/)
 {
     return TIMERR_NOERROR;
 }
 
 // COM Stubs
-inline HRESULT CoInitialize(void *)
+inline HRESULT CoInitialize(void * /*unused*/)
 {
     return S_OK;
 }
@@ -1985,7 +2037,7 @@ inline void CoUninitialize()
 #define FILE_ATTRIBUTE_READONLY 0x00000001
 #endif
 
-inline BOOL DestroyCursor(HCURSOR)
+inline BOOL DestroyCursor(HCURSOR /*unused*/)
 {
     return TRUE;
 }
@@ -2009,7 +2061,7 @@ inline int ShowCursor(BOOL bShow)
     }
     return s_iShowCount;
 }
-inline HCURSOR SetCursor(HCURSOR)
+inline HCURSOR SetCursor(HCURSOR /*unused*/)
 {
     return nullptr;
 }
@@ -2019,7 +2071,7 @@ inline BOOL SetCursorPos(int x, int y)
     Platform_SetCursorPos(x, y);
     return TRUE;
 }
-inline BOOL SetFileAttributes(LPCSTR, DWORD)
+inline BOOL SetFileAttributes(LPCSTR /*unused*/, DWORD /*unused*/)
 {
     return TRUE;
 }

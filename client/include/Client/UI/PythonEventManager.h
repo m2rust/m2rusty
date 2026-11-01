@@ -8,14 +8,14 @@
 class CPythonEventManager : public CSingleton<CPythonEventManager>
 {
   public:
-    typedef struct STextLine
+    using TTextLine = struct STextLine
     {
         int ixLocal, iyLocal;
         CGraphicTextInstance *pInstance;
-    } TTextLine;
+    };
 
-    typedef std::list<TTextLine> TScriptTextLineList;
-    typedef std::map<int, std::string> TEventAnswerMap;
+    using TScriptTextLineList = std::list<TTextLine>;
+    using TEventAnswerMap = std::map<int, std::string>;
 
     enum
     {
@@ -95,50 +95,50 @@ class CPythonEventManager : public CSingleton<CPythonEventManager>
     std::map<std::string, int> EventTypeMap;
 
   public:
-    typedef struct SEventSet
+    using TEventSet = struct SEventSet
     {
-        int ix, iy;
-        int iWidth;
-        int iyLocal;
+        int ix = 0, iy = 0;
+        int iWidth = 0;
+        int iyLocal = 0;
 
         // State
-        bool isLock;
+        bool isLock = false;
 
-        long lLastDelayTime;
+        long lLastDelayTime = 0L;
 
-        int iCurrentLetter;
+        int iCurrentLetter = 0;
 
         D3DXCOLOR CurrentColor;
         std::string strCurrentLine;
 
-        CGraphicTextInstance *pCurrentTextLine;
+        CGraphicTextInstance *pCurrentTextLine = nullptr;
         TScriptTextLineList ScriptTextLineList;
 
-        BOOL isConfirmWait;
-        CGraphicTextInstance *pConfirmTimeTextLine;
-        int iConfirmEndTime;
+        BOOL isConfirmWait = 0;
+        CGraphicTextInstance *pConfirmTimeTextLine = nullptr;
+        int iConfirmEndTime = 0;
 
         // Group Data
         script::Group ScriptGroup;
 
         // Static Data
-        char szFileName[32 + 1];
+        char szFileName[32 + 1]{};
 
-        int iVisibleStartLine;
-        int iVisibleLineCount;
+        int iVisibleStartLine = 0;
+        int iVisibleLineCount = 0;
 
-        int iAdjustLine;
+        int iAdjustLine = 0;
 
         D3DXCOLOR DiffuseColor;
-        long lWaitingTime;
-        int iRestrictedCharacterCount;
+        long lWaitingTime = 0L;
+        int iRestrictedCharacterCount = 0;
 
-        int nAnswer;
+        int nAnswer = 0;
 
-        bool isTextCenterMode;
-        bool isWaitFlag;
+        bool isTextCenterMode = false;
+        bool isWaitFlag = false;
 
-        PyObject *poEventHandler;
+        PyObject *poEventHandler = nullptr;
 
         SEventSet()
         {
@@ -146,13 +146,12 @@ class CPythonEventManager : public CSingleton<CPythonEventManager>
         virtual ~SEventSet()
         {
         }
-    } TEventSet;
+    };
 
-    typedef std::vector<TEventSet *> TEventSetVector;
+    using TEventSetVector = std::vector<TEventSet *>;
 
-  public:
     CPythonEventManager();
-    virtual ~CPythonEventManager();
+    ~CPythonEventManager() override;
 
     void Destroy();
 
@@ -188,7 +187,7 @@ class CPythonEventManager : public CSingleton<CPythonEventManager>
   protected:
     void __InitEventSet(TEventSet &rEventSet);
     void __InsertLine(TEventSet &rEventSet, BOOL isCenter = FALSE, int iX_pos = 0);
-    void __AddSpace(TEventSet &pEventSet, int iSpace);
+    void __AddSpace(TEventSet &rEventSet, int iSpace);
 
     DWORD GetEmptyEventSetSlot();
 
@@ -203,13 +202,12 @@ class CPythonEventManager : public CSingleton<CPythonEventManager>
     void MakeQuestion(TEventSet *pEventSet, script::TArgList &rArgumentList);
     void MakeNextButton(TEventSet *pEventSet, int iButtonType);
 
-  protected:
     TEventSetVector m_EventSetVector;
-    BOOL m_isQuestConfirmWait;
+    BOOL m_isQuestConfirmWait = 0;
 
   private:
     CDynamicPool<TEventSet> m_EventSetPool;
     CDynamicPool<CGraphicTextInstance> m_ScriptTextLinePool;
-    PyObject *m_poInterface;
+    PyObject *m_poInterface = 0;
     std::string m_strLeftTimeString;
 };

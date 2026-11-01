@@ -17,7 +17,7 @@ void CGraphicTexture::Destroy()
 
 void CGraphicTexture::Initialize()
 {
-    m_lpd3dTexture = NULL;
+    m_lpd3dTexture = nullptr;
     m_width = 0;
     m_height = 0;
     m_bEmpty = true;
@@ -30,7 +30,7 @@ bool CGraphicTexture::IsEmpty() const
 
 void CGraphicTexture::SetTextureStage(int stage) const
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
     STATEMANAGER.SetTexture(stage, m_lpd3dTexture);
 }
 
@@ -54,6 +54,4 @@ CGraphicTexture::CGraphicTexture()
     Initialize();
 }
 
-CGraphicTexture::~CGraphicTexture()
-{
-}
+CGraphicTexture::~CGraphicTexture() = default;

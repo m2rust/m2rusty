@@ -27,13 +27,13 @@ class CSymbol : public CBase
 
   public:
     CSymbol();
-    virtual ~CSymbol();
+    ~CSymbol() override;
 
     static int issymbol(int ch);
     void SetType(int Type);
-    int GetType();
-    bool Equal(CSymbol dif);
-    bool Less(CSymbol dif);
+    int GetType() const;
+    bool Equal(const CSymbol &dif) const;
+    bool Less(const CSymbol &dif) const;
 };
 
 #endif

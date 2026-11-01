@@ -151,7 +151,7 @@ static WPARAM SDLKeycodeToVK(SDL_Keycode key, SDL_Scancode scancode = SDL_SCANCO
             return 'A' + (key - SDLK_a);
         if (key >= SDLK_0 && key <= SDLK_9)
             return '0' + (key - SDLK_0);
-        return (WPARAM)key;
+        return static_cast<WPARAM>(key);
     }
 }
 
@@ -182,7 +182,7 @@ bool CMSApplication::IsMessage()
     if (Platform_IsQuitRequested())
         return true;
     SDL_PumpEvents();
-    return (SDL_PeepEvents(NULL, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0);
+    return (SDL_PeepEvents(nullptr, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0);
 }
 
 bool CMSApplication::MessageProcess()
@@ -210,7 +210,7 @@ bool CMSApplication::MessageProcess()
                 Platform_GetQuitRequested().store(true);
                 return false;
             }
-            else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
+            if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
             {
                 if (ms_pSDLWindow)
                 {
@@ -270,9 +270,13 @@ bool CMSApplication::MessageProcess()
             Platform_SetCursorPos(event.button.x, event.button.y);
             UINT uMsg = WM_LBUTTONDOWN;
             if (event.button.button == SDL_BUTTON_RIGHT)
+            {
                 uMsg = WM_RBUTTONDOWN;
+            }
             else if (event.button.button == SDL_BUTTON_MIDDLE)
+            {
                 uMsg = WM_MBUTTONDOWN;
+            }
             WindowProcedure(m_hWnd, uMsg, 0, MAKELPARAM(event.button.x, event.button.y));
         }
         else if (event.type == SDL_MOUSEBUTTONUP)
@@ -280,19 +284,23 @@ bool CMSApplication::MessageProcess()
             Platform_SetCursorPos(event.button.x, event.button.y);
             UINT uMsg = WM_LBUTTONUP;
             if (event.button.button == SDL_BUTTON_RIGHT)
+            {
                 uMsg = WM_RBUTTONUP;
+            }
             else if (event.button.button == SDL_BUTTON_MIDDLE)
+            {
                 uMsg = WM_MBUTTONUP;
+            }
             WindowProcedure(m_hWnd, uMsg, 0, MAKELPARAM(event.button.x, event.button.y));
         }
         else if (event.type == SDL_MOUSEWHEEL)
         {
-            short zDelta = (short)(event.wheel.y * 120);
+            auto zDelta = static_cast<short>(event.wheel.y * 120);
             WindowProcedure(m_hWnd, WM_MOUSEWHEEL, MAKEWPARAM(0, zDelta), 0);
         }
         else if (event.type == SDL_KEYDOWN)
         {
-            WPARAM vKey = SDLKeycodeToVK(event.key.keysym.sym, event.key.keysym.scancode);
+            WPARAM const vKey = SDLKeycodeToVK(event.key.keysym.sym, event.key.keysym.scancode);
             WindowProcedure(m_hWnd, WM_KEYDOWN, vKey, 0);
 
             if (event.key.keysym.scancode == SDL_SCANCODE_BACKSPACE || event.key.keysym.sym == SDLK_BACKSPACE)
@@ -321,7 +329,7 @@ bool CMSApplication::MessageProcess()
         }
         else if (event.type == SDL_KEYUP)
         {
-            WPARAM vKey = SDLKeycodeToVK(event.key.keysym.sym, event.key.keysym.scancode);
+            WPARAM const vKey = SDLKeycodeToVK(event.key.keysym.sym, event.key.keysym.scancode);
             WindowProcedure(m_hWnd, WM_KEYUP, vKey, 0);
         }
 
@@ -336,7 +344,8 @@ bool CMSApplication::MessageProcess()
     if (Platform_IsQuitRequested())
         return false;
 
-    int mx = 0, my = 0;
+    int mx = 0;
+    int my = 0;
     SDL_GetMouseState(&mx, &my);
     Platform_SetCursorPos(mx, my);
 

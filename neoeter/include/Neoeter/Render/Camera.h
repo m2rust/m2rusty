@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_CAMERA_H__C5D086BE_7A03_4246_9145_336747C47D9E__INCLUDED_)
+#ifndef AFX_CAMERA_H__C5D086BE_7A03_4246_9145_336747C47D9E__INCLUDED_
 #define AFX_CAMERA_H__C5D086BE_7A03_4246_9145_336747C47D9E__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -17,7 +17,7 @@
 const float CAMERA_TARGET_STANDARD = 100.0f;
 const float CAMERA_TARGET_FACE = 150.0f;
 
-typedef enum _eCameraState_
+using eCameraState = enum _eCameraState_
 {
     CAMERA_STATE_NORMAL,
     CAMERA_STATE_CANTGODOWN,
@@ -25,7 +25,7 @@ typedef enum _eCameraState_
     CAMERA_STATE_CANTGOLEFT,
     CAMERA_STATE_SCREEN_BY_BUILDING,
     CAMERA_STATE_SCREEN_BY_BUILDING_AND_TOOCLOSE,
-} eCameraState;
+};
 
 class CCamera
 {
@@ -37,9 +37,9 @@ class CCamera
 
     void Lock();
     void Unlock();
-    bool IsLock();
+    bool IsLock() const;
 
-    void Wheel(int nWheelLen);
+    void Wheel(int nLen);
     bool Drag(int nMouseX, int nMouseY, LPPOINT lpReturnPoint);
 
     bool EndDrag();
@@ -56,10 +56,10 @@ class CCamera
     // Camera Update
     eCameraState m_eCameraState;
     eCameraState m_eCameraStatePrev;
-    float m_fPitchBackup;
-    float m_fRollBackup;
-    float m_fDistanceBackup;
-    float m_fTargetZBackUp;
+    float m_fPitchBackup = 0.0F;
+    float m_fRollBackup = 0.0F;
+    float m_fDistanceBackup = 0.0F;
+    float m_fTargetZBackUp = 0.0F;
 
     D3DXVECTOR3 m_v3EyeBackup;
 
@@ -67,7 +67,7 @@ class CCamera
 
     // 	protected:
 
-    bool m_isLock;
+    bool m_isLock = false;
 
     // Attributes for view matrix
     D3DXVECTOR3 m_v3Eye;
@@ -85,8 +85,8 @@ class CCamera
     D3DXMATRIX m_matBillboard; // Special matrix for billboarding effects
 
     // 추가분
-    float m_fPitch;
-    float m_fRoll;
+    float m_fPitch = 0.0F;
+    float m_fRoll = 0.0F;
     float m_fDistance;
 
     // 카메라 AI를 위한 Ray 들
@@ -112,8 +112,8 @@ class CCamera
     // 	protected:
     float m_fTarget_;
 
-    float m_fEyeGroundHeightRatio;
-    float m_fTargetHeightLimitRatio;
+    float m_fEyeGroundHeightRatio = 0.3f;
+    float m_fTargetHeightLimitRatio = 2.0f;
     float m_fPitchSum;
     float m_fRollSum;
 
@@ -187,15 +187,15 @@ class CCamera
         return m_ulNumScreenBuilding;
     }
 
-    const float &GetPitchBackUp()
+    const float &GetPitchBackUp() const
     {
         return m_fPitchBackup;
     }
-    const float &GetRollBackUp()
+    const float &GetRollBackUp() const
     {
         return m_fRollBackup;
     }
-    const float &GetDistanceBackUp()
+    const float &GetDistanceBackUp() const
     {
         return m_fDistanceBackup;
     }
@@ -257,9 +257,9 @@ class CCamera
         return m_fDistance;
     }
 
-    void Pitch(const float fPitchDelta); // 돌아가는 각도를 넣는다.
-    void Roll(const float fRollDelta);
-    void SetDistance(const float fdistance);
+    void Pitch(float fPitchDelta); // 돌아가는 각도를 넣는다.
+    void Roll(float fRollDelta);
+    void SetDistance(float fdistance);
 
     //////////////////////////////////////////////////////////////////////////
     // camera movement
@@ -301,9 +301,9 @@ class CCamera
     void CalculateRoll();
 
   public:
-    float GetTargetHeight();
+    float GetTargetHeight() const;
     void SetTargetHeight(float fTarget);
-    bool isTerrainCollisionEnable()
+    bool isTerrainCollisionEnable() const
     {
         return m_bProcessTerrainCollision;
     }
@@ -316,28 +316,27 @@ class CCamera
     void ProcessTerrainCollision();
     void ProcessBuildingCollision();
 
-  private:
     bool m_bProcessTerrainCollision;
 
     static float CAMERA_MIN_DISTANCE;
     static float CAMERA_MAX_DISTANCE;
 };
 
-typedef std::map<BYTE, CCamera *> TCameraMap;
+using TCameraMap = std::map<BYTE, CCamera *>;
 
 class CCameraManager : public CSingleton<CCameraManager>
 {
   public:
     enum ECameraNum
     {
-        NO_CURRENT_CAMERA,
-        DEFAULT_PERSPECTIVE_CAMERA,
-        DEFAULT_ORTHO_CAMERA,
+        NO_CURRENT_CAMERA = 0,
+        DEFAULT_PERSPECTIVE_CAMERA = 1,
+        DEFAULT_ORTHO_CAMERA = 2,
         CAMERA_MAX = 255
     };
 
     CCameraManager();
-    virtual ~CCameraManager();
+    ~CCameraManager() override;
 
     bool AddCamera(unsigned char ucCameraNum);
     bool RemoveCamera(unsigned char ucCameraNum);

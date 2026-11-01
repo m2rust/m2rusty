@@ -14,7 +14,7 @@ class CPythonNonPlayer : public CSingleton<CPythonNonPlayer>
         ON_CLICK_EVENT_TALK = 3,
         ON_CLICK_EVENT_VEHICLE = 4,
 
-        ON_CLICK_EVENT_MAX_NUM,
+        ON_CLICK_EVENT_MAX_NUM = 5,
     };
 
     enum EMobEnchants
@@ -48,13 +48,13 @@ class CPythonNonPlayer : public CSingleton<CPythonNonPlayer>
 
 #pragma pack(push)
 #pragma pack(1)
-    typedef struct SMobSkillLevel
+    using TMobSkillLevel = struct SMobSkillLevel
     {
         DWORD dwVnum;
         BYTE bLevel;
-    } TMobSkillLevel;
+    };
 
-    typedef struct SMobTable
+    using TMobTable = struct SMobTable
     {
         DWORD dwVnum;
         char szName[CHARACTER_NAME_MAX_LEN + 1];
@@ -111,15 +111,14 @@ class CPythonNonPlayer : public CSingleton<CPythonNonPlayer>
         BYTE bGodSpeedPoint;
         BYTE bDeathBlowPoint;
         BYTE bRevivePoint;
-    } TMobTable;
+    };
 #pragma pack(pop)
 
-    typedef std::list<TMobTable *> TMobTableList;
-    typedef std::map<DWORD, TMobTable *> TNonPlayerDataMap;
+    using TMobTableList = std::list<TMobTable *>;
+    using TNonPlayerDataMap = std::map<DWORD, TMobTable *>;
 
-  public:
-    CPythonNonPlayer(void);
-    virtual ~CPythonNonPlayer(void);
+    CPythonNonPlayer();
+    ~CPythonNonPlayer() override;
 
     void Clear();
     void Destroy();

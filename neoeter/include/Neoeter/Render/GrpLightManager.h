@@ -8,7 +8,7 @@
 
 #include <deque>
 
-typedef DWORD TLightID;
+using TLightID = DWORD;
 
 enum ELightType
 {
@@ -19,8 +19,8 @@ enum ELightType
 class CLightBase
 {
   public:
-    CLightBase() {};
-    virtual ~CLightBase() {};
+    CLightBase() = default;
+    virtual ~CLightBase() = default;
 
     void SetCurrentTime();
 
@@ -32,7 +32,7 @@ class CLight : public CGraphicBase, public CLightBase
 {
   public:
     CLight();
-    virtual ~CLight();
+    ~CLight() override;
 
     void Initialize();
     void Clear();
@@ -47,12 +47,12 @@ class CLight : public CGraphicBase, public CLightBase
         return m_fDistance;
     }
 
-    TLightID GetLightID()
+    TLightID GetLightID() const
     {
         return m_LightID;
     }
 
-    BOOL isEdited()
+    BOOL isEdited() const
     {
         return m_isEdited;
     }
@@ -70,15 +70,15 @@ class CLight : public CGraphicBase, public CLightBase
     void BlendRange(float fRange, float fBlendTime, float fDelayTime = 0.0f);
 
   private:
-    TLightID m_LightID; // Light ID. equal to D3D light index
+    TLightID m_LightID = 0U; // Light ID. equal to D3D light index
 
-    D3DLIGHT9 m_d3dLight;
-    BOOL m_isEdited;
-    float m_fDistance;
+    D3DLIGHT9 m_d3dLight{};
+    BOOL m_isEdited = 0;
+    float m_fDistance = 0.0F;
 
     TTransitorColor m_DiffuseColorTransitor;
     TTransitorColor m_AmbientColorTransitor;
-    TTransitorFloat m_RangeTransitor;
+    TTransitorFloat m_RangeTransitor{};
 };
 
 class CLightManager : public CGraphicBase, public CLightBase, public CSingleton<CLightManager>
@@ -90,13 +90,12 @@ class CLightManager : public CGraphicBase, public CLightBase, public CSingleton<
         //			LIGHT_MAX_NUM = 32,
     };
 
-    typedef std::deque<TLightID> TLightIDDeque;
-    typedef std::map<TLightID, CLight *> TLightMap;
-    typedef std::vector<CLight *> TLightSortVector;
+    using TLightIDDeque = std::deque<TLightID>;
+    using TLightMap = std::map<TLightID, CLight *>;
+    using TLightSortVector = std::vector<CLight *>;
 
-  public:
     CLightManager();
-    virtual ~CLightManager();
+    ~CLightManager() override;
 
     void Destroy();
 
@@ -126,9 +125,8 @@ class CLightManager : public CGraphicBase, public CLightBase, public CSingleton<
 
     D3DXVECTOR3 m_v3CenterPosition;
     DWORD m_dwLimitLightCount;
-    DWORD m_dwSkipIndex;
+    DWORD m_dwSkipIndex = 0U;
 
-  protected:
     TLightID NewLightID();
     void ReleaseLightID(TLightID LightID);
 

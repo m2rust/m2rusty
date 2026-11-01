@@ -14,8 +14,7 @@ void CNetworkStream::SetRecvBufferSize(int recvBufSize)
 
         delete[] m_recvBuf;
 
-        if (m_recvTEABuf)
-            delete[] m_recvTEABuf;
+        delete[] m_recvTEABuf;
     }
     m_recvBufSize = recvBufSize;
     m_recvBuf = new char[m_recvBufSize];
@@ -32,8 +31,7 @@ void CNetworkStream::SetSendBufferSize(int sendBufSize)
 
         delete[] m_sendBuf;
 
-        if (m_sendTEABuf)
-            delete[] m_sendTEABuf;
+        delete[] m_sendTEABuf;
     }
 
     m_sendBufSize = sendBufSize;
@@ -46,7 +44,7 @@ bool CNetworkStream::__RecvInternalBuffer()
 {
     if (m_recvBufOutputPos > 0)
     {
-        int recvBufDataSize = m_recvBufInputPos - m_recvBufOutputPos;
+        int const recvBufDataSize = m_recvBufInputPos - m_recvBufOutputPos;
         if (recvBufDataSize > 0)
         {
             memmove(m_recvBuf, m_recvBuf + m_recvBufOutputPos, recvBufDataSize);
@@ -56,16 +54,16 @@ bool CNetworkStream::__RecvInternalBuffer()
         m_recvBufOutputPos = 0;
     }
 
-    int restSize = m_recvBufSize - m_recvBufInputPos;
+    int const restSize = m_recvBufSize - m_recvBufInputPos;
     if (restSize > 0)
     {
-        int recvSize = recv(m_sock, m_recvBuf + m_recvBufInputPos, m_recvBufSize - m_recvBufInputPos, 0);
+        int const recvSize = recv(m_sock, m_recvBuf + m_recvBufInputPos, m_recvBufSize - m_recvBufInputPos, 0);
         // Tracenf("RECV %d %d(%d, %d)", recvSize, restSize, m_recvTEABufSize -
         // m_recvTEABufInputPos, m_recvBufSize - m_recvBufInputPos);
 
         if (recvSize < 0)
         {
-            int error = WSAGetLastError();
+            int const error = WSAGetLastError();
 
             if (error != WSAEWOULDBLOCK)
             {
@@ -88,11 +86,11 @@ bool CNetworkStream::__RecvInternalBuffer()
 
 bool CNetworkStream::__SendInternalBuffer()
 {
-    int dataSize = __GetSendBufferSize();
+    int const dataSize = __GetSendBufferSize();
     if (dataSize <= 0)
         return true;
 
-    int sendSize = send(m_sock, m_sendBuf + m_sendBufOutputPos, dataSize, 0);
+    int const sendSize = send(m_sock, m_sendBuf + m_sendBufOutputPos, dataSize, 0);
     if (sendSize < 0)
         return false;
 
@@ -108,7 +106,7 @@ void CNetworkStream::__PopSendBuffer()
     if (m_sendBufOutputPos <= 0)
         return;
 
-    int sendBufDataSize = m_sendBufInputPos - m_sendBufOutputPos;
+    int const sendBufDataSize = m_sendBufInputPos - m_sendBufOutputPos;
 
     if (sendBufDataSize > 0)
     {
@@ -140,7 +138,7 @@ void CNetworkStream::Process()
     delay.tv_sec = 0;
     delay.tv_usec = 0;
 
-    if (select((int)m_sock + 1, &fdsRecv, &fdsSend, NULL, &delay) == SOCKET_ERROR)
+    if (select(static_cast<int>(m_sock) + 1, &fdsRecv, &fdsSend, nullptr, &delay) == SOCKET_ERROR)
         return;
 
     if (!m_isOnline)
@@ -150,7 +148,7 @@ void CNetworkStream::Process()
             m_isOnline = true;
             OnConnectSuccess();
         }
-        else if (time(NULL) > m_connectLimitTime)
+        else if (time(nullptr) > m_connectLimitTime)
         {
             Clear();
             OnConnectFailure();
@@ -163,7 +161,7 @@ void CNetworkStream::Process()
     {
         if (!__SendInternalBuffer())
         {
-            int error = WSAGetLastError();
+            int const error = WSAGetLastError();
 
             if (error != WSAEWOULDBLOCK)
             {
@@ -240,12 +238,12 @@ bool CNetworkStream::Connect(const CNetworkAddress &c_rkNetAddr, int limitSec)
         return false;
     }
 
-    DWORD arg = 1;
+    DWORD const arg = 1;
     ioctlsocket(m_sock, FIONBIO, &arg); // Non-blocking mode
 
-    if (connect(m_sock, (PSOCKADDR)&m_addr, m_addr.GetSize()) == SOCKET_ERROR)
+    if (connect(m_sock, reinterpret_cast<PSOCKADDR>(&m_addr), m_addr.GetSize()) == SOCKET_ERROR)
     {
-        int error = WSAGetLastError();
+        int const error = WSAGetLastError();
 
         if (error != WSAEWOULDBLOCK)
         {
@@ -256,7 +254,7 @@ bool CNetworkStream::Connect(const CNetworkAddress &c_rkNetAddr, int limitSec)
         }
     }
 
-    m_connectLimitTime = time(NULL) + limitSec;
+    m_connectLimitTime = time(nullptr) + limitSec;
     return true;
 }
 
@@ -293,17 +291,14 @@ void CNetworkStream::ClearRecvBuffer()
     m_recvBufOutputPos = m_recvBufInputPos = 0;
 }
 
-int CNetworkStream::GetRecvBufferSize()
+int CNetworkStream::GetRecvBufferSize() const
 {
     return m_recvBufInputPos - m_recvBufOutputPos;
 }
 
 bool CNetworkStream::Peek(int size)
 {
-    if (GetRecvBufferSize() < size)
-        return false;
-
-    return true;
+    return GetRecvBufferSize() >= size;
 }
 
 bool CNetworkStream::Peek(int size, char *pDestBuf)
@@ -569,14 +564,14 @@ bool CNetworkStream::Recv(int size, char *pDestBuf)
     return true;
 }
 
-int CNetworkStream::__GetSendBufferSize()
+int CNetworkStream::__GetSendBufferSize() const
 {
     return m_sendBufInputPos - m_sendBufOutputPos;
 }
 
 bool CNetworkStream::Send(int size, const char *pSrcBuf)
 {
-    int sendBufRestSize = m_sendBufSize - m_sendBufInputPos;
+    int const sendBufRestSize = m_sendBufSize - m_sendBufInputPos;
     if ((size + 1) > sendBufRestSize)
         return false;
 
@@ -619,12 +614,12 @@ bool CNetworkStream::Send(int size, const char *pSrcBuf)
 
 bool CNetworkStream::Peek(int len, void *pDestBuf)
 {
-    return Peek(len, (char *)pDestBuf);
+    return Peek(len, static_cast<char *>(pDestBuf));
 }
 
 bool CNetworkStream::Recv(int len, void *pDestBuf)
 {
-    return Recv(len, (char *)pDestBuf);
+    return Recv(len, static_cast<char *>(pDestBuf));
 }
 
 bool CNetworkStream::SendFlush(int len, const void *pSrcBuf)
@@ -637,10 +632,10 @@ bool CNetworkStream::SendFlush(int len, const void *pSrcBuf)
 
 bool CNetworkStream::Send(int len, const void *pSrcBuf)
 {
-    return Send(len, (const char *)pSrcBuf);
+    return Send(len, static_cast<const char *>(pSrcBuf));
 }
 
-bool CNetworkStream::IsOnline()
+bool CNetworkStream::IsOnline() const
 {
     return m_isOnline;
 }
@@ -657,7 +652,7 @@ bool CNetworkStream::SendSequence()
 
     BYTE bSeq = m_kVec_bSequenceTable[m_iSequence++];
 
-    bool bRet = Send(sizeof(BYTE), &bSeq);
+    bool const bRet = Send(sizeof(BYTE), &bSeq);
     if (m_iSequence == SEQUENCE_TABLE_SIZE)
         m_iSequence = 0;
 
@@ -2426,34 +2421,14 @@ static BYTE s_bSequenceTable[SEQUENCE_TABLE_SIZE] = {
 };
 
 CNetworkStream::CNetworkStream()
+    : m_sock(INVALID_SOCKET), m_bUseSequence(false), m_connectLimitTime(0), m_iSequence(0), m_isOnline(false),
+      m_recvBuf(nullptr), m_recvBufInputPos(0), m_recvBufOutputPos(0), m_recvBufSize(0), m_recvTEABuf(nullptr),
+      m_recvTEABufInputPos(0), m_recvTEABufSize(0), m_sendBuf(nullptr), m_sendBufInputPos(0), m_sendBufOutputPos(0),
+      m_sendBufSize(0), m_sendTEABuf(nullptr), m_sendTEABufInputPos(0)
 {
-    m_sock = INVALID_SOCKET;
 
-    m_isOnline = false;
-    m_connectLimitTime = 0;
-
-    m_recvTEABuf = NULL;
-    m_recvTEABufSize = 0;
-    m_recvTEABufInputPos = 0;
-
-    m_recvBuf = NULL;
-    m_recvBufSize = 0;
-    m_recvBufOutputPos = 0;
-    m_recvBufInputPos = 0;
-
-    m_sendTEABuf = NULL;
-    m_sendTEABuf = 0;
-    m_sendTEABufInputPos = 0;
-
-    m_sendBuf = NULL;
-    m_sendBufSize = 0;
-    m_sendBufOutputPos = 0;
-    m_sendBufInputPos = 0;
-
-    m_iSequence = 0;
-    m_bUseSequence = false;
     m_kVec_bSequenceTable.resize(SEQUENCE_TABLE_SIZE);
-    memcpy(&m_kVec_bSequenceTable[0], s_bSequenceTable, sizeof(BYTE) * SEQUENCE_TABLE_SIZE);
+    memcpy(m_kVec_bSequenceTable.data(), s_bSequenceTable, sizeof(BYTE) * SEQUENCE_TABLE_SIZE);
 }
 
 CNetworkStream::~CNetworkStream()
@@ -2463,24 +2438,24 @@ CNetworkStream::~CNetworkStream()
     if (m_sendTEABuf)
     {
         delete[] m_sendTEABuf;
-        m_sendTEABuf = NULL;
+        m_sendTEABuf = nullptr;
     }
 
     if (m_recvTEABuf)
     {
         delete[] m_recvTEABuf;
-        m_recvTEABuf = NULL;
+        m_recvTEABuf = nullptr;
     }
 
     if (m_recvBuf)
     {
         delete[] m_recvBuf;
-        m_recvBuf = NULL;
+        m_recvBuf = nullptr;
     }
 
     if (m_sendBuf)
     {
         delete[] m_sendBuf;
-        m_sendBuf = NULL;
+        m_sendBuf = nullptr;
     }
 }

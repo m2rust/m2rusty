@@ -14,11 +14,11 @@ bool Platform_GetImageInfo(const void *data, size_t size, uint32_t *outW, uint32
         return false;
 
     // Check DDS magic "DDS " (0x20534444)
-    const uint8_t *bytes = (const uint8_t *)data;
+    const auto *bytes = static_cast<const uint8_t *>(data);
     if (bytes[0] == 'D' && bytes[1] == 'D' && bytes[2] == 'S' && bytes[3] == ' ')
     {
-        uint32_t h = *(const uint32_t *)(bytes + 12);
-        uint32_t w = *(const uint32_t *)(bytes + 16);
+        uint32_t const h = *reinterpret_cast<const uint32_t *>(bytes + 12);
+        uint32_t const w = *reinterpret_cast<const uint32_t *>(bytes + 16);
         if (outW)
             *outW = w;
         if (outH)
@@ -28,13 +28,21 @@ bool Platform_GetImageInfo(const void *data, size_t size, uint32_t *outW, uint32
             if (size >= 88 && bytes[84] == 'D' && bytes[85] == 'X' && bytes[86] == 'T')
             {
                 if (bytes[87] == '1')
+                {
                     *outFormat = 0x31545844; // D3DFMT_DXT1
+                }
                 else if (bytes[87] == '3')
+                {
                     *outFormat = 0x33545844; // D3DFMT_DXT3
+                }
                 else if (bytes[87] == '5')
+                {
                     *outFormat = 0x35545844; // D3DFMT_DXT5
+                }
                 else
+                {
                     *outFormat = 21; // D3DFMT_A8R8G8B8
+                }
             }
             else
             {
@@ -45,21 +53,23 @@ bool Platform_GetImageInfo(const void *data, size_t size, uint32_t *outW, uint32
     }
 
     // Try stb_image
-    int w = 0, h = 0, comp = 0;
-    if (stbi_info_from_memory(bytes, (int)size, &w, &h, &comp))
+    int w = 0;
+    int h = 0;
+    int comp = 0;
+    if (stbi_info_from_memory(bytes, static_cast<int>(size), &w, &h, &comp))
     {
         if (outW)
-            *outW = (uint32_t)w;
+            *outW = static_cast<uint32_t>(w);
         if (outH)
-            *outH = (uint32_t)h;
+            *outH = static_cast<uint32_t>(h);
         if (outFormat)
             *outFormat = (comp == 4) ? 21 : 20; // D3DFMT_A8R8G8B8 : D3DFMT_R8G8B8
         return true;
     }
 
     // Try TGA raw header fallback (bytes 12-15)
-    uint16_t tgaW = *(const uint16_t *)(bytes + 12);
-    uint16_t tgaH = *(const uint16_t *)(bytes + 14);
+    uint16_t const tgaW = *reinterpret_cast<const uint16_t *>(bytes + 12);
+    uint16_t const tgaH = *reinterpret_cast<const uint16_t *>(bytes + 14);
     if (tgaW > 0 && tgaW <= 4096 && tgaH > 0 && tgaH <= 4096)
     {
         if (outW)
@@ -80,23 +90,26 @@ bool Platform_DecodeImage(const void *data, size_t size, uint32_t *outW, uint32_
     if (!data || size < 4)
         return false;
 
-    int w = 0, h = 0, comp = 0;
-    stbi_uc *pixels = stbi_load_from_memory((const stbi_uc *)data, (int)size, &w, &h, &comp, 4);
+    int w = 0;
+    int h = 0;
+    int comp = 0;
+    stbi_uc *pixels =
+        stbi_load_from_memory(static_cast<const stbi_uc *>(data), static_cast<int>(size), &w, &h, &comp, 4);
     if (!pixels)
         return false;
 
     if (outW)
-        *outW = (uint32_t)w;
+        *outW = static_cast<uint32_t>(w);
     if (outH)
-        *outH = (uint32_t)h;
+        *outH = static_cast<uint32_t>(h);
 
     outPixels.resize(w * h * 4);
     for (int i = 0; i < w * h; ++i)
     {
-        outPixels[i * 4 + 0] = pixels[i * 4 + 2]; // B
-        outPixels[i * 4 + 1] = pixels[i * 4 + 1]; // G
-        outPixels[i * 4 + 2] = pixels[i * 4 + 0]; // R
-        outPixels[i * 4 + 3] = pixels[i * 4 + 3]; // A
+        outPixels[(i * 4) + 0] = pixels[(i * 4) + 2]; // B
+        outPixels[(i * 4) + 1] = pixels[(i * 4) + 1]; // G
+        outPixels[(i * 4) + 2] = pixels[(i * 4) + 0]; // R
+        outPixels[(i * 4) + 3] = pixels[(i * 4) + 3]; // A
     }
 
     stbi_image_free(pixels);

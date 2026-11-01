@@ -13,9 +13,9 @@ class CTGAImage : public CImage
 
     CTGAImage();
     CTGAImage(CImage &image);
-    virtual ~CTGAImage();
+    ~CTGAImage() override;
 
-    virtual void Create(int width, int height);
+    void Create(int width, int height) override;
     virtual bool LoadFromMemory(int iSize, const BYTE *c_pbMem);
     virtual bool SaveToDiskFile(const char *c_szFileName);
 
@@ -28,8 +28,7 @@ class CTGAImage : public CImage
     int GetRawPixelCount(const DWORD *data);
     int GetRLEPixelCount(const DWORD *data);
 
-  protected:
-    TGA_HEADER m_Header;
+    TGA_HEADER m_Header{};
     DWORD m_dwFlag;
     DWORD *m_pdwEndPtr;
 };

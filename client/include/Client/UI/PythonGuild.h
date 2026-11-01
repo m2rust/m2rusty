@@ -11,7 +11,7 @@ class CPythonGuild : public CSingleton<CPythonGuild>
         ENEMY_GUILD_SLOT_MAX_COUNT = 6,
     };
 
-    typedef struct SGulidInfo
+    using TGuildInfo = struct SGulidInfo
     {
         DWORD dwGuildID;
         char szGuildName[GUILD_NAME_MAX_LEN + 1];
@@ -22,9 +22,9 @@ class CPythonGuild : public CSingleton<CPythonGuild>
         DWORD dwMaxMemberCount;
         DWORD dwGuildMoney;
         BOOL bHasLand;
-    } TGuildInfo;
+    };
 
-    typedef struct SGuildGradeData
+    using TGuildGradeData = struct SGuildGradeData
     {
         SGuildGradeData()
         {
@@ -33,45 +33,44 @@ class CPythonGuild : public CSingleton<CPythonGuild>
             : byAuthorityFlag(byAuthorityFlag_), strName(c_szName_)
         {
         }
-        BYTE byAuthorityFlag;
+        BYTE byAuthorityFlag = 0U;
         std::string strName;
-    } TGuildGradeData;
-    typedef std::map<BYTE, TGuildGradeData> TGradeDataMap;
+    };
+    using TGradeDataMap = std::map<BYTE, TGuildGradeData>;
 
-    typedef struct SGuildMemberData
+    using TGuildMemberData = struct SGuildMemberData
     {
-        DWORD dwPID;
+        DWORD dwPID = 0U;
 
         std::string strName;
-        BYTE byGrade;
-        BYTE byJob;
-        BYTE byLevel;
-        BYTE byGeneralFlag;
-        DWORD dwOffer;
-    } TGuildMemberData;
-    typedef std::vector<TGuildMemberData> TGuildMemberDataVector;
+        BYTE byGrade = 0U;
+        BYTE byJob = 0U;
+        BYTE byLevel = 0U;
+        BYTE byGeneralFlag = 0U;
+        DWORD dwOffer = 0U;
+    };
+    using TGuildMemberDataVector = std::vector<TGuildMemberData>;
 
-    typedef struct SGuildBoardCommentData
+    using TGuildBoardCommentData = struct SGuildBoardCommentData
     {
-        DWORD dwCommentID;
+        DWORD dwCommentID = 0U;
         std::string strName;
         std::string strComment;
-    } TGuildBoardCommentData;
-    typedef std::vector<TGuildBoardCommentData> TGuildBoardCommentDataVector;
+    };
+    using TGuildBoardCommentDataVector = std::vector<TGuildBoardCommentData>;
 
-    typedef struct SGuildSkillData
+    using TGuildSkillData = struct SGuildSkillData
     {
         BYTE bySkillPoint;
         BYTE bySkillLevel[GUILD_SKILL_MAX_NUM];
         WORD wGuildPoint;
         WORD wMaxGuildPoint;
-    } TGuildSkillData;
+    };
 
-    typedef std::map<DWORD, std::string> TGuildNameMap;
+    using TGuildNameMap = std::map<DWORD, std::string>;
 
-  public:
     CPythonGuild();
-    virtual ~CPythonGuild();
+    ~CPythonGuild() override;
 
     void Destroy();
 
@@ -90,7 +89,7 @@ class CPythonGuild : public CSingleton<CPythonGuild>
     void RegisterGuildName(DWORD dwID, const char *c_szName);
 
     BOOL IsMainPlayer(DWORD dwPID);
-    BOOL IsGuildEnable();
+    BOOL IsGuildEnable() const;
     TGuildInfo &GetGuildInfoRef();
     BOOL GetGradeDataPtr(DWORD dwGradeNumber, TGuildGradeData **ppData);
     const TGuildBoardCommentDataVector &GetGuildBoardCommentVector();
@@ -98,13 +97,13 @@ class CPythonGuild : public CSingleton<CPythonGuild>
     BOOL GetMemberDataPtr(DWORD dwIndex, TGuildMemberData **ppData);
     BOOL GetMemberDataPtrByPID(DWORD dwPID, TGuildMemberData **ppData);
     BOOL GetMemberDataPtrByName(const char *c_szName, TGuildMemberData **ppData);
-    DWORD GetGuildMemberLevelSummary();
-    DWORD GetGuildMemberLevelAverage();
-    DWORD GetGuildExperienceSummary();
+    DWORD GetGuildMemberLevelSummary() const;
+    DWORD GetGuildMemberLevelAverage() const;
+    DWORD GetGuildExperienceSummary() const;
     TGuildSkillData &GetGuildSkillDataRef();
     bool GetGuildName(DWORD dwID, std::string *pstrGuildName);
-    DWORD GetGuildID();
-    BOOL HasGuildLand();
+    DWORD GetGuildID() const;
+    BOOL HasGuildLand() const;
 
     void StartGuildWar(DWORD dwEnemyGuildID);
     void EndGuildWar(DWORD dwEnemyGuildID);
@@ -118,18 +117,17 @@ class CPythonGuild : public CSingleton<CPythonGuild>
 
     void __Initialize();
 
-  protected:
-    TGuildInfo m_GuildInfo;
+    TGuildInfo m_GuildInfo{};
     TGradeDataMap m_GradeDataMap;
     TGuildMemberDataVector m_GuildMemberDataVector;
     TGuildBoardCommentDataVector m_GuildBoardCommentVector;
-    TGuildSkillData m_GuildSkillData;
+    TGuildSkillData m_GuildSkillData{};
     TGuildNameMap m_GuildNameMap;
-    DWORD m_adwEnemyGuildID[ENEMY_GUILD_SLOT_MAX_COUNT];
+    DWORD m_adwEnemyGuildID[ENEMY_GUILD_SLOT_MAX_COUNT]{};
 
-    DWORD m_dwMemberLevelSummary;
-    DWORD m_dwMemberLevelAverage;
-    DWORD m_dwMemberExperienceSummary;
+    DWORD m_dwMemberLevelSummary = 0U;
+    DWORD m_dwMemberLevelAverage = 0U;
+    DWORD m_dwMemberExperienceSummary = 0U;
 
-    BOOL m_bGuildEnable;
+    BOOL m_bGuildEnable = 0;
 };

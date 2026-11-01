@@ -4,7 +4,7 @@ class CPropertyManager : public CSingleton<CPropertyManager>
 {
   public:
     CPropertyManager();
-    virtual ~CPropertyManager();
+    ~CPropertyManager() override;
 
     void Clear();
 
@@ -13,14 +13,14 @@ class CPropertyManager : public CSingleton<CPropertyManager>
     DWORD GetUniqueCRC(const char *c_szSeed);
 
     void Initialize();
-    bool Register(const char *c_pszFileName, CProperty **ppProperty = NULL);
+    bool Register(const char *c_pszFileName, CProperty **ppProperty = nullptr);
 
     bool Get(DWORD dwCRC, CProperty **ppProperty);
     bool Get(const char *c_pszFileName, CProperty **ppProperty);
 
   protected:
-    typedef std::map<DWORD, CProperty *> TPropertyCRCMap;
-    typedef std::set<DWORD> TCRCSet;
+    using TPropertyCRCMap = std::map<DWORD, CProperty *>;
+    using TCRCSet = std::set<DWORD>;
 
     TPropertyCRCMap m_PropertyByCRCMap;
     TCRCSet m_ReservedCRCSet;

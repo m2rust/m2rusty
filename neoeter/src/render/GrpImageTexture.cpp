@@ -3,20 +3,22 @@
 #include <Neoeter/IO/EterPackManager.h>
 #include <Neoeter/Render/GrpImageTexture.h>
 
+#include <utility>
+
 bool CGraphicImageTexture::Lock(int *pRetPitch, void **ppRetPixels, int level)
 {
     D3DLOCKED_RECT lockedRect;
-    if (FAILED(m_lpd3dTexture->LockRect(level, &lockedRect, NULL, 0)))
+    if (FAILED(m_lpd3dTexture->LockRect(level, &lockedRect, nullptr, 0)))
         return false;
 
     *pRetPitch = lockedRect.Pitch;
-    *ppRetPixels = (void *)lockedRect.pBits;
+    *ppRetPixels = lockedRect.pBits;
     return true;
 }
 
 void CGraphicImageTexture::Unlock(int level)
 {
-    assert(m_lpd3dTexture != NULL);
+    assert(m_lpd3dTexture != nullptr);
     m_lpd3dTexture->UnlockRect(level);
 }
 
@@ -39,14 +41,14 @@ void CGraphicImageTexture::Destroy()
 
 bool CGraphicImageTexture::CreateDeviceObjects()
 {
-    assert(ms_lpd3dDevice != NULL);
-    assert(m_lpd3dTexture == NULL);
+    assert(ms_lpd3dDevice != nullptr);
+    assert(m_lpd3dTexture == nullptr);
 
     if (m_stFileName.empty())
     {
         // 폰트 텍스쳐
         if (FAILED(ms_lpd3dDevice->CreateTexture(m_width, m_height, 1, 0, m_d3dFmt, D3DPOOL_MANAGED, &m_lpd3dTexture,
-                                                 NULL)))
+                                                 nullptr)))
             return false;
     }
     else
@@ -64,7 +66,7 @@ bool CGraphicImageTexture::CreateDeviceObjects()
 
 bool CGraphicImageTexture::Create(UINT width, UINT height, D3DFORMAT d3dFmt, DWORD dwFilter)
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
     Destroy();
 
     m_width = width;
@@ -95,16 +97,22 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage &image, const BYTE * /*c_
     int mipmapCount = image.m_dwMipMapCount == 0 ? 1 : image.m_dwMipMapCount;
 
     D3DFORMAT format;
-    LPDIRECT3DTEXTURE9 lpd3dTexture;
-    D3DPOOL pool = ms_bSupportDXT ? D3DPOOL_MANAGED : D3DPOOL_SCRATCH;
+    LPDIRECT3DTEXTURE9 lpd3dTexture = nullptr;
+    D3DPOOL const pool = ms_bSupportDXT ? D3DPOOL_MANAGED : D3DPOOL_SCRATCH;
     ;
 
     if (image.m_CompFormat == PF_DXT5)
+    {
         format = D3DFMT_DXT5;
+    }
     else if (image.m_CompFormat == PF_DXT3)
+    {
         format = D3DFMT_DXT3;
+    }
     else
+    {
         format = D3DFMT_DXT1;
+    }
 
     UINT uTexBias = 0;
     if (IsLowTextureMemory())
@@ -134,13 +142,13 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage &image, const BYTE * /*c_
     {
         D3DLOCKED_RECT lockedRect;
 
-        if (FAILED(lpd3dTexture->LockRect(i, &lockedRect, NULL, 0)))
+        if (FAILED(lpd3dTexture->LockRect(i, &lockedRect, nullptr, 0)))
         {
             TraceError("CreateDDSTexture: Cannot lock texture");
         }
         else
         {
-            image.Copy(i + uMinMipMapIndex, (BYTE *)lockedRect.pBits, lockedRect.Pitch);
+            image.Copy(i + uMinMipMapIndex, static_cast<BYTE *>(lockedRect.pBits), lockedRect.Pitch);
             lpd3dTexture->UnlockRect(i);
         }
     }
@@ -152,9 +160,13 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage &image, const BYTE * /*c_
     else
     {
         if (image.m_CompFormat == PF_DXT3 || image.m_CompFormat == PF_DXT5)
+        {
             format = D3DFMT_A4R4G4B4;
+        }
         else
+        {
             format = D3DFMT_A1R5G5B5;
+        }
 
         UINT imgWidth = image.m_nWidth;
         UINT imgHeight = image.m_nHeight;
@@ -179,14 +191,14 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage &image, const BYTE * /*c_
 
         for (int i = 0; i < mipmapCount; ++i)
         {
-            IDirect3DSurface9 *ppsSrc = NULL;
-            IDirect3DSurface9 *ppsDst = NULL;
+            IDirect3DSurface9 *ppsSrc = nullptr;
+            IDirect3DSurface9 *ppsDst = nullptr;
 
             if (SUCCEEDED(pkTexSrc->GetSurfaceLevel(i, &ppsSrc)))
             {
                 if (SUCCEEDED(pkTexDst->GetSurfaceLevel(i, &ppsDst)))
                 {
-                    D3DXLoadSurfaceFromSurface(ppsDst, NULL, NULL, ppsSrc, NULL, NULL, D3DX_FILTER_NONE, 0);
+                    D3DXLoadSurfaceFromSurface(ppsDst, nullptr, nullptr, ppsSrc, nullptr, nullptr, D3DX_FILTER_NONE, 0);
                     ppsDst->Release();
                 }
                 ppsSrc->Release();
@@ -205,15 +217,15 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage &image, const BYTE * /*c_
 
 bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void *c_pvBuf, D3DFORMAT d3dFmt, DWORD dwFilter)
 {
-    assert(ms_lpd3dDevice != NULL);
-    assert(m_lpd3dTexture == NULL);
+    assert(ms_lpd3dDevice != nullptr);
+    assert(m_lpd3dTexture == nullptr);
 
     static CDXTCImage image;
 
     // Check whether the file is a DDS
-    if (image.LoadHeaderFromMemory((const BYTE *)c_pvBuf, bufSize))
+    if (image.LoadHeaderFromMemory(static_cast<const BYTE *>(c_pvBuf), bufSize))
     {
-        return (CreateDDSTexture(image, (const BYTE *)c_pvBuf));
+        return (CreateDDSTexture(image, static_cast<const BYTE *>(c_pvBuf)));
     }
     else
     {
@@ -225,9 +237,9 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void *c_pvBu
                        m_stFileName.c_str(), bufSize);
             return false;
         }
-        if (FAILED(D3DXCreateTextureFromFileInMemoryEx(ms_lpd3dDevice, c_pvBuf, bufSize, imageInfo.Width,
-                                                       imageInfo.Height, D3DX_DEFAULT, 0, d3dFmt, D3DPOOL_MANAGED,
-                                                       dwFilter, dwFilter, 0xffff00ff, NULL, NULL, &m_lpd3dTexture)))
+        if (FAILED(D3DXCreateTextureFromFileInMemoryEx(
+                ms_lpd3dDevice, c_pvBuf, bufSize, imageInfo.Width, imageInfo.Height, D3DX_DEFAULT, 0, d3dFmt,
+                D3DPOOL_MANAGED, dwFilter, dwFilter, 0xffff00ff, nullptr, nullptr, &m_lpd3dTexture)))
         {
             TraceError("CreateFromMemoryFile: Cannot create texture '%s' (%ux%u)", m_stFileName.c_str(),
                        imageInfo.Width, imageInfo.Height);
@@ -257,10 +269,11 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void *c_pvBu
             uTexBias = 1;
 
         if (IsLowTextureMemory())
+        {
             if (uTexBias || format != imageInfo.Format)
             {
                 IDirect3DTexture9 *pkTexSrc = m_lpd3dTexture;
-                IDirect3DTexture9 *pkTexDst;
+                IDirect3DTexture9 *pkTexDst = nullptr;
 
                 if (SUCCEEDED(D3DXCreateTexture(ms_lpd3dDevice, imageInfo.Width >> uTexBias,
                                                 imageInfo.Height >> uTexBias, imageInfo.MipLevels, 0, format,
@@ -270,15 +283,15 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void *c_pvBu
 
                     for (int i = 0; i < imageInfo.MipLevels; ++i)
                     {
-                        IDirect3DSurface9 *ppsSrc = NULL;
-                        IDirect3DSurface9 *ppsDst = NULL;
+                        IDirect3DSurface9 *ppsSrc = nullptr;
+                        IDirect3DSurface9 *ppsDst = nullptr;
 
                         if (SUCCEEDED(pkTexSrc->GetSurfaceLevel(i, &ppsSrc)))
                         {
                             if (SUCCEEDED(pkTexDst->GetSurfaceLevel(i, &ppsDst)))
                             {
-                                D3DXLoadSurfaceFromSurface(ppsDst, NULL, NULL, ppsSrc, NULL, NULL, D3DX_FILTER_LINEAR,
-                                                           0);
+                                D3DXLoadSurfaceFromSurface(ppsDst, nullptr, nullptr, ppsSrc, nullptr, nullptr,
+                                                           D3DX_FILTER_LINEAR, 0);
                                 ppsDst->Release();
                             }
                             ppsSrc->Release();
@@ -288,6 +301,7 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void *c_pvBu
                     pkTexSrc->Release();
                 }
             }
+        }
     }
 
     m_bEmpty = false;

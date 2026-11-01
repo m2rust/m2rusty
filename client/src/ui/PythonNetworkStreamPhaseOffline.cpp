@@ -5,7 +5,7 @@
 
 void CPythonNetworkStream::OffLinePhase()
 {
-    TPacketHeader header;
+    TPacketHeader header = 0;
 
     if (!CheckPacket(&header))
         return;

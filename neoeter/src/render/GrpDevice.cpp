@@ -13,7 +13,7 @@ D3DPRESENT_PARAMETERS g_kD3DPP;
 bool g_isBrowserMode = false;
 RECT g_rcBrowser;
 
-CGraphicDevice::CGraphicDevice() : m_uBackBufferCount(0)
+CGraphicDevice::CGraphicDevice()
 {
     __Initialize();
 }
@@ -29,14 +29,14 @@ void CGraphicDevice::__Initialize()
     ms_iD3DDevInfo = D3DADAPTER_DEFAULT;
     ms_iD3DModeInfo = D3DADAPTER_DEFAULT;
 
-    ms_lpd3d = NULL;
-    ms_lpd3dDevice = NULL;
-    ms_lpd3dMatStack = NULL;
+    ms_lpd3d = nullptr;
+    ms_lpd3dDevice = nullptr;
+    ms_lpd3dMatStack = nullptr;
 
     ms_dwWavingEndTime = 0;
     ms_dwFlashingEndTime = 0;
 
-    m_pStateManager = NULL;
+    m_pStateManager = nullptr;
 
     __InitializeDefaultIndexBufferList();
     __InitializePDTVertexBufferList();
@@ -49,7 +49,7 @@ void CGraphicDevice::RegisterWarningString(UINT uiMsg, const char *c_szString)
 
 void CGraphicDevice::__WarningMessage(HWND hWnd, UINT uiMsg)
 {
-    if (m_kMap_strWarningMessage.end() == m_kMap_strWarningMessage.find(uiMsg))
+    if (!m_kMap_strWarningMessage.contains(uiMsg))
         return;
     MessageBox(hWnd, m_kMap_strWarningMessage[uiMsg].c_str(), "Warning", MB_OK | MB_TOPMOST);
 }
@@ -80,7 +80,7 @@ void CGraphicDevice::EnableWebBrowserMode(const RECT &c_rcWebPage)
     rkD3DPP.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 
     IDirect3DDevice9 &rkD3DDev = *ms_lpd3dDevice;
-    HRESULT hr = rkD3DDev.Reset(&rkD3DPP);
+    HRESULT const hr = rkD3DDev.Reset(&rkD3DPP);
     if (FAILED(hr))
         return;
 
@@ -99,7 +99,7 @@ void CGraphicDevice::DisableWebBrowserMode()
     rkD3DPP = g_kD3DPP;
 
     IDirect3DDevice9 &rkD3DDev = *ms_lpd3dDevice;
-    HRESULT hr = rkD3DDev.Reset(&rkD3DPP);
+    HRESULT const hr = rkD3DDev.Reset(&rkD3DPP);
     if (FAILED(hr))
         return;
 
@@ -121,7 +121,7 @@ bool CGraphicDevice::ResizeBackBuffer(UINT uWidth, UINT uHeight)
 
             IDirect3DDevice9 &rkD3DDev = *ms_lpd3dDevice;
 
-            HRESULT hr = rkD3DDev.Reset(&rkD3DPP);
+            HRESULT const hr = rkD3DDev.Reset(&rkD3DPP);
             if (FAILED(hr))
             {
                 return false;
@@ -136,13 +136,13 @@ bool CGraphicDevice::ResizeBackBuffer(UINT uWidth, UINT uHeight)
 
 DWORD CGraphicDevice::CreatePNTStreamVertexShader()
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
     return D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 }
 
 DWORD CGraphicDevice::CreatePNT2StreamVertexShader()
 {
-    assert(ms_lpd3dDevice != NULL);
+    assert(ms_lpd3dDevice != nullptr);
     return D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEX2;
 }
 
@@ -151,7 +151,7 @@ CGraphicDevice::EDeviceState CGraphicDevice::GetDeviceState()
     if (!ms_lpd3dDevice)
         return DEVICESTATE_NULL;
 
-    HRESULT hr;
+    HRESULT hr = 0;
 
     if (FAILED(hr = ms_lpd3dDevice->TestCooperativeLevel()))
     {
@@ -169,7 +169,7 @@ CGraphicDevice::EDeviceState CGraphicDevice::GetDeviceState()
 
 bool CGraphicDevice::Reset()
 {
-    HRESULT hr;
+    HRESULT hr = 0;
 
     if (FAILED(hr = ms_lpd3dDevice->Reset(&ms_d3dPresentParameter)))
         return false;
@@ -233,16 +233,16 @@ bool CGraphicDevice::__IsInDriverBlackList(D3D_CAdapterInfo &rkD3DAdapterInfo)
 
     char szSrcDriver[256];
     strncpy(szSrcDriver, rkD3DAdapterIdentifier.Driver, sizeof(szSrcDriver) - 1);
-    DWORD dwSrcHighVersion = rkD3DAdapterIdentifier.DriverVersion.QuadPart >> 32;
-    DWORD dwSrcLowVersion = rkD3DAdapterIdentifier.DriverVersion.QuadPart & 0xffffffff;
+    DWORD const dwSrcHighVersion = rkD3DAdapterIdentifier.DriverVersion.QuadPart >> 32;
+    DWORD const dwSrcLowVersion = rkD3DAdapterIdentifier.DriverVersion.QuadPart & 0xffffffff;
 
     bool ret = false;
 
     FILE *fp = fopen("grpblk.txt", "r");
     if (fp)
     {
-        DWORD dwChkHighVersion;
-        DWORD dwChkLowVersion;
+        DWORD dwChkHighVersion = 0;
+        DWORD dwChkLowVersion = 0;
 
         char szChkDriver[256];
 
@@ -252,12 +252,16 @@ bool CGraphicDevice::__IsInDriverBlackList(D3D_CAdapterInfo &rkD3DAdapterInfo)
             sscanf(szLine, "%s %x %x", szChkDriver, &dwChkHighVersion, &dwChkLowVersion);
 
             if (strcmp(szSrcDriver, szChkDriver) == 0)
+            {
                 if (dwSrcHighVersion == dwChkHighVersion)
+                {
                     if (dwSrcLowVersion == dwChkLowVersion)
                     {
                         ret = true;
                         break;
                     }
+                }
+            }
 
             szLine[0] = '\0';
         }
@@ -459,13 +463,13 @@ RETRY:
     ms_matScreen1._41 = 1;
     ms_matScreen1._42 = 1;
 
-    ms_matScreen2._11 = (float)iHres / 2;
-    ms_matScreen2._22 = (float)iVres / 2;
+    ms_matScreen2._11 = static_cast<float>(iHres) / 2;
+    ms_matScreen2._22 = static_cast<float>(iVres) / 2;
 
-    D3DXCreateSphere(ms_lpd3dDevice, 1.0f, 32, 32, &ms_lpSphereMesh, NULL);
-    D3DXCreateCylinder(ms_lpd3dDevice, 1.0f, 1.0f, 1.0f, 8, 8, &ms_lpCylinderMesh, NULL);
+    D3DXCreateSphere(ms_lpd3dDevice, 1.0f, 32, 32, &ms_lpSphereMesh, nullptr);
+    D3DXCreateCylinder(ms_lpd3dDevice, 1.0f, 1.0f, 1.0f, 8, 8, &ms_lpCylinderMesh, nullptr);
 
-    ms_lpd3dDevice->Clear(0L, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xff000000, 1.0f, 0);
+    ms_lpd3dDevice->Clear(0L, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xff000000, 1.0f, 0);
 
     if (!__CreateDefaultIndexBufferList())
         return false;
@@ -473,22 +477,13 @@ RETRY:
     if (!__CreatePDTVertexBufferList())
         return false;
 
-    DWORD dwTexMemSize = GetAvailableTextureMemory();
+    DWORD const dwTexMemSize = GetAvailableTextureMemory();
 
-    if (dwTexMemSize < 64 * 1024 * 1024)
-        ms_isLowTextureMemory = true;
-    else
-        ms_isLowTextureMemory = false;
+    ms_isLowTextureMemory = dwTexMemSize < 64 * 1024 * 1024;
 
-    if (dwTexMemSize > 100 * 1024 * 1024)
-        ms_isHighTextureMemory = true;
-    else
-        ms_isHighTextureMemory = false;
+    ms_isHighTextureMemory = dwTexMemSize > 100 * 1024 * 1024;
 
-    if (ms_d3dCaps.TextureAddressCaps & D3DPTADDRESSCAPS_BORDER)
-        GRAPHICS_CAPS_CAN_NOT_TEXTURE_ADDRESS_BORDER = false;
-    else
-        GRAPHICS_CAPS_CAN_NOT_TEXTURE_ADDRESS_BORDER = true;
+    GRAPHICS_CAPS_CAN_NOT_TEXTURE_ADDRESS_BORDER = (ms_d3dCaps.TextureAddressCaps & D3DPTADDRESSCAPS_BORDER) == 0;
 
     // D3DADAPTER_IDENTIFIER9& rkD3DAdapterId=pkD3DAdapterInfo->GetIdentifier();
     if (strnicmp(rkD3DAdapterId.Driver, "SIS", 3) == 0)
@@ -510,29 +505,29 @@ RETRY:
 
 void CGraphicDevice::__InitializePDTVertexBufferList()
 {
-    for (UINT i = 0; i < PDT_VERTEXBUFFER_NUM; ++i)
-        ms_alpd3dPDTVB[i] = NULL;
+    for (auto &i : ms_alpd3dPDTVB)
+        i = nullptr;
 }
 
 void CGraphicDevice::__DestroyPDTVertexBufferList()
 {
-    for (UINT i = 0; i < PDT_VERTEXBUFFER_NUM; ++i)
+    for (auto &i : ms_alpd3dPDTVB)
     {
-        if (ms_alpd3dPDTVB[i])
+        if (i)
         {
-            ms_alpd3dPDTVB[i]->Release();
-            ms_alpd3dPDTVB[i] = NULL;
+            i->Release();
+            i = nullptr;
         }
     }
 }
 
 bool CGraphicDevice::__CreatePDTVertexBufferList()
 {
-    for (UINT i = 0; i < PDT_VERTEXBUFFER_NUM; ++i)
+    for (auto &i : ms_alpd3dPDTVB)
     {
         if (FAILED(ms_lpd3dDevice->CreateVertexBuffer(
                 sizeof(TPDTVertex) * PDT_VERTEX_NUM, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY,
-                D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1, D3DPOOL_SYSTEMMEM, &ms_alpd3dPDTVB[i], NULL)))
+                D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1, D3DPOOL_SYSTEMMEM, &i, nullptr)))
             return false;
     }
     return true;
@@ -540,29 +535,31 @@ bool CGraphicDevice::__CreatePDTVertexBufferList()
 
 void CGraphicDevice::__InitializeDefaultIndexBufferList()
 {
-    for (UINT i = 0; i < DEFAULT_IB_NUM; ++i)
-        ms_alpd3dDefIB[i] = NULL;
+    for (auto &i : ms_alpd3dDefIB)
+        i = nullptr;
 }
 
 void CGraphicDevice::__DestroyDefaultIndexBufferList()
 {
-    for (UINT i = 0; i < DEFAULT_IB_NUM; ++i)
-        if (ms_alpd3dDefIB[i])
+    for (auto &i : ms_alpd3dDefIB)
+    {
+        if (i)
         {
-            ms_alpd3dDefIB[i]->Release();
-            ms_alpd3dDefIB[i] = NULL;
+            i->Release();
+            i = nullptr;
         }
+    }
 }
 
 bool CGraphicDevice::__CreateDefaultIndexBuffer(UINT eDefIB, UINT uIdxCount, const WORD *c_awIndices)
 {
-    assert(ms_alpd3dDefIB[eDefIB] == NULL);
+    assert(ms_alpd3dDefIB[eDefIB] == nullptr);
 
     if (FAILED(ms_lpd3dDevice->CreateIndexBuffer(sizeof(WORD) * uIdxCount, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
-                                                 D3DPOOL_MANAGED, &ms_alpd3dDefIB[eDefIB], NULL)))
+                                                 D3DPOOL_MANAGED, &ms_alpd3dDefIB[eDefIB], nullptr)))
         return false;
 
-    WORD *dstIndices;
+    WORD *dstIndices = nullptr;
     if (FAILED(ms_alpd3dDefIB[eDefIB]->Lock(0, 0, (VOID **)&dstIndices, 0)))
         return false;
 
@@ -631,7 +628,7 @@ void CGraphicDevice::Destroy()
     if (ms_hDC)
     {
         ReleaseDC(ms_hWnd, ms_hDC);
-        ms_hDC = NULL;
+        ms_hDC = nullptr;
     }
 
     if (ms_pntVS)
@@ -650,7 +647,7 @@ void CGraphicDevice::Destroy()
     if (m_pStateManager)
     {
         delete m_pStateManager;
-        m_pStateManager = NULL;
+        m_pStateManager = nullptr;
     }
 
     __Initialize();

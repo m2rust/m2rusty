@@ -2,9 +2,10 @@
 #include <Neoeter/Platform/Locale/StringCodec.h>
 #include <Neoeter/Platform/Locale/StringCodec_Vietnamese.h>
 
-#if !defined(_WIN32)
+#ifndef _WIN32
 #include <iconv.h>
 #include <cerrno>
+#include <utility>
 
 static const char *GetIconvEncoding(UINT codePage)
 {
@@ -72,7 +73,7 @@ int MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int
     }
 
     char *inBuf = const_cast<char *>(lpMultiByteStr);
-    size_t inBytesLeft = static_cast<size_t>(cbMultiByte);
+    auto inBytesLeft = static_cast<size_t>(cbMultiByte);
 
     if (cchWideChar == 0)
     {
@@ -84,53 +85,49 @@ int MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int
             char *outBuf = reinterpret_cast<char *>(tmpBuf);
             size_t outBytesLeft = sizeof(tmpBuf);
 
-            size_t res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
+            size_t const res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
             totalWChars += static_cast<int>((sizeof(tmpBuf) - outBytesLeft) / sizeof(wchar_t));
 
-            if (res == (size_t)-1)
+            if (res == static_cast<size_t>(-1))
             {
                 if (errno == E2BIG)
                 {
                     continue;
                 }
-                else
-                {
-                    inBuf++;
-                    inBytesLeft--;
-                }
+
+                inBuf++;
+                inBytesLeft--;
             }
         }
 
         iconv_close(cd);
         return totalWChars;
     }
-    else
-    {
-        char *outBuf = reinterpret_cast<char *>(lpWideCharStr);
-        size_t outBytesLeft = static_cast<size_t>(cchWideChar) * sizeof(wchar_t);
-        size_t initialOutBytes = outBytesLeft;
 
-        while (inBytesLeft > 0 && outBytesLeft >= sizeof(wchar_t))
+    char *outBuf = reinterpret_cast<char *>(lpWideCharStr);
+    size_t outBytesLeft = static_cast<size_t>(cchWideChar) * sizeof(wchar_t);
+    size_t const initialOutBytes = outBytesLeft;
+
+    while (inBytesLeft > 0 && outBytesLeft >= sizeof(wchar_t))
+    {
+        size_t const res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
+        if (res == static_cast<size_t>(-1))
         {
-            size_t res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
-            if (res == (size_t)-1)
+            if (errno == E2BIG)
             {
-                if (errno == E2BIG)
-                {
-                    break;
-                }
-                else
-                {
-                    inBuf++;
-                    inBytesLeft--;
-                }
+                break;
+            }
+            else
+            {
+                inBuf++;
+                inBytesLeft--;
             }
         }
-
-        int written = static_cast<int>((initialOutBytes - outBytesLeft) / sizeof(wchar_t));
-        iconv_close(cd);
-        return written;
     }
+
+    int const written = static_cast<int>((initialOutBytes - outBytesLeft) / sizeof(wchar_t));
+    iconv_close(cd);
+    return written;
 }
 
 int WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr,
@@ -175,53 +172,49 @@ int WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int
             char *outBuf = tmpBuf;
             size_t outBytesLeft = sizeof(tmpBuf);
 
-            size_t res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
+            size_t const res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
             totalBytes += static_cast<int>(sizeof(tmpBuf) - outBytesLeft);
 
-            if (res == (size_t)-1)
+            if (res == static_cast<size_t>(-1))
             {
                 if (errno == E2BIG)
                 {
                     continue;
                 }
-                else
-                {
-                    inBuf += sizeof(wchar_t);
-                    inBytesLeft -= sizeof(wchar_t);
-                }
+
+                inBuf += sizeof(wchar_t);
+                inBytesLeft -= sizeof(wchar_t);
             }
         }
 
         iconv_close(cd);
         return totalBytes;
     }
-    else
-    {
-        char *outBuf = lpMultiByteStr;
-        size_t outBytesLeft = static_cast<size_t>(cbMultiByte);
-        size_t initialOutBytes = outBytesLeft;
 
-        while (inBytesLeft >= sizeof(wchar_t) && outBytesLeft > 0)
+    char *outBuf = lpMultiByteStr;
+    auto outBytesLeft = static_cast<size_t>(cbMultiByte);
+    size_t const initialOutBytes = outBytesLeft;
+
+    while (inBytesLeft >= sizeof(wchar_t) && outBytesLeft > 0)
+    {
+        size_t const res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
+        if (res == static_cast<size_t>(-1))
         {
-            size_t res = iconv(cd, &inBuf, &inBytesLeft, &outBuf, &outBytesLeft);
-            if (res == (size_t)-1)
+            if (errno == E2BIG)
             {
-                if (errno == E2BIG)
-                {
-                    break;
-                }
-                else
-                {
-                    inBuf += sizeof(wchar_t);
-                    inBytesLeft -= sizeof(wchar_t);
-                }
+                break;
+            }
+            else
+            {
+                inBuf += sizeof(wchar_t);
+                inBytesLeft -= sizeof(wchar_t);
             }
         }
-
-        int written = static_cast<int>(initialOutBytes - outBytesLeft);
-        iconv_close(cd);
-        return written;
     }
+
+    int const written = static_cast<int>(initialOutBytes - outBytesLeft);
+    iconv_close(cd);
+    return written;
 }
 #endif
 
@@ -232,11 +225,9 @@ int Ymir_WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr
     {
         return EL_String_Encode_Vietnamese(lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte);
     }
-    else
-    {
-        return WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte,
-                                   lpDefaultChar, lpUsedDefaultChar);
-    }
+
+    return WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte,
+                               lpDefaultChar, lpUsedDefaultChar);
 }
 
 int Ymir_MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr,
@@ -246,8 +237,6 @@ int Ymir_MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr
     {
         return EL_String_Decode_Vietnamese(lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
     }
-    else
-    {
-        return MultiByteToWideChar(CodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
-    }
+
+    return MultiByteToWideChar(CodePage, dwFlags, lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar);
 }

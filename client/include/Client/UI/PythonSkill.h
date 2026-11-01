@@ -52,35 +52,35 @@ class CPythonSkill : public CSingleton<CPythonSkill>
 
     enum ESkillDescTokenType
     {
-        DESC_TOKEN_TYPE_VNUM,
-        DESC_TOKEN_TYPE_JOB,
-        DESC_TOKEN_TYPE_NAME1,
-        DESC_TOKEN_TYPE_NAME2,
-        DESC_TOKEN_TYPE_NAME3,
-        DESC_TOKEN_TYPE_DESCRIPTION,
-        DESC_TOKEN_TYPE_CONDITION1,
-        DESC_TOKEN_TYPE_CONDITION2,
-        DESC_TOKEN_TYPE_CONDITION3,
-        DESC_TOKEN_TYPE_CONDITION4,
-        DESC_TOKEN_TYPE_ATTRIBUTE,
-        DESC_TOKEN_TYPE_WEAPON,
-        DESC_TOKEN_TYPE_ICON_NAME,
-        DESC_TOKEN_TYPE_MOTION_INDEX,
-        DESC_TOKEN_TYPE_MOTION_INDEX_GRADE_NUM,
-        DESC_TOKEN_TYPE_TARGET_COUNT_FORMULA,
-        DESC_TOKEN_TYPE_MOTION_LOOP_COUNT_FORMULA,
-        DESC_TOKEN_TYPE_AFFECT_DESCRIPTION_1,
-        DESC_TOKEN_TYPE_AFFECT_MIN_1,
-        DESC_TOKEN_TYPE_AFFECT_MAX_1,
-        DESC_TOKEN_TYPE_AFFECT_DESCRIPTION_2,
-        DESC_TOKEN_TYPE_AFFECT_MIN_2,
-        DESC_TOKEN_TYPE_AFFECT_MAX_2,
-        DESC_TOKEN_TYPE_AFFECT_DESCRIPTION_3,
-        DESC_TOKEN_TYPE_AFFECT_MIN_3,
-        DESC_TOKEN_TYPE_AFFECT_MAX_3,
-        DESC_TOKEN_TYPE_LEVEL_LIMIT,
-        DESC_TOKEN_TYPE_MAX_LEVEL,
-        DESC_TOKEN_TYPE_MAX_NUM,
+        DESC_TOKEN_TYPE_VNUM = 0,
+        DESC_TOKEN_TYPE_JOB = 1,
+        DESC_TOKEN_TYPE_NAME1 = 2,
+        DESC_TOKEN_TYPE_NAME2 = 3,
+        DESC_TOKEN_TYPE_NAME3 = 4,
+        DESC_TOKEN_TYPE_DESCRIPTION = 5,
+        DESC_TOKEN_TYPE_CONDITION1 = 6,
+        DESC_TOKEN_TYPE_CONDITION2 = 7,
+        DESC_TOKEN_TYPE_CONDITION3 = 8,
+        DESC_TOKEN_TYPE_CONDITION4 = 9,
+        DESC_TOKEN_TYPE_ATTRIBUTE = 10,
+        DESC_TOKEN_TYPE_WEAPON = 11,
+        DESC_TOKEN_TYPE_ICON_NAME = 12,
+        DESC_TOKEN_TYPE_MOTION_INDEX = 13,
+        DESC_TOKEN_TYPE_MOTION_INDEX_GRADE_NUM = 14,
+        DESC_TOKEN_TYPE_TARGET_COUNT_FORMULA = 15,
+        DESC_TOKEN_TYPE_MOTION_LOOP_COUNT_FORMULA = 16,
+        DESC_TOKEN_TYPE_AFFECT_DESCRIPTION_1 = 17,
+        DESC_TOKEN_TYPE_AFFECT_MIN_1 = 18,
+        DESC_TOKEN_TYPE_AFFECT_MAX_1 = 19,
+        DESC_TOKEN_TYPE_AFFECT_DESCRIPTION_2 = 20,
+        DESC_TOKEN_TYPE_AFFECT_MIN_2 = 21,
+        DESC_TOKEN_TYPE_AFFECT_MAX_2 = 22,
+        DESC_TOKEN_TYPE_AFFECT_DESCRIPTION_3 = 23,
+        DESC_TOKEN_TYPE_AFFECT_MIN_3 = 24,
+        DESC_TOKEN_TYPE_AFFECT_MAX_3 = 25,
+        DESC_TOKEN_TYPE_LEVEL_LIMIT = 26,
+        DESC_TOKEN_TYPE_MAX_LEVEL = 27,
+        DESC_TOKEN_TYPE_MAX_NUM = 28,
 
         CONDITION_COLUMN_COUNT = 3,
         AFFECT_COLUMN_COUNT = 3,
@@ -143,57 +143,57 @@ class CPythonSkill : public CSingleton<CPythonSkill>
         SKILL_GRADEGAP = 25,
     };
 
-    typedef struct SAffectData
+    using TAffectData = struct SAffectData
     {
         std::string strAffectDescription;
         std::string strAffectMinFormula;
         std::string strAffectMaxFormula;
-    } TAffectData;
-    typedef struct SAffectDataNew
+    };
+    using TAffectDataNew = struct SAffectDataNew
     {
         std::string strPointType;
         std::string strPointPoly;
-    } TAffectDataNew;
-    typedef struct SRequireStatData
+    };
+    using TRequireStatData = struct SRequireStatData
     {
         BYTE byPoint;
         BYTE byLevel;
-    } TRequireStatData;
-    typedef struct SGradeData
+    };
+    using TGradeData = struct SGradeData
     {
         std::string strName;
-        CGraphicImage *pImage;
-        WORD wMotionIndex;
-    } TGradeData;
-    typedef struct SSkillData
+        CGraphicImage *pImage = nullptr;
+        WORD wMotionIndex = 0U;
+    };
+    using TSkillData = struct SSkillData
     {
         static DWORD MELEE_SKILL_TARGET_RANGE;
         // Functions
         SSkillData();
         DWORD GetTargetRange() const;
-        BOOL CanChangeDirection();
-        BOOL IsFanRange();
-        BOOL IsCircleRange();
-        BOOL IsAutoSearchTarget();
-        BOOL IsNeedTarget();
-        BOOL IsNeedCorpse();
-        BOOL IsToggleSkill();
-        BOOL IsUseHPSkill();
-        BOOL IsStandingSkill();
-        BOOL CanUseWeaponType(DWORD dwWeaponType);
-        BOOL IsOnlyForAlliance();
-        BOOL CanUseForMe();
-        BOOL CanUseIfNotEnough();
-        BOOL IsNeedEmptyBottle();
-        BOOL IsNeedPoisonBottle();
-        BOOL IsNeedBow();
-        BOOL IsAttackSkill();
-        BOOL IsHorseSkill();
-        BOOL IsMovingSkill();
-        BOOL IsTimeIncreaseSkill();
-        BOOL IsMeleeSkill();
-        BOOL IsChargeSkill();
-        BOOL IsOnlyForGuildWar();
+        BOOL CanChangeDirection() const;
+        BOOL IsFanRange() const;
+        BOOL IsCircleRange() const;
+        BOOL IsAutoSearchTarget() const;
+        BOOL IsNeedTarget() const;
+        BOOL IsNeedCorpse() const;
+        BOOL IsToggleSkill() const;
+        BOOL IsUseHPSkill() const;
+        BOOL IsStandingSkill() const;
+        BOOL CanUseWeaponType(DWORD dwWeaponType) const;
+        BOOL IsOnlyForAlliance() const;
+        BOOL CanUseForMe() const;
+        BOOL CanUseIfNotEnough() const;
+        BOOL IsNeedEmptyBottle() const;
+        BOOL IsNeedPoisonBottle() const;
+        BOOL IsNeedBow() const;
+        BOOL IsAttackSkill() const;
+        BOOL IsHorseSkill() const;
+        BOOL IsMovingSkill() const;
+        BOOL IsTimeIncreaseSkill() const;
+        BOOL IsMeleeSkill() const;
+        BOOL IsChargeSkill() const;
+        BOOL IsOnlyForGuildWar() const;
 
         bool GetState(const char *c_szStateName, int *piState, int iMinMaxType = VALUE_TYPE_FREE);
         float ProcessFormula(CPoly *pPoly, float fSkillLevel = 0.0f, int iMinMaxType = VALUE_TYPE_FREE);
@@ -205,12 +205,12 @@ class CPythonSkill : public CSingleton<CPythonSkill>
         DWORD GetTargetCount(float fSkillPoint);
         DWORD GetDuration(float fSkillPoint);
         DWORD GetSkillMotionIndex(int iGrade = -1);
-        BYTE GetMaxLevel();
-        BYTE GetLevelUpPoint();
-        bool IsCanUseSkill();
-        BOOL IsNoMotion();
+        BYTE GetMaxLevel() const;
+        BYTE GetLevelUpPoint() const;
+        bool IsCanUseSkill() const;
+        BOOL IsNoMotion() const;
 
-        const std::string GetName() const;
+        std::string GetName() const;
         BYTE GetType() const;
 
         ///////////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +218,7 @@ class CPythonSkill : public CSingleton<CPythonSkill>
 
         // Variable
         BYTE byType;
-        DWORD dwSkillIndex;
+        DWORD dwSkillIndex = 0U;
         BYTE byMaxLevel;
         BYTE byLevelUpPoint;
         BYTE byLevelLimit;
@@ -243,8 +243,8 @@ class CPythonSkill : public CSingleton<CPythonSkill>
         DWORD dwSkillAttribute;
         DWORD dwNeedWeapon;
         DWORD dwTargetRange;
-        WORD wMotionIndex;      // 없어질 변수
-        WORD wMotionIndexForMe; // 없어질 변수
+        WORD wMotionIndex = 0U;      // 없어질 변수
+        WORD wMotionIndexForMe = 0U; // 없어질 변수
 
         BOOL isRequirement;
         std::string strRequireSkillName;
@@ -260,15 +260,14 @@ class CPythonSkill : public CSingleton<CPythonSkill>
         static std::map<std::string, DWORD> ms_NewMinStatusNameMap;
         static std::map<std::string, DWORD> ms_NewMaxStatusNameMap;
         static DWORD ms_dwTimeIncreaseSkillNumber;
-    } TSkillData;
+    };
 
-    typedef std::map<DWORD, TSkillData> TSkillDataMap;
-    typedef std::map<DWORD, DWORD> TSkillMotionIndexMap;
-    typedef std::map<std::string, std::string> TPathNameMap;
+    using TSkillDataMap = std::map<DWORD, TSkillData>;
+    using TSkillMotionIndexMap = std::map<DWORD, DWORD>;
+    using TPathNameMap = std::map<std::string, std::string>;
 
-  public:
     CPythonSkill();
-    virtual ~CPythonSkill();
+    ~CPythonSkill() override;
 
     void Destroy();
     bool RegisterSkill(DWORD dwSkillIndex, const char *c_szFileName);
@@ -286,7 +285,6 @@ class CPythonSkill : public CSingleton<CPythonSkill>
     void __RegisterGradeIconImage(TSkillData &rData, const char *c_szHeader, const char *c_szImageName);
     void __RegisterNormalIconImage(TSkillData &rData, const char *c_szHeader, const char *c_szImageName);
 
-  protected:
     TSkillDataMap m_SkillDataMap;
 
     std::string m_strPathName;

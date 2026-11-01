@@ -6,6 +6,7 @@
 #else
 #include <Platform/Platform.h>
 #endif
+#include <numbers>
 #include <vector>
 #include <string>
 #include <cmath>
@@ -67,7 +68,7 @@
 
 #define AssertLog(str)                                                                                                 \
     TraceError(str);                                                                                                   \
-    assert(!str)
+    assert(!(str))
 
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                                                                                 \
@@ -90,7 +91,7 @@
 #define TOGGLE_BIT(var, bit) ((var) = (var) ^ (bit))
 #endif
 
-extern const char *CreateTempFileName(const char *c_pszPrefix = NULL);
+extern const char *CreateTempFileName(const char *c_pszPrefix = nullptr);
 extern void GetFilePathNameExtension(const char *c_szFile, int len, std::string *pstPath, std::string *pstName,
                                      std::string *pstExt);
 extern void GetFileExtension(const char *c_szFile, int len, std::string *pstExt);
@@ -128,7 +129,7 @@ PCHAR *CommandLineToArgv(PCHAR CmdLine, int *_argc);
 
 template <typename T> T EL_DegreeToRadian(T degree)
 {
-    const T PI = T(3.141592);
+    const T PI = T(std::numbers::pi);
     return T(PI * degree / 180.0f);
 }
 
@@ -136,8 +137,8 @@ template <typename T>
 void ELPlainCoord_GetRotatedPixelPosition(T centerX, T centerY, T distance, T rotDegree, T *pdstX, T *pdstY)
 {
     T rotRadian = EL_DegreeToRadian(rotDegree);
-    *pdstX = centerX + distance * T(std::sin((double)rotRadian));
-    *pdstY = centerY + distance * T(std::cos((double)rotRadian));
+    *pdstX = centerX + (distance * T(std::sin((double)rotRadian)));
+    *pdstY = centerY + (distance * T(std::cos((double)rotRadian)));
 }
 
 template <typename T> T EL_SignedDegreeToUnsignedDegree(T fSrc)
@@ -155,11 +156,11 @@ template <typename T> T ELRightCoord_ConvertToPlainCoordDegree(T srcDegree)
 
 template <typename C> void string_join(const std::string &sep, const C &container, std::string *ret)
 {
-    unsigned int capacity = sep.length() * container.size() - 1;
+    unsigned int capacity = (sep.length() * container.size()) - 1;
 
     // calculate string sequence
     {
-        for (typename C::const_iterator i = container.begin(); i != container.end(); ++i)
+        for (auto i = container.begin(); i != container.end(); ++i)
             capacity += (*i).length();
     }
 
@@ -168,8 +169,8 @@ template <typename C> void string_join(const std::string &sep, const C &containe
 
     // join strings
     {
-        typename C::const_iterator cur = container.begin();
-        typename C::const_iterator end = container.end();
+        auto cur = container.begin();
+        auto end = container.end();
         --end;
 
         while (cur != end)
@@ -186,19 +187,28 @@ template <typename C> void string_join(const std::string &sep, const C &containe
 __forceinline int htoi(const wchar_t *s, int size)
 {
     const wchar_t *t = s;
-    int x = 0, y = 1;
+    int x = 0;
+    int y = 1;
     s += size;
 
     while (t <= --s)
     {
         if (L'0' <= *s && *s <= L'9')
+        {
             x += y * (*s - L'0');
+        }
         else if (L'a' <= *s && *s <= L'f')
+        {
             x += y * (*s - L'a' + 10);
+        }
         else if (L'A' <= *s && *s <= L'F')
+        {
             x += y * (10 + *s - L'A');
+        }
         else
+        {
             return -1; /* invalid input! */
+        }
         y <<= 4;
     }
 
@@ -208,19 +218,28 @@ __forceinline int htoi(const wchar_t *s, int size)
 __forceinline int htoi(const char *s, int size)
 {
     const char *t = s;
-    int x = 0, y = 1;
+    int x = 0;
+    int y = 1;
     s += size;
 
     while (t <= --s)
     {
         if ('0' <= *s && *s <= '9')
+        {
             x += y * (*s - '0');
+        }
         else if ('a' <= *s && *s <= 'f')
+        {
             x += y * (*s - 'a' + 10);
+        }
         else if ('A' <= *s && *s <= 'F')
+        {
             x += y * (10 + *s - 'A');
+        }
         else
+        {
             return -1; /* invalid input! */
+        }
         y <<= 4;
     }
 
@@ -230,26 +249,35 @@ __forceinline int htoi(const char *s, int size)
 __forceinline int htoi(const char *s)
 {
     const char *t = s;
-    int x = 0, y = 1;
+    int x = 0;
+    int y = 1;
     s += strlen(s);
 
     while (t <= --s)
     {
         if ('0' <= *s && *s <= '9')
+        {
             x += y * (*s - '0');
+        }
         else if ('a' <= *s && *s <= 'f')
+        {
             x += y * (*s - 'a' + 10);
+        }
         else if ('A' <= *s && *s <= 'F')
+        {
             x += y * (10 + *s - 'A');
+        }
         else
+        {
             return -1; /* invalid input! */
+        }
         y <<= 4;
     }
 
     return x;
 }
 
-typedef std::vector<std::string> TTokenVector;
+using TTokenVector = std::vector<std::string>;
 
 void StringExceptCharacter(std::string *pstrString, const char *c_szCharacter);
 

@@ -23,7 +23,7 @@ class CFileBase
     void Close();
 
     BOOL Create(const char *filename, EFileMode mode);
-    DWORD Size();
+    DWORD Size() const;
     void SeekCur(DWORD size);
     void Seek(DWORD offset);
     DWORD GetPosition();
@@ -35,10 +35,10 @@ class CFileBase
     BOOL IsNull();
 
   protected:
-    int m_mode;
-    char m_filename[MAX_PATH + 1];
+    int m_mode = 0;
+    char m_filename[MAX_PATH + 1]{};
     HANDLE m_hFile;
-    DWORD m_dwSize;
+    DWORD m_dwSize = 0;
 };
 
 #endif

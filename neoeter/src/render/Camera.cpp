@@ -19,7 +19,7 @@ void CCamera::SetCameraMaxDistance(float fMax)
     CAMERA_MAX_DISTANCE = fMax;
 }
 
-float CCamera::GetTargetHeight()
+float CCamera::GetTargetHeight() const
 {
     return m_fTarget_;
 }
@@ -34,38 +34,20 @@ void CCamera::SetTargetHeight(float fTarget)
 //////////////////////////////////////////////////////////////////////////
 
 CCamera::CCamera()
-    : m_fEyeGroundHeightRatio(0.3f), m_fTargetHeightLimitRatio(2.0f), m_fResistance(c_fDefaultResistance),
-      m_isLock(false)
+    : m_bDrag(false), m_eCameraState(CAMERA_STATE_NORMAL), m_eCameraStatePrev(CAMERA_STATE_NORMAL), m_fDistance(1.0f),
+      m_fObjectCollisionRadius(50.0f), m_fPitchSum(0.0f), m_fRollSum(0.0f), m_fTarget_(CAMERA_TARGET_STANDARD),
+      m_fTerrainCollisionRadius(50.0f), m_lMousePosX(-1), m_lMousePosY(-1), m_ulNumScreenBuilding(0),
+      m_fResistance(c_fDefaultResistance), m_bProcessTerrainCollision(true)
+
 {
-    m_fDistance = 1.0f;
-    m_eCameraState = CAMERA_STATE_NORMAL;
-    m_eCameraStatePrev = CAMERA_STATE_NORMAL;
-    m_ulNumScreenBuilding = 0;
-
-    m_fPitchSum = 0.0f;
-    m_fRollSum = 0.0f;
-
-    m_fTerrainCollisionRadius = 50.0f;
-    m_fObjectCollisionRadius = 50.0f;
-
-    m_bDrag = false;
-
-    m_lMousePosX = -1;
-    m_lMousePosY = -1;
-
-    m_fTarget_ = CAMERA_TARGET_STANDARD;
 
     m_v3AngularAcceleration = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
     m_v3AngularVelocity = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
 
-    m_bProcessTerrainCollision = true;
-
     SetViewParams(D3DXVECTOR3(0.0f, 0.0f, 1.0f), D3DXVECTOR3(0.0f, 0.0f, 0.0f), D3DXVECTOR3(0.0f, 1.0f, 0.0f));
 }
 
-CCamera::~CCamera()
-{
-}
+CCamera::~CCamera() = default;
 
 void CCamera::Lock()
 {
@@ -77,7 +59,7 @@ void CCamera::Unlock()
     m_isLock = false;
 }
 
-bool CCamera::IsLock()
+bool CCamera::IsLock() const
 {
     return m_isLock;
 }
@@ -92,7 +74,7 @@ void CCamera::Wheel(int nLen)
     if (IsLock())
         return;
 
-    m_v3AngularVelocity.y = (float)(nLen)*m_fResistance;
+    m_v3AngularVelocity.y = static_cast<float>(nLen) * m_fResistance;
 }
 
 void CCamera::BeginDrag(int nMouseX, int nMouseY)
@@ -122,15 +104,12 @@ bool CCamera::EndDrag()
 
     m_bDrag = false;
 
-    float fSum = sqrt(m_fPitchSum * m_fPitchSum + m_fRollSum * m_fRollSum);
+    float const fSum = sqrt((m_fPitchSum * m_fPitchSum) + (m_fRollSum * m_fRollSum));
 
     m_fPitchSum = 0.0f;
     m_fRollSum = 0.0f;
 
-    if (fSum < 1.0f)
-        return false;
-
-    return true;
+    return fSum >= 1.0f;
 }
 
 bool CCamera::Drag(int nMouseX, int nMouseY, LPPOINT lpReturnPoint)
@@ -147,11 +126,11 @@ bool CCamera::Drag(int nMouseX, int nMouseY, LPPOINT lpReturnPoint)
         return false;
     }
 
-    long lMouseX = nMouseX;
-    long lMouseY = nMouseY;
+    long const lMouseX = nMouseX;
+    long const lMouseY = nMouseY;
 
-    float fNewPitchVelocity = (float)(lMouseY - m_lMousePosY) * m_fResistance;
-    float fNewRotationVelocity = (float)(lMouseX - m_lMousePosX) * m_fResistance;
+    float fNewPitchVelocity = static_cast<float>(lMouseY - m_lMousePosY) * m_fResistance;
+    float fNewRotationVelocity = static_cast<float>(lMouseX - m_lMousePosX) * m_fResistance;
 
     m_fPitchSum += fNewPitchVelocity;
     m_fRollSum += fNewRotationVelocity;
@@ -255,7 +234,7 @@ void CCamera::SetUp(const D3DXVECTOR3 &v3Up)
 void CCamera::SetViewMatrix()
 {
     m_v3View = m_v3Target - m_v3Eye;
-    D3DXVECTOR3 v3CenterRay = -m_v3View;
+    D3DXVECTOR3 const v3CenterRay = -m_v3View;
     CalculateRoll();
     m_fDistance = D3DXVec3Length(&m_v3View);
     assert(m_fDistance >= 0);
@@ -269,11 +248,15 @@ void CCamera::SetViewMatrix()
 
     m_fPitch = D3DXVec3Dot(&m_v3Up, &D3DXVECTOR3(0.0f, 0.0f, 1.0f)); // / D3DXVec2Length(&v2ViewYZ);
     if (m_fPitch >= 1)
+    {
         m_fPitch = 1;
+    }
     else if (m_fPitch <= -1)
+    {
         m_fPitch = -1;
+    }
     m_fPitch = acosf(m_fPitch);
-    m_fPitch *= (180.0f / D3DX_PI);
+    m_fPitch *= (180.0f / std::numbers::pi_v<float>);
     if (0 < m_v3View.z)
         m_fPitch = -m_fPitch;
 
@@ -436,7 +419,9 @@ void CCamera::RotateEyeAroundTarget(float fPitchDegree, float fRollDegree)
     if (IsLock())
         return;
 
-    D3DXMATRIX matRot, matRotPitch, matRotRoll;
+    D3DXMATRIX matRot;
+    D3DXMATRIX matRotPitch;
+    D3DXMATRIX matRotRoll;
 
     // 머리위로 넘어가기 막기...
     if (m_fPitch + fPitchDegree > 80.0f)
@@ -462,9 +447,13 @@ void CCamera::RotateEyeAroundTarget(float fPitchDegree, float fRollDegree)
     m_fRoll += fRollDegree;
 
     if (m_fRoll > 360.0f)
+    {
         m_fRoll -= 360.0f;
+    }
     else if (m_fRoll < -360.0f)
+    {
         m_fRoll += 360.0f;
+    }
 }
 
 void CCamera::RotateEyeAroundPoint(const D3DXVECTOR3 &v3Point, float fPitchDegree, float fRollDegree)
@@ -472,7 +461,9 @@ void CCamera::RotateEyeAroundPoint(const D3DXVECTOR3 &v3Point, float fPitchDegre
     //	if (IsLock())
     //		return;
 
-    D3DXMATRIX matRot, matRotPitch, matRotRoll;
+    D3DXMATRIX matRot;
+    D3DXMATRIX matRotPitch;
+    D3DXMATRIX matRotRoll;
 
     D3DXMatrixRotationAxis(&matRotPitch, &m_v3Cross, D3DXToRadian(fPitchDegree));
 
@@ -525,12 +516,16 @@ void CCamera::CalculateRoll()
     D3DXVec2Normalize(&v2ViewXY, &v2ViewXY);
     float fDot = D3DXVec2Dot(&v2ViewXY, &D3DXVECTOR2(0.0f, 1.0f));
     if (fDot >= 1)
+    {
         fDot = 1;
+    }
     else if (fDot <= -1)
+    {
         fDot = -1;
+    }
     fDot = acosf(fDot);
-    fDot *= (180.0f / D3DX_PI);
-    float fCross = D3DXVec2CCW(&v2ViewXY, &D3DXVECTOR2(0.0f, 1.0f));
+    fDot *= (180.0f / std::numbers::pi_v<float>);
+    float const fCross = D3DXVec2CCW(&v2ViewXY, &D3DXVECTOR2(0.0f, 1.0f));
     if (0 > fCross)
     {
         fDot = -fDot;
@@ -543,7 +538,7 @@ void CCamera::CalculateRoll()
 // CCameraMananger
 //////////////////////////////////////////////////////////////////////////
 
-CCameraManager::CCameraManager() : m_pCurrentCamera(NULL), m_pPreviousCamera(NULL)
+CCameraManager::CCameraManager() : m_pCurrentCamera(nullptr), m_pPreviousCamera(nullptr)
 {
     AddCamera(DEFAULT_PERSPECTIVE_CAMERA);
     AddCamera(DEFAULT_ORTHO_CAMERA);
@@ -553,9 +548,9 @@ CCameraManager::CCameraManager() : m_pCurrentCamera(NULL), m_pPreviousCamera(NUL
 
 CCameraManager::~CCameraManager()
 {
-    for (TCameraMap::iterator itor = m_CameraMap.begin(); itor != m_CameraMap.end(); ++itor)
+    for (auto &itor : m_CameraMap)
     {
-        delete (*itor).second;
+        delete itor.second;
     }
     m_CameraMap.clear();
 }
@@ -580,20 +575,18 @@ void CCameraManager::ResetToPreviousCamera()
     if (!m_pPreviousCamera)
         assert(false);
     m_pCurrentCamera = m_pPreviousCamera;
-    m_pPreviousCamera = NULL;
+    m_pPreviousCamera = nullptr;
 }
 
 bool CCameraManager::isCurrentCamera(unsigned char ucCameraNum)
 {
-    if (m_CameraMap[ucCameraNum] == m_pCurrentCamera)
-        return true;
-    return false;
+    return m_CameraMap[ucCameraNum] == m_pCurrentCamera;
 }
 
 // 잡스러운 함수들...
 bool CCameraManager::AddCamera(unsigned char ucCameraNum)
 {
-    if (m_CameraMap.end() != m_CameraMap.find(ucCameraNum))
+    if (m_CameraMap.contains(ucCameraNum))
         return false;
     m_CameraMap.insert(TCameraMap::value_type(ucCameraNum, new CCamera));
     return true;
@@ -601,7 +594,7 @@ bool CCameraManager::AddCamera(unsigned char ucCameraNum)
 
 bool CCameraManager::RemoveCamera(unsigned char ucCameraNum)
 {
-    TCameraMap::iterator itor = m_CameraMap.find(ucCameraNum);
+    auto itor = m_CameraMap.find(ucCameraNum);
     if (m_CameraMap.end() == itor)
         return false;
     m_CameraMap.erase(itor);
@@ -612,9 +605,11 @@ unsigned char CCameraManager::GetCurrentCameraNum()
 {
     if (!m_pCurrentCamera)
         return NO_CURRENT_CAMERA;
-    for (TCameraMap::iterator itor = m_CameraMap.begin(); itor != m_CameraMap.end(); ++itor)
-        if (m_pCurrentCamera == (*itor).second)
-            return (*itor).first;
+    for (auto &itor : m_CameraMap)
+    {
+        if (m_pCurrentCamera == itor.second)
+            return itor.first;
+    }
     return NO_CURRENT_CAMERA;
 }
 

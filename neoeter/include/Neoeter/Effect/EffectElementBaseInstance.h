@@ -17,7 +17,7 @@ class CEffectElementBaseInstance
     bool Update(float fElapsedTime);
     void Render();
 
-    bool isActive();
+    bool isActive() const;
     void SetActive();
     void SetDeactive();
 
@@ -30,17 +30,16 @@ class CEffectElementBaseInstance
     virtual bool OnUpdate(float fElapsedTime) = 0;
     virtual void OnRender() = 0;
 
-  protected:
-    const D3DXMATRIX *mc_pmatLocal;
+    const D3DXMATRIX *mc_pmatLocal = nullptr;
 
-    bool m_isActive;
+    bool m_isActive = false;
 
-    float m_fLocalTime;
-    DWORD m_dwStartTime;
-    float m_fElapsedTime;
-    float m_fRemainingTime;
-    bool m_bStart;
+    float m_fLocalTime = 0.0F;
+    DWORD m_dwStartTime = 0U;
+    float m_fElapsedTime = 0.0F;
+    float m_fRemainingTime = 0.0F;
+    bool m_bStart = false;
 
   private:
-    CEffectElementBase *m_pBase;
+    CEffectElementBase *m_pBase = nullptr;
 };

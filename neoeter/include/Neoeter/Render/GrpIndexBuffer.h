@@ -6,7 +6,7 @@ class CGraphicIndexBuffer : public CGraphicBase
 {
   public:
     CGraphicIndexBuffer();
-    virtual ~CGraphicIndexBuffer();
+    ~CGraphicIndexBuffer() override;
 
     void Destroy();
     bool Create(int idxCount, D3DFORMAT d3dFmt);
@@ -35,9 +35,8 @@ class CGraphicIndexBuffer : public CGraphicBase
   protected:
     void Initialize();
 
-  protected:
-    LPDIRECT3DINDEXBUFFER9 m_lpd3dIdxBuf;
-    DWORD m_dwBufferSize;
+    LPDIRECT3DINDEXBUFFER9 m_lpd3dIdxBuf = nullptr;
+    DWORD m_dwBufferSize = 0U;
     D3DFORMAT m_d3dFmt;
-    int m_iidxCount;
+    int m_iidxCount = 0;
 };

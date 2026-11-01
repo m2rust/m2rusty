@@ -13,7 +13,7 @@ void CWeaponTrace::DestroySystem()
 
 void CWeaponTrace::Delete(CWeaponTrace *pkWTDel)
 {
-    assert(pkWTDel != NULL && "CWeaponTrace::Delete");
+    assert(pkWTDel != nullptr && "CWeaponTrace::Delete");
 
     pkWTDel->Clear();
     ms_kPool.Free(pkWTDel);
@@ -26,7 +26,7 @@ CWeaponTrace *CWeaponTrace::New()
 
 void CWeaponTrace::Update(float fReachScale)
 {
-    float fElapsedTime = CTimer::Instance().GetCurrentSecond() - m_fLastUpdate;
+    float const fElapsedTime = CTimer::Instance().GetCurrentSecond() - m_fLastUpdate;
     m_fLastUpdate = CTimer::Instance().GetCurrentSecond();
 
     if (!m_pInstance)
@@ -60,10 +60,10 @@ void CWeaponTrace::Update(float fReachScale)
 
     if (m_isPlaying && m_fz >= 0.0001f)
     {
-        D3DXMATRIX *pMatrix;
+        D3DXMATRIX *pMatrix = nullptr;
         if (m_pInstance->GetCompositeBoneMatrix(m_dwModelInstanceIndex, m_iBoneIndex, &pMatrix))
         {
-            D3DXMATRIX *pBoneMat;
+            D3DXMATRIX *pBoneMat = nullptr;
             m_pInstance->GetBoneMatrix(m_dwModelInstanceIndex, m_iBoneIndex, &pBoneMat);
             D3DXMATRIX mat = *pMatrix;
             mat._41 = pBoneMat->_41;
@@ -85,8 +85,8 @@ void CWeaponTrace::Update(float fReachScale)
             PDTVertex.position.z = m_fz + matPoint._43;
             PDTVertex.diffuse = D3DXCOLOR(1.0f, 1.0f, 1.0f, 0.1f);
             m_PDTVertexVector.push_back(PDTVertex);*/
-            m_ShortTimePointList.push_front(
-                TTimePoint(0.0f, D3DXVECTOR3(m_fx + matPoint._41, m_fy + matPoint._42, m_fz + matPoint._43)));
+            m_ShortTimePointList.emplace_front(
+                0.0f, D3DXVECTOR3(m_fx + matPoint._41, m_fy + matPoint._42, m_fz + matPoint._43));
 
             matPoint = matTranslation * matPoint;
             /*PDTVertex.position.x = m_fx + matPoint._41;
@@ -94,8 +94,8 @@ void CWeaponTrace::Update(float fReachScale)
             PDTVertex.position.z = m_fz + matPoint._43;
             PDTVertex.diffuse = D3DXCOLOR(1.0f, 1.0f, 1.0f, 0.1f);
             m_PDTVertexVector.push_back(PDTVertex);*/
-            m_LongTimePointList.push_front(
-                TTimePoint(0.0f, D3DXVECTOR3(m_fx + matPoint._41, m_fy + matPoint._42, m_fz + matPoint._43)));
+            m_LongTimePointList.emplace_front(
+                0.0f, D3DXVECTOR3(m_fx + matPoint._41, m_fy + matPoint._42, m_fz + matPoint._43));
         }
     }
 
@@ -126,11 +126,12 @@ bool CWeaponTrace::BuildVertex()
     m_ShortTimePointList = m_LongTimePointList;
 
   */
-    std::vector<TPDTVertex> m_ShortVertexVector, m_LongVertexVector;
+    std::vector<TPDTVertex> m_ShortVertexVector;
+    std::vector<TPDTVertex> m_LongVertexVector;
 
-    float length = min(m_fLifeTime, m_LongTimePointList.back().first);
+    float const length = min(m_fLifeTime, m_LongTimePointList.back().first);
 
-    int n = m_LongTimePointList.size() - 1;
+    int const n = m_LongTimePointList.size() - 1;
     assert(n < max_size - 1);
 
     // cubic spline
@@ -139,8 +140,8 @@ bool CWeaponTrace::BuildVertex()
     {
         TTimePointList &Input = (loop) ? m_LongTimePointList : m_ShortTimePointList;
         std::vector<TPDTVertex> &Output = (loop) ? m_LongVertexVector : m_ShortVertexVector;
-        TTimePointList::iterator it;
-        int i;
+        TTimePointList::iterator const it;
+        int i = 0;
 
         for (i = 0; i < n; ++i)
         {
@@ -173,9 +174,14 @@ bool CWeaponTrace::BuildVertex()
         }
 
         int base = 0;
-        D3DXVECTOR3 a, b, c, d;
-        D3DXVECTOR3 v3Tmp = Input[base + 1].second - Input[base].second;
-        float timebase = 0, timenext = h[base], dt = m_fSamplingTime;
+        D3DXVECTOR3 a;
+        D3DXVECTOR3 b;
+        D3DXVECTOR3 c;
+        D3DXVECTOR3 d;
+        D3DXVECTOR3 const v3Tmp = Input[base + 1].second - Input[base].second;
+        float timebase = 0;
+        float timenext = h[base];
+        float const dt = m_fSamplingTime;
         a = Input[base].second;
         b = r[base];
         c = (3 * v3Tmp - r[base + 1] * h[base] - (2 * h[base]) * r[base]) * (1 / (h[base] * h[base]));
@@ -189,7 +195,7 @@ bool CWeaponTrace::BuildVertex()
                 base++;
                 if (base >= n)
                     break;
-                D3DXVECTOR3 v3Tmp = Input[base + 1].second - Input[base].second;
+                D3DXVECTOR3 const v3Tmp = Input[base + 1].second - Input[base].second;
                 a = Input[base].second;
                 b = r[base];
                 c = (3 * v3Tmp - r[base + 1] * h[base] - (2 * h[base]) * r[base]) * (1 / (h[base] * h[base]));
@@ -204,14 +210,14 @@ bool CWeaponTrace::BuildVertex()
             }
             if (base > n)
                 break;
-            float cc = t - timebase;
+            float const cc = t - timebase;
 
             TPDTVertex v;
             // v.diffuse = D3DXCOLOR(0.3f,0.8f,1.0f,
             // (loop)?max(1.0f-(t/m_fLifeTime),0.0f)/2:0.0f );
-            float ttt = min(max((t + Input[0].first) / m_fLifeTime, 0.0f), 1.0f);
+            float const ttt = min(max((t + Input[0].first) / m_fLifeTime, 0.0f), 1.0f);
             v.diffuse = D3DXCOLOR(0.3f, 0.8f, 1.0f,
-                                  (loop) ? min(max((1.0f - ttt) * (1.0f - ttt) / 2.5 - 0.1f, 0.0f), 1.0f) : 0.0f);
+                                  (loop) ? min(max(((1.0f - ttt) * (1.0f - ttt) / 2.5) - 0.1f, 0.0f), 1.0f) : 0.0f);
             // v.diffuse = D3DXCOLOR(0.0f,0.0f,0.0f,
             // (loop)?min(max((1.0f-ttt)*(1.0f-ttt)-0.1f,0.0f),1.0f):0.0f );
             // v.diffuse =	0xffffffff;
@@ -248,7 +254,8 @@ bool CWeaponTrace::BuildVertex()
     sit2 = sit1 = m_ShortTimePointList.begin();
     ++sit2;
     */
-    std::vector<TPDTVertex>::iterator lit, sit;
+    std::vector<TPDTVertex>::iterator lit;
+    std::vector<TPDTVertex>::iterator sit;
     for (lit = m_LongVertexVector.begin(), sit = m_ShortVertexVector.begin(); lit != m_LongVertexVector.end();
          ++lit, ++sit)
     {
@@ -275,7 +282,7 @@ void CWeaponTrace::Render()
     if (m_PDTVertexVector.size() < 4)
         return;
 
-    LPDIRECT3DTEXTURE9 lpTexture = NULL;
+    LPDIRECT3DTEXTURE9 lpTexture = nullptr;
 
     // Have to optimize
     D3DXMATRIX matWorld;
@@ -310,9 +317,9 @@ void CWeaponTrace::Render()
     STATEMANAGER.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
     STATEMANAGER.SetRenderState(D3DRS_LIGHTING, FALSE);
     STATEMANAGER.SetTexture(0, lpTexture);
-    STATEMANAGER.SetTexture(1, NULL);
-    STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, int(m_PDTVertexVector.size() - 2), &m_PDTVertexVector[0],
-                                 sizeof(TPDTVertex));
+    STATEMANAGER.SetTexture(1, nullptr);
+    STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, static_cast<int>(m_PDTVertexVector.size() - 2),
+                                 m_PDTVertexVector.data(), sizeof(TPDTVertex));
 
     STATEMANAGER.SetRenderState(D3DRS_LIGHTING, TRUE);
 
@@ -345,7 +352,7 @@ void CWeaponTrace::UseTexture()
 
 void CWeaponTrace::SetTexture(const char *c_szFileName)
 {
-    CGraphicImage *pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer("lot_ade10-2.tga");
+    auto *pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer("lot_ade10-2.tga");
     m_ImageInstance.SetImagePointer(pImage);
 
     // CGraphicTexture * pTexture = m_ImageInstance.GetTexturePointer();
@@ -366,9 +373,9 @@ bool CWeaponTrace::SetWeaponInstance(CGraphicThingInstance *pInstance, DWORD dwM
     m_dwModelInstanceIndex = dwModelIndex;
 
     m_pInstance = pInstance;
-    D3DXMATRIX *pmat;
+    D3DXMATRIX *pmat = nullptr;
     pInstance->GetBoneMatrix(dwModelIndex, 0, &pmat);
-    D3DXVECTOR3 v3Bone(pmat->_41, pmat->_42, pmat->_43);
+    D3DXVECTOR3 const v3Bone(pmat->_41, pmat->_42, pmat->_43);
 
     m_fLength = sqrtf(fMAX(D3DXVec3LengthSq(&(v3Bone - v3Min)), D3DXVec3LengthSq(&(v3Bone - v3Max))));
 
@@ -419,7 +426,7 @@ void CWeaponTrace::Clear()
 
 void CWeaponTrace::Initialize()
 {
-    m_pInstance = NULL;
+    m_pInstance = nullptr;
     m_dwModelInstanceIndex = 0;
 
     m_fx = 0.0f;
@@ -459,6 +466,4 @@ CWeaponTrace::CWeaponTrace()
 {
     Initialize();
 }
-CWeaponTrace::~CWeaponTrace()
-{
-}
+CWeaponTrace::~CWeaponTrace() = default;

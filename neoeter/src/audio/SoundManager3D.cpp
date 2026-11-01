@@ -1,14 +1,11 @@
 #include <Neoeter/Audio/StdAfx.h>
 #include <Neoeter/Audio/SoundManager3D.h>
 
-CSoundManager3D::CSoundManager3D()
+CSoundManager3D::CSoundManager3D() : m_bInit(false)
 {
-    m_bInit = false;
 }
 
-CSoundManager3D::~CSoundManager3D()
-{
-}
+CSoundManager3D::~CSoundManager3D() = default;
 
 bool CSoundManager3D::Initialize()
 {
@@ -46,7 +43,7 @@ bool CSoundManager3D::Initialize()
         return false;
     }
 
-    assert(ms_pProviderDefault != NULL);
+    assert(ms_pProviderDefault != nullptr);
 
     if (M3D_NOERR != AIL_open_3D_provider(ms_pProviderDefault->hProvider))
     {
@@ -78,19 +75,19 @@ void CSoundManager3D::Destroy()
     if (!m_bInit)
         return;
 
-    for (int i = 0; i < INSTANCE_MAX_COUNT; ++i)
-        m_Instances[i].Destroy();
+    for (auto &m_Instance : m_Instances)
+        m_Instance.Destroy();
 
     if (m_pListener)
     {
         AIL_close_3D_listener(m_pListener);
-        m_pListener = NULL;
+        m_pListener = nullptr;
     }
 
     if (ms_pProviderDefault)
     {
         AIL_close_3D_provider(ms_pProviderDefault->hProvider);
-        ms_pProviderDefault = NULL;
+        ms_pProviderDefault = nullptr;
     }
 
     CSoundBase::Destroy();
@@ -99,7 +96,7 @@ void CSoundManager3D::Destroy()
 
 void CSoundManager3D::SetListenerDirection(float fxDir, float fyDir, float fzDir, float fxUp, float fyUp, float fzUp)
 {
-    if (NULL == m_pListener)
+    if (nullptr == m_pListener)
         return;
     // Coordinate conversion matches CSoundInstance3D::SetPosition:
     // Metin2 Z-up (x, y, z) -> miniaudio Y-up (x, z, -y).
@@ -109,7 +106,7 @@ void CSoundManager3D::SetListenerDirection(float fxDir, float fyDir, float fzDir
 void CSoundManager3D::SetListenerPosition(float fX, float fY, float fZ)
 {
     // 	assert(m_pListener != NULL);
-    if (NULL == m_pListener)
+    if (nullptr == m_pListener)
         return;
     AIL_set_3D_position(m_pListener, fX, fZ, -fY);
 }
@@ -117,29 +114,33 @@ void CSoundManager3D::SetListenerPosition(float fX, float fY, float fZ)
 void CSoundManager3D::SetListenerVelocity(float fDistanceX, float fDistanceY, float fDistanceZ, float fNagnitude)
 {
     // 	assert(m_pListener != NULL);
-    if (NULL == m_pListener)
+    if (nullptr == m_pListener)
         return;
     AIL_set_3D_velocity(m_pListener, fDistanceX, fDistanceZ, -fDistanceY, fNagnitude);
 }
 
 int CSoundManager3D::SetInstance(const char *c_pszFileName)
 {
-    DWORD dwFileCRC = GetFileCRC(c_pszFileName);
-    TSoundDataMap::iterator itor = ms_dataMap.find(dwFileCRC);
+    DWORD const dwFileCRC = GetFileCRC(c_pszFileName);
+    auto itor = ms_dataMap.find(dwFileCRC);
 
-    CSoundData *pkSoundData;
+    CSoundData *pkSoundData = nullptr;
 
     if (itor == ms_dataMap.end())
+    {
         pkSoundData = AddFile(dwFileCRC, c_pszFileName); // CSoundBase::AddFile
+    }
     else
+    {
         pkSoundData = itor->second;
+    }
 
-    assert(pkSoundData != NULL);
+    assert(pkSoundData != nullptr);
 
     static DWORD k = 0;
 
     DWORD start = k++;
-    DWORD end = start + INSTANCE_MAX_COUNT;
+    DWORD const end = start + INSTANCE_MAX_COUNT;
 
     while (start < end)
     {
@@ -176,17 +177,14 @@ ISoundInstance *CSoundManager3D::GetInstance(DWORD dwIndex)
     if (dwIndex >= INSTANCE_MAX_COUNT)
     {
         assert(dwIndex < INSTANCE_MAX_COUNT);
-        return NULL;
+        return nullptr;
     }
     return &m_Instances[dwIndex];
 }
 
 __forceinline bool CSoundManager3D::IsValidInstanceIndex(int iIndex)
 {
-    if (iIndex >= 0 && iIndex < INSTANCE_MAX_COUNT)
-        return true;
-
-    return false;
+    return iIndex >= 0 && iIndex < INSTANCE_MAX_COUNT;
 }
 
 void CSoundManager3D::Lock(int iIndex)

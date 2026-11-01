@@ -12,12 +12,11 @@
 class CGrannyMaterial : public CReferenceObject
 {
   public:
-    typedef CRef<CGrannyMaterial> TRef;
+    using TRef = CRef<CGrannyMaterial>;
 
     static void CreateSphereMap(UINT uMapIndex, const char *c_szSphereMapImageFileName);
     static void DestroySphereMap();
 
-  public:
     enum EType
     {
         TYPE_DIFFUSE_PNT,
@@ -25,7 +24,6 @@ class CGrannyMaterial : public CReferenceObject
         TYPE_MAX_NUM
     };
 
-  public:
     static void TranslateSpecularMatrix(float fAddX, float fAddY, float fAddZ);
 
   private:
@@ -34,7 +32,7 @@ class CGrannyMaterial : public CReferenceObject
 
   public:
     CGrannyMaterial();
-    virtual ~CGrannyMaterial();
+    ~CGrannyMaterial() override;
 
     void Destroy();
     void Copy(CGrannyMaterial &rkMtrl);
@@ -76,19 +74,18 @@ class CGrannyMaterial : public CReferenceObject
     void __ApplySpecularRenderState();
     void __RestoreSpecularRenderState();
 
-  protected:
-    granny_material *m_pgrnMaterial;
+    granny_material *m_pgrnMaterial = nullptr;
     CGraphicImage::TRef m_roImage[2];
     EType m_eType;
 
-    float m_fSpecularPower;
-    BOOL m_bSpecularEnable;
+    float m_fSpecularPower = 0.0F;
+    BOOL m_bSpecularEnable = 0;
     bool m_bTwoSideRender;
     DWORD m_dwLastCullRenderStateForTwoSideRendering;
-    BYTE m_bSphereMapIndex;
+    BYTE m_bSphereMapIndex = 0U;
 
-    void (CGrannyMaterial::*m_pfnApplyRenderState)();
-    void (CGrannyMaterial::*m_pfnRestoreRenderState)();
+    void (CGrannyMaterial::*m_pfnApplyRenderState)(){};
+    void (CGrannyMaterial::*m_pfnRestoreRenderState)(){};
 
   private:
     enum
@@ -108,7 +105,7 @@ class CGrannyMaterialPalette
     void Copy(const CGrannyMaterialPalette &rkMtrlPalSrc);
 
     DWORD RegisterMaterial(granny_material *pgrnMaterial);
-    void SetMaterialImagePointer(const char *c_szMtrlName, CGraphicImage *pImage);
+    void SetMaterialImagePointer(const char *c_szImageName, CGraphicImage *pImage);
     void SetMaterialData(const char *c_szMtrlName, const SMaterialData &c_rkMaterialData);
     void SetSpecularInfo(const char *c_szMtrlName, BOOL bEnable, float fPower);
 

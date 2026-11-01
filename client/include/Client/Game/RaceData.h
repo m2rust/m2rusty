@@ -36,22 +36,22 @@ class CRaceData
     // Graphic Resource
 
     // Model
-    typedef std::map<WORD, CGraphicThing *> TGraphicThingMap;
-    typedef std::map<DWORD, std::string> TAttachingBoneNameMap;
+    using TGraphicThingMap = std::map<WORD, CGraphicThing *>;
+    using TAttachingBoneNameMap = std::map<DWORD, std::string>;
 
     // Motion
-    typedef struct SMotion
+    using TMotion = struct SMotion
     {
         BYTE byPercentage;
         CGraphicThing *pMotion;
         CRaceMotionData *pMotionData;
-    } TMotion;
-    typedef std::vector<TMotion> TMotionVector;
-    typedef std::map<WORD, TMotionVector> TMotionVectorMap;
+    };
+    using TMotionVector = std::vector<TMotion>;
+    using TMotionVectorMap = std::map<WORD, TMotionVector>;
 
-    typedef struct SMotionModeData
+    using TMotionModeData = struct SMotionModeData
     {
-        WORD wMotionModeIndex;
+        WORD wMotionModeIndex = 0U;
 
         TMotionVectorMap MotionVectorMap;
 
@@ -61,44 +61,43 @@ class CRaceData
         virtual ~SMotionModeData()
         {
         }
-    } TMotionModeData;
-    typedef std::map<WORD, TMotionModeData *> TMotionModeDataMap;
-    typedef TMotionModeDataMap::iterator TMotionModeDataIterator;
+    };
+    using TMotionModeDataMap = std::map<WORD, TMotionModeData *>;
+    using TMotionModeDataIterator = TMotionModeDataMap::iterator;
 
     /////////////////////////////////////////////////////////////////////////////////
     // Model Data
-    typedef struct SModelData
+    using TModelData = struct SModelData
     {
         NRaceData::TAttachingDataVector AttachingDataVector;
-    } TModelData;
-    typedef std::map<DWORD, TModelData> TModelDataMap;
-    typedef TModelDataMap::iterator TModelDataMapIterator;
+    };
+    using TModelDataMap = std::map<DWORD, TModelData>;
+    using TModelDataMapIterator = TModelDataMap::iterator;
 
     /////////////////////////////////////////////////////////////////////////////////
     // Motion Data
-    typedef std::map<DWORD, CRaceMotionData *> TMotionDataMap;
+    using TMotionDataMap = std::map<DWORD, CRaceMotionData *>;
 
     /////////////////////////////////////////////////////////////////////////////////
     // Combo Data
-    typedef std::vector<DWORD> TComboIndexVector;
-    typedef struct SComboAttackData
+    using TComboIndexVector = std::vector<DWORD>;
+    using TComboData = struct SComboAttackData
     {
         TComboIndexVector ComboIndexVector;
-    } TComboData;
-    typedef std::map<DWORD, DWORD> TNormalAttackIndexMap;
-    typedef std::map<COMBO_KEY, TComboData> TComboAttackDataMap;
-    typedef TComboAttackDataMap::iterator TComboAttackDataIterator;
+    };
+    using TNormalAttackIndexMap = std::map<DWORD, DWORD>;
+    using TComboAttackDataMap = std::map<COMBO_KEY, TComboData>;
+    using TComboAttackDataIterator = TComboAttackDataMap::iterator;
 
     struct SSkin
     {
-        int m_ePart;
+        int m_ePart = 0;
 
         std::string m_stSrcFileName;
         std::string m_stDstFileName;
 
-        SSkin()
+        SSkin() : m_ePart(0)
         {
-            m_ePart = 0;
         }
         SSkin(const SSkin &c_rkSkin)
         {
@@ -128,13 +127,11 @@ class CRaceData
         std::vector<SSkin> m_kVct_kSkin;
     };
 
-  public:
     static CRaceData *New();
     static void Delete(CRaceData *pkRaceData);
     static void CreateSystem(UINT uCapacity, UINT uMotModeCapacity);
     static void DestroySystem();
 
-  public:
     CRaceData();
     virtual ~CRaceData();
 
@@ -217,12 +214,11 @@ class CRaceData
 
     BOOL GetMotionVectorPointer(WORD wMotionMode, WORD wMotionIndex, TMotionVector **ppMotionVector);
 
-  protected:
-    DWORD m_dwRaceIndex;
-    DWORD m_adwSmokeEffectID[SMOKE_NUM];
+    DWORD m_dwRaceIndex = 0U;
+    DWORD m_adwSmokeEffectID[SMOKE_NUM]{};
 
-    CGraphicThing *m_pBaseModelThing;
-    CGraphicThing *m_pLODModelThing;
+    CGraphicThing *m_pBaseModelThing = nullptr;
+    CGraphicThing *m_pLODModelThing = nullptr;
 
     std::string m_strBaseModelFileName;
     std::string m_strTreeFileName;
@@ -241,7 +237,6 @@ class CRaceData
 
     NRaceData::TAttachingDataVector m_AttachingDataVector;
 
-  protected:
     static CDynamicPool<TMotionModeData> ms_MotionModeDataPool;
     static CDynamicPool<CRaceData> ms_kPool;
 };

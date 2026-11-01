@@ -14,35 +14,33 @@ template <class T> struct RangeTester : public SpherePackCallback
     {
     }
 
-    virtual ~RangeTester()
-    {
-    }
+    ~RangeTester() override = default;
 
-    virtual void RayTraceCallback(const Vector3d &p1,  // source pos of ray
-                                  const Vector3d &dir, // dest pos of ray
-                                  float distance, const Vector3d &sect, SpherePack *sphere)
+    void RayTraceCallback(const Vector3d &p1,  // source pos of ray
+                          const Vector3d &dir, // dest pos of ray
+                          float distance, const Vector3d &sect, SpherePack *sphere) override
     {
 #ifdef SPHERELIB_STRICT
         if (sphere->IS_SPHERE)
             puts("RangeTester::RayTraceCallback");
 #endif
         if (dist <= 0.0f || dist >= distance)
-            (*f)((CGraphicObjectInstance *)sphere->GetUserData());
+            (*f)(static_cast<CGraphicObjectInstance *>(sphere->GetUserData()));
     };
 
-    virtual void VisibilityCallback(const Frustum &f, SpherePack *sphere, ViewState state) {};
+    void VisibilityCallback(const Frustum &f, SpherePack *sphere, ViewState state) override {};
 
-    virtual void RangeTestCallback(const Vector3d &p, float distance, SpherePack *sphere, ViewState state)
+    void RangeTestCallback(const Vector3d &p, float distance, SpherePack *sphere, ViewState state) override
     {
 #ifdef SPHERELIB_STRICT
         if (sphere->IS_SPHERE)
             puts("RangeTester::RangeTestCallback");
 #endif
         if (state != VS_OUTSIDE)
-            (*f)((CGraphicObjectInstance *)sphere->GetUserData());
+            (*f)(static_cast<CGraphicObjectInstance *>(sphere->GetUserData()));
     }
 
-    virtual void PointTest2dCallback(const Vector3d &p, SpherePack *sphere, ViewState state)
+    void PointTest2dCallback(const Vector3d &p, SpherePack *sphere, ViewState state) override
     {
 #ifdef SPHERELIB_STRICT
         if (sphere->IS_SPHERE)
@@ -53,7 +51,7 @@ template <class T> struct RangeTester : public SpherePackCallback
 #ifdef SPHERELIB_STRICT
             puts("FIND!!");
 #endif
-            (*f)((CGraphicObjectInstance *)sphere->GetUserData());
+            (*f)(static_cast<CGraphicObjectInstance *>(sphere->GetUserData()));
         }
     }
 };
@@ -61,19 +59,19 @@ template <class T> struct RangeTester : public SpherePackCallback
 class CCullingManager : public CSingleton<CCullingManager>, public SpherePackCallback, private CScreen
 {
   public:
-    typedef SpherePack *CullingHandle;
-    typedef std::vector<CGraphicObjectInstance *> TRangeList;
+    using CullingHandle = SpherePack *;
+    using TRangeList = std::vector<CGraphicObjectInstance *>;
 
     CCullingManager();
-    virtual ~CCullingManager();
+    ~CCullingManager() override;
 
-    virtual void RayTraceCallback(const Vector3d &p1,  // source pos of ray
-                                  const Vector3d &dir, // dest pos of ray
-                                  float distance, const Vector3d &sect, SpherePack *sphere);
+    void RayTraceCallback(const Vector3d &p1,  // source pos of ray
+                          const Vector3d &dir, // dest pos of ray
+                          float distance, const Vector3d &sect, SpherePack *sphere) override;
 
-    virtual void VisibilityCallback(const Frustum &f, SpherePack *sphere, ViewState state);
+    void VisibilityCallback(const Frustum &f, SpherePack *sphere, ViewState state) override;
 
-    void RangeTestCallback(const Vector3d &p, float distance, SpherePack *sphere, ViewState state);
+    void RangeTestCallback(const Vector3d &p, float distance, SpherePack *sphere, ViewState state) override;
 
     void Reset();
     void Update();
@@ -139,7 +137,7 @@ class CCullingManager : public CSingleton<CCullingManager>, public SpherePackCal
   protected:
     TRangeList m_list;
 
-    float m_RayFarDistance;
+    float m_RayFarDistance = 0.0F;
 
     SpherePackFactory *m_Factory;
 };

@@ -69,5 +69,5 @@ class CSpeedTreeMaterial
         STATEMANAGER.SetMaterial(&m_cMaterial);
     }
 
-    D3DMATERIAL9 m_cMaterial; // the material object
+    D3DMATERIAL9 m_cMaterial{}; // the material object
 };

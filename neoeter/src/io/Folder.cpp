@@ -1,6 +1,7 @@
 #include <Neoeter/IO/Folder.h>
 #include <Neoeter/IO/EterPackManager.h>
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <iterator>
@@ -26,8 +27,8 @@ void Folder::ListFiles(const std::string &directory, const std::string &relative
         if (fileOrDirName == "." || fileOrDirName == "..")
             continue;
 
-        std::string fullPath = entry.path().string();
-        std::string currentRelativePath = relativePath + fileOrDirName;
+        std::string const fullPath = entry.path().string();
+        std::string const currentRelativePath = relativePath + fileOrDirName;
 
         if (entry.is_directory(ec))
         {
@@ -37,7 +38,7 @@ void Folder::ListFiles(const std::string &directory, const std::string &relative
         {
             std::string normalizedPath = CEterPackManager::Instance().ConvertFileName(currentRelativePath);
 
-            if (normalizedPath.rfind("ymir work/", 0) == 0)
+            if (normalizedPath.starts_with("ymir work/"))
             {
                 normalizedPath = "d:/" + normalizedPath;
             }
@@ -48,28 +49,28 @@ void Folder::ListFiles(const std::string &directory, const std::string &relative
     }
 }
 
-Folder::Folder(const std::string &folderPath)
+Folder::Folder(const std::string &folderPath) : folderPath(folderPath)
 {
-    this->folderPath = folderPath;
+
     ListFiles(folderPath, "");
 }
 
 std::vector<std::string> Folder::listFiles()
 {
     std::vector<std::string> result;
-    std::copy(fileList.begin(), fileList.end(), std::back_inserter(result));
+    std::ranges::copy(fileList, std::back_inserter(result));
     return result;
 }
 
 bool Folder::fileExists(const std::string &fileName)
 {
-    std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
-    return fileList.find(normalized) != fileList.end();
+    std::string const normalized = CEterPackManager::Instance().ConvertFileName(fileName);
+    return fileList.contains(normalized);
 }
 
 bool Folder::getFile(const std::string &fileName, std::shared_ptr<std::vector<char>> &fileData)
 {
-    std::string normalized = CEterPackManager::Instance().ConvertFileName(fileName);
+    std::string const normalized = CEterPackManager::Instance().ConvertFileName(fileName);
 
     std::string diskPath;
     auto mapIt = realPathMap.find(normalized);
@@ -81,7 +82,7 @@ bool Folder::getFile(const std::string &fileName, std::shared_ptr<std::vector<ch
     {
         std::string realFileName = normalized;
         const std::string ymirPrefix = "d:/";
-        if (realFileName.rfind(ymirPrefix, 0) == 0)
+        if (realFileName.starts_with(ymirPrefix))
             realFileName = realFileName.substr(ymirPrefix.length());
 
         diskPath = this->folderPath + "/" + realFileName;

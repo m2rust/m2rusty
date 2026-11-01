@@ -44,25 +44,25 @@ class CPythonItem : public CSingleton<CPythonItem>
         DROPSOUND_NUM
     };
 
-    typedef struct SGroundItemInstance
+    using TGroundItemInstance = struct SGroundItemInstance
     {
-        DWORD dwVirtualNumber;
+        DWORD dwVirtualNumber = 0U;
         D3DXVECTOR3 v3EndPosition;
 
         D3DXVECTOR3 v3RotationAxis;
         D3DXQUATERNION qEnd;
         D3DXVECTOR3 v3Center;
         CGraphicThingInstance ThingInstance;
-        DWORD dwStartTime;
-        DWORD dwEndTime;
+        DWORD dwStartTime = 0U;
+        DWORD dwEndTime = 0U;
 
-        DWORD eDropSoundType;
+        DWORD eDropSoundType = 0U;
 
-        bool bAnimEnded;
+        bool bAnimEnded = false;
         bool Update();
         void Clear();
 
-        DWORD dwEffectInstanceIndex;
+        DWORD dwEffectInstanceIndex = 0U;
         std::string stOwnership;
 
         static void __PlayDropSound(DWORD eItemType, const D3DXVECTOR3 &c_rv3Pos);
@@ -74,13 +74,12 @@ class CPythonItem : public CSingleton<CPythonItem>
         virtual ~SGroundItemInstance()
         {
         }
-    } TGroundItemInstance;
+    };
 
-    typedef std::map<DWORD, TGroundItemInstance *> TGroundItemInstanceMap;
+    using TGroundItemInstanceMap = std::map<DWORD, TGroundItemInstance *>;
 
-  public:
-    CPythonItem(void);
-    virtual ~CPythonItem(void);
+    CPythonItem();
+    ~CPythonItem() override;
 
     // Initialize
     void Destroy();
@@ -107,7 +106,7 @@ class CPythonItem : public CSingleton<CPythonItem>
 
     BOOL GetGroundItemPosition(DWORD dwVirtualID, TPixelPosition *pPosition);
 
-    bool GetPickedItemID(DWORD *pdwPickedItemID);
+    bool GetPickedItemID(DWORD *pdwPickedItemID) const;
 
     bool GetCloseItem(const TPixelPosition &c_rPixelPosition, DWORD *pdwItemID, DWORD dwDistance = 300);
     bool GetCloseMoney(const TPixelPosition &c_rPixelPosition, DWORD *dwItemID, DWORD dwDistance = 300);
@@ -124,15 +123,14 @@ class CPythonItem : public CSingleton<CPythonItem>
     DWORD __GetUseSoundType(const CItemData &c_rkItemData);
     DWORD __GetDropSoundType(const CItemData &c_rkItemData);
 
-  protected:
     TGroundItemInstanceMap m_GroundItemInstanceMap;
     CDynamicPool<TGroundItemInstance> m_GroundItemInstancePool;
 
-    DWORD m_dwDropItemEffectID;
+    DWORD m_dwDropItemEffectID = 0U;
     DWORD m_dwPickedItemID;
 
-    int m_nMouseX;
-    int m_nMouseY;
+    int m_nMouseX = 0;
+    int m_nMouseY = 0;
 
     std::string m_astUseSoundFileName[USESOUND_NUM];
 

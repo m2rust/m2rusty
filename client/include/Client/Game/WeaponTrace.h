@@ -19,7 +19,6 @@ class CWeaponTrace
     static void Delete(CWeaponTrace *pkWTDel);
     static CWeaponTrace *New();
 
-  public:
     CWeaponTrace();
     virtual ~CWeaponTrace();
 
@@ -47,39 +46,37 @@ class CWeaponTrace
   protected:
     bool BuildVertex();
 
-  protected:
-    float m_fLastUpdate;
+    float m_fLastUpdate = 0.0F;
 
-    typedef std::pair<float, D3DXVECTOR3> TTimePoint;
-    typedef std::deque<TTimePoint> TTimePointList;
+    using TTimePoint = std::pair<float, D3DXVECTOR3>;
+    using TTimePointList = std::deque<TTimePoint>;
     TTimePointList m_ShortTimePointList;
     TTimePointList m_LongTimePointList;
 
     std::vector<TPDTVertex> m_PDTVertexVector;
 
-    float m_fLifeTime;
-    float m_fSamplingTime;
+    float m_fLifeTime = 0.0F;
+    float m_fSamplingTime = 0.0F;
 
     // std::vector<TPDTVertex> m_PDTVertexVector;
     // std::vector<TPDTVertex> m_CurvingTraceVector;
     // std::vector<TSplineValue> m_SplineValueVector;
 
-    CGraphicThingInstance *m_pInstance;
-    DWORD m_dwModelInstanceIndex;
+    CGraphicThingInstance *m_pInstance = nullptr;
+    DWORD m_dwModelInstanceIndex = 0U;
 
     CGraphicImageInstance m_ImageInstance;
 
-    float m_fx;
-    float m_fy;
-    float m_fz;
-    float m_fRotation;
-    float m_fLength;
+    float m_fx = 0.0F;
+    float m_fy = 0.0F;
+    float m_fz = 0.0F;
+    float m_fRotation = 0.0F;
+    float m_fLength = 0.0F;
 
-    BOOL m_isPlaying;
-    bool m_bUseTexture;
+    BOOL m_isPlaying = 0;
+    bool m_bUseTexture = false;
 
-    int m_iBoneIndex;
+    int m_iBoneIndex = 0;
 
-  protected:
     static CDynamicPool<CWeaponTrace> ms_kPool;
 };

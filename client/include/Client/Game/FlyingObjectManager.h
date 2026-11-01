@@ -19,9 +19,8 @@ class CFlyingManager : public CSingleton<CFlyingManager>
         INDEX_FLY_TYPE_AUTO_FIRE,
     };
 
-  public:
     CFlyingManager();
-    virtual ~CFlyingManager();
+    ~CFlyingManager() override;
 
     void Destroy();
 
@@ -30,7 +29,7 @@ class CFlyingManager : public CSingleton<CFlyingManager>
     bool RegisterFlyingData(const char *c_szFilename);
     bool RegisterFlyingData(const char *c_szFilename, DWORD &r_dwRetCRC);
 
-    CFlyingInstance *CreateFlyingInstanceFlyTarget(const DWORD dwID, const D3DXVECTOR3 &v3StartPosition,
+    CFlyingInstance *CreateFlyingInstanceFlyTarget(DWORD dwID, const D3DXVECTOR3 &v3StartPosition,
                                                    const CFlyTarget &cr_FlyTarget, bool canAttack);
 
     void Update();
@@ -45,7 +44,7 @@ class CFlyingManager : public CSingleton<CFlyingManager>
         return m_pMapManager;
     }
 
-  public: // Controlled by Server
+    // Controlled by Server
     bool RegisterIndexedFlyData(DWORD dwIndex, BYTE byType, const char *c_szFileName);
     void CreateIndexedFly(DWORD dwIndex, CActorInstance *pStartActor, CActorInstance *pEndActor);
 
@@ -53,15 +52,15 @@ class CFlyingManager : public CSingleton<CFlyingManager>
     void __DestroyFlyingInstanceList();
     void __DestroyFlyingDataMap();
 
-    typedef std::map<DWORD, CFlyingData *> TFlyingDataMap;
-    typedef std::list<CFlyingInstance *> TFlyingInstanceList;
+    using TFlyingDataMap = std::map<DWORD, CFlyingData *>;
+    using TFlyingInstanceList = std::list<CFlyingInstance *>;
 
-    typedef struct SIndexFlyData
+    using TIndexFlyData = struct SIndexFlyData
     {
         BYTE byType;
         DWORD dwCRC;
-    } TIndexFlyData;
-    typedef std::map<DWORD, TIndexFlyData> TIndexFlyDataMap;
+    };
+    using TIndexFlyDataMap = std::map<DWORD, TIndexFlyData>;
 
     TFlyingDataMap m_kMap_pkFlyData;
     TFlyingInstanceList m_kLst_pkFlyInst;
@@ -69,5 +68,5 @@ class CFlyingManager : public CSingleton<CFlyingManager>
 
     CMapManager *m_pMapManager;
 
-    DWORD m_IDCounter;
+    DWORD m_IDCounter = 0U;
 };

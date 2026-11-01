@@ -9,13 +9,13 @@
 
 void CPythonNetworkStream::__GlobalPositionToLocalPosition(LONG &rGlobalX, LONG &rGlobalY)
 {
-    CPythonBackground &rkBgMgr = CPythonBackground::Instance();
+    CPythonBackground const &rkBgMgr = CPythonBackground::Instance();
     rkBgMgr.GlobalPositionToLocalPosition(rGlobalX, rGlobalY);
 }
 
 void CPythonNetworkStream::__LocalPositionToGlobalPosition(LONG &rLocalX, LONG &rLocalY)
 {
-    CPythonBackground &rkBgMgr = CPythonBackground::Instance();
+    CPythonBackground const &rkBgMgr = CPythonBackground::Instance();
     rkBgMgr.LocalPositionToGlobalPosition(rLocalX, rLocalY);
 }
 
@@ -42,7 +42,7 @@ void __SetWeaponPower(IAbstractPlayer &rkPlayer, DWORD dwWeaponID)
     DWORD maxMagicPower = 0;
     DWORD addPower = 0;
 
-    CItemData *pkWeapon;
+    CItemData *pkWeapon = nullptr;
     if (CItemManager::Instance().GetItemDataPointer(dwWeaponID, &pkWeapon))
     {
         if (pkWeapon->GetType() == CItemData::ITEM_TYPE_WEAPON)
@@ -122,7 +122,7 @@ bool CPythonNetworkStream::RecvCharacterAppendPacket()
 
     if (kNetActorData.m_bType != CActorInstance::TYPE_PC && kNetActorData.m_bType != CActorInstance::TYPE_NPC)
     {
-        const char *c_szName;
+        const char *c_szName = nullptr;
         CPythonNonPlayer &rkNonPlayer = CPythonNonPlayer::Instance();
         if (rkNonPlayer.GetName(kNetActorData.m_dwRace, &c_szName))
             kNetActorData.m_stName = c_szName;
@@ -285,7 +285,7 @@ void CPythonNetworkStream::__RecvCharacterAppendPacket(SNetworkActorData *pkNetA
 
             // NOTE : 사귀 타워일 경우 GOTO 로 이동시에도 맵 이름을 출력하도록 처리
             {
-                std::string strMapName = CPythonBackground::Instance().GetWarpMapName();
+                std::string const strMapName = CPythonBackground::Instance().GetWarpMapName();
                 if (strMapName == "metin2_map_deviltower1")
                     __ShowMapName(pkNetActorData->m_lCurX, pkNetActorData->m_lCurY);
             }
@@ -396,7 +396,7 @@ bool CPythonNetworkStream::RecvSyncPositionPacket()
 
     TPacketGCSyncPositionElement kSyncPos;
 
-    UINT uSyncPosCount = (kPacketSyncPos.wSize - sizeof(kPacketSyncPos)) / sizeof(kSyncPos);
+    UINT const uSyncPosCount = (kPacketSyncPos.wSize - sizeof(kPacketSyncPos)) / sizeof(kSyncPos);
     for (UINT iSyncPos = 0; iSyncPos < uSyncPosCount; ++iSyncPos)
     {
         if (!Recv(sizeof(TPacketGCSyncPositionElement), &kSyncPos))

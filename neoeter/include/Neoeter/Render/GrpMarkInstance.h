@@ -12,7 +12,6 @@ class CGraphicMarkInstance
     void SetImageFileName(const char *c_szFileName);
     const std::string &GetImageFileName();
 
-  public:
     CGraphicMarkInstance();
     virtual ~CGraphicMarkInstance();
 
@@ -29,8 +28,8 @@ class CGraphicMarkInstance
     void Load();
     bool IsEmpty() const;
 
-    int GetWidth();
-    int GetHeight();
+    int GetWidth() const;
+    int GetHeight() const;
 
     CGraphicTexture *GetTexturePointer();
     const CGraphicTexture &GetTextureReference() const;
@@ -54,14 +53,13 @@ class CGraphicMarkInstance
 
     void SetImagePointer(CGraphicImage *pImage);
 
-  protected:
     D3DXCOLOR m_DiffuseColor;
     D3DXVECTOR2 m_v2Position;
 
-    UINT m_uIndex;
+    UINT m_uIndex = 0U;
 
-    FLOAT m_fScale;
-    FLOAT m_fDepth;
+    FLOAT m_fScale = 0.0F;
+    FLOAT m_fDepth = 0.0F;
 
     CGraphicImage::TRef m_roImage;
     std::string m_stImageFileName;

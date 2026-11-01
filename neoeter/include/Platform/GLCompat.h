@@ -8,7 +8,7 @@
 // Platform_LoadGLFunctions() (wired to SDL_GL_GetProcAddress after the
 // context is created).
 
-#if defined(_WIN32)
+#ifdef _WIN32
 
 #include <windows.h>
 #include <GL/gl.h>
@@ -83,7 +83,7 @@ extern PFNGLCLIPCONTROLPROC glClipControl;
 // should log the failure and fall back (T1.5 decides what the fallback is).
 bool Platform_LoadGLFunctions(void *(*getProcAddress)(const char *));
 
-#elif defined(__APPLE__)
+#elifdef __APPLE__
 
 // macOS ships the legacy (compatibility) profile in OpenGL.framework, with
 // every prototype declared; it is deprecated but still functional.
@@ -109,7 +109,7 @@ inline bool Platform_LoadGLFunctions(void *(*)(const char *))
 #include <GL/gl.h>
 #include <GL/glext.h>
 
-inline bool Platform_LoadGLFunctions(void *(*)(const char *))
+inline bool Platform_LoadGLFunctions(void *(* /*unused*/)(const char *))
 {
     return true;
 }

@@ -54,11 +54,10 @@
 class CSpeedTreeForest : public CSingleton<CSpeedTreeForest>
 {
   public:
-    typedef std::map<DWORD, CSpeedTreeWrapper *> TTreeMap;
+    using TTreeMap = std::map<DWORD, CSpeedTreeWrapper *>;
 
-  public:
     CSpeedTreeForest();
-    virtual ~CSpeedTreeForest();
+    ~CSpeedTreeForest() override;
 
     void ClearMainTree();
 
@@ -66,8 +65,8 @@ class CSpeedTreeForest : public CSingleton<CSpeedTreeForest>
     CSpeedTreeWrapper *GetMainTree(DWORD dwCRC);
     void DeleteMainTree(DWORD dwCRC);
 
-    CSpeedTreeWrapper *CreateInstance(float x, float y, float z, DWORD dwTreeCRC, const char *c_pszTreeName);
-    void DeleteInstance(CSpeedTreeWrapper *pTree);
+    CSpeedTreeWrapper *CreateInstance(float x, float y, float z, DWORD dwTreeCRC, const char *c_szTreeName);
+    void DeleteInstance(CSpeedTreeWrapper *pInstance);
 
     void UpdateSystem(float fCurrentTime);
 
@@ -77,18 +76,18 @@ class CSpeedTreeForest : public CSingleton<CSpeedTreeForest>
     void SetFog(float fFogNear, float fFogFar);
     //////////////////////////////////////////////////////////////////////////
 
-    const float *GetExtents(void) const
+    const float *GetExtents() const
     {
         return m_afForestExtents;
     }
 
     // wind management
-    float GetWindStrength(void) const
+    float GetWindStrength() const
     {
         return m_fWindStrength;
     }
     void SetWindStrength(float fStrength);
-    void SetupWindMatrices(float fTimeInSecs);
+    void SetupWindMatrices(float fTimeInSecs) const;
 
     // overridden by specific graphics API
     virtual void UploadWindMatrix(unsigned int uiLocation, const float *pMatrix) const = 0;
@@ -100,15 +99,15 @@ class CSpeedTreeForest : public CSingleton<CSpeedTreeForest>
   protected:
     TTreeMap m_pMainTreeMap;
 
-    float m_afLighting[12];
-    float m_afFog[4];
+    float m_afLighting[12]{};
+    float m_afFog[4]{};
 
   private:
     void AdjustExtents(float x, float y, float z);
 
-    float m_afForestExtents[6]; // [0] = min x, [1] = min y..., [3] = max x, [4]
-                                // = max y...
-    float m_fWindStrength;      // 0.0 = no wind, 1.0 = full strength
+    float m_afForestExtents[6]{}; // [0] = min x, [1] = min y..., [3] = max x, [4]
+                                  // = max y...
+    float m_fWindStrength = 0.0f; // 0.0 = no wind, 1.0 = full strength
 
-    float m_fAccumTime;
+    float m_fAccumTime = 0.0F;
 };

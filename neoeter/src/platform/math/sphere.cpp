@@ -11,18 +11,22 @@
 #include <Neoeter/Platform/Math/StdAfx.h>
 #include <Neoeter/Platform/Math/sphere.h>
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cassert>
 
 bool Vector3d::IsInStaticRange() const
 {
     const float LIMIT = 3276700.0f;
     if (x < LIMIT && x > -LIMIT)
+    {
         if (y < LIMIT && y > -LIMIT)
+        {
             if (z < LIMIT && z > -LIMIT)
                 return true;
+        }
+    }
 
     return false;
 }
@@ -47,23 +51,23 @@ bool Sphere::RayIntersection(const Vector3d &rayOrigin, const Vector3d &dir, Vec
     // point E  = rayOrigin
     // point O  = sphere center
 
-    Vector3d EO = mCenter - rayOrigin;
+    Vector3d const EO = mCenter - rayOrigin;
     Vector3d V = dir;
-    float dist2 = EO.x * EO.x + EO.y * EO.y + EO.z * EO.z;
+    float const dist2 = (EO.x * EO.x) + (EO.y * EO.y) + (EO.z * EO.z);
     // Bug Fix For Gem, if origin is *inside* the sphere, invert the
     // direction vector so that we get a valid intersection location.
     if (dist2 < mRadius2)
         V *= -1;
 
-    float v = EO.Dot(V);
+    float const v = EO.Dot(V);
 
-    float disc = mRadius2 - (EO.Length2() - v * v);
+    float const disc = mRadius2 - (EO.Length2() - v * v);
 
     if (disc > 0.0f)
     {
         if (intersect)
         {
-            float d = sqrtf(disc);
+            float const d = sqrtf(disc);
 
             // float dist2 = rayOrigin.DistanceSq(mCenter);
 
@@ -79,11 +83,11 @@ bool Sphere::RayIntersection(const Vector3d &rayOrigin, const Vector3d &dir, Vec
 bool Sphere::RayIntersection(const Vector3d &rayOrigin, const Vector3d &V, float distance, Vector3d *intersect)
 {
     Vector3d sect;
-    bool hit = RayIntersectionInFront(rayOrigin, V, &sect);
+    bool const hit = RayIntersectionInFront(rayOrigin, V, &sect);
 
     if (hit)
     {
-        float d = rayOrigin.DistanceSq(sect);
+        float const d = rayOrigin.DistanceSq(sect);
         if (d > (distance * distance))
             return false;
         if (intersect)
@@ -96,13 +100,13 @@ bool Sphere::RayIntersection(const Vector3d &rayOrigin, const Vector3d &V, float
 bool Sphere::RayIntersectionInFront(const Vector3d &rayOrigin, const Vector3d &V, Vector3d *intersect)
 {
     Vector3d sect;
-    bool hit = RayIntersection(rayOrigin, V, &sect);
+    bool const hit = RayIntersection(rayOrigin, V, &sect);
 
     if (hit)
     {
-        Vector3d dir = sect - rayOrigin;
+        Vector3d const dir = sect - rayOrigin;
 
-        float dot = dir.Dot(V);
+        float const dot = dir.Dot(V);
 
         if (dot >= 0) // then it's in front!
         {
@@ -114,7 +118,7 @@ bool Sphere::RayIntersectionInFront(const Vector3d &rayOrigin, const Vector3d &V
     return false;
 }
 
-void Sphere::Report(void)
+void Sphere::Report()
 {
 }
 
@@ -135,7 +139,14 @@ from "Graphics Gems", Academic Press, 1990
 
 void Sphere::Compute(const SphereInterface &source)
 {
-    Vector3d xmin, xmax, ymin, ymax, zmin, zmax, dia1, dia2;
+    Vector3d xmin;
+    Vector3d xmax;
+    Vector3d ymin;
+    Vector3d ymax;
+    Vector3d zmin;
+    Vector3d zmax;
+    Vector3d dia1;
+    Vector3d dia2;
 
     /* FIRST PASS: find 6 minima/maxima points */
     xmin.Set(BIGNUMBER, BIGNUMBER, BIGNUMBER);
@@ -145,7 +156,7 @@ void Sphere::Compute(const SphereInterface &source)
     zmin.Set(BIGNUMBER, BIGNUMBER, BIGNUMBER);
     zmax.Set(-BIGNUMBER, -BIGNUMBER, -BIGNUMBER);
 
-    int count = source.GetVertexCount();
+    int const count = source.GetVertexCount();
 
     for (int i = 0; i < count; i++)
     {
@@ -170,18 +181,18 @@ void Sphere::Compute(const SphereInterface &source)
     float dx = xmax.GetX() - xmin.GetX();
     float dy = xmax.GetY() - xmin.GetY();
     float dz = xmax.GetZ() - xmin.GetZ();
-    float xspan = dx * dx + dy * dy + dz * dz;
+    float const xspan = (dx * dx) + (dy * dy) + (dz * dz);
 
     /* Same for y & z spans */
     dx = ymax.GetX() - ymin.GetX();
     dy = ymax.GetY() - ymin.GetY();
     dz = ymax.GetZ() - ymin.GetZ();
-    float yspan = dx * dx + dy * dy + dz * dz;
+    float const yspan = (dx * dx) + (dy * dy) + (dz * dz);
 
     dx = zmax.GetX() - zmin.GetX();
     dy = zmax.GetY() - zmin.GetY();
     dz = zmax.GetZ() - zmin.GetZ();
-    float zspan = dx * dx + dy * dy + dz * dz;
+    float const zspan = (dx * dx) + (dy * dy) + (dz * dz);
 
     /* Set points dia1 & dia2 to the maximally separated pair */
     dia1 = xmin;
@@ -210,8 +221,8 @@ void Sphere::Compute(const SphereInterface &source)
     dx = dia2.GetX() - mCenter.GetX(); /* x component of radius vector */
     dy = dia2.GetY() - mCenter.GetY(); /* y component of radius vector */
     dz = dia2.GetZ() - mCenter.GetZ(); /* z component of radius vector */
-    mRadius2 = dx * dx + dy * dy + dz * dz;
-    mRadius = float(sqrt(mRadius2));
+    mRadius2 = (dx * dx) + (dy * dy) + (dz * dz);
+    mRadius = sqrt(mRadius2);
 
     /* SECOND PASS: increment current sphere */
 
@@ -222,20 +233,20 @@ void Sphere::Compute(const SphereInterface &source)
         dx = caller_p.GetX() - mCenter.GetX();
         dy = caller_p.GetY() - mCenter.GetY();
         dz = caller_p.GetZ() - mCenter.GetZ();
-        float old_to_p_sq = dx * dx + dy * dy + dz * dz;
+        float const old_to_p_sq = (dx * dx) + (dy * dy) + (dz * dz);
         if (old_to_p_sq > mRadius2) /* do r**2 test first */
         {                           /* this point is outside of current sphere */
-            float old_to_p = float(sqrt(old_to_p_sq));
+            auto old_to_p = sqrt(old_to_p_sq);
             /* calc radius of new sphere */
             mRadius = (mRadius + old_to_p) * 0.5f;
             mRadius2 = mRadius * mRadius; /* for next r**2 compare */
-            float old_to_new = old_to_p - mRadius;
+            float const old_to_new = old_to_p - mRadius;
             /* calc center of new sphere */
-            float recip = 1.0f / old_to_p;
+            float const recip = 1.0f / old_to_p;
 
-            float cx = (mRadius * mCenter.GetX() + old_to_new * caller_p.GetX()) * recip;
-            float cy = (mRadius * mCenter.GetY() + old_to_new * caller_p.GetY()) * recip;
-            float cz = (mRadius * mCenter.GetZ() + old_to_new * caller_p.GetZ()) * recip;
+            float const cx = (mRadius * mCenter.GetX() + old_to_new * caller_p.GetX()) * recip;
+            float const cy = (mRadius * mCenter.GetY() + old_to_new * caller_p.GetY()) * recip;
+            float const cz = (mRadius * mCenter.GetZ() + old_to_new * caller_p.GetZ()) * recip;
 
             mCenter.Set(cx, cy, cz);
         }

@@ -9,9 +9,8 @@ class CGridSlotWindow : public CSlotWindow
   public:
     static DWORD Type();
 
-  public:
     CGridSlotWindow(PyObject *ppyObject);
-    virtual ~CGridSlotWindow();
+    ~CGridSlotWindow() override;
 
     void Destroy();
 
@@ -21,20 +20,19 @@ class CGridSlotWindow : public CSlotWindow
   protected:
     void __Initialize();
 
-    BOOL GetPickedSlotPointer(TSlot **ppSlot);
+    BOOL GetPickedSlotPointer(TSlot **ppSlot) override;
     BOOL GetPickedSlotList(int iWidth, int iHeight, std::list<TSlot *> *pSlotPointerList);
     BOOL GetGridSlotPointer(int ix, int iy, TSlot **ppSlot);
     BOOL GetPickedGridSlotPosition(int ixLocal, int iyLocal, int *pix, int *piy);
     BOOL CheckMoving(DWORD dwSlotNumber, DWORD dwItemIndex, const std::list<TSlot *> &c_rSlotList);
 
-    BOOL OnIsType(DWORD dwType);
+    BOOL OnIsType(DWORD dwType) override;
 
-    void OnRefreshSlot();
-    void OnRenderPickingSlot();
+    void OnRefreshSlot() override;
+    void OnRenderPickingSlot() override;
 
-  protected:
-    DWORD m_dwxCount;
-    DWORD m_dwyCount;
+    DWORD m_dwxCount = 0U;
+    DWORD m_dwyCount = 0U;
 
     std::vector<TSlot *> m_SlotVector;
 };

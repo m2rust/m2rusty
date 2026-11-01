@@ -132,7 +132,7 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
         return false;
 
     TextFileLoader.SetTop();
-    int temp;
+    int temp = 0;
 
     if (!TextFileLoader.GetTokenInteger("spreadingflag", &temp))
     {
@@ -140,7 +140,7 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
     }
     else
     {
-        m_bSpreading = temp ? true : false;
+        m_bSpreading = temp != 0;
     }
 
     if (!TextFileLoader.GetTokenInteger("maintainparallelflag", &temp))
@@ -149,7 +149,7 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
     }
     else
     {
-        m_bMaintainParallel = temp ? true : false;
+        m_bMaintainParallel = temp != 0;
     }
 
     if (!TextFileLoader.GetTokenFloat("initialvelocity", &m_fInitVel))
@@ -174,14 +174,22 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
     // m_fGravity = 0.0f;
 
     if (TextFileLoader.GetTokenInteger("hitonbackground", &temp))
-        m_bHitOnBackground = temp ? true : false;
+    {
+        m_bHitOnBackground = temp != 0;
+    }
     else
+    {
         m_bHitOnBackground = false;
+    }
 
     if (TextFileLoader.GetTokenInteger("hitonanothermonster", &temp))
-        m_bHitOnAnotherMonster = temp ? true : false;
+    {
+        m_bHitOnAnotherMonster = temp != 0;
+    }
     else
+    {
         m_bHitOnAnotherMonster = false;
+    }
 
     if (!TextFileLoader.GetTokenInteger("piercecount", &m_iPierceCount))
         m_iPierceCount = 0;
@@ -206,9 +214,13 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
     }
 
     if (!TextFileLoader.GetTokenInteger("homingflag", &temp))
+    {
         m_bIsHoming = false;
+    }
     else
-        m_bIsHoming = temp ? true : false;
+    {
+        m_bIsHoming = temp != 0;
+    }
 
     if (!TextFileLoader.GetTokenFloat("homingstarttime", &m_fHomingStartTime))
         m_fHomingStartTime = 0.0f;
@@ -222,10 +234,10 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
     if (!TextFileLoader.GetTokenVector3("acceleration", &m_v3Accel))
         m_v3Accel = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
 
-    DWORD i;
+    DWORD i = 0;
     for (i = 0; i < TextFileLoader.GetChildNodeCount(); i++)
     {
-        CTextFileLoader::CGotoChild GotoChild(&TextFileLoader, i);
+        CTextFileLoader::CGotoChild const GotoChild(&TextFileLoader, i);
 
         std::string strNodeName;
 
@@ -257,7 +269,7 @@ bool CFlyingData::LoadScriptFile(const char *c_szFilename)
                 TextFileLoader.GetTokenFloat("taillength", &fad.fTailLength);
                 TextFileLoader.GetTokenFloat("tailsize", &fad.fTailSize);
                 TextFileLoader.GetTokenInteger("tailshaperect", &temp);
-                fad.bRectShape = temp ? true : false;
+                fad.bRectShape = temp != 0;
             }
             else
             {
@@ -307,9 +319,13 @@ bool CFlyingData::SaveScriptFile(const char *c_szFilename)
 
     std::string strLocalFileName;
     if (GetLocalFileName(strGlobalPathName.c_str(), m_strBombEffectName.c_str(), &strLocalFileName))
+    {
         PrintfTabs(fp, 0, "BombEffect              \"%s\"\n", strLocalFileName.c_str());
+    }
     else
+    {
         PrintfTabs(fp, 0, "BombEffect              \"%s\"\n", m_strBombEffectName.c_str());
+    }
 
     PrintfTabs(fp, 0, "HomingFlag              %d\n", m_bIsHoming ? 1 : 0);
     PrintfTabs(fp, 0, "HomingStartTime         %f\n", m_fHomingStartTime);
@@ -325,9 +341,13 @@ bool CFlyingData::SaveScriptFile(const char *c_szFilename)
         PrintfTabs(fp, 1, "Type          %d\n", it->iType);
         PrintfTabs(fp, 1, "FlyType       %d\n", it->iFlyType);
         if (GetLocalFileName(strGlobalPathName.c_str(), it->strFilename.c_str(), &strLocalFileName))
+        {
             PrintfTabs(fp, 1, "AttachFile    \"%s\"\n", strLocalFileName.c_str());
+        }
         else
+        {
             PrintfTabs(fp, 1, "AttachFile    \"%s\"\n", it->strFilename.c_str());
+        }
         // PrintfTabs(fp, 1, "AttachFile    \"%s\"\n", it->strFilename);
 
         PrintfTabs(fp, 1, "TailFlag      %d\n", it->bHasTail ? 1 : 0);

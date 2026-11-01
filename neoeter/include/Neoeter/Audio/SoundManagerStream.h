@@ -12,9 +12,8 @@ class CSoundManagerStream : public CSoundBase
         MUSIC_INSTANCE_MAX_NUM = 3,
     };
 
-  public:
     CSoundManagerStream();
-    virtual ~CSoundManagerStream();
+    ~CSoundManagerStream() override;
 
     bool Initialize();
     void Destroy();
@@ -25,7 +24,6 @@ class CSoundManagerStream : public CSoundBase
   protected:
     bool CheckInstanceIndex(DWORD dwIndex);
 
-  protected:
     CSoundInstanceStream m_Instances[MUSIC_INSTANCE_MAX_NUM];
 };
 

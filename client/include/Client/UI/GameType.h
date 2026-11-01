@@ -1,5 +1,6 @@
 #pragma once
 #include <Client/Game/ItemData.h>
+#include <math.h>
 
 struct SAffects
 {
@@ -20,7 +21,7 @@ struct SAffects
         __SetAffects(c_rAffects);
     }
 
-    BOOL IsAffect(BYTE byIndex)
+    BOOL IsAffect(BYTE byIndex) const
     {
         return dwAffects & (1 << byIndex);
     }
@@ -30,7 +31,7 @@ struct SAffects
         dwAffects = c_rAffects;
     }
 
-    DWORD dwAffects;
+    DWORD dwAffects = 0U;
 };
 
 extern std::string g_strGuildSymbolPathName;
@@ -77,8 +78,8 @@ const DWORD c_Equipment_Belt = c_New_Equipment_Start + 2;
 
 enum EDragonSoulDeckType
 {
-    DS_DECK_1,
-    DS_DECK_2,
+    DS_DECK_1 = 0,
+    DS_DECK_2 = 1,
     DS_DECK_MAX_NUM = 2,
 };
 
@@ -119,7 +120,7 @@ const DWORD c_Costume_Slot_End = c_Costume_Slot_Start + c_Costume_Slot_Count;
 const DWORD c_Wear_Max = 32;
 const DWORD c_DragonSoul_Equip_Start = c_ItemSlot_Count + c_Wear_Max;
 const DWORD c_DragonSoul_Equip_Slot_Max = 6;
-const DWORD c_DragonSoul_Equip_End = c_DragonSoul_Equip_Start + c_DragonSoul_Equip_Slot_Max * DS_DECK_MAX_NUM;
+const DWORD c_DragonSoul_Equip_End = c_DragonSoul_Equip_Start + (c_DragonSoul_Equip_Slot_Max * DS_DECK_MAX_NUM);
 
 // NOTE: 2013년 2월 5일 현재... 용혼석 데크는 2개가 존재하는데, 향후 확장
 // 가능성이 있어서 3개 데크 여유분을 할당 해 둠. 그 뒤 공간은 벨트 인벤토리로
@@ -143,7 +144,7 @@ const DWORD c_Inventory_Count = c_DragonSoul_Equip_End;
 const DWORD c_DragonSoul_Inventory_Start = 0;
 const DWORD c_DragonSoul_Inventory_Box_Size = 32;
 const DWORD c_DragonSoul_Inventory_Count =
-    CItemData::DS_SLOT_NUM_TYPES * DRAGON_SOUL_GRADE_MAX * c_DragonSoul_Inventory_Box_Size;
+    static_cast<DWORD>(CItemData::DS_SLOT_NUM_TYPES) * DRAGON_SOUL_GRADE_MAX * c_DragonSoul_Inventory_Box_Size;
 const DWORD c_DragonSoul_Inventory_End = c_DragonSoul_Inventory_Start + c_DragonSoul_Inventory_Count;
 
 enum ESlotType
@@ -187,19 +188,15 @@ enum EDSInventoryMaxNum
 #pragma pack(push, 1)
 #define WORD_MAX 0xffff
 
-typedef struct SItemPos
+using TItemPos = struct SItemPos
 {
     BYTE window_type;
     WORD cell;
-    SItemPos()
+    SItemPos() : window_type(INVENTORY), cell(WORD_MAX)
     {
-        window_type = INVENTORY;
-        cell = WORD_MAX;
     }
-    SItemPos(BYTE _window_type, WORD _cell)
+    SItemPos(BYTE _window_type, WORD _cell) : window_type(_window_type), cell(_cell)
     {
-        window_type = _window_type;
-        cell = _cell;
     }
 
     // 기존에 cell의 형을 보면 BYTE가 대부분이지만, oi
@@ -211,7 +208,7 @@ typedef struct SItemPos
     //      cell = _cell;
     //      return cell;
     //  }
-    bool IsValidCell()
+    bool IsValidCell() const
     {
         switch (window_type)
         {
@@ -228,7 +225,7 @@ typedef struct SItemPos
             return false;
         }
     }
-    bool IsEquipCell()
+    bool IsEquipCell() const
     {
         switch (window_type)
         {
@@ -248,9 +245,9 @@ typedef struct SItemPos
     }
 
 #ifdef ENABLE_NEW_EQUIPMENT_SYSTEM
-    bool IsBeltInventoryCell()
+    bool IsBeltInventoryCell() const
     {
-        bool bResult = c_Belt_Inventory_Slot_Start <= cell && c_Belt_Inventory_Slot_End > cell;
+        bool const bResult = c_Belt_Inventory_Slot_Start <= cell && c_Belt_Inventory_Slot_End > cell;
         return bResult;
     }
 #endif
@@ -264,7 +261,7 @@ typedef struct SItemPos
     {
         return (window_type < rhs.window_type) || ((window_type == rhs.window_type) && (cell < rhs.cell));
     }
-} TItemPos;
+};
 #pragma pack(pop)
 
 const DWORD c_QuickBar_Line_Count = 3;
@@ -313,19 +310,19 @@ enum
 #pragma pack(push)
 #pragma pack(1)
 
-typedef struct SQuickSlot
+using TQuickSlot = struct SQuickSlot
 {
     BYTE Type;
     BYTE Position;
-} TQuickSlot;
+};
 
-typedef struct TPlayerItemAttribute
+using TPlayerItemAttribute = struct TPlayerItemAttribute
 {
     BYTE bType;
     short sValue;
-} TPlayerItemAttribute;
+};
 
-typedef struct packet_item
+using TItemData = struct packet_item
 {
     DWORD vnum;
     BYTE count;
@@ -333,9 +330,9 @@ typedef struct packet_item
     DWORD anti_flags;
     LONG alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
     TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
-} TItemData;
+};
 
-typedef struct packet_shop_item
+using TShopItemData = struct packet_shop_item
 {
     DWORD vnum;
     DWORD price;
@@ -343,18 +340,19 @@ typedef struct packet_shop_item
     BYTE display_pos;
     LONG alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
     TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
-} TShopItemData;
+};
 
 #pragma pack(pop)
 
 inline float GetSqrtDistance(int ix1, int iy1, int ix2, int iy2) // By sqrt
 {
-    float dx, dy;
+    float dx = NAN;
+    float dy = NAN;
 
-    dx = float(ix1 - ix2);
-    dy = float(iy1 - iy2);
+    dx = static_cast<float>(ix1 - ix2);
+    dy = static_cast<float>(iy1 - iy2);
 
-    return sqrtf(dx * dx + dy * dy);
+    return sqrtf((dx * dx) + (dy * dy));
 }
 
 // DEFAULT_FONT

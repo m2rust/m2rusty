@@ -19,26 +19,21 @@
 template <class Type> class Pool
 {
   public:
-    Pool(void)
+    Pool()
+        : mHead(nullptr), mCurrent(nullptr), mData(nullptr), mFree(nullptr), mFreeCount(0), mUsedCount(0) {
+
+          };
+
+    ~Pool()
     {
-        mHead = 0;
-        mFree = 0;
-        mData = 0;
-        mCurrent = 0;
-        mFreeCount = 0;
-        mUsedCount = 0;
+
+        delete[] mData;
     };
 
-    ~Pool(void)
+    void Release()
     {
-        if (mData)
-            delete[] mData;
-    };
 
-    void Release(void)
-    {
-        if (mData)
-            delete[] mData;
+        delete[] mData;
 
         mHead = 0;
         mFree = 0;
@@ -51,25 +46,29 @@ template <class Type> class Pool
 
     void Set(int maxitems)
     {
-        if (mData)
-            delete[] mData; // delete any previous incarnation.
+
+        delete[] mData; // delete any previous incarnation.
         mMaxItems = maxitems;
         mData = new Type[mMaxItems];
         mFree = mData;
-        mHead = 0;
-        int loopValue = (mMaxItems - 1);
+        mHead = nullptr;
+        int const loopValue = (mMaxItems - 1);
         for (int i = 0; i < loopValue; i++)
         {
             mData[i].SetNext(&mData[i + 1]);
             if (i == 0)
-                mData[i].SetPrevious(0);
+            {
+                mData[i].SetPrevious(nullptr);
+            }
             else
+            {
                 mData[i].SetPrevious(&mData[i - 1]);
+            }
         }
 
-        mData[loopValue].SetNext(0);
+        mData[loopValue].SetNext(nullptr);
         mData[loopValue].SetPrevious(&mData[loopValue - 1]);
-        mCurrent = 0; // there is no current, currently. <g>
+        mCurrent = nullptr; // there is no current, currently. <g>
         mFreeCount = maxitems;
         mUsedCount = 0;
     };
@@ -80,7 +79,7 @@ template <class Type> class Pool
 
         if (!mHead)
             return 0; // there is no data to process.
-        Type *ret;
+        Type *ret = nullptr;
 
         if (!mCurrent)
         {
@@ -98,34 +97,32 @@ template <class Type> class Pool
         return ret;
     };
 
-    bool IsEmpty(void) const
+    bool IsEmpty() const
     {
-        if (!mHead)
-            return true;
-        return false;
+        return mHead == nullptr;
     };
 
-    int Begin(void)
+    int Begin()
     {
         mCurrent = mHead;
         return mUsedCount;
     };
 
-    int GetUsedCount(void) const
+    int GetUsedCount() const
     {
         return mUsedCount;
     };
-    int GetFreeCount(void) const
+    int GetFreeCount() const
     {
         return mFreeCount;
     };
 
-    Type *GetNext(void)
+    Type *GetNext()
     {
         if (!mHead)
             return 0; // there is no data to process.
 
-        Type *ret;
+        Type *ret = nullptr;
 
         if (!mCurrent)
         {
@@ -163,19 +160,19 @@ template <class Type> class Pool
             Type *next = t->GetNext();
             mHead = next;
             if (mHead)
-                mHead->SetPrevious(0);
+                mHead->SetPrevious(nullptr);
         }
 
         Type *temp = mFree; // old head of free list.
         mFree = t;          // new head of linked list.
-        t->SetPrevious(0);
+        t->SetPrevious(nullptr);
         t->SetNext(temp);
 
         mUsedCount--;
         mFreeCount++;
     };
 
-    Type *GetFreeNoLink(void) // get free, but don't link it to the used list!!
+    Type *GetFreeNoLink() // get free, but don't link it to the used list!!
     {
         // Free allocated items are always added to the head of the list
         if (!mFree)
@@ -189,11 +186,11 @@ template <class Type> class Pool
         return ret;
     };
 
-    Type *GetFreeLink(void)
+    Type *GetFreeLink()
     {
         // Free allocated items are always added to the head of the list
         if (!mFree)
-            return 0;
+            return nullptr;
         Type *ret = mFree;
         mFree = ret->GetNext(); // new head of free list
         Type *temp = mHead;     // current head of list
@@ -201,7 +198,7 @@ template <class Type> class Pool
         if (temp)
             temp->SetPrevious(ret);
         mHead->SetNext(temp);
-        mHead->SetPrevious(0);
+        mHead->SetPrevious(nullptr);
         mUsedCount++;
         mFreeCount--;
         return ret;
@@ -235,9 +232,13 @@ template <class Type> class Pool
         Type *enext = e->GetNext();
 
         if (!eprev)
+        {
             mHead = item;
+        }
         else
+        {
             eprev->SetNext(item);
+        }
 
         item->SetPrevious(eprev);
         item->SetNext(e);
@@ -246,7 +247,7 @@ template <class Type> class Pool
     }
 
   private:
-    int mMaxItems;
+    int mMaxItems = 0;
     Type *mCurrent; // current iteration location.
     Type *mData;
     Type *mHead; // head of used list.

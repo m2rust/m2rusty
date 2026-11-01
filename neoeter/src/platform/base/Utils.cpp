@@ -1,25 +1,27 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 
-#include <stdlib.h>
-#if defined(_WIN32)
+#include <cstdlib>
+#ifdef _WIN32
 #include <direct.h>
 #include <io.h>
 #else
+#include <math.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
 #include <Neoeter/Platform/Base/FileDir.h>
 #include <Neoeter/Platform/Base/Utils.h>
-#include <assert.h>
-#include <sys/stat.h>
+#include <cassert>
 
-char korean_tolower(const char c);
+#include <print>
+
+char korean_tolower(char c);
 
 const char *CreateTempFileName(const char *c_pszPrefix)
 {
     static char szTempName[MAX_PATH + 1];
 
-#if defined(_WIN32)
+#ifdef _WIN32
     char szTempPath[MAX_PATH + 1];
     GetTempPath(MAX_PATH, szTempPath);
 
@@ -32,7 +34,7 @@ const char *CreateTempFileName(const char *c_pszPrefix)
     if (!tmpDir)
         tmpDir = "/tmp";
     snprintf(szTempName, sizeof(szTempName), "%s/%s_XXXXXX", tmpDir, c_pszPrefix ? c_pszPrefix : "etb");
-    int fd = mkstemp(szTempName);
+    int const fd = mkstemp(szTempName);
     if (fd >= 0)
         close(fd);
 #endif
@@ -43,9 +45,9 @@ const char *CreateTempFileName(const char *c_pszPrefix)
 void GetFilePathNameExtension(const char *c_szFile, int len, std::string *pstPath, std::string *pstName,
                               std::string *pstExt)
 {
-    assert(pstPath != NULL);
-    assert(pstName != NULL);
-    assert(pstExt != NULL);
+    assert(pstPath != nullptr);
+    assert(pstName != nullptr);
+    assert(pstExt != nullptr);
 
     int ext = len;
     int pos = len;
@@ -53,7 +55,7 @@ void GetFilePathNameExtension(const char *c_szFile, int len, std::string *pstPat
     while (pos > 0)
     {
         --pos;
-        char c = c_szFile[pos];
+        char const c = c_szFile[pos];
 
         if (ext == len && c == '.')
         {
@@ -68,7 +70,7 @@ void GetFilePathNameExtension(const char *c_szFile, int len, std::string *pstPat
     while (pos > 0)
     {
         --pos;
-        char c = c_szFile[pos];
+        char const c = c_szFile[pos];
 
         if (c == '/' || c == '\\')
             break;
@@ -96,7 +98,7 @@ void GetFileExtension(const char *c_szFile, int len, std::string *pstExt)
     while (pos > 0)
     {
         --pos;
-        char c = c_szFile[pos];
+        char const c = c_szFile[pos];
         if (ext == len && c == '.')
         {
             ext = pos;
@@ -104,8 +106,10 @@ void GetFileExtension(const char *c_szFile, int len, std::string *pstExt)
         }
 
         if (c == '/')
+        {
             break;
-        else if (c == '\\')
+        }
+        if (c == '\\')
             break;
     }
 
@@ -116,16 +120,16 @@ void GetFileExtension(const char *c_szFile, int len, std::string *pstExt)
 
 void GetFileNameParts(const char *c_szFile, int len, char *pszPath, char *pszName, char *pszExt)
 {
-    assert(pszPath != NULL);
-    assert(pszName != NULL);
-    assert(pszExt != NULL);
+    assert(pszPath != nullptr);
+    assert(pszName != nullptr);
+    assert(pszExt != nullptr);
 
     int ext = len;
     int pos = len;
     while (pos > 0)
     {
         --pos;
-        char c = c_szFile[pos];
+        char const c = c_szFile[pos];
         if (ext == len && c == '.')
         {
             ext = pos;
@@ -133,19 +137,23 @@ void GetFileNameParts(const char *c_szFile, int len, char *pszPath, char *pszNam
         }
 
         if (c == '/')
+        {
             break;
-        else if (c == '\\')
+        }
+        if (c == '\\')
             break;
     }
 
     while (pos > 0)
     {
         --pos;
-        char c = c_szFile[pos];
+        char const c = c_szFile[pos];
 
         if (c == '/')
+        {
             break;
-        else if (c == '\\')
+        }
+        if (c == '\\')
             break;
     }
 
@@ -197,7 +205,7 @@ void GetOnlyFileName(const char *sz_Name, std::string &strFileName)
 {
     strFileName = "";
 
-    int i;
+    int i = 0;
     for (i = strlen(sz_Name) - 1; i >= 0; --i)
     {
         if ('\\' == sz_Name[i] || '/' == sz_Name[i])
@@ -225,7 +233,7 @@ void GetExceptionPathName(const char *sz_Name, std::string &OnlyFileName)
 
 void GetOnlyPathName(const char *sz_Name, std::string &OnlyPathName)
 {
-    int i;
+    int i = 0;
     for (i = strlen(sz_Name) - 1; i >= 0; --i)
     {
         if ('\\' == sz_Name[i] || '/' == sz_Name[i])
@@ -258,7 +266,7 @@ const char *GetOnlyPathName(const char *c_szName)
 
 bool GetLocalFileName(const char *c_szGlobalPath, const char *c_szFullPathFileName, std::string *pstrLocalFileName)
 {
-    std::string strLocalFileName;
+    std::string const strLocalFileName;
 
     std::string strGlobalPath;
     std::string strFullPathFileName;
@@ -268,7 +276,7 @@ bool GetLocalFileName(const char *c_szGlobalPath, const char *c_szFullPathFileNa
     if (strGlobalPath.length() >= strFullPathFileName.length())
         return false;
 
-    DWORD length = std::min(strGlobalPath.length(), strFullPathFileName.length());
+    DWORD const length = std::min(strGlobalPath.length(), strFullPathFileName.length());
     for (DWORD dwPos = 0; dwPos < length; ++dwPos)
     {
         if (strGlobalPath[dwPos] != strFullPathFileName[dwPos])
@@ -301,9 +309,13 @@ void StringPath(std::string &rString)
     for (DWORD i = 0; i < rString.length(); ++i)
     {
         if (rString[i] == '\\')
+        {
             rString[i] = '/';
+        }
         else
+        {
             rString[i] = korean_tolower(rString[i]);
+        }
     }
 }
 
@@ -312,9 +324,13 @@ void StringPath(char *pString)
     for (DWORD i = 0; i < strlen(pString); ++i)
     {
         if (pString[i] == '\\')
+        {
             pString[i] = '/';
+        }
         else
+        {
             pString[i] = korean_tolower(pString[i]);
+        }
     }
 }
 
@@ -323,9 +339,13 @@ void StringPath(const char *c_szSrc, char *szDest)
     for (DWORD i = 0; i < strlen(c_szSrc); ++i)
     {
         if (c_szSrc[i] == '\\')
+        {
             szDest[i] = '/';
+        }
         else
+        {
             szDest[i] = korean_tolower(c_szSrc[i]);
+        }
     }
 }
 
@@ -337,9 +357,13 @@ void StringPath(const char *c_szSrc, std::string &rString)
     for (DWORD i = 0; i < strlen(c_szSrc); ++i)
     {
         if (c_szSrc[i] == '\\')
+        {
             rString[i] = '/';
+        }
         else
+        {
             rString[i] = korean_tolower(c_szSrc[i]);
+        }
     }
 }
 
@@ -347,15 +371,17 @@ void StringPath(const char *c_szSrc, std::string &rString)
 
 void PrintAsciiData(const void *void_data, int bytes)
 {
-    int i, j, k;
-    const unsigned char *p;
-    const unsigned char *data;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    const unsigned char *p = nullptr;
+    const unsigned char *data = nullptr;
 
-    data = (const unsigned char *)void_data;
+    data = static_cast<const unsigned char *>(void_data);
 
-    fprintf(stdout, "------------------------------------------------------------------\n");
+    std::println(stdout, "------------------------------------------------------------------");
     j = bytes;
-    while (1)
+    while (true)
     {
         k = j >= 16 ? 16 : j;
 
@@ -363,25 +389,33 @@ void PrintAsciiData(const void *void_data, int bytes)
         for (i = 0; i < 16; ++i)
         {
             if (i >= k)
-                fprintf(stdout, "   ");
+            {
+                std::print(stdout, "   ");
+            }
             else
-                fprintf(stdout, "%02x ", *p);
+            {
+                std::print(stdout, "{:02x} ", *p);
+            }
             p++;
         }
 
-        fprintf(stdout, "| ");
+        std::print(stdout, "| ");
 
         p = data;
         for (i = 0; i < k; ++i)
         {
             if (i >= k)
-                fprintf(stdout, " ");
+            {
+                std::print(stdout, " ");
+            }
             else
-                fprintf(stdout, "%c", ishprint(*p) ? *p : '.');
+            {
+                std::print(stdout, "{:c}", ishprint(*p) ? *p : '.');
+            }
             p++;
         }
 
-        fprintf(stdout, "\n");
+        std::println(stdout, "");
 
         j -= 16;
         data += 16;
@@ -390,7 +424,7 @@ void PrintAsciiData(const void *void_data, int bytes)
             break;
     }
 
-    fprintf(stdout, "------------------------------------------------------------------\n");
+    std::println(stdout, "------------------------------------------------------------------");
 }
 
 int MIN(int a, int b)
@@ -408,7 +442,7 @@ int MINMAX(int min, int value, int max)
     if (max < min)
         return MAX(min, value);
 
-    int tv;
+    int tv = 0;
     tv = (min > value ? min : value);
     return (max < tv) ? max : tv;
 }
@@ -425,7 +459,7 @@ float fMAX(float a, float b)
 
 float fMINMAX(float min, float value, float max)
 {
-    float tv;
+    float tv = NAN;
 
     tv = (min > value ? min : value);
     return (max < tv) ? max : tv;
@@ -433,12 +467,12 @@ float fMINMAX(float min, float value, float max)
 
 bool IsFile(const char *filename)
 {
-    return _access(filename, 0) == 0 ? true : false;
+    return _access(filename, 0) == 0;
 }
 
 bool IsGlobalFileName(const char *c_szFileName)
 {
-    return strchr(c_szFileName, ':') != NULL;
+    return strchr(c_szFileName, ':') != nullptr;
 }
 
 void MyCreateDirectory(const char *path)
@@ -446,8 +480,8 @@ void MyCreateDirectory(const char *path)
     if (!path || !*path)
         return;
 
-    char *dir;
-    const char *p;
+    char *dir = nullptr;
+    const char *p = nullptr;
 
     if (strlen(path) >= 3)
     {
@@ -457,7 +491,7 @@ void MyCreateDirectory(const char *path)
 
     p = path;
 
-    int len = strlen(path) + 1;
+    int const len = strlen(path) + 1;
     dir = new char[len];
 
     while (*p)
@@ -466,7 +500,7 @@ void MyCreateDirectory(const char *path)
         {
             memset(dir, 0, len);
             strncpy(dir, path, p - path);
-#if defined(_WIN32)
+#ifdef _WIN32
             CreateDirectory(dir, NULL);
 #else
             mkdir(dir, 0755);
@@ -482,14 +516,10 @@ void MyCreateDirectory(const char *path)
 class CDirRemover : public CDir
 {
   public:
-    CDirRemover()
-    {
-    }
-    virtual ~CDirRemover()
-    {
-    }
+    CDirRemover() = default;
+    ~CDirRemover() override = default;
 
-    bool OnFolder(const char *c_szFilter, const char *c_szPathName, const char *c_szFileName)
+    bool OnFolder(const char *c_szFilter, const char *c_szPathName, const char *c_szFileName) override
     {
         std::string strFullPathName;
         strFullPathName = c_szPathName;
@@ -506,12 +536,12 @@ class CDirRemover : public CDir
         ms_strDirectoryDeque.push_back(strWorkingFolder);
         return true;
     }
-    bool OnFile(const char *c_szPathName, const char *c_szFileName)
+    bool OnFile(const char *c_szPathName, const char *c_szFileName) override
     {
         std::string strFullPathName;
         strFullPathName = c_szPathName;
         strFullPathName += c_szFileName;
-#if defined(_WIN32)
+#ifdef _WIN32
         _chmod(strFullPathName.c_str(), _S_IWRITE);
         DeleteFile(strFullPathName.c_str());
 #else
@@ -523,11 +553,10 @@ class CDirRemover : public CDir
 
     static void RemoveAllDirectory()
     {
-        for (std::deque<std::string>::iterator itor = ms_strDirectoryDeque.begin(); itor != ms_strDirectoryDeque.end();
-             ++itor)
+        for (auto &c_rstrDirectory : ms_strDirectoryDeque)
         {
-            const std::string &c_rstrDirectory = *itor;
-#if defined(_WIN32)
+
+#ifdef _WIN32
             RemoveDirectory(c_rstrDirectory.c_str());
 #else
             rmdir(c_rstrDirectory.c_str());
@@ -550,7 +579,7 @@ void RemoveAllDirectory(const char *c_szDirectoryName)
         remover.Create("*.*", c_szDirectoryName);
         CDirRemover::RemoveAllDirectory();
     }
-#if defined(_WIN32)
+#ifdef _WIN32
     RemoveDirectory(c_szDirectoryName);
 #else
     rmdir(c_szDirectoryName);
@@ -559,13 +588,13 @@ void RemoveAllDirectory(const char *c_szDirectoryName)
 
 void StringExceptCharacter(std::string *pstrString, const char *c_szCharacter)
 {
-    int icurPos = 0;
+    int const icurPos = 0;
     int iNextPos = 0;
 
     while ((iNextPos = pstrString->find_first_of(c_szCharacter, icurPos)) >= 0)
     {
-        std::string strFront = pstrString->substr(icurPos, iNextPos - icurPos);
-        std::string strBack = pstrString->substr(iNextPos + 1, pstrString->length() - iNextPos - 1);
+        std::string const strFront = pstrString->substr(icurPos, iNextPos - icurPos);
+        std::string const strBack = pstrString->substr(iNextPos + 1, pstrString->length() - iNextPos - 1);
         *pstrString = strFront + strBack;
     }
 }
@@ -585,12 +614,12 @@ bool SplitLine(const char *c_szLine, const char *c_szDelimeter, std::vector<std:
         if (beginPos < 0)
             return false;
 
-        int endPos;
+        int endPos = 0;
 
         if (strLine[beginPos] == '"')
         {
             ++beginPos;
-            endPos = strLine.find_first_of("\"", beginPos);
+            endPos = strLine.find_first_of('\"', beginPos);
 
             if (endPos < 0)
                 return false;
@@ -613,12 +642,12 @@ void GetExcutedFileName(std::string &r_str)
 {
     char szPath[MAX_PATH + 1];
 
-#if defined(_WIN32)
+#ifdef _WIN32
     GetModuleFileName(NULL, szPath, MAX_PATH);
     szPath[MAX_PATH] = '\0';
     r_str = szPath;
 #else
-    ssize_t len = readlink("/proc/self/exe", szPath, MAX_PATH);
+    ssize_t const len = readlink("/proc/self/exe", szPath, MAX_PATH);
     if (len > 0)
     {
         szPath[len] = '\0';
@@ -645,23 +674,24 @@ const char *_getf(const char *c_szFormat, ...)
 
 PCHAR *CommandLineToArgv(PCHAR CmdLine, int *_argc)
 {
-    PCHAR *argv;
-    PCHAR _argv;
-    ULONG len;
-    ULONG argc;
-    CHAR a;
-    ULONG i, j;
+    PCHAR *argv = nullptr;
+    PCHAR _argv = nullptr;
+    ULONG len = 0;
+    ULONG argc = 0;
+    CHAR a = 0;
+    ULONG i = 0;
+    ULONG j = 0;
 
-    BOOLEAN in_QM;
-    BOOLEAN in_TEXT;
-    BOOLEAN in_SPACE;
+    BOOLEAN in_QM = 0;
+    BOOLEAN in_TEXT = 0;
+    BOOLEAN in_SPACE = 0;
 
     len = strlen(CmdLine);
-    i = ((len + 2) / 2) * sizeof(PVOID) + sizeof(PVOID);
+    i = (((len + 2) / 2) * sizeof(PVOID)) + sizeof(PVOID);
 
-    argv = (PCHAR *)GlobalAlloc(GMEM_FIXED, i + (len + 2) * sizeof(CHAR));
+    argv = static_cast<PCHAR *>(GlobalAlloc(GMEM_FIXED, i + ((len + 2) * sizeof(CHAR))));
 
-    _argv = (PCHAR)(((PUCHAR)argv) + i);
+    _argv = reinterpret_cast<PCHAR>((reinterpret_cast<PUCHAR>(argv)) + i);
 
     argc = 0;
     argv[argc] = _argv;
@@ -727,7 +757,7 @@ PCHAR *CommandLineToArgv(PCHAR CmdLine, int *_argc)
         i++;
     }
     _argv[j] = '\0';
-    argv[argc] = NULL;
+    argv[argc] = nullptr;
 
     (*_argc) = argc;
     return argv;

@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 void CPythonNetworkStream::LoginPhase()
 {
-    TPacketHeader header;
+    TPacketHeader header = 0;
     if (!CheckPacket(&header))
         return;
 
@@ -95,9 +95,13 @@ void CPythonNetworkStream::SetLoginPhase()
     if (__DirectEnterMode_IsSet())
     {
         if (0 != m_dwLoginKey)
+        {
             SendLoginPacketNew(m_stID.c_str(), m_stPassword.c_str());
+        }
         else
+        {
             SendLoginPacket(m_stID.c_str(), m_stPassword.c_str());
+        }
 
         // 비밀번호를 메모리에 계속 갖고 있는 문제가 있어서, 사용 즉시 날리는
         // 것으로 변경
@@ -108,9 +112,13 @@ void CPythonNetworkStream::SetLoginPhase()
     else
     {
         if (0 != m_dwLoginKey)
+        {
             SendLoginPacketNew(m_stID.c_str(), m_stPassword.c_str());
+        }
         else
+        {
             SendLoginPacket(m_stID.c_str(), m_stPassword.c_str());
+        }
 
         // 비밀번호를 메모리에 계속 갖고 있는 문제가 있어서, 사용 즉시 날리는
         // 것으로 변경
@@ -361,8 +369,8 @@ bool CPythonNetworkStream::SendChinaMatrixCardPacket(const char *c_szMatrixCardS
     return SendSequence();
 }
 
-#define ROW(rows, i) ((rows >> ((4 - i - 1) * 8)) & 0x000000FF)
-#define COL(cols, i) ((cols >> ((4 - i - 1) * 8)) & 0x000000FF)
+#define ROW(rows, i) (((rows) >> ((4 - (i) - 1) * 8)) & 0x000000FF)
+#define COL(cols, i) (((cols) >> ((4 - (i) - 1) * 8)) & 0x000000FF)
 
 bool CPythonNetworkStream::__RecvChinaMatrixCardPacket()
 {

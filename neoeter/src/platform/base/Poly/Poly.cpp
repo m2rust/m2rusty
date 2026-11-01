@@ -1,8 +1,10 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
+#include <numbers>
 #include <string>
-#include <assert.h>
+#include <cassert>
 
 #include <Neoeter/Platform/Base/Poly/Poly.h>
+#include <math.h>
 #include <cmath>
 #include <cctype>
 #include <cstdlib>
@@ -19,38 +21,35 @@ void CPoly::SetRandom(int iRandomType)
     m_iRandomType = iRandomType;
 }
 
-int CPoly::my_irandom(double start, double end)
+int CPoly::my_irandom(double start, double end) const
 {
     switch (m_iRandomType)
     {
     case RANDOM_TYPE_FORCE_MIN:
-        return int(start);
+        return static_cast<int>(start);
         break;
     case RANDOM_TYPE_FORCE_MAX:
-        return int(end);
+        return static_cast<int>(end);
         break;
     }
 
     // Make range as inclusive-exclusive
-    int is = int(start + 0.5);
-    int ie = int(end - start + 0.5) + 1;
+    int const is = static_cast<int>(start + 0.5);
+    int const ie = static_cast<int>(end - start + 0.5) + 1;
 
-    return int(_random() * ie + is);
+    return static_cast<int>((_random() * ie) + is);
 }
 
 double CPoly::my_frandom(double start, double end)
 {
-    return _random() * (end - start) + start;
+    return (_random() * (end - start)) + start;
 }
 
-CPoly::CPoly()
+CPoly::CPoly() : m_iRandomType(RANDOM_TYPE_FREELY), ErrorOccur(true), MathSymbolCount(0), STSize(0), uiLookPos(0)
 {
-    m_iRandomType = RANDOM_TYPE_FREELY;
-    uiLookPos = 0;
-    ErrorOccur = true;
+
     lSymbol.clear();
-    STSize = 0;
-    MathSymbolCount = 0;
+
     lSymbol.reserve(50);
     init();
 }
@@ -67,8 +66,9 @@ void CPoly::SetStr(const string &str)
 
 float CPoly::Eval()
 {
-    int stNow;
-    double save[POLY_MAXSTACK], t;
+    int stNow = 0;
+    double save[POLY_MAXSTACK];
+    double t = NAN;
     int iSp = 0;
     if (ErrorOccur)
     {
@@ -79,8 +79,8 @@ float CPoly::Eval()
     // TEST
     // list<int>::iterator pos = tokenBase.begin();
     // list<double>::iterator posn = numBase.begin();
-    vector<int>::iterator pos = tokenBase.begin();
-    vector<double>::iterator posn = numBase.begin();
+    auto pos = tokenBase.begin();
+    auto posn = numBase.begin();
     while (pos != tokenBase.end())
     {
         stNow = *pos;
@@ -242,7 +242,7 @@ float CPoly::Eval()
             // THROW(new CEvalException("Token Error"));
         }
     }
-    return float(save[iSp - 1]);
+    return static_cast<float>(save[iSp - 1]);
 }
 
 int CPoly::Analyze(const char *pszStr)
@@ -250,7 +250,7 @@ int CPoly::Analyze(const char *pszStr)
     if (pszStr)
         SetStr(pszStr);
 
-    if (0 == strData.length())
+    if (strData.empty())
         return true;
 
     // DisposeList();
@@ -271,7 +271,7 @@ int CPoly::Analyze(const char *pszStr)
 
 void CPoly::Clear()
 {
-    int i;
+    int i = 0;
     // while (!tokenBase.IsEmpty()) listBase.RemoveTail();
     // while (!numBase.IsEmpty()) numBase.RemoveTail();
     tokenBase.clear();
@@ -281,7 +281,7 @@ void CPoly::Clear()
     {
         if (lSymbol[i])
             delete lSymbol[i];
-        lSymbol[i] = NULL;
+        lSymbol[i] = nullptr;
     }
     // lSymbol.FreeExtra();
     lSymbol.clear();
@@ -292,7 +292,7 @@ void CPoly::Clear()
 
 void CPoly::expr()
 {
-    int t;
+    int t = 0;
 
     switch (iLookAhead)
     {
@@ -336,22 +336,28 @@ void CPoly::error()
 
 int CPoly::lexan()
 {
-    int t;
-    double tt;
+    int t = 0;
+    double tt = NAN;
 
     while (uiLookPos < strData.size())
     {
         if (strData[uiLookPos] == ' ' || strData[uiLookPos] == '\t')
+        {
             ;
+        }
         else if (isdigit(strData[uiLookPos]))
         {
             t = 0;
             for (; uiLookPos < strData.size(); uiLookPos++)
             {
                 if (isdigit(strData[uiLookPos]))
-                    t = t * 10 + strData[uiLookPos] - '0';
+                {
+                    t = (t * 10) + strData[uiLookPos] - '0';
+                }
                 else
+                {
                     break;
+                }
             }
             iToken = t;
             tt = 0.1;
@@ -362,9 +368,13 @@ int CPoly::lexan()
                 for (; uiLookPos < strData.size(); uiLookPos++, tt *= 0.1)
                 {
                     if (isdigit(strData[uiLookPos]))
+                    {
                         iNumToken += tt * (strData[uiLookPos] - '0');
+                    }
                     else
+                    {
                         break;
+                    }
                 }
             }
             iNumToken += iToken;
@@ -372,7 +382,7 @@ int CPoly::lexan()
         }
         else if (isalpha(strData[uiLookPos]))
         {
-            string localSymbol("");
+            string localSymbol;
             while (uiLookPos < strData.size() && isalpha(strData[uiLookPos]))
             {
                 localSymbol += strData[uiLookPos];
@@ -397,7 +407,7 @@ int CPoly::lexan()
 
 void CPoly::term()
 {
-    int t;
+    int t = 0;
     factor();
     while (!ErrorOccur)
     {
@@ -419,7 +429,7 @@ void CPoly::term()
 
 void CPoly::factor()
 {
-    int t;
+    int t = 0;
     expo();
     while (!ErrorOccur)
     {
@@ -439,7 +449,7 @@ void CPoly::factor()
 
 void CPoly::expo()
 {
-    int t;
+    int t = 0;
     switch (iLookAhead)
     {
     case '(':
@@ -452,7 +462,7 @@ void CPoly::expo()
         match(POLY_NUM);
         break;
     case POLY_ID:
-        emit(POLY_ID, (int)/*FindIndex*/ (iToken));
+        emit(POLY_ID, iToken);
         match(POLY_ID);
         break;
     case POLY_ROOT:
@@ -499,9 +509,13 @@ void CPoly::expo()
 void CPoly::match(int t)
 {
     if (iLookAhead == t)
+    {
         iLookAhead = lexan();
+    }
     else
+    {
         error();
+    }
 }
 
 void CPoly::emit(int t, int tval)
@@ -563,7 +577,9 @@ void CPoly::emit(int t, int tval)
 
 int CPoly::find(const string &s)
 {
-    int l, m, r;
+    int l = 0;
+    int m = 0;
+    int r = 0;
 
     l = 0;
     r = STSize - 1;
@@ -573,8 +589,10 @@ int CPoly::find(const string &s)
         m = (l + r) >> 1;
 
         if (lSymbol[SymbolIndex[m]]->strlex == s)
+        {
             return SymbolIndex[m];
-        else if (lSymbol[SymbolIndex[m]]->strlex < s)
+        }
+        if (lSymbol[SymbolIndex[m]]->strlex < s)
             l = m + 1;
         else
             r = m - 1;
@@ -584,7 +602,7 @@ int CPoly::find(const string &s)
 
 int CPoly::insert(const string &s, int tok)
 {
-    int i;
+    int i = 0;
     bool bAdded = false;
 
     lSymbol.push_back(new CSymTable(tok, s));
@@ -610,7 +628,7 @@ int CPoly::SetVar(const string &strName, double dVar)
 {
     if (ErrorOccur)
         return false;
-    int index = find(strName);
+    int const index = find(strName);
     if (index == -1)
         return false;
     CSymTable *stVar = lSymbol[(/*FindIndex*/ (index))];
@@ -648,9 +666,9 @@ void CPoly::init()
     insert("cosec", POLY_COSEC);
     insert("sec", POLY_SEC);
     insert("pi", POLY_PI);
-    SetVar("pi", 3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117068);
+    SetVar("pi", std::numbers::pi);
     insert("e", POLY_EXP);
-    SetVar("e", 2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427);
+    SetVar("e", std::numbers::e);
     insert("log", POLY_LOG);
     insert("ln", POLY_LN);
     insert("log10", POLY_LOG10);

@@ -2,15 +2,11 @@
 #include <Neoeter/Render/GrpRatioInstance.h>
 #include <Neoeter/Platform/Base/Timer.h>
 
-CGraphicRatioInstance::CGraphicRatioInstance()
+CGraphicRatioInstance::CGraphicRatioInstance() : m_baseTime(0), m_blendTime(0)
 {
-    m_baseTime = 0;
-    m_blendTime = 0;
 }
 
-CGraphicRatioInstance::~CGraphicRatioInstance()
-{
-}
+CGraphicRatioInstance::~CGraphicRatioInstance() = default;
 
 void CGraphicRatioInstance::Clear()
 {
@@ -40,14 +36,14 @@ void CGraphicRatioInstance::BlendRatioReference(DWORD blendTime, const float &c_
 
 void CGraphicRatioInstance::Update()
 {
-    DWORD curTime = GetTime();
-    DWORD elapsedTime = curTime - m_baseTime;
+    DWORD const curTime = GetTime();
+    DWORD const elapsedTime = curTime - m_baseTime;
 
     if (elapsedTime < m_blendTime)
     {
-        float diff = m_dstRatio - m_srcRatio;
-        float rate = elapsedTime / float(m_blendTime);
-        m_curRatio = diff * rate + m_srcRatio;
+        float const diff = m_dstRatio - m_srcRatio;
+        float const rate = elapsedTime / static_cast<float>(m_blendTime);
+        m_curRatio = (diff * rate) + m_srcRatio;
     }
     else
     {

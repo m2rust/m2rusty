@@ -15,7 +15,7 @@ void CActorInstance::__MotionEventProcess(BOOL isPC)
 {
     if (isAttacking())
     {
-        DWORD dwNextFrame = DWORD(GetAttackingElapsedTime() * g_fGameFPS);
+        auto dwNextFrame = static_cast<DWORD>(GetAttackingElapsedTime() * g_fGameFPS);
         for (; m_kCurMotNode.dwcurFrame < dwNextFrame; ++m_kCurMotNode.dwcurFrame)
         {
             MotionEventProcess();
@@ -43,8 +43,10 @@ void CActorInstance::HORSE_MotionProcess(BOOL isPC)
     __MotionEventProcess(isPC);
 
     if (MOTION_TYPE_LOOP == m_kCurMotNode.iMotionType)
+    {
         if (m_kCurMotNode.dwcurFrame >= m_kCurMotNode.dwFrameCount)
             m_kCurMotNode.dwcurFrame = 0;
+    }
 }
 
 void CActorInstance::ReservingMotionProcess()
@@ -52,13 +54,13 @@ void CActorInstance::ReservingMotionProcess()
     if (m_MotionDeque.empty())
         return;
 
-    TReservingMotionNode &rReservingMotionNode = m_MotionDeque.front();
+    TReservingMotionNode const &rReservingMotionNode = m_MotionDeque.front();
 
-    float fCurrentTime = GetLocalTime();
+    float const fCurrentTime = GetLocalTime();
     if (rReservingMotionNode.fStartTime > fCurrentTime)
         return;
 
-    DWORD dwNextMotionIndex = GET_MOTION_INDEX(rReservingMotionNode.dwMotionKey);
+    DWORD const dwNextMotionIndex = GET_MOTION_INDEX(rReservingMotionNode.dwMotionKey);
     switch (dwNextMotionIndex)
     {
     case CRaceMotionData::NAME_STAND_UP:
@@ -70,7 +72,7 @@ void CActorInstance::ReservingMotionProcess()
             SetEndStopMotion();
 
             // 이후의 모션 전부 1초씩 딜레이
-            TMotionDeque::iterator itor = m_MotionDeque.begin();
+            auto itor = m_MotionDeque.begin();
             for (; itor != m_MotionDeque.end(); ++itor)
             {
                 TReservingMotionNode &rNode = *itor;
@@ -81,17 +83,17 @@ void CActorInstance::ReservingMotionProcess()
         break;
     }
 
-    SCurrentMotionNode kPrevMotionNode = m_kCurMotNode;
+    SCurrentMotionNode const kPrevMotionNode = m_kCurMotNode;
 
-    EMotionPushType iMotionType = rReservingMotionNode.iMotionType;
-    float fSpeedRatio = rReservingMotionNode.fSpeedRatio;
-    float fBlendTime = rReservingMotionNode.fBlendTime;
+    EMotionPushType const iMotionType = rReservingMotionNode.iMotionType;
+    float const fSpeedRatio = rReservingMotionNode.fSpeedRatio;
+    float const fBlendTime = rReservingMotionNode.fBlendTime;
 
-    DWORD dwMotionKey = rReservingMotionNode.dwMotionKey;
+    DWORD const dwMotionKey = rReservingMotionNode.dwMotionKey;
 
     m_MotionDeque.pop_front();
 
-    DWORD dwCurrentMotionIndex = GET_MOTION_INDEX(dwMotionKey);
+    DWORD const dwCurrentMotionIndex = GET_MOTION_INDEX(dwMotionKey);
     switch (dwCurrentMotionIndex)
     {
     case CRaceMotionData::NAME_STAND_UP:
@@ -112,11 +114,15 @@ void CActorInstance::ReservingMotionProcess()
 
     // Tracenf("MOTION %d", GET_MOTION_INDEX(dwMotionKey));
 
-    int iLoopCount;
+    int iLoopCount = 0;
     if (MOTION_TYPE_ONCE == iMotionType)
+    {
         iLoopCount = 1;
+    }
     else
+    {
         iLoopCount = 0;
+    }
 
     SSetMotionData kSetMotData;
     kSetMotData.dwMotKey = dwMotionKey;
@@ -124,7 +130,7 @@ void CActorInstance::ReservingMotionProcess()
     kSetMotData.fSpeedRatio = fSpeedRatio;
     kSetMotData.iLoopCount = iLoopCount;
 
-    DWORD dwRealMotionKey = __SetMotion(kSetMotData);
+    DWORD const dwRealMotionKey = __SetMotion(kSetMotData);
 
     if (0 == dwRealMotionKey)
         return;
@@ -132,9 +138,9 @@ void CActorInstance::ReservingMotionProcess()
     // FIX: 위에서 호출한 __SetMotion 함수 안에서 랜덤으로 다른 모션을 재생할
     // 가능성도 있으므로 duration은 '현재 재생중인' 모션의 duration값을 사용해야
     // 함. float fDurationTime=rReservingMotionNode.fDuration;
-    float fDurationTime = GetMotionDuration(dwRealMotionKey) / fSpeedRatio;
-    float fStartTime = rReservingMotionNode.fStartTime;
-    float fEndTime = fStartTime + fDurationTime;
+    float const fDurationTime = GetMotionDuration(dwRealMotionKey) / fSpeedRatio;
+    float const fStartTime = rReservingMotionNode.fStartTime;
+    float const fEndTime = fStartTime + fDurationTime;
 
     if (dwRealMotionKey == 16777473)
     {
@@ -154,10 +160,12 @@ void CActorInstance::ReservingMotionProcess()
 
 void CActorInstance::CurrentMotionProcess()
 {
-    if (MOTION_TYPE_LOOP == m_kCurMotNode.iMotionType) // 임시다. 최종적인 목표는 Once도 절대로
-                                                       // 넘어가선 안된다. - [levites]
+    if (MOTION_TYPE_LOOP == m_kCurMotNode.iMotionType)
+    {   // 임시다. 최종적인 목표는 Once도 절대로
+        // 넘어가선 안된다. - [levites]
         if (m_kCurMotNode.dwcurFrame >= m_kCurMotNode.dwFrameCount)
             m_kCurMotNode.dwcurFrame = 0;
+    }
 
     if (IsDead())
         return;
@@ -165,9 +173,9 @@ void CActorInstance::CurrentMotionProcess()
     if (!m_MotionDeque.empty())
         return;
 
-    float fCurrentTime = GetLocalTime();
+    float const fCurrentTime = GetLocalTime();
 
-    DWORD dwMotionIndex = GET_MOTION_INDEX(m_kCurMotNode.dwMotionKey);
+    DWORD const dwMotionIndex = GET_MOTION_INDEX(m_kCurMotNode.dwMotionKey);
 
     bool isLooping = false;
 
@@ -178,7 +186,7 @@ void CActorInstance::CurrentMotionProcess()
         {
             if (fCurrentTime - m_kCurMotNode.fStartTime > m_pkCurRaceMotionData->GetLoopEndTime())
             {
-                m_kCurMotNode.dwcurFrame = DWORD(m_pkCurRaceMotionData->GetLoopStartTime() * g_fGameFPS);
+                m_kCurMotNode.dwcurFrame = static_cast<DWORD>(m_pkCurRaceMotionData->GetLoopStartTime() * g_fGameFPS);
                 __SetLocalTime(m_kCurMotNode.fStartTime + m_pkCurRaceMotionData->GetLoopStartTime());
                 if (-1 != m_kCurMotNode.iLoopCount)
                     --m_kCurMotNode.iLoopCount;
@@ -195,7 +203,7 @@ void CActorInstance::CurrentMotionProcess()
 
             if (fCurrentTime - m_kCurMotNode.fStartTime > m_pkCurRaceMotionData->GetLoopEndTime())
             {
-                m_kCurMotNode.dwcurFrame = DWORD(m_pkCurRaceMotionData->GetLoopStartTime() * g_fGameFPS);
+                m_kCurMotNode.dwcurFrame = static_cast<DWORD>(m_pkCurRaceMotionData->GetLoopStartTime() * g_fGameFPS);
                 __SetLocalTime(m_kCurMotNode.fStartTime + m_pkCurRaceMotionData->GetLoopStartTime());
 
                 SetFlyTarget(m_kQue_kFlyTarget.front());
@@ -254,7 +262,7 @@ void CActorInstance::SetMotionMode(int iMotionMode)
     m_wcurMotionMode = iMotionMode;
 }
 
-int CActorInstance::GetMotionMode()
+int CActorInstance::GetMotionMode() const
 {
     return m_wcurMotionMode;
 }
@@ -305,7 +313,7 @@ void CActorInstance::SetLoopMotion(DWORD dwMotion, float fBlendTime, float fSpee
         return;
     }
 
-    MOTION_KEY dwMotionKey;
+    MOTION_KEY dwMotionKey = 0;
     if (!m_pkCurRaceData->GetMotionKey(m_wcurMotionMode, dwMotion, &dwMotionKey))
     {
         Tracenf("CActorInstance::SetLoopMotion(dwMotion=%d, fBlendTime=%f, "
@@ -322,7 +330,7 @@ void CActorInstance::SetLoopMotion(DWORD dwMotion, float fBlendTime, float fSpee
     kSetMotData.fBlendTime = fBlendTime;
     kSetMotData.fSpeedRatio = fSpeedRatio;
 
-    DWORD dwRealMotionKey = __SetMotion(kSetMotData);
+    DWORD const dwRealMotionKey = __SetMotion(kSetMotData);
 
     if (0 == dwRealMotionKey)
         return;
@@ -349,7 +357,7 @@ bool CActorInstance::InterceptMotion(EMotionPushType iMotionType, WORD wMotion, 
         return false;
     }
 
-    MOTION_KEY dwMotionKey;
+    MOTION_KEY dwMotionKey = 0;
     if (!m_pkCurRaceData->GetMotionKey(m_wcurMotionMode, wMotion, &dwMotionKey))
     {
         Tracenf("CActorInstance::InterceptMotion(iLoopType=%d, wMotionMode=%d, "
@@ -361,11 +369,15 @@ bool CActorInstance::InterceptMotion(EMotionPushType iMotionType, WORD wMotion, 
 
     __ClearMotion();
 
-    int iLoopCount;
+    int iLoopCount = 0;
     if (MOTION_TYPE_ONCE == iMotionType)
+    {
         iLoopCount = 1;
+    }
     else
+    {
         iLoopCount = 0;
+    }
 
     SSetMotionData kSetMotData;
     kSetMotData.dwMotKey = dwMotionKey;
@@ -374,7 +386,7 @@ bool CActorInstance::InterceptMotion(EMotionPushType iMotionType, WORD wMotion, 
     kSetMotData.fSpeedRatio = fSpeedRatio;
     kSetMotData.uSkill = uSkill;
 
-    DWORD dwRealMotionKey = __SetMotion(kSetMotData);
+    DWORD const dwRealMotionKey = __SetMotion(kSetMotData);
 
     if (0 == dwRealMotionKey)
         return false;
@@ -387,13 +399,13 @@ bool CActorInstance::InterceptMotion(EMotionPushType iMotionType, WORD wMotion, 
         }
     }
 
-    assert(NULL != m_pkCurRaceMotionData);
+    assert(nullptr != m_pkCurRaceMotionData);
 
     // FIX : 위에서 호출한 __SetMotion 함수 내에서 랜덤으로 다른 모션을 선택할
     // 수도 있기 때문에 dwMotionKey값은 유효하지 않고 따라서 해당 키로 산출한
     // duration은 유효하지 않음. 당연히 현재 play중인 모션의 시간을 구해야 함..
     // -_-;; float fDuration=GetMotionDuration(dwMotionKey)/fSpeedRatio;
-    float fDuration = GetMotionDuration(dwRealMotionKey) / fSpeedRatio;
+    float const fDuration = GetMotionDuration(dwRealMotionKey) / fSpeedRatio;
 
     m_kCurMotNode.iMotionType = iMotionType;
     m_kCurMotNode.fStartTime = GetLocalTime();
@@ -411,7 +423,7 @@ bool CActorInstance::PushOnceMotion(DWORD dwMotion, float fBlendTime, float fSpe
 {
     assert(m_pkCurRaceData);
 
-    MOTION_KEY MotionKey;
+    MOTION_KEY MotionKey = 0;
     if (!m_pkCurRaceData->GetMotionKey(m_wcurMotionMode, dwMotion, &MotionKey))
         return false;
 
@@ -423,7 +435,7 @@ bool CActorInstance::PushLoopMotion(DWORD dwMotion, float fBlendTime, float fSpe
 {
     assert(m_pkCurRaceData);
 
-    MOTION_KEY MotionKey;
+    MOTION_KEY MotionKey = 0;
     if (!m_pkCurRaceData->GetMotionKey(m_wcurMotionMode, dwMotion, &MotionKey))
         return false;
 
@@ -431,19 +443,19 @@ bool CActorInstance::PushLoopMotion(DWORD dwMotion, float fBlendTime, float fSpe
     return true;
 }
 
-WORD CActorInstance::__GetCurrentMotionIndex()
+WORD CActorInstance::__GetCurrentMotionIndex() const
 {
     return GET_MOTION_INDEX(m_kCurMotNode.dwMotionKey);
 }
 
-DWORD CActorInstance::__GetCurrentMotionKey()
+DWORD CActorInstance::__GetCurrentMotionKey() const
 {
     return m_kCurMotNode.dwMotionKey;
 }
 
 BOOL CActorInstance::IsUsingSkill()
 {
-    DWORD dwCurMotionIndex = __GetCurrentMotionIndex();
+    DWORD const dwCurMotionIndex = __GetCurrentMotionIndex();
 
     if (dwCurMotionIndex >= CRaceMotionData::NAME_SKILL && dwCurMotionIndex < CRaceMotionData::NAME_SKILL_END)
         return TRUE;
@@ -482,7 +494,7 @@ BOOL CActorInstance::CanCancelSkill()
 
 BOOL CActorInstance::isLock()
 {
-    DWORD dwCurMotionIndex = __GetCurrentMotionIndex();
+    DWORD const dwCurMotionIndex = __GetCurrentMotionIndex();
 
     // Locked during attack
     switch (dwCurMotionIndex)
@@ -568,14 +580,14 @@ float CActorInstance::GetLastMotionTime(float fBlendTime)
         return GetLocalTime();
     }
 
-    TReservingMotionNode &rMotionNode = m_MotionDeque[m_MotionDeque.size() - 1];
+    TReservingMotionNode const &rMotionNode = m_MotionDeque[m_MotionDeque.size() - 1];
 
     return rMotionNode.fStartTime + rMotionNode.fDuration - fBlendTime;
 }
 
 float CActorInstance::GetMotionDuration(DWORD dwMotionKey)
 {
-    CGraphicThing *pMotion;
+    CGraphicThing *pMotion = nullptr;
 
     if (!GetMotionThingPointer(dwMotionKey, &pMotion))
     {
@@ -602,11 +614,12 @@ MOTION_KEY CActorInstance::GetRandomMotionKey(MOTION_KEY dwMotionKey)
     // NOTE : 자주 호출 되는 부분은 아니지만 어느 정도의 최적화 여지가 있음 -
     // [levites]
     // FIXME : 처음에 선택된 모션이 없는 것에 대한 처리가 되어 있지 않다.
-    WORD wMode = GET_MOTION_MODE(dwMotionKey);
-    WORD wIndex = GET_MOTION_INDEX(dwMotionKey);
+    WORD const wMode = GET_MOTION_MODE(dwMotionKey);
+    WORD const wIndex = GET_MOTION_INDEX(dwMotionKey);
 
-    const CRaceData::TMotionVector *c_pMotionVector;
+    const CRaceData::TMotionVector *c_pMotionVector = nullptr;
     if (m_pkCurRaceData->GetMotionVectorPointer(wMode, wIndex, &c_pMotionVector))
+    {
         if (c_pMotionVector->size() > 1)
         {
             int iPercentage = random() % 100;
@@ -630,6 +643,7 @@ MOTION_KEY CActorInstance::GetRandomMotionKey(MOTION_KEY dwMotionKey)
                 }
             }
         }
+    }
 
     return dwMotionKey;
 }
@@ -657,7 +671,7 @@ DWORD CActorInstance::__SetMotion(const SSetMotionData &c_rkSetMotData, DWORD dw
     if (dwMotKey == 0)
         dwMotKey = GetRandomMotionKey(c_rkSetMotData.dwMotKey);
 
-    UINT uNextMot = GET_MOTION_INDEX(c_rkSetMotData.dwMotKey);
+    UINT const uNextMot = GET_MOTION_INDEX(c_rkSetMotData.dwMotKey);
 
     if (IsDead())
     {
@@ -718,24 +732,32 @@ DWORD CActorInstance::__SetMotion(const SSetMotionData &c_rkSetMotData, DWORD dw
 
     if (m_pkHorse)
     {
-        WORD wMotionIndex = GET_MOTION_INDEX(dwMotKey);
-        WORD wMotionSubIndex = GET_MOTION_SUB_INDEX(dwMotKey);
-        DWORD dwChildMotKey = MAKE_RANDOM_MOTION_KEY(m_pkHorse->m_wcurMotionMode, wMotionIndex, wMotionSubIndex);
+        WORD const wMotionIndex = GET_MOTION_INDEX(dwMotKey);
+        WORD const wMotionSubIndex = GET_MOTION_SUB_INDEX(dwMotKey);
+        DWORD const dwChildMotKey = MAKE_RANDOM_MOTION_KEY(m_pkHorse->m_wcurMotionMode, wMotionIndex, wMotionSubIndex);
 
         if (CRaceMotionData::NAME_DEAD == wMotionIndex)
+        {
             CGraphicThingInstance::ChangeMotion(dwMotKey, c_rkSetMotData.iLoopCount, c_rkSetMotData.fSpeedRatio);
+        }
         else
+        {
             CGraphicThingInstance::SetMotion(dwMotKey, c_rkSetMotData.fBlendTime, c_rkSetMotData.iLoopCount,
                                              c_rkSetMotData.fSpeedRatio);
+        }
 
         m_pkHorse->SetMotion(dwChildMotKey, c_rkSetMotData.fBlendTime, c_rkSetMotData.iLoopCount,
                              c_rkSetMotData.fSpeedRatio);
         m_pkHorse->__BindMotionData(dwChildMotKey);
 
         if (c_rkSetMotData.iLoopCount)
+        {
             m_pkHorse->m_kCurMotNode.iMotionType = MOTION_TYPE_ONCE; // 무조건 이전 모션 타입으로 설정되고 있었음
+        }
         else
+        {
             m_pkHorse->m_kCurMotNode.iMotionType = MOTION_TYPE_LOOP;
+        }
 
         m_pkHorse->m_kCurMotNode.dwFrameCount = m_pkHorse->GetMotionDuration(dwChildMotKey) / (1.0f / g_fGameFPS);
         m_pkHorse->m_kCurMotNode.dwcurFrame = 0;
@@ -751,7 +773,7 @@ DWORD CActorInstance::__SetMotion(const SSetMotionData &c_rkSetMotData, DWORD dw
 
     if (__BindMotionData(dwMotKey))
     {
-        int iLoopCount = __GetLoopCount();
+        int const iLoopCount = __GetLoopCount();
         SetMotionLoopCount(iLoopCount);
 
         if (__CanAttack())
@@ -787,7 +809,7 @@ bool CActorInstance::__BindMotionData(DWORD dwMotionKey)
     if (!m_pkCurRaceData->GetMotionDataPointer(dwMotionKey, &m_pkCurRaceMotionData))
     {
         Tracen("Failed to bind motion.");
-        m_pkCurRaceMotionData = NULL;
+        m_pkCurRaceMotionData = nullptr;
         m_dwcurComboIndex = 0;
         return false;
     }
@@ -835,12 +857,9 @@ bool CActorInstance::__CanNextComboAttack()
     return true;
 }
 
-bool CActorInstance::__IsComboAttacking()
+bool CActorInstance::__IsComboAttacking() const
 {
-    if (0 == m_dwcurComboIndex)
-        return false;
-
-    return true;
+    return 0 != m_dwcurComboIndex;
 }
 
 bool CActorInstance::__IsNeedFlyTargetMotion()
@@ -850,7 +869,7 @@ bool CActorInstance::__IsNeedFlyTargetMotion()
 
     for (DWORD i = 0; i < m_pkCurRaceMotionData->GetMotionEventDataCount(); ++i)
     {
-        const CRaceMotionData::TMotionEventData *c_pData;
+        const CRaceMotionData::TMotionEventData *c_pData = nullptr;
         if (!m_pkCurRaceMotionData->GetMotionEventDataPointer(i, &c_pData))
             continue;
 
@@ -874,7 +893,7 @@ bool CActorInstance::__HasMotionFlyEvent()
 
     for (DWORD i = 0; i < m_pkCurRaceMotionData->GetMotionEventDataCount(); ++i)
     {
-        const CRaceMotionData::TMotionEventData *c_pData;
+        const CRaceMotionData::TMotionEventData *c_pData = nullptr;
         if (!m_pkCurRaceMotionData->GetMotionEventDataPointer(i, &c_pData))
             continue;
 

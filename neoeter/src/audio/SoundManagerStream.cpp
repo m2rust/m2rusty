@@ -1,13 +1,9 @@
 #include <Neoeter/Audio/StdAfx.h>
 #include <Neoeter/Audio/SoundManagerStream.h>
 
-CSoundManagerStream::CSoundManagerStream()
-{
-}
+CSoundManagerStream::CSoundManagerStream() = default;
 
-CSoundManagerStream::~CSoundManagerStream()
-{
-}
+CSoundManagerStream::~CSoundManagerStream() = default;
 
 bool CSoundManagerStream::Initialize()
 {
@@ -18,16 +14,16 @@ bool CSoundManagerStream::Initialize()
 
     ms_DIGDriver = AIL_open_digital_driver(44100, 16, 2, 0);
 
-    for (int i = 0; i < MUSIC_INSTANCE_MAX_NUM; ++i)
-        m_Instances[i].Initialize();
+    for (auto &m_Instance : m_Instances)
+        m_Instance.Initialize();
 
     return true;
 }
 
 void CSoundManagerStream::Destroy()
 {
-    for (int i = 0; i < MUSIC_INSTANCE_MAX_NUM; ++i)
-        m_Instances[i].Stop();
+    for (auto &m_Instance : m_Instances)
+        m_Instance.Stop();
 
     CSoundBase::Destroy();
 }
@@ -39,7 +35,7 @@ bool CSoundManagerStream::SetInstance(DWORD dwIndex, const char *filename)
 
     HSTREAM hStream = AIL_open_stream(ms_DIGDriver, filename, 0);
 
-    if (NULL == hStream)
+    if (nullptr == hStream)
         return false;
 
     m_Instances[dwIndex].SetStream(hStream);
@@ -50,15 +46,12 @@ bool CSoundManagerStream::SetInstance(DWORD dwIndex, const char *filename)
 CSoundInstanceStream *CSoundManagerStream::GetInstance(DWORD dwIndex)
 {
     if (!CheckInstanceIndex(dwIndex))
-        return NULL;
+        return nullptr;
 
     return &m_Instances[dwIndex];
 }
 
 bool CSoundManagerStream::CheckInstanceIndex(DWORD dwIndex)
 {
-    if (dwIndex >= DWORD(MUSIC_INSTANCE_MAX_NUM))
-        return false;
-
-    return true;
+    return dwIndex < static_cast<DWORD>(MUSIC_INSTANCE_MAX_NUM);
 }

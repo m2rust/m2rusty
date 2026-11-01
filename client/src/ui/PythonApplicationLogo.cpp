@@ -1,10 +1,10 @@
 #include <Client/UI/StdAfx.h>
 #include <Client/UI/PythonApplication.h>
-#if defined(_WIN32)
+#ifdef _WIN32
 #include <dshow.h>
 #include <qedit.h>
 #endif
-#if defined(_WIN32)
+#ifdef _WIN32
 // qedit.h on MinGW declares IID_ISampleGrabber but not the class id.
 #include <initguid.h>
 DEFINE_GUID(CLSID_SampleGrabber, 0xC1F400A0, 0x3F08, 0x11D3, 0x9F, 0x0B, 0x00, 0x60, 0x08, 0x03, 0x9E, 0x37);
@@ -12,7 +12,7 @@ DEFINE_GUID(CLSID_SampleGrabber, 0xC1F400A0, 0x3F08, 0x11D3, 0x9F, 0x0B, 0x00, 0
 
 #ifdef OPENMT2_PLATFORM_LINUX
 
-int CPythonApplication::OnLogoOpen(char *)
+int CPythonApplication::OnLogoOpen(char * /*unused*/)
 {
     return 0;
 }

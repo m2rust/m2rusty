@@ -4,7 +4,7 @@
 BOOL GetTokenTimeEventFloat(CTextFileLoader &rTextFileLoader, const char *c_szKey,
                             TTimeEventTableFloat *pTimeEventTableFloat)
 {
-    CTokenVector *pTokenVector;
+    CTokenVector *pTokenVector = nullptr;
     if (!rTextFileLoader.GetTokenVector(c_szKey, &pTokenVector))
         return FALSE;
 
@@ -23,10 +23,10 @@ BOOL GetTokenTimeEventFloat(CTextFileLoader &rTextFileLoader, const char *c_szKe
 
 void InsertItemTimeEventFloat(TTimeEventTableFloat *pTable, float fTime, float fValue)
 {
-    TTimeEventTableFloat::iterator itor = pTable->begin();
+    auto itor = pTable->begin();
     for (; itor != pTable->end(); ++itor)
     {
-        TTimeEventTypeFloat &rTimeEvent = *itor;
+        TTimeEventTypeFloat const &rTimeEvent = *itor;
         if (rTimeEvent.m_fTime > fTime)
             break;
     }

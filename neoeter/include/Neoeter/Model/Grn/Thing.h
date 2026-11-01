@@ -6,17 +6,15 @@
 class CGraphicThing : public CResource
 {
   public:
-    typedef CRef<CGraphicThing> TRef;
+    using TRef = CRef<CGraphicThing>;
 
-  public:
     static CGraphicThing::TType Type();
 
-  public:
     CGraphicThing(const char *c_szFileName);
-    virtual ~CGraphicThing();
+    ~CGraphicThing() override;
 
-    virtual bool CreateDeviceObjects();
-    virtual void DestroyDeviceObjects();
+    bool CreateDeviceObjects() override;
+    void DestroyDeviceObjects() override;
 
     bool CheckModelIndex(int iModel) const;
     CGrannyModel *GetModelPointer(int iModel);
@@ -32,18 +30,16 @@ class CGraphicThing : public CResource
     bool LoadModels();
     bool LoadMotions();
 
-  protected:
-    bool OnLoad(int iSize, const void *c_pvBuf);
-    void OnClear();
-    bool OnIsEmpty() const;
-    bool OnIsType(TType type);
+    bool OnLoad(int iSize, const void *c_pvBuf) override;
+    void OnClear() override;
+    bool OnIsEmpty() const override;
+    bool OnIsType(TType type) override;
 
-  protected:
-    granny_file *m_pgrnFile;
-    granny_file_info *m_pgrnFileInfo;
+    granny_file *m_pgrnFile = nullptr;
+    granny_file_info *m_pgrnFileInfo = nullptr;
 
-    granny_animation *m_pgrnAni;
+    granny_animation *m_pgrnAni = nullptr;
 
-    CGrannyModel *m_models;
-    CGrannyMotion *m_motions;
+    CGrannyModel *m_models = nullptr;
+    CGrannyMotion *m_motions = nullptr;
 };

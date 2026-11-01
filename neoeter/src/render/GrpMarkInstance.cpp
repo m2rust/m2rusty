@@ -53,13 +53,13 @@ void CGraphicMarkInstance::OnRender()
     CGraphicImage *pImage = m_roImage.GetPointer();
     CGraphicTexture *pTexture = pImage->GetTexturePointer();
 
-    UINT uColCount = pImage->GetWidth() / MARK_WIDTH;
+    UINT const uColCount = pImage->GetWidth() / MARK_WIDTH;
 
     if (uColCount == 0)
         return;
 
-    UINT uCol = m_uIndex % uColCount;
-    UINT uRow = m_uIndex / uColCount;
+    UINT const uCol = m_uIndex % uColCount;
+    UINT const uRow = m_uIndex / uColCount;
 
     RECT kRect;
     kRect.left = uCol * MARK_WIDTH;
@@ -67,15 +67,15 @@ void CGraphicMarkInstance::OnRender()
     kRect.right = kRect.left + MARK_WIDTH;
     kRect.bottom = kRect.top + MARK_HEIGHT;
 
-    float texReverseWidth = 1.0f / float(pTexture->GetWidth());
-    float texReverseHeight = 1.0f / float(pTexture->GetHeight());
-    float su = kRect.left * texReverseWidth;
-    float sv = kRect.top * texReverseHeight;
-    float eu = kRect.right * texReverseWidth;
-    float ev = kRect.bottom * texReverseHeight;
+    float const texReverseWidth = 1.0f / static_cast<float>(pTexture->GetWidth());
+    float const texReverseHeight = 1.0f / static_cast<float>(pTexture->GetHeight());
+    float const su = kRect.left * texReverseWidth;
+    float const sv = kRect.top * texReverseHeight;
+    float const eu = kRect.right * texReverseWidth;
+    float const ev = kRect.bottom * texReverseHeight;
 
-    float fRenderWidth = MARK_WIDTH * m_fScale;
-    float fRenderHeight = MARK_HEIGHT * m_fScale;
+    float const fRenderWidth = MARK_WIDTH * m_fScale;
+    float const fRenderHeight = MARK_HEIGHT * m_fScale;
 
     TPDTVertex vertices[4];
     vertices[0].position.x = m_v2Position.x - 0.5f;
@@ -107,7 +107,7 @@ void CGraphicMarkInstance::OnRender()
         CGraphicBase::SetDefaultIndexBuffer(CGraphicBase::DEFAULT_IB_FILL_RECT);
 
         STATEMANAGER.SetTexture(0, pTexture->GetD3DTexture());
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 4, 0, 2);
         // OLD: STATEMANAGER.DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST, 0, 4, 2,
@@ -140,7 +140,7 @@ void CGraphicMarkInstance::SetIndex(UINT uIndex)
     m_uIndex = uIndex;
 }
 
-int CGraphicMarkInstance::GetWidth()
+int CGraphicMarkInstance::GetWidth() const
 {
     if (IsEmpty())
         return 0;
@@ -149,7 +149,7 @@ int CGraphicMarkInstance::GetWidth()
     return 16;
 }
 
-int CGraphicMarkInstance::GetHeight()
+int CGraphicMarkInstance::GetHeight() const
 {
     if (IsEmpty())
         return 0;
@@ -198,10 +198,7 @@ void CGraphicMarkInstance::SetImagePointer(CGraphicImage *pImage)
 
 bool CGraphicMarkInstance::IsEmpty() const
 {
-    if (!m_roImage.IsNull() && !m_roImage->IsEmpty())
-        return false;
-
-    return true;
+    return !(!m_roImage.IsNull() && !m_roImage->IsEmpty());
 }
 
 bool CGraphicMarkInstance::operator==(const CGraphicMarkInstance &rhs) const
@@ -211,7 +208,7 @@ bool CGraphicMarkInstance::operator==(const CGraphicMarkInstance &rhs) const
 
 DWORD CGraphicMarkInstance::Type()
 {
-    static DWORD s_dwType = GetCRC32("CGraphicMarkInstance", strlen("CGraphicMarkInstance"));
+    static DWORD const s_dwType = GetCRC32("CGraphicMarkInstance", strlen("CGraphicMarkInstance"));
     return (s_dwType);
 }
 
@@ -242,7 +239,7 @@ void CGraphicMarkInstance::Initialize()
 
 void CGraphicMarkInstance::Destroy()
 {
-    m_roImage.SetPointer(NULL); // CRef 에서 레퍼런스 카운트가 떨어져야 함.
+    m_roImage.SetPointer(nullptr); // CRef 에서 레퍼런스 카운트가 떨어져야 함.
     Initialize();
 }
 

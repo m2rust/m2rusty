@@ -7,9 +7,8 @@
 class CGraphicTextInstance
 {
   public:
-    typedef CDynamicPool<CGraphicTextInstance> TPool;
+    using TPool = CDynamicPool<CGraphicTextInstance>;
 
-  public:
     enum EHorizontalAlign
     {
         HORIZONTAL_ALIGN_LEFT = 0x01,
@@ -23,18 +22,16 @@ class CGraphicTextInstance
         VERTICAL_ALIGN_BOTTOM = 0x30
     };
 
-  public:
     static void Hyperlink_UpdateMousePos(int x, int y);
     static int Hyperlink_GetText(char *buf, int len);
 
-  public:
     CGraphicTextInstance();
     virtual ~CGraphicTextInstance();
 
     void Destroy();
 
     void Update();
-    void Render(RECT *pClipRect = NULL);
+    void Render(RECT *pClipRect = nullptr);
 
     void ShowCursor();
     void HideCursor();
@@ -53,7 +50,7 @@ class CGraphicTextInstance
     void SetMax(int iMax);
     void SetTextPointer(CGraphicText *pText);
     void SetValueString(const std::string &c_stValue);
-    void SetValue(const char *c_szValue, size_t len = -1);
+    void SetValue(const char *c_szText, size_t len = -1);
     void SetPosition(float fx, float fy, float fz = 0.0f);
     void SetSecret(bool Value);
     void SetOutline(bool Value);
@@ -61,12 +58,12 @@ class CGraphicTextInstance
     void SetMultiLine(bool Value);
     void SetLimitWidth(float fWidth);
 
-    void GetTextSize(int *pRetWidth, int *pRetHeight);
+    void GetTextSize(int *pRetWidth, int *pRetHeight) const;
     const std::string &GetValueStringReference();
     WORD GetTextLineCount();
 
     int PixelPositionToCharacterPosition(int iPixelPosition);
-    int GetHorizontalAlign();
+    int GetHorizontalAlign() const;
 
   protected:
     void __Initialize();
@@ -74,37 +71,35 @@ class CGraphicTextInstance
     void __GetTextPos(DWORD index, float *x, float *y);
     int __GetTextTag(const wchar_t *src, int maxLen, int &tagLen, std::wstring &extraInfo);
 
-  protected:
     struct SHyperlink
     {
-        short sx;
-        short ex;
+        short sx = 0;
+        short ex = 0;
         std::wstring text;
 
-        SHyperlink() : sx(0), ex(0)
+        SHyperlink()
         {
         }
     };
 
-  protected:
-    DWORD m_dwTextColor;
-    DWORD m_dwOutLineColor;
+    DWORD m_dwTextColor = 0U;
+    DWORD m_dwOutLineColor = 0U;
 
-    WORD m_textWidth;
-    WORD m_textHeight;
+    WORD m_textWidth = 0U;
+    WORD m_textHeight = 0U;
 
-    BYTE m_hAlign;
-    BYTE m_vAlign;
+    BYTE m_hAlign = 0U;
+    BYTE m_vAlign = 0U;
 
-    WORD m_iMax;
-    float m_fLimitWidth;
+    WORD m_iMax = 0U;
+    float m_fLimitWidth = 0.0F;
 
-    bool m_isCursor;
-    bool m_isSecret;
-    bool m_isMultiLine;
+    bool m_isCursor = false;
+    bool m_isSecret = false;
+    bool m_isMultiLine = false;
 
-    bool m_isOutline;
-    float m_fFontFeather;
+    bool m_isOutline = false;
+    float m_fFontFeather = 0.0F;
 
     /////
 
@@ -112,8 +107,8 @@ class CGraphicTextInstance
     D3DXVECTOR3 m_v3Position;
 
   private:
-    bool m_isUpdate;
-    bool m_isUpdateFontTexture;
+    bool m_isUpdate = false;
+    bool m_isUpdateFontTexture = false;
 
     CGraphicText::TRef m_roText;
     CGraphicFontTexture::TPCharacterInfomationVector m_pCharInfoVector;

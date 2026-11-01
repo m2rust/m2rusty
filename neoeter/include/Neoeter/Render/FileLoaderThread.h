@@ -10,19 +10,17 @@
 class CFileLoaderThread
 {
   public:
-    typedef struct SData
+    using TData = struct SData
     {
         std::string fileName;
         std::shared_ptr<std::vector<char>> data;
-    } TData;
+    };
 
-  public:
     CFileLoaderThread();
     ~CFileLoaderThread();
 
     int Create(void *arg);
 
-  public:
     void Request(const std::string &c_rstFileName);
     bool Fetch(TData &data);
     void Shutdown();
@@ -44,7 +42,7 @@ class CFileLoaderThread
 
   private:
     void *m_pArg;
-    unsigned m_uThreadID;
+    unsigned m_uThreadID = 0;
 
   protected:
     UINT Setup();
@@ -59,9 +57,9 @@ class CFileLoaderThread
     std::deque<TData> m_pCompleteDeque;
     Mutex m_CompleteMutex;
 
-    HANDLE m_hSemaphore;
-    int m_iRestSemCount;
-    bool m_bShutdowned;
+    HANDLE m_hSemaphore = nullptr;
+    int m_iRestSemCount = 0;
+    bool m_bShutdowned = false;
 };
 
 #endif

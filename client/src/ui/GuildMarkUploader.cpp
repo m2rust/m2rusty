@@ -11,7 +11,7 @@
 #ifdef __VTUNE__
 #else
 
-CGuildMarkUploader::CGuildMarkUploader() : m_pbySymbolBuf(NULL)
+CGuildMarkUploader::CGuildMarkUploader() : m_pbySymbolBuf(nullptr)
 {
     SetRecvBufferSize(1024);
     SetSendBufferSize(1024);
@@ -28,7 +28,7 @@ void CGuildMarkUploader::Disconnect()
     __OfflineState_Set();
 }
 
-bool CGuildMarkUploader::IsCompleteUploading()
+bool CGuildMarkUploader::IsCompleteUploading() const
 {
     return STATE_OFFLINE == m_eState;
 }
@@ -159,10 +159,7 @@ bool CGuildMarkUploader::ConnectToSendSymbol(const CNetworkAddress &c_rkNetAddr,
     m_dwRandomKey = dwRandomKey;
     m_dwGuildID = dwGuildID;
 
-    if (!__LoadSymbol(c_szFileName, peError))
-        return false;
-
-    return true;
+    return __LoadSymbol(c_szFileName, peError);
 }
 
 void CGuildMarkUploader::Process()
@@ -204,13 +201,10 @@ void CGuildMarkUploader::__Inialize()
     m_dwHandle = 0;
     m_dwRandomKey = 0;
 
-    if (m_pbySymbolBuf)
-    {
-        delete m_pbySymbolBuf;
-    }
+    delete m_pbySymbolBuf;
 
     m_dwSymbolBufSize = 0;
-    m_pbySymbolBuf = NULL;
+    m_pbySymbolBuf = nullptr;
 }
 
 bool CGuildMarkUploader::__StateProcess()
@@ -266,10 +260,7 @@ bool CGuildMarkUploader::__SendMarkPacket()
     assert(sizeof(kPacketMarkUpload.image) == sizeof(m_kMark.m_apxBuf));
     memcpy(kPacketMarkUpload.image, m_kMark.m_apxBuf, sizeof(kPacketMarkUpload.image));
 
-    if (!Send(sizeof(kPacketMarkUpload), &kPacketMarkUpload))
-        return false;
-
-    return true;
+    return Send(sizeof(kPacketMarkUpload), &kPacketMarkUpload);
 }
 bool CGuildMarkUploader::__SendSymbolPacket()
 {
@@ -356,7 +347,7 @@ bool CGuildMarkUploader::__LoginState_RecvPing()
 bool CGuildMarkUploader::__AnalyzePacket(UINT uHeader, UINT uPacketSize,
                                          bool (CGuildMarkUploader::*pfnDispatchPacket)())
 {
-    BYTE bHeader;
+    BYTE bHeader = 0;
     if (!Peek(sizeof(bHeader), &bHeader))
         return true;
 

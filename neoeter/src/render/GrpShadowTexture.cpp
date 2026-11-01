@@ -10,19 +10,19 @@ void CGraphicShadowTexture::Destroy()
     if (m_lpd3dShadowSurface)
     {
         m_lpd3dShadowSurface->Release();
-        m_lpd3dShadowSurface = NULL;
+        m_lpd3dShadowSurface = nullptr;
     }
 
     if (m_lpd3dDepthSurface)
     {
         m_lpd3dDepthSurface->Release();
-        m_lpd3dDepthSurface = NULL;
+        m_lpd3dDepthSurface = nullptr;
     }
 
     if (m_lpd3dShadowTexture)
     {
         m_lpd3dShadowTexture->Release();
-        m_lpd3dShadowTexture = NULL;
+        m_lpd3dShadowTexture = nullptr;
     }
 
     Initialize();
@@ -36,14 +36,14 @@ bool CGraphicShadowTexture::Create(int width, int height)
     m_height = height;
 
     if (FAILED(ms_lpd3dDevice->CreateTexture(m_width, m_height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8,
-                                             D3DPOOL_DEFAULT, &m_lpd3dShadowTexture, NULL)))
+                                             D3DPOOL_DEFAULT, &m_lpd3dShadowTexture, nullptr)))
         return false;
 
     if (FAILED(m_lpd3dShadowTexture->GetSurfaceLevel(0, &m_lpd3dShadowSurface)))
         return false;
 
     if (FAILED(ms_lpd3dDevice->CreateDepthStencilSurface(m_width, m_height, D3DFMT_R32F, D3DMULTISAMPLE_NONE, 0, false,
-                                                         &m_lpd3dDepthSurface, NULL)))
+                                                         &m_lpd3dDepthSurface, nullptr)))
         return false;
 
     return true;
@@ -125,8 +125,8 @@ void CGraphicShadowTexture::Begin()
 
 void CGraphicShadowTexture::End()
 {
-    assert(m_lpd3dOldBackBufferSurface != NULL);
-    assert(m_lpd3dOldDepthBufferSurface != NULL);
+    assert(m_lpd3dOldBackBufferSurface != nullptr);
+    assert(m_lpd3dOldDepthBufferSurface != nullptr);
 
     ms_lpd3dDevice->EndScene();
 
@@ -137,8 +137,8 @@ void CGraphicShadowTexture::End()
     m_lpd3dOldBackBufferSurface->Release();
     m_lpd3dOldDepthBufferSurface->Release();
 
-    m_lpd3dOldBackBufferSurface = NULL;
-    m_lpd3dOldDepthBufferSurface = NULL;
+    m_lpd3dOldBackBufferSurface = nullptr;
+    m_lpd3dOldDepthBufferSurface = nullptr;
 
     STATEMANAGER.RestoreRenderState(D3DRS_CULLMODE);
     STATEMANAGER.RestoreRenderState(D3DRS_ZFUNC);
@@ -177,11 +177,11 @@ void CGraphicShadowTexture::Initialize()
 {
     CGraphicTexture::Initialize();
 
-    m_lpd3dShadowSurface = NULL;
-    m_lpd3dDepthSurface = NULL;
-    m_lpd3dOldBackBufferSurface = NULL;
-    m_lpd3dOldDepthBufferSurface = NULL;
-    m_lpd3dShadowTexture = NULL;
+    m_lpd3dShadowSurface = nullptr;
+    m_lpd3dDepthSurface = nullptr;
+    m_lpd3dOldBackBufferSurface = nullptr;
+    m_lpd3dOldDepthBufferSurface = nullptr;
+    m_lpd3dShadowTexture = nullptr;
 }
 
 CGraphicShadowTexture::CGraphicShadowTexture()

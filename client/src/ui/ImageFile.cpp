@@ -15,7 +15,7 @@ static bool ReadFileBytes(const char *path, std::vector<uint8_t> &out)
         return false;
 
     fseek(file, 0, SEEK_END);
-    long size = ftell(file);
+    long const size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     if (size <= 0)
@@ -24,8 +24,8 @@ static bool ReadFileBytes(const char *path, std::vector<uint8_t> &out)
         return false;
     }
 
-    out.resize((size_t)size);
-    size_t read = fread(out.data(), 1, out.size(), file);
+    out.resize(static_cast<size_t>(size));
+    size_t const read = fread(out.data(), 1, out.size(), file);
     fclose(file);
 
     if (read != out.size())

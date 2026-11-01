@@ -4,6 +4,7 @@
 #include <Client/Game/RaceData.h>
 #include <Neoeter/Model/SpeedTree/CSpeedTreeDirectX.h>
 #include <Neoeter/Model/SpeedTree/SpeedTreeWrapper.h>
+#include <math.h>
 
 enum
 {
@@ -148,12 +149,12 @@ void CActorInstance::SetReachScale(float fScale)
     m_fReachScale = fScale;
 }
 
-float CActorInstance::__GetReachScale()
+float CActorInstance::__GetReachScale() const
 {
     return m_fReachScale;
 }
 
-float CActorInstance::__GetAttackSpeed()
+float CActorInstance::__GetAttackSpeed() const
 {
     return m_fAtkSpd;
 }
@@ -247,10 +248,7 @@ bool CActorInstance::IsHandMode()
 
 bool CActorInstance::IsTwoHandMode()
 {
-    if (CRaceMotionData::MODE_TWOHAND_SWORD == GetMotionMode())
-        return true;
-
-    return false;
+    return CRaceMotionData::MODE_TWOHAND_SWORD == GetMotionMode();
 }
 
 bool CActorInstance::IsBowMode()
@@ -264,88 +262,63 @@ bool CActorInstance::IsBowMode()
     return false;
 }
 
-bool CActorInstance::IsPoly()
+bool CActorInstance::IsPoly() const
 {
     if (TYPE_POLY == m_eActorType)
         return true;
 
     if (TYPE_PC == m_eActorType)
+    {
         if (m_eRace >= MAIN_RACE_MAX_NUM)
             return TRUE;
+    }
 
     return false;
 }
 
-bool CActorInstance::IsPC()
+bool CActorInstance::IsPC() const
 {
-    if (TYPE_PC == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_PC == m_eActorType;
 }
 
-bool CActorInstance::IsNPC()
+bool CActorInstance::IsNPC() const
 {
-    if (TYPE_NPC == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_NPC == m_eActorType;
 }
 
-bool CActorInstance::IsEnemy()
+bool CActorInstance::IsEnemy() const
 {
-    if (TYPE_ENEMY == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_ENEMY == m_eActorType;
 }
 
-bool CActorInstance::IsStone()
+bool CActorInstance::IsStone() const
 {
-    if (TYPE_STONE == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_STONE == m_eActorType;
 }
 
-bool CActorInstance::IsWarp()
+bool CActorInstance::IsWarp() const
 {
-    if (TYPE_WARP == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_WARP == m_eActorType;
 }
 
-bool CActorInstance::IsGoto()
+bool CActorInstance::IsGoto() const
 {
-    if (TYPE_GOTO == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_GOTO == m_eActorType;
 }
 
-bool CActorInstance::IsBuilding()
+bool CActorInstance::IsBuilding() const
 {
-    if (TYPE_BUILDING == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_BUILDING == m_eActorType;
 }
 
-bool CActorInstance::IsDoor()
+bool CActorInstance::IsDoor() const
 {
-    if (TYPE_DOOR == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_DOOR == m_eActorType;
 }
 
-bool CActorInstance::IsObject()
+bool CActorInstance::IsObject() const
 {
-    if (TYPE_OBJECT == m_eActorType)
-        return true;
-
-    return false;
+    return TYPE_OBJECT == m_eActorType;
 }
 
 void CActorInstance::DestroySystem()
@@ -384,22 +357,22 @@ void CActorInstance::Die()
     m_isRealDead = TRUE;
 }
 
-BOOL CActorInstance::IsSleep()
+BOOL CActorInstance::IsSleep() const
 {
     return m_isSleep;
 }
 
-BOOL CActorInstance::IsParalysis()
+BOOL CActorInstance::IsParalysis() const
 {
     return m_isParalysis;
 }
 
-BOOL CActorInstance::IsFaint()
+BOOL CActorInstance::IsFaint() const
 {
     return m_isFaint;
 }
 
-BOOL CActorInstance::IsResistFallen()
+BOOL CActorInstance::IsResistFallen() const
 {
     return m_isResistFallen;
 }
@@ -414,7 +387,7 @@ BOOL CActorInstance::IsWaiting()
     return __IsWaitMotion();
 }
 
-BOOL CActorInstance::IsDead()
+BOOL CActorInstance::IsDead() const
 {
     return m_isRealDead;
 }
@@ -459,7 +432,7 @@ void CActorInstance::__AccumulationMovement(float fRot)
     // NOTE - 일단은 WAIT로 미끄러짐 방지
     //        추후에는 RaceMotionData가 이동되는 모션인지에 대한 Flag를 갖고
     //        있게끔 한다. - [levites]
-    WORD motion = __GetCurrentMotionIndex();
+    WORD const motion = __GetCurrentMotionIndex();
     if (CRaceMotionData::NAME_WAIT == motion || CRaceMotionData::NAME_INTRO_WAIT == motion ||
         CRaceMotionData::NAME_INTRO_SELECTED == motion || CRaceMotionData::NAME_INTRO_NOT_SELECTED == motion)
         return;
@@ -475,8 +448,8 @@ void CActorInstance::__AccumulationMovement(float fRot)
     else if (m_pkCurRaceMotionData && m_pkCurRaceMotionData->IsAccumulationMotion() &&
              m_pkCurRaceMotionData->GetMotionDuration() > 0.0f)
     {
-        float fSec = GetAverageSecondElapsed();
-        float dur = m_pkCurRaceMotionData->GetMotionDuration();
+        float const fSec = GetAverageSecondElapsed();
+        float const dur = m_pkCurRaceMotionData->GetMotionDuration();
         const TPixelPosition &accum = m_pkCurRaceMotionData->GetAccumulationPosition();
         D3DXVECTOR3 localDelta(accum.x * (fSec / dur) * m_fMovSpd, accum.y * (fSec / dur) * m_fMovSpd,
                                accum.z * (fSec / dur) * m_fMovSpd);
@@ -486,8 +459,8 @@ void CActorInstance::__AccumulationMovement(float fRot)
     }
     else if (IsMoving())
     {
-        float fSec = GetAverageSecondElapsed();
-        float fSpeed = (m_isWalking ? 220.0f : 450.0f) * m_fMovSpd * fSec;
+        float const fSec = GetAverageSecondElapsed();
+        float const fSpeed = (m_isWalking ? 220.0f : 450.0f) * m_fMovSpd * fSec;
         D3DXVECTOR3 localDelta(0.0f, -fSpeed, 0.0f);
         D3DXVECTOR3 worldDelta;
         D3DXVec3TransformCoord(&worldDelta, &localDelta, &s_matRotationZ);
@@ -552,7 +525,7 @@ bool CActorInstance::OnGetObjectHeight(float fX, float fY, float *pfHeight)
     if (TYPE_BUILDING != GetType())
         return false;
 
-    return m_pHeightAttributeInstance->GetHeight(fX, fY, pfHeight) == 1 ? true : false;
+    return m_pHeightAttributeInstance->GetHeight(fX, fY, pfHeight) == 1;
 }
 
 //////////////////////////////////////////////////////////////////
@@ -571,7 +544,7 @@ void CActorInstance::Revive()
     __InitializeCollisionData();
 }
 
-BOOL CActorInstance::IsStun()
+BOOL CActorInstance::IsStun() const
 {
     return m_isStun;
 }
@@ -597,7 +570,7 @@ void CActorInstance::SetRunMode()
 
 MOTION_KEY CActorInstance::GetNormalAttackIndex()
 {
-    WORD wMotionIndex;
+    WORD wMotionIndex = 0;
     m_pkCurRaceData->GetNormalAttackIndex(GetMotionMode(), &wMotionIndex);
 
     return MAKE_MOTION_KEY(GetMotionMode(), wMotionIndex);
@@ -636,7 +609,7 @@ void CActorInstance::AdjustDynamicCollisionMovement(const CActorInstance *c_pAct
     if (isAttacking())
         return;
 
-    UINT uActorType = c_pActorInstance->GetActorType();
+    UINT const uActorType = c_pActorInstance->GetActorType();
     if ((uActorType == TYPE_BUILDING) || (uActorType == TYPE_OBJECT) || (uActorType == TYPE_DOOR) ||
         (uActorType == TYPE_STONE))
     {
@@ -665,21 +638,19 @@ void CActorInstance::AdjustDynamicCollisionMovement(const CActorInstance *c_pAct
         if (move_length > gc_fActorSlideMoveSpeed)
             m_v3Movement *= gc_fActorSlideMoveSpeed / move_length;
 
-        TCollisionPointInstanceListIterator itMain = m_BodyPointInstanceList.begin();
+        auto itMain = m_BodyPointInstanceList.begin();
         for (; itMain != m_BodyPointInstanceList.end(); ++itMain)
         {
             CDynamicSphereInstanceVector &c_rMainSphereVector = (*itMain).SphereInstanceVector;
-            for (DWORD i = 0; i < c_rMainSphereVector.size(); ++i)
+            for (auto &c_rMainSphere : c_rMainSphereVector)
             {
-                CDynamicSphereInstance &c_rMainSphere = c_rMainSphereVector[i];
-
-                TCollisionPointInstanceList::const_iterator itOpp = c_pActorInstance->m_BodyPointInstanceList.begin();
+                auto itOpp = c_pActorInstance->m_BodyPointInstanceList.begin();
                 for (; itOpp != c_pActorInstance->m_BodyPointInstanceList.end(); ++itOpp)
                 {
                     CSphereCollisionInstance s;
                     s.GetAttribute().fRadius = itOpp->SphereInstanceVector[0].fRadius;
                     s.GetAttribute().v3Position = itOpp->SphereInstanceVector[0].v3Position;
-                    D3DXVECTOR3 v3Delta = s.GetCollisionMovementAdjust(c_rMainSphere);
+                    D3DXVECTOR3 const v3Delta = s.GetCollisionMovementAdjust(c_rMainSphere);
                     m_v3Movement += v3Delta;
                     c_rMainSphere.v3Position += v3Delta;
 
@@ -716,15 +687,13 @@ void CActorInstance::__AdjustCollisionMovement(const CGraphicObjectInstance *c_p
     if (move_length > gc_fActorSlideMoveSpeed)
         m_v3Movement *= gc_fActorSlideMoveSpeed / move_length;
 
-    TCollisionPointInstanceListIterator itMain = m_BodyPointInstanceList.begin();
+    auto itMain = m_BodyPointInstanceList.begin();
     for (; itMain != m_BodyPointInstanceList.end(); ++itMain)
     {
         CDynamicSphereInstanceVector &c_rMainSphereVector = (*itMain).SphereInstanceVector;
-        for (DWORD i = 0; i < c_rMainSphereVector.size(); ++i)
+        for (auto &c_rMainSphere : c_rMainSphereVector)
         {
-            CDynamicSphereInstance &c_rMainSphere = c_rMainSphereVector[i];
-
-            D3DXVECTOR3 v3Delta = c_pGraphicObjectInstance->GetCollisionMovementAdjust(c_rMainSphere);
+            D3DXVECTOR3 const v3Delta = c_pGraphicObjectInstance->GetCollisionMovementAdjust(c_rMainSphere);
             m_v3Movement += v3Delta;
             c_rMainSphere.v3Position += v3Delta;
 
@@ -760,8 +729,10 @@ void CActorInstance::__AdjustCollisionMovement(const CGraphicObjectInstance *c_p
 BOOL CActorInstance::IsMovement()
 {
     if (m_pkHorse)
+    {
         if (m_pkHorse->IsMovement())
             return TRUE;
+    }
 
     if (0.0f != m_v3Movement.x)
         return TRUE;
@@ -780,29 +751,28 @@ float CActorInstance::GetHeight()
 
 bool CActorInstance::IntersectDefendingSphere()
 {
-    for (TCollisionPointInstanceList::iterator it = m_DefendingPointInstanceList.begin();
-         it != m_DefendingPointInstanceList.end(); ++it)
+    for (auto &it : m_DefendingPointInstanceList)
     {
-        CDynamicSphereInstanceVector &rSphereInstanceVector = (*it).SphereInstanceVector;
+        CDynamicSphereInstanceVector &rSphereInstanceVector = it.SphereInstanceVector;
 
-        CDynamicSphereInstanceVector::iterator it2 = rSphereInstanceVector.begin();
+        auto it2 = rSphereInstanceVector.begin();
         for (; it2 != rSphereInstanceVector.end(); ++it2)
         {
-            CDynamicSphereInstance &rInstance = *it2;
-            D3DXVECTOR3 v3SpherePosition = rInstance.v3Position;
-            float fRadius = rInstance.fRadius;
+            CDynamicSphereInstance const &rInstance = *it2;
+            D3DXVECTOR3 const v3SpherePosition = rInstance.v3Position;
+            float const fRadius = rInstance.fRadius;
 
             D3DXVECTOR3 v3Orig;
             D3DXVECTOR3 v3Dir;
-            float fRange;
+            float fRange = NAN;
             ms_Ray.GetStartPoint(&v3Orig);
             ms_Ray.GetDirection(&v3Dir, &fRange);
 
             D3DXVECTOR3 v3Distance = v3Orig - v3SpherePosition;
-            float b = D3DXVec3Dot(&v3Dir, &v3Distance);
-            float c = D3DXVec3Dot(&v3Distance, &v3Distance) - fRadius * fRadius;
+            float const b = D3DXVec3Dot(&v3Dir, &v3Distance);
+            float const c = D3DXVec3Dot(&v3Distance, &v3Distance) - (fRadius * fRadius);
 
-            if (b * b - c >= 0)
+            if ((b * b) - c >= 0)
                 return true;
         }
     }
@@ -811,7 +781,7 @@ bool CActorInstance::IntersectDefendingSphere()
 
 bool CActorInstance::__IsMountingHorse()
 {
-    return NULL != m_pkHorse;
+    return nullptr != m_pkHorse;
 }
 
 void CActorInstance::MountHorse(CActorInstance *pkHorse)
@@ -873,7 +843,7 @@ void CActorInstance::Destroy()
     {
         m_pAttributeInstance->Clear();
         CAttributeInstance::Delete(m_pAttributeInstance);
-        m_pAttributeInstance = NULL;
+        m_pAttributeInstance = nullptr;
     }
 
     __ClearAttachingEffect();
@@ -954,10 +924,10 @@ void CActorInstance::__InitializeMotionData()
 
 void CActorInstance::__Initialize()
 {
-    m_pkCurRaceMotionData = NULL;
-    m_pkCurRaceData = NULL;
-    m_pkHorse = NULL;
-    m_pkTree = NULL;
+    m_pkCurRaceMotionData = nullptr;
+    m_pkCurRaceData = nullptr;
+    m_pkHorse = nullptr;
+    m_pkTree = nullptr;
 
     m_fOwnerBaseTime = 0.0f;
 
@@ -970,18 +940,18 @@ void CActorInstance::__Initialize()
     m_dwSelfVID = 0;
     m_dwOwnerVID = 0;
 
-    m_pkEventHandler = NULL;
+    m_pkEventHandler = nullptr;
 
     m_PhysicsObject.Initialize();
 
-    m_pAttributeInstance = NULL;
+    m_pAttributeInstance = nullptr;
 
-    m_pFlyEventHandler = 0;
+    m_pFlyEventHandler = nullptr;
 
     m_v3FishingPosition = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
     m_iFishingEffectID = -1;
 
-    m_pkHorse = NULL;
+    m_pkHorse = nullptr;
 
     __InitializePositionData();
     __InitializeRotationData();

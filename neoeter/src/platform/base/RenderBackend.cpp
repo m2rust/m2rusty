@@ -6,7 +6,7 @@
 
 #include <Platform/RenderBackend.h>
 
-#if defined(OPENMT2_RENDERER_GL)
+#ifdef OPENMT2_RENDERER_GL
 
 #include "backends/gl/GLRenderBackend.h"
 

@@ -25,16 +25,16 @@ class CTerrainImpl
         ATTRMAP_ZCOUNT = 8,
         TILEMAP_XSIZE = XSIZE * 2,
         TILEMAP_YSIZE = YSIZE * 2,
-        TILEMAP_RAW_XSIZE = XSIZE * 2 + 2,
-        TILEMAP_RAW_YSIZE = YSIZE * 2 + 2,
+        TILEMAP_RAW_XSIZE = (XSIZE * 2) + 2,
+        TILEMAP_RAW_YSIZE = (YSIZE * 2) + 2,
         WATERMAP_XSIZE = XSIZE,
         WATERMAP_YSIZE = YSIZE,
         NORMALMAP_XSIZE = XSIZE + 1,
         NORMALMAP_YSIZE = YSIZE + 1,
         SHADOWMAP_XSIZE = XSIZE * 2,
         SHADOWMAP_YSIZE = YSIZE * 2,
-        SPLATALPHA_RAW_XSIZE = XSIZE * 2 + 2,
-        SPLATALPHA_RAW_YSIZE = YSIZE * 2 + 2,
+        SPLATALPHA_RAW_XSIZE = (XSIZE * 2) + 2,
+        SPLATALPHA_RAW_YSIZE = (YSIZE * 2) + 2,
         SPLATALPHA_ZCOUNT = 7,
         HEIGHT_TILE_XRATIO = TILEMAP_XSIZE / XSIZE,
         HEIGHT_TILE_YRATIO = TILEMAP_XSIZE / XSIZE,
@@ -67,7 +67,6 @@ class CTerrainImpl
         ATTRIBUTE_BANPK = (1 << 2),
     };
 
-  public:
     static void SetTextureSet(CTextureSet *pTextureSet);
     static CTextureSet *GetTextureSet();
 
@@ -91,8 +90,8 @@ class CTerrainImpl
         return ms_pTextureSet->GetTexture(c_rlTextureNum);
     }
 
-    bool LoadWaterMap(const char *c_szWaterMapName);
-    bool LoadWaterMapFile(const char *c_szWaterMapName);
+    bool LoadWaterMap(const char *c_szFileName);
+    bool LoadWaterMapFile(const char *c_szFileName);
 
     LPDIRECT3DTEXTURE9 GetShadowTexture()
     {
@@ -108,50 +107,48 @@ class CTerrainImpl
     void LoadTextures();
     bool LoadHeightMap(const char *c_szFileName);
     bool RAW_LoadTileMap(const char *c_szFileName);
-    bool LoadAttrMap(const char *c_pszFileName);
+    bool LoadAttrMap(const char *c_szFileName);
 #ifdef WORLD_EDITOR
   public:
 #endif
     __forceinline WORD GetHeightMapValue(short sx, short sy);
 
-  protected:
-    LPDIRECT3DTEXTURE9 m_lpAlphaTexture[MAXTERRAINTEXTURES];
-    WORD m_awRawHeightMap[HEIGHTMAP_RAW_YSIZE * HEIGHTMAP_RAW_XSIZE];
+    LPDIRECT3DTEXTURE9 m_lpAlphaTexture[MAXTERRAINTEXTURES]{};
+    WORD m_awRawHeightMap[HEIGHTMAP_RAW_YSIZE * HEIGHTMAP_RAW_XSIZE]{};
 
-    BYTE m_abyTileMap[TILEMAP_RAW_YSIZE * TILEMAP_RAW_XSIZE];
-    BYTE m_abyAttrMap[ATTRMAP_YSIZE * ATTRMAP_XSIZE];
-    BYTE m_abyWaterMap[WATERMAP_YSIZE * WATERMAP_XSIZE];
-    CHAR m_acNormalMap[NORMALMAP_YSIZE * NORMALMAP_XSIZE * 3];
+    BYTE m_abyTileMap[TILEMAP_RAW_YSIZE * TILEMAP_RAW_XSIZE]{};
+    BYTE m_abyAttrMap[ATTRMAP_YSIZE * ATTRMAP_XSIZE]{};
+    BYTE m_abyWaterMap[WATERMAP_YSIZE * WATERMAP_XSIZE]{};
+    CHAR m_acNormalMap[NORMALMAP_YSIZE * NORMALMAP_XSIZE * 3]{};
 
-    TGA_HEADER m_HeightMapHeader;
+    TGA_HEADER m_HeightMapHeader{};
 
-    WORD m_wTileMapVersion;
+    WORD m_wTileMapVersion = 0U;
 
-    long m_lViewRadius;
-    float m_fHeightScale;
+    long m_lViewRadius = 0L;
+    float m_fHeightScale = 0.0F;
 
-    TTerrainSplatPatch m_TerrainSplatPatch;
+    TTerrainSplatPatch m_TerrainSplatPatch{};
 
     //////////////////////////////////////////////////////////////////////////
     // Water Map
-    BYTE m_byNumWater;
-    LONG m_lWaterHeight[MAX_WATER_NUM + 1];
+    BYTE m_byNumWater = 0U;
+    LONG m_lWaterHeight[MAX_WATER_NUM + 1]{};
     // Water Map
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     // Shadow Map
-    LPDIRECT3DTEXTURE9 m_lpShadowTexture;
-    WORD m_awShadowMap[SHADOWMAP_YSIZE * SHADOWMAP_XSIZE]; // 16bit R5 G6 B5
+    LPDIRECT3DTEXTURE9 m_lpShadowTexture = nullptr;
+    WORD m_awShadowMap[SHADOWMAP_YSIZE * SHADOWMAP_XSIZE]{}; // 16bit R5 G6 B5
 
-  protected:
-    long m_lSplatTilesX;
-    long m_lSplatTilesY;
+    long m_lSplatTilesX = 0L;
+    long m_lSplatTilesY = 0L;
 };
 
 __forceinline WORD CTerrainImpl::GetHeightMapValue(short sx, short sy)
 {
-    return m_awRawHeightMap[(sy + 1) * HEIGHTMAP_RAW_XSIZE + sx + 1];
+    return m_awRawHeightMap[((sy + 1) * HEIGHTMAP_RAW_XSIZE) + sx + 1];
 }
 
 #endif // __INC_PRTERRAINLIB_TERRAIN_H__

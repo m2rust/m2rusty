@@ -13,7 +13,7 @@ bool ProcessScanner_Create()
 void ProcessScanner_ReleaseQuitEvent()
 {
 }
-bool ProcessScanner_PopProcessQueue(std::vector<CRCPair> *)
+bool ProcessScanner_PopProcessQueue(std::vector<CRCPair> * /*unused*/)
 {
     return false;
 }

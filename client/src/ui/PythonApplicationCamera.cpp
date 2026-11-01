@@ -3,13 +3,14 @@
 
 #include <Neoeter/Platform/Base/Timer.h>
 #include <Neoeter/Render/Camera.h>
+#include <math.h>
 
 float BlendValueByLinear(float fElapsedTime, float fDuration, float fBeginValue, float fEndValue)
 {
     if (fElapsedTime >= fDuration)
         return fEndValue;
 
-    return (fEndValue - fBeginValue) * (fElapsedTime / fDuration) + fBeginValue;
+    return ((fEndValue - fBeginValue) * (fElapsedTime / fDuration)) + fBeginValue;
 }
 
 void CPythonApplication::__UpdateCamera()
@@ -22,32 +23,33 @@ void CPythonApplication::__UpdateCamera()
 
     if (CAMERA_MODE_BLEND == m_iCameraMode)
     {
-        float fcurTime = CTimer::Instance().GetCurrentSecond();
-        float fElapsedTime = fcurTime - m_fBlendCameraStartTime;
+        float const fcurTime = CTimer::Instance().GetCurrentSecond();
+        float const fElapsedTime = fcurTime - m_fBlendCameraStartTime;
 
-        float fxCenter =
+        float const fxCenter =
             BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.v3CenterPosition.x,
                                m_kEndBlendCameraSetting.v3CenterPosition.x);
-        float fyCenter =
+        float const fyCenter =
             BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.v3CenterPosition.y,
                                m_kEndBlendCameraSetting.v3CenterPosition.y);
-        float fzCenter =
+        float const fzCenter =
             BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.v3CenterPosition.z,
                                m_kEndBlendCameraSetting.v3CenterPosition.z);
 
-        float fDistance = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.fZoom,
-                                             m_kEndBlendCameraSetting.fZoom);
-        float fPitch = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.fPitch,
-                                          m_kEndBlendCameraSetting.fPitch);
-        float fRotation = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.fRotation,
-                                             m_kEndBlendCameraSetting.fRotation);
+        float const fDistance = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.fZoom,
+                                                   m_kEndBlendCameraSetting.fZoom);
+        float const fPitch = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.fPitch,
+                                                m_kEndBlendCameraSetting.fPitch);
+        float const fRotation = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime,
+                                                   m_kEventCameraSetting.fRotation, m_kEndBlendCameraSetting.fRotation);
 
-        float fUpDir = BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.kCmrPos.m_fUpDir,
-                                          m_kEndBlendCameraSetting.kCmrPos.m_fUpDir);
-        float fViewDir =
+        float const fUpDir =
+            BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.kCmrPos.m_fUpDir,
+                               m_kEndBlendCameraSetting.kCmrPos.m_fUpDir);
+        float const fViewDir =
             BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.kCmrPos.m_fViewDir,
                                m_kEndBlendCameraSetting.kCmrPos.m_fViewDir);
-        float fCrossDir =
+        float const fCrossDir =
             BlendValueByLinear(fElapsedTime, m_fBlendCameraBlendTime, m_kEventCameraSetting.kCmrPos.m_fCrossDir,
                                m_kEndBlendCameraSetting.kCmrPos.m_fCrossDir);
 
@@ -61,7 +63,10 @@ void CPythonApplication::__UpdateCamera()
     }
     else if (CAMERA_MODE_STAND == m_iCameraMode)
     {
-        float fDistance, fPitch, fRotation, fHeight;
+        float fDistance = NAN;
+        float fPitch = NAN;
+        float fRotation = NAN;
+        float fHeight = NAN;
         GetCamera(&fDistance, &fPitch, &fRotation, &fHeight);
         m_pyGraphic.SetPositionCamera(
             m_kEventCameraSetting.v3CenterPosition.x, m_kEventCameraSetting.v3CenterPosition.y,
@@ -69,7 +74,10 @@ void CPythonApplication::__UpdateCamera()
     }
     else if (CAMERA_MODE_NORMAL == m_iCameraMode)
     {
-        float fDistance, fPitch, fRotation, fHeight;
+        float fDistance = NAN;
+        float fPitch = NAN;
+        float fRotation = NAN;
+        float fHeight = NAN;
         GetCamera(&fDistance, &fPitch, &fRotation, &fHeight);
         m_pyGraphic.SetPositionCamera(m_v3CenterPosition.x, m_v3CenterPosition.y,
                                       m_v3CenterPosition.z + pMainCamera->GetTargetHeight(), fDistance, fPitch,
@@ -147,7 +155,7 @@ void CPythonApplication::SetCamera(float Distance, float Pitch, float Rotation, 
     if (!pCurrentCamera)
         return;
 
-    D3DXVECTOR3 v3Target = pCurrentCamera->GetTarget();
+    D3DXVECTOR3 const v3Target = pCurrentCamera->GetTarget();
     m_pyGraphic.SetPositionCamera(v3Target.x, v3Target.y, v3Target.z, Distance, Pitch, Rotation);
 
     CCamera *pMainCamera = CCameraManager::Instance().GetCurrentCamera();
@@ -169,7 +177,7 @@ void CPythonApplication::RotateCamera(int iDirection)
     if (IsLockCurrentCamera())
         return;
 
-    float fDegree = m_fCameraRotateSpeed * float(iDirection);
+    float const fDegree = m_fCameraRotateSpeed * static_cast<float>(iDirection);
     m_fRotationSpeed = fDegree;
 }
 
@@ -178,7 +186,7 @@ void CPythonApplication::PitchCamera(int iDirection)
     if (IsLockCurrentCamera())
         return;
 
-    float fDegree = m_fCameraPitchSpeed * float(iDirection);
+    float const fDegree = m_fCameraPitchSpeed * static_cast<float>(iDirection);
     m_fPitchSpeed = fDegree;
 }
 
@@ -187,7 +195,7 @@ void CPythonApplication::ZoomCamera(int iDirection)
     if (IsLockCurrentCamera())
         return;
 
-    float fRatio = 1.0f + m_fCameraZoomSpeed * float(iDirection);
+    float const fRatio = 1.0f + (m_fCameraZoomSpeed * static_cast<float>(iDirection));
     m_fZoomSpeed = fRatio;
 }
 
@@ -196,7 +204,7 @@ void CPythonApplication::MovieRotateCamera(int iDirection)
     if (IsLockCurrentCamera())
         return;
 
-    float fDegree = m_fCameraRotateSpeed * float(iDirection);
+    float const fDegree = m_fCameraRotateSpeed * static_cast<float>(iDirection);
     if (m_isSpecialCameraMode)
     {
         if (GetKeyState(VK_SCROLL) & 1)
@@ -213,7 +221,7 @@ void CPythonApplication::MoviePitchCamera(int iDirection)
     if (IsLockCurrentCamera())
         return;
 
-    float fDegree = m_fCameraPitchSpeed * float(iDirection);
+    float const fDegree = m_fCameraPitchSpeed * static_cast<float>(iDirection);
     if (m_isSpecialCameraMode)
     {
         if (GetKeyState(VK_SCROLL) & 1)
@@ -230,7 +238,7 @@ void CPythonApplication::MovieZoomCamera(int iDirection)
     if (IsLockCurrentCamera())
         return;
 
-    float fRatio = 1.0f + m_fCameraZoomSpeed * float(iDirection);
+    float const fRatio = 1.0f + (m_fCameraZoomSpeed * static_cast<float>(iDirection));
     if (m_isSpecialCameraMode)
     {
         if (GetKeyState(VK_SCROLL) & 1)
@@ -364,7 +372,7 @@ void CPythonApplication::GetCameraSetting(SCameraSetting *pCameraSetting)
     if (CCameraManager::Instance().GetCurrentCamera())
         pCameraSetting->v3CenterPosition.z += CCameraManager::Instance().GetCurrentCamera()->GetTargetHeight();
 
-    float fHeight;
+    float fHeight = NAN;
     GetCamera(&pCameraSetting->fZoom, &pCameraSetting->fPitch, &pCameraSetting->fRotation, &fHeight);
 }
 
@@ -384,10 +392,11 @@ void CPythonApplication::SaveCameraSetting(const char *c_szFileName)
     PrintfTabs(File, 0,
                "Line "
                "\"x;%d|y;%d|z;%d|distance;%d|pitch;%d|rot;%d|up;%d|view;%d|cross;%d\"\n",
-               int(CameraSetting.v3CenterPosition.x), int(CameraSetting.v3CenterPosition.y),
-               int(CameraSetting.v3CenterPosition.z), int(CameraSetting.fZoom), int(CameraSetting.fPitch),
-               int(CameraSetting.fRotation), int(CameraSetting.kCmrPos.m_fUpDir), int(CameraSetting.kCmrPos.m_fViewDir),
-               int(CameraSetting.kCmrPos.m_fCrossDir));
+               static_cast<int>(CameraSetting.v3CenterPosition.x), static_cast<int>(CameraSetting.v3CenterPosition.y),
+               static_cast<int>(CameraSetting.v3CenterPosition.z), static_cast<int>(CameraSetting.fZoom),
+               static_cast<int>(CameraSetting.fPitch), static_cast<int>(CameraSetting.fRotation),
+               static_cast<int>(CameraSetting.kCmrPos.m_fUpDir), static_cast<int>(CameraSetting.kCmrPos.m_fViewDir),
+               static_cast<int>(CameraSetting.kCmrPos.m_fCrossDir));
 
     fclose(File);
 }
@@ -401,12 +410,16 @@ bool CPythonApplication::LoadCameraSetting(const char *c_szFileName)
     TextFileLoader.SetTop();
 
     D3DXVECTOR3 v3CenterPosition;
-    CTokenVector *pCameraSetting;
-    CTokenVector *pCmrPos;
+    CTokenVector *pCameraSetting = nullptr;
+    CTokenVector *pCmrPos = nullptr;
     if (TextFileLoader.GetTokenVector3("centerpos", &v3CenterPosition))
+    {
         if (TextFileLoader.GetTokenVector("camerasetting", &pCameraSetting))
+        {
             if (TextFileLoader.GetTokenVector("cmrpos", &pCmrPos))
+            {
                 if (3 == pCameraSetting->size())
+                {
                     if (3 == pCmrPos->size())
                     {
                         SCameraSetting CameraSetting;
@@ -423,6 +436,10 @@ bool CPythonApplication::LoadCameraSetting(const char *c_szFileName)
                         SetEventCamera(CameraSetting);
                         return true;
                     }
+                }
+            }
+        }
+    }
 
     return false;
 }

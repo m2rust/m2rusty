@@ -25,7 +25,7 @@ void CAccountConnector::SetLoginInfo(const char *c_szName, const char *c_szPwd)
     m_strPassword = c_szPwd;
 }
 
-void CAccountConnector::ClearLoginInfo(void)
+void CAccountConnector::ClearLoginInfo()
 {
     m_strPassword = "";
 }
@@ -190,7 +190,7 @@ bool CAccountConnector::__AuthState_Process()
 
 bool CAccountConnector::__AuthState_RecvEmpty()
 {
-    BYTE byEmpty;
+    BYTE byEmpty = 0;
     Recv(sizeof(BYTE), &byEmpty);
     return true;
 }
@@ -447,8 +447,8 @@ bool CAccountConnector::__AuthState_RecvNEWCIBNPasspodRequest()
     return true;
 }
 
-#define ROW(rows, i) ((rows >> ((4 - i - 1) * 8)) & 0x000000FF)
-#define COL(cols, i) ((cols >> ((4 - i - 1) * 8)) & 0x000000FF)
+#define ROW(rows, i) (((rows) >> ((4 - (i) - 1) * 8)) & 0x000000FF)
+#define COL(cols, i) (((cols) >> ((4 - (i) - 1) * 8)) & 0x000000FF)
 
 bool CAccountConnector::__AuthState_RecvChinaMatrixCard()
 {
@@ -470,7 +470,7 @@ bool CAccountConnector::__AuthState_RecvChinaMatrixCard()
 
 bool CAccountConnector::__AnalyzePacket(UINT uHeader, UINT uPacketSize, bool (CAccountConnector::*pfnDispatchPacket)())
 {
-    BYTE bHeader;
+    BYTE bHeader = 0;
     if (!Peek(sizeof(bHeader), &bHeader))
         return true;
 
@@ -485,7 +485,7 @@ bool CAccountConnector::__AnalyzePacket(UINT uHeader, UINT uPacketSize, bool (CA
 
 bool CAccountConnector::__AnalyzeVarSizePacket(UINT uHeader, bool (CAccountConnector::*pfnDispatchPacket)(int))
 {
-    BYTE bHeader;
+    BYTE bHeader = 0;
     if (!Peek(sizeof(bHeader), &bHeader))
         return true;
 
@@ -557,11 +557,8 @@ void CAccountConnector::__Inialize()
     m_isWaitKey = FALSE;
 }
 
-CAccountConnector::CAccountConnector()
+CAccountConnector::CAccountConnector() : m_poHandler(nullptr), m_iPort(0), m_strAddr("")
 {
-    m_poHandler = NULL;
-    m_strAddr = "";
-    m_iPort = 0;
 
     SetLoginInfo("", "");
     SetRecvBufferSize(1024 * 128);

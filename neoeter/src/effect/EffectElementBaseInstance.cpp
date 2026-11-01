@@ -10,13 +10,11 @@ bool CEffectElementBaseInstance::Update(float fElapsedTime)
 
         return OnUpdate(fElapsedTime);
     }
-    else
-    {
-        m_fRemainingTime -= fElapsedTime;
-        if (m_fRemainingTime <= 0.0f)
-            m_bStart = true;
-        return true;
-    }
+
+    m_fRemainingTime -= fElapsedTime;
+    if (m_fRemainingTime <= 0.0f)
+        m_bStart = true;
+    return true;
 }
 
 void CEffectElementBaseInstance::Render()
@@ -44,17 +42,14 @@ void CEffectElementBaseInstance::SetDataPointer(CEffectElementBase *pElement)
     // add by ipkn, start time management
 
     m_fRemainingTime = pElement->GetStartTime();
-    if (m_fRemainingTime <= 0.0f)
-        m_bStart = true;
-    else
-        m_bStart = false;
+    m_bStart = m_fRemainingTime <= 0.0f;
 
     //////////////////////////////////////////////////////////////////////////
 
     OnSetDataPointer(pElement);
 }
 
-bool CEffectElementBaseInstance::isActive()
+bool CEffectElementBaseInstance::isActive() const
 {
     return m_isActive;
 }
@@ -69,7 +64,7 @@ void CEffectElementBaseInstance::SetDeactive()
 
 void CEffectElementBaseInstance::Initialize()
 {
-    mc_pmatLocal = NULL;
+    mc_pmatLocal = nullptr;
 
     m_isActive = true;
 
@@ -89,9 +84,5 @@ void CEffectElementBaseInstance::Destroy()
     Initialize();
 }
 
-CEffectElementBaseInstance::CEffectElementBaseInstance()
-{
-}
-CEffectElementBaseInstance::~CEffectElementBaseInstance()
-{
-}
+CEffectElementBaseInstance::CEffectElementBaseInstance() = default;
+CEffectElementBaseInstance::~CEffectElementBaseInstance() = default;

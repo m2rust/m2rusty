@@ -18,10 +18,9 @@ class CGraphicRatioInstance
   protected:
     DWORD GetTime();
 
-  protected:
-    float m_curRatio;
-    float m_srcRatio;
-    float m_dstRatio;
+    float m_curRatio = 0.0F;
+    float m_srcRatio = 0.0F;
+    float m_dstRatio = 0.0F;
 
     DWORD m_baseTime;
     DWORD m_blendTime;

@@ -38,7 +38,6 @@ class CInputKeyboard
     virtual void OnKeyDown(int iIndex) = 0;
     virtual void OnKeyUp(int iIndex) = 0;
 
-  protected:
     static bool ms_bPressedKey[256];
     static char ms_diks[256];
 };

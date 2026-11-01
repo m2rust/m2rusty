@@ -1,26 +1,26 @@
 #include <Neoeter/Render/StdAfx.h>
 #include <Neoeter/Render/FontLocator.h>
 
-#if defined(OPENMT2_PLATFORM_LINUX)
+#ifdef OPENMT2_PLATFORM_LINUX
 #include <cstdlib>
 #include <map>
 #include <mutex>
 #include <unistd.h>
 
-#if defined(OPENMT2_HAVE_FONTCONFIG)
+#ifdef OPENMT2_HAVE_FONTCONFIG
 #include <fontconfig/fontconfig.h>
 
 static std::string MatchFontconfig(const char *family)
 {
-    static bool s_inited = FcInit() == FcTrue;
+    static bool const s_inited = FcInit() == FcTrue;
     if (!s_inited)
-        return std::string();
+        return {};
 
-    FcPattern *pattern = FcNameParse((const FcChar8 *)family);
+    FcPattern *pattern = FcNameParse(reinterpret_cast<const FcChar8 *>(family));
     if (!pattern)
-        return std::string();
+        return {};
 
-    FcPatternAddString(pattern, FC_FONTFORMAT, (const FcChar8 *)"TrueType");
+    FcPatternAddString(pattern, FC_FONTFORMAT, reinterpret_cast<const FcChar8 *>("TrueType"));
     FcConfigSubstitute(nullptr, pattern, FcMatchPattern);
     FcDefaultSubstitute(pattern);
 
@@ -31,7 +31,7 @@ static std::string MatchFontconfig(const char *family)
     {
         FcChar8 *file = nullptr;
         if (FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch && file)
-            result = (const char *)file;
+            result = reinterpret_cast<const char *>(file);
         FcPatternDestroy(match);
     }
     FcPatternDestroy(pattern);
@@ -47,8 +47,10 @@ static bool IsReadable(const std::string &path)
 static bool IsPlainAscii(const char *s)
 {
     for (; *s; ++s)
-        if ((unsigned char)*s >= 0x80)
+    {
+        if (static_cast<unsigned char>(*s) >= 0x80)
             return false;
+    }
     return true;
 }
 
@@ -58,10 +60,12 @@ static std::string Resolve(const char *fontName)
         return fontName;
 
     if (const char *env = getenv("OPENMT2_FONT"))
+    {
         if (IsReadable(env))
             return env;
+    }
 
-#if defined(OPENMT2_HAVE_FONTCONFIG)
+#ifdef OPENMT2_HAVE_FONTCONFIG
     // Locale data can carry non-ASCII (e.g. Korean) face names; skip those.
     if (fontName && fontName[0] && IsPlainAscii(fontName))
     {
@@ -84,10 +88,12 @@ static std::string Resolve(const char *fontName)
                                         "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
                                         nullptr};
     for (int i = 0; s_fontPaths[i]; ++i)
+    {
         if (IsReadable(s_fontPaths[i]))
             return s_fontPaths[i];
+    }
 
-    return std::string();
+    return {};
 }
 
 std::string FontLocator_FindFontFile(const char *fontName)
@@ -95,8 +101,8 @@ std::string FontLocator_FindFontFile(const char *fontName)
     static std::mutex s_lock;
     static std::map<std::string, std::string> s_cache;
 
-    std::string key = fontName ? fontName : "";
-    std::lock_guard<std::mutex> guard(s_lock);
+    std::string const key = fontName ? fontName : "";
+    std::scoped_lock const guard(s_lock);
 
     auto it = s_cache.find(key);
     if (it != s_cache.end())
@@ -104,9 +110,13 @@ std::string FontLocator_FindFontFile(const char *fontName)
 
     std::string path = Resolve(fontName);
     if (path.empty())
+    {
         TraceError("No font file found for '%s'; set OPENMT2_FONT to a .ttf path", key.c_str());
+    }
     else
+    {
         Tracef("Font '%s' -> %s\n", key.c_str(), path.c_str());
+    }
 
     s_cache[key] = path;
     return path;

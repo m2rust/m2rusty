@@ -10,9 +10,9 @@
 class CGraphicFontTexture : public CGraphicTexture
 {
   public:
-    typedef std::pair<WORD, wchar_t> TCharacterKey;
+    using TCharacterKey = std::pair<WORD, wchar_t>;
 
-    typedef struct SCharacterInfomation
+    using TCharacterInfomation = struct SCharacterInfomation
     {
         short index;
         short width;
@@ -22,13 +22,12 @@ class CGraphicFontTexture : public CGraphicTexture
         float right;
         float bottom;
         float advance;
-    } TCharacterInfomation;
+    };
 
-    typedef std::vector<TCharacterInfomation *> TPCharacterInfomationVector;
+    using TPCharacterInfomationVector = std::vector<TCharacterInfomation *>;
 
-  public:
     CGraphicFontTexture();
-    virtual ~CGraphicFontTexture();
+    ~CGraphicFontTexture() override;
 
     void Destroy();
     bool Create(const char *c_szFontName, int fontSize, bool bItalic);
@@ -44,7 +43,7 @@ class CGraphicFontTexture : public CGraphicTexture
     TCharacterInfomation *GetCharacterInfomation(WORD codePage, wchar_t keyValue);
     TCharacterInfomation *UpdateCharacterInfomation(TCharacterKey code);
 
-    bool IsEmpty() const;
+    bool IsEmpty() const override;
 
   protected:
     void Initialize();
@@ -53,16 +52,14 @@ class CGraphicFontTexture : public CGraphicTexture
 
     HFONT GetFont(WORD codePage);
 
-  protected:
-    typedef std::vector<CGraphicImageTexture *> TGraphicImageTexturePointerVector;
-    typedef std::map<TCharacterKey, TCharacterInfomation> TCharacterInfomationMap;
-    typedef std::map<WORD, HFONT> TFontMap;
+    using TGraphicImageTexturePointerVector = std::vector<CGraphicImageTexture *>;
+    using TCharacterInfomationMap = std::map<TCharacterKey, TCharacterInfomation>;
+    using TFontMap = std::map<WORD, HFONT>;
 
-  protected:
     CGraphicDib m_dib;
 
-    HFONT m_hFontOld;
-    HFONT m_hFont;
+    HFONT m_hFontOld = nullptr;
+    HFONT m_hFont = nullptr;
 
     TGraphicImageTexturePointerVector m_pFontTextureVector;
 
@@ -70,12 +67,12 @@ class CGraphicFontTexture : public CGraphicTexture
 
     TFontMap m_fontMap;
 
-    int m_x;
-    int m_y;
-    int m_step;
-    bool m_isDirty;
+    int m_x = 0;
+    int m_y = 0;
+    int m_step = 0;
+    bool m_isDirty = false;
 
-    TCHAR m_fontName[LF_FACESIZE];
-    LONG m_fontSize;
-    bool m_bItalic;
+    TCHAR m_fontName[LF_FACESIZE]{};
+    LONG m_fontSize = 0;
+    bool m_bItalic = false;
 };

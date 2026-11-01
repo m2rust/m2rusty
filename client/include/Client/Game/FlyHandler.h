@@ -3,12 +3,8 @@
 class IFlyEventHandler
 {
   public:
-    IFlyEventHandler()
-    {
-    }
-    virtual ~IFlyEventHandler()
-    {
-    }
+    IFlyEventHandler() = default;
+    virtual ~IFlyEventHandler() = default;
 
     // Call by ActorInstance
     virtual void OnSetFlyTarget()

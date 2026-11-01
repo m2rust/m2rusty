@@ -1,13 +1,13 @@
 #include <Client/UI/StdAfx.h>
 #include <Client/UI/MovieMan.h>
 #include <Client/UI/PythonApplication.h>
-#if defined(_WIN32)
+#ifdef _WIN32
 #include <dshow.h>
 #include <dmodshow.h>
 #include <dmoreg.h>
 #endif
 
-#if defined(_WIN32)
+#ifdef _WIN32
 // mingw-w64 ships ddraw.h but no import library, so resolve the entry point at
 // run time and keep the SDK signature at the call site (T1.9).
 namespace

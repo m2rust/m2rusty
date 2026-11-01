@@ -131,9 +131,13 @@ void CRaceMotionData::SetName(UINT eName)
         break;
     default:
         if (eName >= NAME_SKILL && eName <= NAME_SKILL + SKILL_NUM)
+        {
             SetType(TYPE_SKILL);
+        }
         else
+        {
             TraceError("CRaceMotionData::SetName - UNKNOWN NAME %d", eName);
+        }
         break;
     }
 }
@@ -161,7 +165,7 @@ UINT CRaceMotionData::GetType() const
 
 bool CRaceMotionData::IsLock() const
 {
-    return m_isLock ? true : false;
+    return m_isLock != 0;
 }
 
 int CRaceMotionData::GetLoopCount() const
@@ -169,7 +173,7 @@ int CRaceMotionData::GetLoopCount() const
     return m_iLoopCount;
 }
 
-float CRaceMotionData::GetMotionDuration()
+float CRaceMotionData::GetMotionDuration() const
 {
     return m_fMotionDuration;
 }
@@ -270,8 +274,7 @@ BOOL CRaceMotionData::GetMotionAttackingEventDataPointer(
         return FALSE;
 
     const CRaceMotionData::TMotionEventData *pData = m_MotionEventDataVector[byIndex];
-    const CRaceMotionData::TMotionAttackingEventData *pAttackingEvent =
-        (const CRaceMotionData::TMotionAttackingEventData *)pData;
+    const auto *pAttackingEvent = (const CRaceMotionData::TMotionAttackingEventData *)pData;
 
     if (MOTION_EVENT_TYPE_SPECIAL_ATTACKING == pAttackingEvent->iType)
         return FALSE;
@@ -329,7 +332,7 @@ bool CRaceMotionData::LoadMotionData(const char *c_szFileName)
     if (!rkTextFileLoader.GetTokenFloat("motionduration", &m_fMotionDuration))
         return false;
 
-    CTokenVector *pTokenVector;
+    CTokenVector *pTokenVector = nullptr;
 
     if (rkTextFileLoader.GetTokenVector("accumulation", &pTokenVector))
     {
@@ -341,8 +344,8 @@ bool CRaceMotionData::LoadMotionData(const char *c_szFileName)
             return false;
         }
 
-        TPixelPosition pos(atof(pTokenVector->at(0).c_str()), atof(pTokenVector->at(1).c_str()),
-                           atof(pTokenVector->at(2).c_str()));
+        TPixelPosition const pos(atof(pTokenVector->at(0).c_str()), atof(pTokenVector->at(1).c_str()),
+                                 atof(pTokenVector->at(2).c_str()));
 
         SetAccumulationPosition(pos);
     }
@@ -350,11 +353,11 @@ bool CRaceMotionData::LoadMotionData(const char *c_szFileName)
     std::string strNodeName;
     for (DWORD i = 0; i < rkTextFileLoader.GetChildNodeCount(); ++i)
     {
-        CTextFileLoader::CGotoChild GotoChild(&rkTextFileLoader, i);
+        CTextFileLoader::CGotoChild const GotoChild(&rkTextFileLoader, i);
 
         rkTextFileLoader.GetCurrentNodeName(&strNodeName);
 
-        if (0 == strNodeName.compare("comboinputdata"))
+        if ("comboinputdata" == strNodeName)
         {
             m_isComboMotion = TRUE;
 
@@ -365,14 +368,14 @@ bool CRaceMotionData::LoadMotionData(const char *c_szFileName)
             if (!rkTextFileLoader.GetTokenFloat("inputlimittime", &m_ComboInputData.fInputEndTime))
                 return false;
         }
-        else if (0 == strNodeName.compare("attackingdata"))
+        else if ("attackingdata" == strNodeName)
         {
             m_isAttackingMotion = TRUE;
 
             if (!NRaceData::LoadMotionAttackData(rkTextFileLoader, &m_MotionAttackData))
                 return false;
         }
-        else if (0 == strNodeName.compare("loopdata"))
+        else if ("loopdata" == strNodeName)
         {
             m_isLoopMotion = TRUE;
             if (!rkTextFileLoader.GetTokenInteger("motionloopcount", &m_iLoopCount))
@@ -388,27 +391,27 @@ bool CRaceMotionData::LoadMotionData(const char *c_szFileName)
             if (!rkTextFileLoader.GetTokenFloat("loopendtime", &m_fLoopEndTime))
                 return false;
         }
-        else if (0 == strNodeName.compare("motioneventdata"))
+        else if ("motioneventdata" == strNodeName)
         {
-            DWORD dwMotionEventDataCount;
+            DWORD dwMotionEventDataCount = 0;
 
             if (!rkTextFileLoader.GetTokenDoubleWord("motioneventdatacount", &dwMotionEventDataCount))
                 continue;
 
             stl_wipe(m_MotionEventDataVector);
 
-            m_MotionEventDataVector.resize(dwMotionEventDataCount, NULL);
+            m_MotionEventDataVector.resize(dwMotionEventDataCount, nullptr);
 
             for (DWORD j = 0; j < m_MotionEventDataVector.size(); ++j)
             {
                 if (!rkTextFileLoader.SetChildNode("event", j))
                     return false;
 
-                int iType;
+                int iType = 0;
                 if (!rkTextFileLoader.GetTokenInteger("motioneventtype", &iType))
                     return false;
 
-                TMotionEventData *pData = NULL;
+                TMotionEventData *pData = nullptr;
                 switch (iType)
                 {
                 case MOTION_EVENT_TYPE_FLY:

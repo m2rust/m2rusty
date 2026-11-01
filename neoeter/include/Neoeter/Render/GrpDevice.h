@@ -31,7 +31,7 @@ class CGraphicDevice : public CGraphicBase
     };
 
     CGraphicDevice();
-    virtual ~CGraphicDevice();
+    ~CGraphicDevice() override;
 
     void InitBackBufferCount(UINT uBackBufferCount);
 
@@ -67,8 +67,7 @@ class CGraphicDevice : public CGraphicBase
     DWORD CreatePNT2StreamVertexShader();
     DWORD CreateDoublePNTStreamVertexShader();
 
-  protected:
-    DWORD m_uBackBufferCount;
+    DWORD m_uBackBufferCount = 0;
     std::map<UINT, std::string> m_kMap_strWarningMessage;
-    CStateManager *m_pStateManager;
+    CStateManager *m_pStateManager = nullptr;
 };

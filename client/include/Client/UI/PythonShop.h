@@ -20,8 +20,8 @@ typedef enum
 class CPythonShop : public CSingleton<CPythonShop>
 {
   public:
-    CPythonShop(void);
-    virtual ~CPythonShop(void);
+    CPythonShop();
+    ~CPythonShop() override;
 
     void Clear();
 
@@ -35,7 +35,7 @@ class CPythonShop : public CSingleton<CPythonShop>
     {
         m_bTabCount = bTabCount;
     }
-    BYTE GetTabCount()
+    BYTE GetTabCount() const
     {
         return m_bTabCount;
     }
@@ -50,12 +50,12 @@ class CPythonShop : public CSingleton<CPythonShop>
 
     void Open(BOOL isPrivateShop, BOOL isMainPrivateShop);
     void Close();
-    BOOL IsOpen();
-    BOOL IsPrivateShop();
-    BOOL IsMainPlayerPrivateShop();
+    BOOL IsOpen() const;
+    BOOL IsPrivateShop() const;
+    BOOL IsMainPlayerPrivateShop() const;
 
     void ClearPrivateShopStock();
-    void AddPrivateShopItemStock(TItemPos ItemPos, BYTE byDisplayPos, DWORD dwPrice);
+    void AddPrivateShopItemStock(TItemPos ItemPos, BYTE dwDisplayPos, DWORD dwPrice);
     void DelPrivateShopItemStock(TItemPos ItemPos);
     int GetPrivateShopItemPrice(TItemPos ItemPos);
     void BuildPrivateShop(const char *c_szName);
@@ -63,25 +63,23 @@ class CPythonShop : public CSingleton<CPythonShop>
   protected:
     BOOL CheckSlotIndex(DWORD dwIndex);
 
-  protected:
-    BOOL m_isShoping;
-    BOOL m_isPrivateShop;
-    BOOL m_isMainPlayerPrivateShop;
+    BOOL m_isShoping = 0;
+    BOOL m_isPrivateShop = 0;
+    BOOL m_isMainPlayerPrivateShop = 0;
 
     struct ShopTab
     {
-        ShopTab()
+        ShopTab() : coinType(SHOP_COIN_TYPE_GOLD)
         {
-            coinType = SHOP_COIN_TYPE_GOLD;
         }
         BYTE coinType;
         std::string name;
-        TShopItemData items[SHOP_HOST_ITEM_MAX_NUM];
+        TShopItemData items[SHOP_HOST_ITEM_MAX_NUM]{};
     };
 
-    BYTE m_bTabCount;
+    BYTE m_bTabCount = 0U;
     ShopTab m_aShoptabs[SHOP_TAB_COUNT_MAX];
 
-    typedef std::map<TItemPos, TShopItemTable> TPrivateShopItemStock;
+    using TPrivateShopItemStock = std::map<TItemPos, TShopItemTable>;
     TPrivateShopItemStock m_PrivateShopItemStock;
 };

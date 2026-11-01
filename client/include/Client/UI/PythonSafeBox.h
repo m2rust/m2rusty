@@ -9,18 +9,17 @@ class CPythonSafeBox : public CSingleton<CPythonSafeBox>
         SAFEBOX_SLOT_Y_COUNT = 9,
         SAFEBOX_PAGE_SIZE = SAFEBOX_SLOT_X_COUNT * SAFEBOX_SLOT_Y_COUNT,
     };
-    typedef std::vector<TItemData> TItemInstanceVector;
+    using TItemInstanceVector = std::vector<TItemData>;
 
-  public:
     CPythonSafeBox();
-    virtual ~CPythonSafeBox();
+    ~CPythonSafeBox() override;
 
     void OpenSafeBox(int iSize);
-    void SetItemData(DWORD dwSlotIndex, const TItemData &rItemData);
+    void SetItemData(DWORD dwSlotIndex, const TItemData &rItemInstance);
     void DelItemData(DWORD dwSlotIndex);
 
     void SetMoney(DWORD dwMoney);
-    DWORD GetMoney();
+    DWORD GetMoney() const;
 
     BOOL GetSlotItemID(DWORD dwSlotIndex, DWORD *pdwItemID);
 

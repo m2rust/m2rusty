@@ -31,7 +31,7 @@ enum EPixFormat
 #endif
 #endif
 
-typedef struct _XDDPIXELFORMAT
+using XDDPIXELFORMAT = struct _XDDPIXELFORMAT
 {
     DWORD dwSize;   // size of structure
     DWORD dwFlags;  // pixel format flags
@@ -87,7 +87,7 @@ typedef struct _XDDPIXELFORMAT
         DWORD dwRGBZBitMask;           // mask for Z channel
         DWORD dwYUVZBitMask;           // mask for Z channel
     } DUMMYUNIONNAMEN(5);
-} XDDPIXELFORMAT;
+};
 
 class CDXTCImage
 {
@@ -98,25 +98,24 @@ class CDXTCImage
     void Initialize();
     void Clear();
 
-  public:
-    const BYTE *m_pbCompBufferByLevels[MAX_MIPLEVELS];
+    const BYTE *m_pbCompBufferByLevels[MAX_MIPLEVELS]{};
     std::vector<BYTE> m_bCompVector[MAX_MIPLEVELS];
 
-    int m_nCompSize;
-    int m_nCompLineSz;
+    int m_nCompSize = 0;
+    int m_nCompLineSz = 0;
 
-    char m_strFormat[32];
+    char m_strFormat[32]{};
     EPixFormat m_CompFormat;
 
-    long m_lPitch;
-    DWORD m_dwMipMapCount;
-    bool m_bMipTexture; // texture has mipmaps?
-    DWORD m_dwFlags;
+    long m_lPitch = 0L;
+    DWORD m_dwMipMapCount = 0U;
+    bool m_bMipTexture = false; // texture has mipmaps?
+    DWORD m_dwFlags = 0U;
 
-    int m_nWidth; // in pixels of uncompressed image
-    int m_nHeight;
+    int m_nWidth = 0; // in pixels of uncompressed image
+    int m_nHeight = 0;
 
-    XDDPIXELFORMAT m_xddPixelFormat;
+    XDDPIXELFORMAT m_xddPixelFormat{};
 
     bool LoadHeaderFromMemory(const BYTE *c_pbMap, int iSize);
     bool Copy(int miplevel, BYTE *pbDest, long lDestPitch);
@@ -127,7 +126,7 @@ class CDXTCImage
     void DecompressDXT5(int miplevel, DWORD *pdwDest);
     void DecompressARGB(int miplevel, DWORD *pdwDest);
 
-    VOID DecodePixelFormat(CHAR *strPixelFormat, XDDPIXELFORMAT *pddpf);
+    VOID DecodePixelFormat(CHAR *strPixelFormat, XDDPIXELFORMAT *pxddpf);
 
     void Unextract(BYTE *pbDest, int iWidth, int iHeight, int iPitch);
 };

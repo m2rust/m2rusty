@@ -23,12 +23,10 @@ class CBaseDecorator
     friend class CParticleSystemData;
 
   public:
-    CBaseDecorator() : m_NextDecorator(0), m_PrevDecorator(0)
+    CBaseDecorator()
     {
     }
-    virtual ~CBaseDecorator()
-    {
-    }
+    virtual ~CBaseDecorator() = default;
 
     void Excute(const CDecoratorData &d)
     {
@@ -78,25 +76,21 @@ class CBaseDecorator
         m_NextDecorator->m_PrevDecorator = m_PrevDecorator;
         delete this;
     }
-    CBaseDecorator *m_NextDecorator;
-    CBaseDecorator *m_PrevDecorator;
+    CBaseDecorator *m_NextDecorator = 0;
+    CBaseDecorator *m_PrevDecorator = 0;
 };
 
 class CHeaderDecorator : public CBaseDecorator, public CPooledObject<CHeaderDecorator>
 {
   public:
-    CHeaderDecorator()
-    {
-    }
-    virtual ~CHeaderDecorator()
-    {
-    }
+    CHeaderDecorator() = default;
+    ~CHeaderDecorator() override = default;
 
   protected:
-    virtual void __Excute(const CDecoratorData &)
+    void __Excute(const CDecoratorData & /*d*/) override
     {
     }
-    virtual CBaseDecorator *__Clone(CParticleInstance *, CParticleInstance *)
+    CBaseDecorator *__Clone(CParticleInstance * /*pFirstInstance*/, CParticleInstance * /*pInstance*/) override
     {
         return new CHeaderDecorator;
     }
@@ -105,18 +99,14 @@ class CHeaderDecorator : public CBaseDecorator, public CPooledObject<CHeaderDeco
 class CNullDecorator : public CBaseDecorator, public CPooledObject<CNullDecorator>
 {
   public:
-    CNullDecorator()
-    {
-    }
-    virtual ~CNullDecorator()
-    {
-    }
+    CNullDecorator() = default;
+    ~CNullDecorator() override = default;
 
   protected:
-    virtual void __Excute(const CDecoratorData &d)
+    void __Excute(const CDecoratorData &d) override
     {
     }
-    virtual CBaseDecorator *__Clone(CParticleInstance *, CParticleInstance *)
+    CBaseDecorator *__Clone(CParticleInstance * /*pFirstInstance*/, CParticleInstance * /*pInstance*/) override
     {
         return new CNullDecorator;
     }
@@ -125,20 +115,22 @@ class CNullDecorator : public CBaseDecorator, public CPooledObject<CNullDecorato
 template <class T> class CTimeEventDecorator : public CBaseDecorator, public CPooledObject<CTimeEventDecorator<T>>
 {
   public:
-    typedef CTimeEvent<T> TTimeEventType;
-    typedef std::vector<TTimeEventType> TTimeEventContainerType;
+    using TTimeEventType = CTimeEvent<T>;
+    using TTimeEventContainerType = std::vector<TTimeEventType>;
     CTimeEventDecorator(const TTimeEventContainerType &TimeEventContainer, T *pValue = 0)
         : it_start(TimeEventContainer.begin()), it_cur(TimeEventContainer.begin()), it_next(TimeEventContainer.begin()),
           it_end(TimeEventContainer.end()), pData(pValue)
     {
         if (it_start == it_end)
+        {
             *pValue = T();
+        }
         else
+        {
             ++it_next;
+        }
     }
-    virtual ~CTimeEventDecorator()
-    {
-    }
+    ~CTimeEventDecorator() override = default;
 
     void SetData(T *pValue)
     {
@@ -155,11 +147,11 @@ template <class T> class CTimeEventDecorator : public CBaseDecorator, public CPo
         if (it_start == it_end)
             *pData = T();
     }
-    virtual CBaseDecorator *__Clone(CParticleInstance *pFirstInstance, CParticleInstance *pInstance)
+    CBaseDecorator *__Clone(CParticleInstance *pFirstInstance, CParticleInstance *pInstance) override
     {
         return new CTimeEventDecorator(*this, pFirstInstance, pInstance);
     }
-    virtual void __Excute(const CDecoratorData &d)
+    void __Excute(const CDecoratorData &d) override
     {
         if (it_start == it_end)
         {
@@ -182,10 +174,10 @@ template <class T> class CTimeEventDecorator : public CBaseDecorator, public CPo
             }
             else
             {
-                float length = it_next->m_fTime - it_cur->m_fTime;
+                float const length = it_next->m_fTime - it_cur->m_fTime;
                 //*pData = it_cur->m_Value + (it_next->m_Value -
                 // it_cur->m_Value)*(d.fTime-it_cur->m_fTime)/length;
-                *pData = it_cur->m_Value * (1 - (d.fTime - it_cur->m_fTime) / length);
+                *pData = it_cur->m_Value * (1 - ((d.fTime - it_cur->m_fTime) / length));
                 *pData += it_next->m_Value * ((d.fTime - it_cur->m_fTime) / length);
             }
         }
@@ -198,12 +190,12 @@ template <class T> class CTimeEventDecorator : public CBaseDecorator, public CPo
     T *pData;
 };
 
-typedef CTimeEventDecorator<float> CScaleValueDecorator;
-typedef CTimeEventDecorator<float> CColorValueDecorator;
-typedef CTimeEventDecorator<DWORDCOLOR> CColorAllDecorator;
-typedef CTimeEventDecorator<float> CAirResistanceValueDecorator;
-typedef CTimeEventDecorator<float> CGravityValueDecorator;
-typedef CTimeEventDecorator<float> CRotationSpeedValueDecorator;
+using CScaleValueDecorator = CTimeEventDecorator<float>;
+using CColorValueDecorator = CTimeEventDecorator<float>;
+using CColorAllDecorator = CTimeEventDecorator<DWORDCOLOR>;
+using CAirResistanceValueDecorator = CTimeEventDecorator<float>;
+using CGravityValueDecorator = CTimeEventDecorator<float>;
+using CRotationSpeedValueDecorator = CTimeEventDecorator<float>;
 
 class CTextureAnimationCWDecorator : public CBaseDecorator, public CPooledObject<CTextureAnimationCWDecorator>
 {
@@ -212,17 +204,16 @@ class CTextureAnimationCWDecorator : public CBaseDecorator, public CPooledObject
         : n(n), pIdx(pIdx), fFrameTime(fFrameTime), fLastFrameTime(fFrameTime)
     {
     }
-    virtual ~CTextureAnimationCWDecorator()
-    {
-    }
+    ~CTextureAnimationCWDecorator() override = default;
 
   protected:
-    virtual CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi)
+    CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi) override
     {
-        return new CTextureAnimationCWDecorator(fFrameTime, n,
-                                                (BYTE *)((unsigned char *)pi + ((BYTE *)pIdx - (BYTE *)pfi)));
+        return new CTextureAnimationCWDecorator(
+            fFrameTime, n,
+            static_cast<BYTE *>(reinterpret_cast<unsigned char *>(pi) + (pIdx - reinterpret_cast<BYTE *>(pfi))));
     }
-    virtual void __Excute(const CDecoratorData &d)
+    void __Excute(const CDecoratorData &d) override
     {
         fLastFrameTime -= d.fElapsedTime;
         while (fLastFrameTime < 0.0f)
@@ -244,17 +235,16 @@ class CTextureAnimationCCWDecorator : public CBaseDecorator, public CPooledObjec
         : n(n), pIdx(pIdx), fFrameTime(fFrameTime), fLastFrameTime(fFrameTime)
     {
     }
-    virtual ~CTextureAnimationCCWDecorator()
-    {
-    }
+    ~CTextureAnimationCCWDecorator() override = default;
 
   protected:
-    virtual CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi)
+    CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi) override
     {
-        return new CTextureAnimationCCWDecorator(fFrameTime, n,
-                                                 (BYTE *)((unsigned char *)pi + ((BYTE *)pIdx - (BYTE *)pfi)));
+        return new CTextureAnimationCCWDecorator(
+            fFrameTime, n,
+            static_cast<BYTE *>(reinterpret_cast<unsigned char *>(pi) + (pIdx - reinterpret_cast<BYTE *>(pfi))));
     }
-    virtual void __Excute(const CDecoratorData &d)
+    void __Excute(const CDecoratorData &d) override
     {
         fLastFrameTime -= d.fElapsedTime;
         while (fLastFrameTime < 0.0f)
@@ -262,7 +252,7 @@ class CTextureAnimationCCWDecorator : public CBaseDecorator, public CPooledObjec
             fLastFrameTime += fFrameTime;
 
             if (--(*pIdx) >= n && n != 0) // Because variable is unsigned..
-                *pIdx = BYTE(n - 1);
+                *pIdx = static_cast<BYTE>(n - 1);
         }
     }
     BYTE n;
@@ -277,22 +267,21 @@ class CTextureAnimationRandomDecorator : public CBaseDecorator, public CPooledOb
         : n(n), pIdx(pIdx), fFrameTime(fFrameTime), fLastFrameTime(fFrameTime)
     {
     }
-    virtual ~CTextureAnimationRandomDecorator()
-    {
-    }
+    ~CTextureAnimationRandomDecorator() override = default;
 
   protected:
-    virtual CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi)
+    CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi) override
     {
-        return new CTextureAnimationRandomDecorator(fFrameTime, n,
-                                                    (BYTE *)((unsigned char *)pi + ((BYTE *)pIdx - (BYTE *)pfi)));
+        return new CTextureAnimationRandomDecorator(
+            fFrameTime, n,
+            static_cast<BYTE *>(reinterpret_cast<unsigned char *>(pi) + (pIdx - reinterpret_cast<BYTE *>(pfi))));
     }
-    virtual void __Excute(const CDecoratorData &d)
+    void __Excute(const CDecoratorData &d) override
     {
         fLastFrameTime -= d.fElapsedTime;
         if (fLastFrameTime < 0.0f && n != 0)
         {
-            *pIdx = (BYTE)random_range(0, n - 1);
+            *pIdx = static_cast<BYTE>(random_range(0, n - 1));
         }
         while (fLastFrameTime < 0.0f)
             fLastFrameTime += fFrameTime;
@@ -306,46 +295,34 @@ class CTextureAnimationRandomDecorator : public CBaseDecorator, public CPooledOb
 class CAirResistanceDecorator : public CBaseDecorator, public CPooledObject<CAirResistanceDecorator>
 {
   public:
-    CAirResistanceDecorator()
-    {
-    }
-    virtual ~CAirResistanceDecorator()
-    {
-    }
+    CAirResistanceDecorator() = default;
+    ~CAirResistanceDecorator() override = default;
 
   protected:
-    virtual void __Excute(const CDecoratorData &d);
-    virtual CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi);
+    void __Excute(const CDecoratorData &d) override;
+    CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi) override;
 };
 
 class CGravityDecorator : public CBaseDecorator, public CPooledObject<CGravityDecorator>
 {
   public:
-    CGravityDecorator()
-    {
-    }
-    virtual ~CGravityDecorator()
-    {
-    }
+    CGravityDecorator() = default;
+    ~CGravityDecorator() override = default;
 
   protected:
-    virtual void __Excute(const CDecoratorData &d);
-    virtual CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi);
+    void __Excute(const CDecoratorData &d) override;
+    CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi) override;
 };
 
 class CRotationDecorator : public CBaseDecorator, public CPooledObject<CRotationDecorator>
 {
   public:
-    CRotationDecorator()
-    {
-    }
-    virtual ~CRotationDecorator()
-    {
-    }
+    CRotationDecorator() = default;
+    ~CRotationDecorator() override = default;
 
   protected:
-    virtual void __Excute(const CDecoratorData &d);
-    virtual CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi);
+    void __Excute(const CDecoratorData &d) override;
+    CBaseDecorator *__Clone(CParticleInstance *pfi, CParticleInstance *pi) override;
 };
 
 } // namespace NEffectUpdateDecorator

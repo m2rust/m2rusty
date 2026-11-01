@@ -15,12 +15,14 @@ bool DetectCollisionDynamicZCylinderVSDynamicZCylinder(const CDynamicSphereInsta
     c_rCylinder2.v3Position.z = 0;
     c_rCylinder2.v3LastPosition.z = 0;
 
-    float r = c_rCylinder1.fRadius + c_rCylinder2.fRadius;
-    float rsq = r * r;
+    float const r = c_rCylinder1.fRadius + c_rCylinder2.fRadius;
+    float const rsq = r * r;
 
     // AABB check
-    D3DXVECTOR3 mi1 = c_rCylinder1.v3LastPosition, mi2 = c_rCylinder1.v3Position;
-    D3DXVECTOR3 mi3 = c_rCylinder2.v3LastPosition, mi4 = c_rCylinder2.v3Position;
+    D3DXVECTOR3 mi1 = c_rCylinder1.v3LastPosition;
+    D3DXVECTOR3 mi2 = c_rCylinder1.v3Position;
+    D3DXVECTOR3 mi3 = c_rCylinder2.v3LastPosition;
+    D3DXVECTOR3 mi4 = c_rCylinder2.v3Position;
     if (mi1.x > mi2.x)
         std::swap(mi1.x, mi2.x);
     if (mi1.y > mi2.y)
@@ -52,7 +54,8 @@ bool DetectCollisionDynamicZCylinderVSDynamicZCylinder(const CDynamicSphereInsta
     if (mi4.z < mi1.z || mi2.z < mi3.z)
         return false;
 
-    D3DXVECTOR3 vA, vB;
+    D3DXVECTOR3 vA;
+    D3DXVECTOR3 vB;
     IntersectLineSegments(c_rCylinder1.v3LastPosition, c_rCylinder1.v3Position, c_rCylinder2.v3LastPosition,
                           c_rCylinder2.v3Position, vA, vB);
     return (D3DXVec3LengthSq(&(vA - vB)) <= rsq);
@@ -61,8 +64,8 @@ bool DetectCollisionDynamicZCylinderVSDynamicZCylinder(const CDynamicSphereInsta
 bool DetectCollisionDynamicSphereVSDynamicSphere(const CDynamicSphereInstance &c_rSphere1,
                                                  const CDynamicSphereInstance &c_rSphere2)
 {
-    float r = c_rSphere1.fRadius + c_rSphere2.fRadius;
-    float rsq = r * r;
+    float const r = c_rSphere1.fRadius + c_rSphere2.fRadius;
+    float const rsq = r * r;
 
     /*if (D3DXVec3LengthSq(&(c_rSphere1.v3Position
     -c_rSphere2.v3Position		))<=rsq) return true; if
@@ -138,8 +141,10 @@ bool DetectCollisionDynamicSphereVSDynamicSphere(const CDynamicSphereInstance &c
 
     // AABB check
 
-    D3DXVECTOR3 mi1 = c_rSphere1.v3LastPosition, mi2 = c_rSphere1.v3Position;
-    D3DXVECTOR3 mi3 = c_rSphere2.v3LastPosition, mi4 = c_rSphere2.v3Position;
+    D3DXVECTOR3 mi1 = c_rSphere1.v3LastPosition;
+    D3DXVECTOR3 mi2 = c_rSphere1.v3Position;
+    D3DXVECTOR3 mi3 = c_rSphere2.v3LastPosition;
+    D3DXVECTOR3 mi4 = c_rSphere2.v3Position;
     if (mi1.x > mi2.x)
         std::swap(mi1.x, mi2.x);
     if (mi1.y > mi2.y)
@@ -171,7 +176,8 @@ bool DetectCollisionDynamicSphereVSDynamicSphere(const CDynamicSphereInstance &c
     if (mi4.z < mi1.z || mi2.z < mi3.z)
         return false;
 
-    D3DXVECTOR3 vA, vB; /*
+    D3DXVECTOR3 vA;
+    D3DXVECTOR3 vB; /*
                 IntersectLineSegments(
                 c_rSphere1.v3LastPosition.x,c_rSphere1.v3LastPosition.y,c_rSphere1.v3LastPosition.z,
                 c_rSphere1.v3Position.x,	c_rSphere1.v3Position.y,
@@ -335,8 +341,8 @@ bool IsCCWAcuteAngle(float begin, float end)
 {
     // abs(360 - dest + src) 	// 시계 방향
     // dest - src				// 시계 반대 방향
-    int fValue = abs((int)(360.0f - end + begin));
-    return fValue >= (end - begin) ? true : false;
+    int const fValue = abs(static_cast<int>(360.0f - end + begin));
+    return fValue >= (end - begin);
 }
 
 bool IsCWRotation(float begin, float end)
@@ -394,51 +400,49 @@ float GetDegreeDifference(float fSource, float fTarget)
     if (fSource < 180.0f)
     {
         if (fTarget < fSource)
+        {
             return fSource - fTarget;
-
-        else if (fTarget - fSource > 180.0f)
+        }
+        if (fTarget - fSource > 180.0f)
             return (360.0f - (fTarget - fSource));
 
         return fTarget - fSource;
     }
-    else
+
+    if (fTarget > fSource)
+        return fTarget - fSource;
+
+    else if (fSource - fTarget > 180.0f)
     {
-        if (fTarget > fSource)
-            return fTarget - fSource;
-
-        else if (fSource - fTarget > 180.0f)
-        {
-            return (360.0f - (fSource - fTarget));
-        }
-
-        return fSource - fTarget;
+        return (360.0f - (fSource - fTarget));
     }
+
+    return fSource - fTarget;
 }
 int GetRotatingDirection(float fSource, float fTarget)
 {
     if (fSource < 180.0f)
     {
         if (fTarget < fSource)
+        {
             return DEGREE_DIRECTION_RIGHT;
-
-        else if ((360.0f - fTarget) + fSource < 180.0f)
+        }
+        if ((360.0f - fTarget) + fSource < 180.0f)
             return DEGREE_DIRECTION_RIGHT;
 
         return DEGREE_DIRECTION_LEFT;
     }
-    else
-    {
-        if (fTarget > fSource)
-        {
-            return DEGREE_DIRECTION_LEFT;
-        }
-        else if ((360.0f - fSource) + fTarget < 180.0f)
-        {
-            return DEGREE_DIRECTION_LEFT;
-        }
 
-        return DEGREE_DIRECTION_RIGHT;
+    if (fTarget > fSource)
+    {
+        return DEGREE_DIRECTION_LEFT;
     }
+    else if ((360.0f - fSource) + fTarget < 180.0f)
+    {
+        return DEGREE_DIRECTION_LEFT;
+    }
+
+    return DEGREE_DIRECTION_RIGHT;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -93,7 +93,7 @@ class CFileNameHelper
   public:
     static void ChangeDosPath(std::string &str)
     {
-        size_t nLength = str.length();
+        size_t const nLength = str.length();
 
         for (size_t i = 0; i < nLength; ++i)
         {
@@ -104,14 +104,18 @@ class CFileNameHelper
 
     static void StringPath(std::string &str)
     {
-        size_t nLength = str.length();
+        size_t const nLength = str.length();
 
         for (size_t i = 0; i < nLength; ++i)
         {
             if (str.at(i) == '\\')
+            {
                 str.at(i) = '/';
+            }
             else
-                str.at(i) = (char)tolower(str.at(i));
+            {
+                str.at(i) = static_cast<char>(tolower(str.at(i)));
+            }
         }
     }
 
@@ -131,7 +135,7 @@ inline std::string CFileNameHelper::GetName(const std::string &str)
 {
     std::string strName;
 
-    size_t nLength = str.length();
+    size_t const nLength = str.length();
 
     if (nLength > 0)
     {
@@ -163,16 +167,18 @@ inline std::string CFileNameHelper::GetExtension(const std::string &str)
 {
     std::string strExtension;
 
-    size_t nLength = str.length();
+    size_t const nLength = str.length();
 
     if (nLength > 0)
     {
         for (size_t i = nLength - 1; i > 0 && str[i] != '/'; i--)
+        {
             if (str[i] == '.')
             {
                 strExtension = std::string(str.c_str() + i + 1);
                 break;
             }
+        }
     }
 
     return strExtension;
@@ -186,7 +192,7 @@ inline std::string CFileNameHelper::GetPath(const std::string &str)
     char szPath[1024];
     szPath[0] = '\0';
 
-    size_t nLength = str.length();
+    size_t const nLength = str.length();
 
     if (nLength > 0)
     {
@@ -212,7 +218,7 @@ inline std::string CFileNameHelper::GetPath(const std::string &str)
 
 inline std::string CFileNameHelper::NoExtension(const std::string &str)
 {
-    std::size_t npos = str.find_last_of('.');
+    std::size_t const npos = str.find_last_of('.');
 
     if (std::string::npos != npos)
         return std::string(str, 0, npos);
@@ -228,7 +234,7 @@ inline std::string CFileNameHelper::NoPath(const std::string &str)
     char szPath[1024];
     szPath[0] = '\0';
 
-    size_t nLength = str.length();
+    size_t const nLength = str.length();
 
     if (nLength > 0)
     {

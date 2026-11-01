@@ -17,6 +17,7 @@ void initdbg();
 class IPythonExceptionSender
 {
   public:
+    virtual ~IPythonExceptionSender() = default;
     void Clear()
     {
         m_strExceptionString = "";

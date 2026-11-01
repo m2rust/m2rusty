@@ -7,9 +7,8 @@ class CNetworkAddress
   public:
     static bool GetHostName(char *szName, int size);
 
-  public:
     CNetworkAddress();
-    ~CNetworkAddress();
+    ~CNetworkAddress() = default;
 
     void Clear();
 
@@ -22,20 +21,19 @@ class CNetworkAddress
 
     void SetPort(int port);
 
-    int GetPort();
+    int GetPort() const;
     int GetSize();
 
-    void GetIP(char *szIP, int len);
+    void GetIP(char *szIP, int len) const;
 
-    DWORD GetIP();
+    DWORD GetIP() const;
 
     operator const SOCKADDR_IN &() const;
 
   private:
     bool IsIP(const char *c_szAddr);
 
-  private:
-    SOCKADDR_IN m_sockAddrIn;
+    SOCKADDR_IN m_sockAddrIn{};
 };
 
 #endif

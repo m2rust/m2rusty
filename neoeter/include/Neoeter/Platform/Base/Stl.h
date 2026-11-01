@@ -32,7 +32,7 @@
 #pragma warning(pop)
 #endif
 
-extern char korean_tolower(const char c);
+extern char korean_tolower(char c);
 extern std::string &stl_static_string(const char *c_sz);
 extern void stl_lowers(std::string &rstRet);
 extern int split_string(const std::string &input, const std::string &delimiter, std::vector<std::string> &results,
@@ -114,10 +114,10 @@ struct stl_sz_less
 
 template <typename TContainer> inline void stl_wipe(TContainer &container)
 {
-    for (typename TContainer::iterator i = container.begin(); i != container.end(); ++i)
+    for (auto i = container.begin(); i != container.end(); ++i)
     {
         delete *i;
-        *i = NULL;
+        *i = nullptr;
     }
 
     container.clear();
@@ -128,7 +128,7 @@ template <typename TString> inline int hex2dec(TString szhex)
     int hex0 = toupper(szhex[0]);
     int hex1 = toupper(szhex[1]);
 
-    return (hex1 >= 'A' ? hex1 - 'A' + 10 : hex1 - '0') + (hex0 >= 'A' ? hex0 - 'A' + 10 : hex0 - '0') * 16;
+    return (hex1 >= 'A' ? hex1 - 'A' + 10 : hex1 - '0') + ((hex0 >= 'A' ? hex0 - 'A' + 10 : hex0 - '0') * 16);
 }
 
 template <typename TString> inline unsigned long htmlColorStringToARGB(TString str)
@@ -142,7 +142,7 @@ template <typename TString> inline unsigned long htmlColorStringToARGB(TString s
 
 template <typename TContainer> inline void stl_wipe_second(TContainer &container)
 {
-    for (typename TContainer::iterator i = container.begin(); i != container.end(); ++i)
+    for (auto i = container.begin(); i != container.end(); ++i)
     {
         delete i->second;
     }
@@ -156,7 +156,7 @@ template <typename T> inline void safe_release(T &rpObject)
         return;
 
     rpObject->Release();
-    rpObject = NULL;
+    rpObject = nullptr;
 }
 
 template <typename T> void DeleteVectorItem(std::vector<T> *pVector, unsigned long dwIndex)
@@ -252,20 +252,17 @@ template <typename T, typename F> void stl_vector_qsort(std::vector<T> &rdataVec
 template <typename TData> class stl_stack_pool
 {
   public:
-    stl_stack_pool()
+    stl_stack_pool() : m_pos(0)
     {
-        m_pos = 0;
     }
 
-    stl_stack_pool(int capacity)
+    stl_stack_pool(int capacity) : m_pos(0)
     {
-        m_pos = 0;
+
         initialize(capacity);
     }
 
-    virtual ~stl_stack_pool()
-    {
-    }
+    virtual ~stl_stack_pool() = default;
 
     void initialize(int capacity)
     {
@@ -282,7 +279,7 @@ template <typename TData> class stl_stack_pool
     {
         assert(!m_dataVector.empty() && "stl_stack_pool::alloc you MUST run stl_stack_pool::initialize");
 
-        int max = m_dataVector.size();
+        int const max = m_dataVector.size();
 
         if (m_pos >= max)
         {
@@ -312,9 +309,8 @@ template <typename TData> class stl_stack_pool
 template <typename TData, typename THandle = int> class stl_circle_pool
 {
   public:
-    typedef bool TFlag;
+    using TFlag = bool;
 
-  public:
     stl_circle_pool()
     {
         initialize();
@@ -333,7 +329,7 @@ template <typename TData, typename THandle = int> class stl_circle_pool
         if (m_flags)
         {
             delete[] m_flags;
-            m_flags = NULL;
+            m_flags = nullptr;
         }
     }
     void create(int size)
@@ -374,17 +370,15 @@ template <typename TData, typename THandle = int> class stl_circle_pool
         assert(check(handle) && "Out of RANGE");
         m_flags[handle] = false;
     }
-    inline bool check(THandle handle)
+    bool check(THandle handle)
     {
-        if (handle >= m_size)
-            return false;
-        return true;
+        return static_cast<bool>(handle < m_size);
     }
-    inline int size()
+    int size()
     {
         return m_size;
     }
-    inline TData &refer(THandle handle)
+    TData &refer(THandle handle)
     {
         assert(check(handle) && "Out of RANGE");
         return m_datas[handle];
@@ -394,23 +388,22 @@ template <typename TData, typename THandle = int> class stl_circle_pool
     void initialize()
     {
         m_datas = NULL;
-        m_flags = NULL;
+        m_flags = nullptr;
         m_pos = 0;
         m_size = 0;
     }
 
-  protected:
     TData *m_datas;
-    TFlag *m_flags;
+    TFlag *m_flags = nullptr;
 
     THandle m_size;
 
     THandle m_pos;
 };
 
-typedef std::vector<std::string> CTokenVector;
-typedef std::map<std::string, std::string> CTokenMap;
-typedef std::map<std::string, CTokenVector> CTokenVectorMap;
+using CTokenVector = std::vector<std::string>;
+using CTokenMap = std::map<std::string, std::string>;
+using CTokenVectorMap = std::map<std::string, CTokenVector>;
 
 // class CTokenVector : public std::vector<std::string>
 //{
@@ -484,14 +477,14 @@ struct stringhash
 {
     size_t GetHash(const std::string &str) const
     {
-        const unsigned char *s = (const unsigned char *)str.c_str();
+        const auto *s = reinterpret_cast<const unsigned char *>(str.c_str());
         const unsigned char *end = s + str.size();
         size_t h = 0;
 
         while (s < end)
         {
             h *= 16777619;
-            h ^= (unsigned char)*(unsigned char *)(s++);
+            h ^= (*const_cast<unsigned char *>(s++));
         }
 
         return h;

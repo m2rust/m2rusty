@@ -5,6 +5,8 @@
 #include <Neoeter/Render/GrpMath.h>
 #include <Neoeter/Render/lineintersect_utils.h>
 #include <Neoeter/Render/StateManager.h>
+
+#include <algorithm>
 const float gc_fReduceMove = 0.5f;
 
 // const float gc_fSlideMoveSpeed = 5.0f;
@@ -45,12 +47,12 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
         D3DXMatrixRotationQuaternion(&matRotation, &c_pCollisionData->quatRotation);
         D3DXMatrixTranslation(&matTranslationLocal, c_pCollisionData->v3Position.x, c_pCollisionData->v3Position.y,
                               c_pCollisionData->v3Position.z);
-        D3DXMATRIX matTransform = matRotation * matTranslationLocal * *pMat;
+        D3DXMATRIX const matTransform = matRotation * matTranslationLocal * *pMat;
 
         TPlaneData &PlaneData = ppci->GetAttribute();
         D3DXVec3TransformCoord(&PlaneData.v3Position, &c_pCollisionData->v3Position, pMat);
-        float fHalfWidth = c_pCollisionData->fDimensions[0] / 2.0f;
-        float fHalfLength = c_pCollisionData->fDimensions[1] / 2.0f;
+        float const fHalfWidth = c_pCollisionData->fDimensions[0] / 2.0f;
+        float const fHalfLength = c_pCollisionData->fDimensions[1] / 2.0f;
 
         PlaneData.v3QuadPosition[0].x = -fHalfWidth;
         PlaneData.v3QuadPosition[0].y = -fHalfLength;
@@ -64,8 +66,8 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
         PlaneData.v3QuadPosition[3].x = +fHalfWidth;
         PlaneData.v3QuadPosition[3].y = +fHalfLength;
         PlaneData.v3QuadPosition[3].z = 0.0f;
-        for (DWORD i = 0; i < 4; ++i)
-            D3DXVec3TransformCoord(&PlaneData.v3QuadPosition[i], &PlaneData.v3QuadPosition[i], &matTransform);
+        for (auto &i : PlaneData.v3QuadPosition)
+            D3DXVec3TransformCoord(&i, &i, &matTransform);
         D3DXVECTOR3 v3Line0 = PlaneData.v3QuadPosition[1] - PlaneData.v3QuadPosition[0];
         D3DXVECTOR3 v3Line1 = PlaneData.v3QuadPosition[2] - PlaneData.v3QuadPosition[0];
         D3DXVECTOR3 v3Line2 = PlaneData.v3QuadPosition[1] - PlaneData.v3QuadPosition[3];
@@ -94,7 +96,7 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
         D3DXMATRIX matTranslationLocal;
         D3DXMatrixTranslation(&matTranslationLocal, c_pCollisionData->v3Position.x, c_pCollisionData->v3Position.y,
                               c_pCollisionData->v3Position.z);
-        D3DXMATRIX matTransform = *pMat;
+        D3DXMATRIX const matTransform = *pMat;
 
         D3DXVECTOR3 v3Pos;
         v3Pos.x = matTranslationLocal._41;
@@ -131,7 +133,8 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
         matTranslationWorld._43 = pMat->_43;
         matTranslationWorld._44 = pMat->_44;
 
-        D3DXVECTOR3 v3Min, v3Max;
+        D3DXVECTOR3 v3Min;
+        D3DXVECTOR3 v3Max;
         v3Min.x = c_pCollisionData->v3Position.x - c_pCollisionData->fDimensions[0];
         v3Min.y = c_pCollisionData->v3Position.y - c_pCollisionData->fDimensions[1];
         v3Min.z = c_pCollisionData->v3Position.z - c_pCollisionData->fDimensions[2];
@@ -141,7 +144,7 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
 
         D3DXVec3TransformCoord(&v3Min, &v3Min, pMat);
         D3DXVec3TransformCoord(&v3Max, &v3Max, pMat);
-        D3DXVECTOR3 v3Position = (v3Min + v3Max) * 0.5f;
+        D3DXVECTOR3 const v3Position = (v3Min + v3Max) * 0.5f;
 
         TOBBData &OBBData = poci->GetAttribute();
         OBBData.v3Min.x = v3Position.x - c_pCollisionData->fDimensions[0];
@@ -151,7 +154,7 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
         OBBData.v3Max.y = v3Position.y + c_pCollisionData->fDimensions[1];
         OBBData.v3Max.z = v3Position.z + c_pCollisionData->fDimensions[2];
 
-        D3DXMATRIX matTransform = *pMat;
+        D3DXMATRIX const matTransform = *pMat;
 
         D3DXMatrixIdentity(&OBBData.matRot);
         OBBData.matRot = *pMat;
@@ -159,7 +162,7 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
         OBBData.matRot._42 = 0;
         OBBData.matRot._43 = 0;
         OBBData.matRot._44 = 1;
-        if (!D3DXMatrixInverse(&OBBData.matRotInv, NULL, &OBBData.matRot))
+        if (!D3DXMatrixInverse(&OBBData.matRotInv, nullptr, &OBBData.matRot))
             D3DXMatrixIdentity(&OBBData.matRotInv);
 
         return poci;
@@ -202,7 +205,7 @@ CBaseCollisionInstance *CBaseCollisionInstance::BuildCollisionInstance(const CSt
     break;
     }
     assert(false && "NOT_REACHED");
-    return 0;
+    return nullptr;
 }
 
 void CBaseCollisionInstance::Destroy()
@@ -227,7 +230,7 @@ void CSphereCollisionInstance::Render(D3DFILLMODE d3dFillMode)
 {
     static CScreen s;
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, 0xffffffff);
-    s.RenderSphere(NULL, m_attribute.v3Position.x, m_attribute.v3Position.y, m_attribute.v3Position.z,
+    s.RenderSphere(nullptr, m_attribute.v3Position.x, m_attribute.v3Position.y, m_attribute.v3Position.z,
                    m_attribute.fRadius, d3dFillMode);
 }
 
@@ -254,31 +257,27 @@ bool CSphereCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInst
 {
     // Tracef("OnCollisionDynamicSphere\n");
 
-    if (square_distance_between_linesegment_and_point(s.v3LastPosition, s.v3Position, m_attribute.v3Position) <
-        (m_attribute.fRadius + s.fRadius) * (m_attribute.fRadius + s.fRadius))
-    {
-        return true;
-    }
-
-    return false;
+    return square_distance_between_linesegment_and_point(s.v3LastPosition, s.v3Position, m_attribute.v3Position) <
+           (m_attribute.fRadius + s.fRadius) * (m_attribute.fRadius + s.fRadius);
 }
 
 D3DXVECTOR3 CSphereCollisionInstance::OnGetCollisionMovementAdjust(const CDynamicSphereInstance &s) const
 {
     if (D3DXVec3LengthSq(&(s.v3Position - m_attribute.v3Position)) >=
         (s.fRadius + m_attribute.fRadius) * (m_attribute.fRadius + s.fRadius))
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+        return {0.0f, 0.0f, 0.0f};
     D3DXVECTOR3 c;
     D3DXVec3Cross(&c, &(s.v3Position - s.v3LastPosition), &D3DXVECTOR3(0.0f, 0.0f, 1.0f));
 
-    float sum = -D3DXVec3Dot(&c, &(s.v3Position - m_attribute.v3Position));
-    float mul = (s.fRadius + m_attribute.fRadius) * (s.fRadius + m_attribute.fRadius) -
-                D3DXVec3LengthSq(&(s.v3Position - m_attribute.v3Position));
+    float const sum = -D3DXVec3Dot(&c, &(s.v3Position - m_attribute.v3Position));
+    float const mul = ((s.fRadius + m_attribute.fRadius) * (s.fRadius + m_attribute.fRadius)) -
+                      D3DXVec3LengthSq(&(s.v3Position - m_attribute.v3Position));
 
-    if (sum * sum - 4 * mul <= 0)
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
-    float sq = sqrt(sum * sum - 4 * mul);
-    float t1 = -sum - sq, t2 = -sum + sq;
+    if ((sum * sum) - (4 * mul) <= 0)
+        return {0.0f, 0.0f, 0.0f};
+    float const sq = sqrt((sum * sum) - (4 * mul));
+    float t1 = -sum - sq;
+    float t2 = -sum + sq;
     t1 *= 0.5f;
     t2 *= 0.5f;
 
@@ -286,8 +285,7 @@ D3DXVECTOR3 CSphereCollisionInstance::OnGetCollisionMovementAdjust(const CDynami
     {
         return (gc_fReduceMove * t1) * c;
     }
-    else
-        return (gc_fReduceMove * t2) * c;
+    return (gc_fReduceMove * t2) * c;
 
     /*
     D3DXVECTOR3 p1 = s.v3Position+t1*c;
@@ -321,8 +319,8 @@ bool CPlaneCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSph
     D3DXVECTOR3 v3SpherePosition = s.v3Position - m_attribute.v3Position;
     D3DXVECTOR3 v3SphereLastPosition = s.v3LastPosition - m_attribute.v3Position;
 
-    float fPosition1 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SpherePosition);
-    float fPosition2 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SphereLastPosition);
+    float const fPosition1 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SpherePosition);
+    float const fPosition2 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SphereLastPosition);
 
     if (fPosition1 > 0.0f && fPosition2 < 0.0f || fPosition1 < 0.0f && fPosition2 > 0.0f ||
         (fPosition1) <= s.fRadius && fPosition1 >= -s.fRadius)
@@ -331,8 +329,11 @@ bool CPlaneCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSph
         D3DXVECTOR3 v3QuadPosition2 = s.v3Position - m_attribute.v3QuadPosition[3];
 
         if (D3DXVec3Dot(&v3QuadPosition1, &m_attribute.v3InsideVector[0]) > -s.fRadius /*0.0f*/)
+        {
             if (D3DXVec3Dot(&v3QuadPosition1, &m_attribute.v3InsideVector[1]) > -s.fRadius /*0.0f*/)
+            {
                 if (D3DXVec3Dot(&v3QuadPosition2, &m_attribute.v3InsideVector[2]) > -s.fRadius /*0.0f*/)
+                {
                     if (D3DXVec3Dot(&v3QuadPosition2, &m_attribute.v3InsideVector[3]) > -s.fRadius /*0.0f*/)
                     {
                         // NOTE : 거리가 가까워 졌을때만.. - [levites]
@@ -340,6 +341,9 @@ bool CPlaneCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSph
                             fabs(D3DXVec3Dot(&(s.v3LastPosition - m_attribute.v3Position), &m_attribute.v3Normal)))
                             return true;
                     }
+                }
+            }
+        }
     }
 
     return false;
@@ -352,8 +356,8 @@ bool CPlaneCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInsta
     D3DXVECTOR3 v3SpherePosition = s.v3Position - m_attribute.v3Position;
     D3DXVECTOR3 v3SphereLastPosition = s.v3LastPosition - m_attribute.v3Position;
 
-    float fPosition1 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SpherePosition);
-    float fPosition2 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SphereLastPosition);
+    float const fPosition1 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SpherePosition);
+    float const fPosition2 = D3DXVec3Dot(&m_attribute.v3Normal, &v3SphereLastPosition);
 
     if (fPosition1 > 0.0f && fPosition2 < 0.0f || fPosition1 < 0.0f && fPosition2 > 0.0f ||
         (fPosition1) <= s.fRadius && fPosition1 >= -s.fRadius)
@@ -362,12 +366,18 @@ bool CPlaneCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInsta
         D3DXVECTOR3 v3QuadPosition2 = s.v3Position - m_attribute.v3QuadPosition[3];
 
         if (D3DXVec3Dot(&v3QuadPosition1, &m_attribute.v3InsideVector[0]) > -s.fRadius /*0.0f*/)
+        {
             if (D3DXVec3Dot(&v3QuadPosition1, &m_attribute.v3InsideVector[1]) > -s.fRadius /*0.0f*/)
+            {
                 if (D3DXVec3Dot(&v3QuadPosition2, &m_attribute.v3InsideVector[2]) > -s.fRadius /*0.0f*/)
+                {
                     if (D3DXVec3Dot(&v3QuadPosition2, &m_attribute.v3InsideVector[3]) > -s.fRadius /*0.0f*/)
                     {
                         return true;
                     }
+                }
+            }
+        }
     }
 
     return false;
@@ -377,10 +387,10 @@ D3DXVECTOR3 CPlaneCollisionInstance::OnGetCollisionMovementAdjust(const CDynamic
 {
     D3DXVECTOR3 advance = s.v3Position - s.v3LastPosition;
 
-    float d = D3DXVec3Dot(&m_attribute.v3Normal, &advance);
+    float const d = D3DXVec3Dot(&m_attribute.v3Normal, &advance);
     if (d >= -0.0001 && d <= 0.0001)
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
-    float t = -D3DXVec3Dot(&m_attribute.v3Normal, &(s.v3Position - m_attribute.v3Position)) / d;
+        return {0.0f, 0.0f, 0.0f};
+    float const t = -D3DXVec3Dot(&m_attribute.v3Normal, &(s.v3Position - m_attribute.v3Position)) / d;
 
     // D3DXVECTOR3 onplane = s.v3Position+t*advance;
 
@@ -391,13 +401,11 @@ D3DXVECTOR3 CPlaneCollisionInstance::OnGetCollisionMovementAdjust(const CDynamic
         // &(s.v3Position-m_attribute.v3Position)))*gc_fReduceMove);
         return t * advance - s.fRadius * m_attribute.v3Normal;
     }
-    else
-    {
-        // return
-        // m_attribute.v3Normal*((s.fRadius+D3DXVec3Dot(&m_attribute.v3Normal,
-        // &(s.v3Position-m_attribute.v3Position)))*gc_fReduceMove);
-        return t * advance + s.fRadius * m_attribute.v3Normal;
-    }
+
+    // return
+    // m_attribute.v3Normal*((s.fRadius+D3DXVec3Dot(&m_attribute.v3Normal,
+    // &(s.v3Position-m_attribute.v3Position)))*gc_fReduceMove);
+    return t * advance + s.fRadius * m_attribute.v3Normal;
 
     /*if (D3DXVec3Dot(&m_attribute.v3Normal, &advance)>=0)
     {
@@ -483,7 +491,8 @@ bool CCylinderCollisionInstance::CollideCylinderVSDynamicSphere(const TCylinderD
     c_rattribute.fRadius) return true;
         */
 
-    D3DXVECTOR3 oa, ob;
+    D3DXVECTOR3 oa;
+    D3DXVECTOR3 ob;
     IntersectLineSegments(c_rattribute.v3Position,
                           D3DXVECTOR3(c_rattribute.v3Position.x, c_rattribute.v3Position.y,
                                       c_rattribute.v3Position.z + c_rattribute.fHeight),
@@ -504,7 +513,7 @@ bool CCylinderCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamic
     // NOTE : 이동 거리가 클 경우 빈틈없이 (원 크기 단위로) 이동하면서 전부 체크
     // 해 본다 - [levites]
     D3DXVECTOR3 v3Distance = s.v3Position - s.v3LastPosition;
-    float fDistance = D3DXVec3Length(&v3Distance);
+    float const fDistance = D3DXVec3Length(&v3Distance);
     if (s.fRadius <= 0.0001f)
         return false;
     if (fDistance >= s.fRadius * 2.0f)
@@ -513,8 +522,8 @@ bool CCylinderCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamic
         cylinder = m_attribute;
         cylinder.v3Position = s.v3LastPosition;
 
-        int iStep = fDistance / s.fRadius * 2.0f;
-        D3DXVECTOR3 v3Step = v3Distance / float(iStep);
+        int const iStep = fDistance / s.fRadius * 2.0f;
+        D3DXVECTOR3 const v3Step = v3Distance / static_cast<float>(iStep);
 
         for (int i = 0; i < iStep; ++i)
         {
@@ -540,20 +549,21 @@ D3DXVECTOR3 CCylinderCollisionInstance::OnGetCollisionMovementAdjust(const CDyna
     v3Position.z = s.v3Position.z;
     if (D3DXVec3LengthSq(&(s.v3Position - v3Position)) >=
         (s.fRadius + m_attribute.fRadius) * (m_attribute.fRadius + s.fRadius))
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+        return {0.0f, 0.0f, 0.0f};
     D3DXVECTOR3 c;
     D3DXVECTOR3 advance = s.v3Position - s.v3LastPosition;
     advance.z = 0;
     D3DXVec3Cross(&c, &advance, &D3DXVECTOR3(0.0f, 0.0f, 1.0f));
 
-    float sum = -D3DXVec3Dot(&c, &(s.v3Position - v3Position));
-    float mul = (s.fRadius + m_attribute.fRadius) * (s.fRadius + m_attribute.fRadius) -
-                D3DXVec3LengthSq(&(s.v3Position - v3Position));
+    float const sum = -D3DXVec3Dot(&c, &(s.v3Position - v3Position));
+    float const mul = ((s.fRadius + m_attribute.fRadius) * (s.fRadius + m_attribute.fRadius)) -
+                      D3DXVec3LengthSq(&(s.v3Position - v3Position));
 
-    if (sum * sum - 4 * mul <= 0)
-        return D3DXVECTOR3(0.0f, 0.0f, 0.0f);
-    float sq = sqrt(sum * sum - 4 * mul);
-    float t1 = -sum - sq, t2 = -sum + sq;
+    if ((sum * sum) - (4 * mul) <= 0)
+        return {0.0f, 0.0f, 0.0f};
+    float const sq = sqrt((sum * sum) - (4 * mul));
+    float t1 = -sum - sq;
+    float t2 = -sum + sq;
     t1 *= 0.5f;
     t2 *= 0.5f;
 
@@ -561,8 +571,7 @@ D3DXVECTOR3 CCylinderCollisionInstance::OnGetCollisionMovementAdjust(const CDyna
     {
         return (gc_fReduceMove * t1) * c;
     }
-    else
-        return (gc_fReduceMove * t2) * c;
+    return (gc_fReduceMove * t2) * c;
 
     /*D3DXVECTOR3 p1 = s.v3Position+t1*c;
     D3DXVECTOR3 p2 = s.v3Position+t2*c;
@@ -581,8 +590,8 @@ void CCylinderCollisionInstance::Render(D3DFILLMODE d3dFillMode)
 {
     static CScreen s;
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, 0xffffffff);
-    s.RenderCylinder(NULL, m_attribute.v3Position.x, m_attribute.v3Position.y,
-                     m_attribute.v3Position.z + m_attribute.fHeight / 2, m_attribute.fRadius, m_attribute.fHeight,
+    s.RenderCylinder(nullptr, m_attribute.v3Position.x, m_attribute.v3Position.y,
+                     m_attribute.v3Position.z + (m_attribute.fHeight / 2), m_attribute.fRadius, m_attribute.fHeight,
                      d3dFillMode);
 }
 
@@ -606,22 +615,18 @@ const TAABBData &CAABBCollisionInstance::GetAttribute() const
 bool CAABBCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSphereInstance &s) const
 {
     D3DXVECTOR3 v;
-    D3DXVECTOR3 v3center = (m_attribute.v3Min + m_attribute.v3Max) * 0.5f;
+    D3DXVECTOR3 const v3center = (m_attribute.v3Min + m_attribute.v3Max) * 0.5f;
 
     memcpy(&v, &s.v3Position, sizeof(D3DXVECTOR3));
 
-    if (v.x < m_attribute.v3Min.x)
-        v.x = m_attribute.v3Min.x;
-    if (v.x > m_attribute.v3Max.x)
-        v.x = m_attribute.v3Max.x;
+    v.x = std::max(v.x, m_attribute.v3Min.x);
+    v.x = std::min(v.x, m_attribute.v3Max.x);
     if (v.y < m_attribute.v3Min.y)
         v.x = m_attribute.v3Min.y;
     if (v.y > m_attribute.v3Max.y)
         v.x = m_attribute.v3Max.y;
-    if (v.z < m_attribute.v3Min.z)
-        v.z = m_attribute.v3Min.z;
-    if (v.z > m_attribute.v3Max.z)
-        v.z = m_attribute.v3Max.z;
+    v.z = std::max(v.z, m_attribute.v3Min.z);
+    v.z = std::min(v.z, m_attribute.v3Max.z);
 
     if (GetVector3Distance(v, s.v3Position) <= s.fRadius * s.fRadius)
     {
@@ -630,18 +635,14 @@ bool CAABBCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSphe
 
     memcpy(&v, &s.v3LastPosition, sizeof(D3DXVECTOR3));
 
-    if (v.x < m_attribute.v3Min.x)
-        v.x = m_attribute.v3Min.x;
-    if (v.x > m_attribute.v3Max.x)
-        v.x = m_attribute.v3Max.x;
+    v.x = std::max(v.x, m_attribute.v3Min.x);
+    v.x = std::min(v.x, m_attribute.v3Max.x);
     if (v.y < m_attribute.v3Min.y)
         v.x = m_attribute.v3Min.y;
     if (v.y > m_attribute.v3Max.y)
         v.x = m_attribute.v3Max.y;
-    if (v.z < m_attribute.v3Min.z)
-        v.z = m_attribute.v3Min.z;
-    if (v.z > m_attribute.v3Max.z)
-        v.z = m_attribute.v3Max.z;
+    v.z = std::max(v.z, m_attribute.v3Min.z);
+    v.z = std::min(v.z, m_attribute.v3Max.z);
 
     if (GetVector3Distance(v, s.v3LastPosition) <= s.fRadius * s.fRadius)
     {
@@ -656,18 +657,14 @@ bool CAABBCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInstan
     D3DXVECTOR3 v;
     memcpy(&v, &s.v3Position, sizeof(D3DXVECTOR3));
 
-    if (v.x < m_attribute.v3Min.x)
-        v.x = m_attribute.v3Min.x;
-    if (v.x > m_attribute.v3Max.x)
-        v.x = m_attribute.v3Max.x;
+    v.x = std::max(v.x, m_attribute.v3Min.x);
+    v.x = std::min(v.x, m_attribute.v3Max.x);
     if (v.y < m_attribute.v3Min.y)
         v.x = m_attribute.v3Min.y;
     if (v.y > m_attribute.v3Max.y)
         v.x = m_attribute.v3Max.y;
-    if (v.z < m_attribute.v3Min.z)
-        v.z = m_attribute.v3Min.z;
-    if (v.z > m_attribute.v3Max.z)
-        v.z = m_attribute.v3Max.z;
+    v.z = std::max(v.z, m_attribute.v3Min.z);
+    v.z = std::min(v.z, m_attribute.v3Max.z);
 
     if (v.x > m_attribute.v3Min.x && v.x < m_attribute.v3Max.x && v.y > m_attribute.v3Min.y &&
         v.y < m_attribute.v3Max.y && v.z > m_attribute.v3Min.z && v.z < m_attribute.v3Max.z)
@@ -682,18 +679,14 @@ bool CAABBCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInstan
 
     memcpy(&v, &s.v3LastPosition, sizeof(D3DXVECTOR3));
 
-    if (v.x < m_attribute.v3Min.x)
-        v.x = m_attribute.v3Min.x;
-    if (v.x > m_attribute.v3Max.x)
-        v.x = m_attribute.v3Max.x;
+    v.x = std::max(v.x, m_attribute.v3Min.x);
+    v.x = std::min(v.x, m_attribute.v3Max.x);
     if (v.y < m_attribute.v3Min.y)
         v.x = m_attribute.v3Min.y;
     if (v.y > m_attribute.v3Max.y)
         v.x = m_attribute.v3Max.y;
-    if (v.z < m_attribute.v3Min.z)
-        v.z = m_attribute.v3Min.z;
-    if (v.z > m_attribute.v3Max.z)
-        v.z = m_attribute.v3Max.z;
+    v.z = std::max(v.z, m_attribute.v3Min.z);
+    v.z = std::min(v.z, m_attribute.v3Max.z);
 
     if (v.x > m_attribute.v3Min.x && v.x < m_attribute.v3Max.x && v.y > m_attribute.v3Min.y &&
         v.y < m_attribute.v3Max.y && v.z > m_attribute.v3Min.z && v.z < m_attribute.v3Max.z)
@@ -793,9 +786,9 @@ D3DXVECTOR3 CAABBCollisionInstance::OnGetCollisionMovementAdjust(const CDynamicS
     }
 
     if (D3DXVec3LengthSq(&(v3Temp - s.v3Position)) < s.fRadius * s.fRadius)
-        return D3DXVECTOR3(.0f, .0f, .0f);
+        return {.0f, .0f, .0f};
 
-    return D3DXVECTOR3(.0f, .0f, .0f);
+    return {.0f, .0f, .0f};
 }
 
 void CAABBCollisionInstance::Render(D3DFILLMODE d3dFillMode)
@@ -804,7 +797,6 @@ void CAABBCollisionInstance::Render(D3DFILLMODE d3dFillMode)
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, 0xffffffff);
     s.RenderCube(m_attribute.v3Min.x, m_attribute.v3Min.y, m_attribute.v3Min.z, m_attribute.v3Max.x,
                  m_attribute.v3Max.y, m_attribute.v3Max.z);
-    return;
 }
 
 void CAABBCollisionInstance::OnDestroy()
@@ -827,36 +819,18 @@ const TOBBData &COBBCollisionInstance::GetAttribute() const
 
 bool COBBCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSphereInstance &s) const
 {
-    D3DXVECTOR3 v3Center = 0.5f * (m_attribute.v3Min + m_attribute.v3Max);
+    D3DXVECTOR3 const v3Center = 0.5f * (m_attribute.v3Min + m_attribute.v3Max);
     D3DXVECTOR3 v3Sphere = s.v3Position - v3Center;
     D3DXVec3TransformCoord(&v3Sphere, &v3Sphere, &m_attribute.matRotInv);
     v3Sphere = v3Sphere + v3Center;
 
     D3DXVECTOR3 v3Point = v3Sphere;
-    if (v3Point.x < m_attribute.v3Min.x)
-    {
-        v3Point.x = m_attribute.v3Min.x;
-    }
-    if (v3Point.x > m_attribute.v3Max.x)
-    {
-        v3Point.x = m_attribute.v3Max.x;
-    }
-    if (v3Point.y < m_attribute.v3Min.y)
-    {
-        v3Point.y = m_attribute.v3Min.y;
-    }
-    if (v3Point.y > m_attribute.v3Max.y)
-    {
-        v3Point.y = m_attribute.v3Max.y;
-    }
-    if (v3Point.z < m_attribute.v3Min.z)
-    {
-        v3Point.z = m_attribute.v3Min.z;
-    }
-    if (v3Point.z > m_attribute.v3Max.z)
-    {
-        v3Point.z = m_attribute.v3Max.z;
-    }
+    v3Point.x = std::max(v3Point.x, m_attribute.v3Min.x);
+    v3Point.x = std::min(v3Point.x, m_attribute.v3Max.x);
+    v3Point.y = std::max(v3Point.y, m_attribute.v3Min.y);
+    v3Point.y = std::min(v3Point.y, m_attribute.v3Max.y);
+    v3Point.z = std::max(v3Point.z, m_attribute.v3Min.z);
+    v3Point.z = std::min(v3Point.z, m_attribute.v3Max.z);
 
     if (GetVector3Distance(v3Point, v3Sphere) <= s.fRadius * s.fRadius)
     {
@@ -868,30 +842,12 @@ bool COBBCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSpher
     v3Sphere = v3Sphere + v3Center;
 
     v3Point = v3Sphere;
-    if (v3Point.x < m_attribute.v3Min.x)
-    {
-        v3Point.x = m_attribute.v3Min.x;
-    }
-    if (v3Point.x > m_attribute.v3Max.x)
-    {
-        v3Point.x = m_attribute.v3Max.x;
-    }
-    if (v3Point.y < m_attribute.v3Min.y)
-    {
-        v3Point.y = m_attribute.v3Min.y;
-    }
-    if (v3Point.y > m_attribute.v3Max.y)
-    {
-        v3Point.y = m_attribute.v3Max.y;
-    }
-    if (v3Point.z < m_attribute.v3Min.z)
-    {
-        v3Point.z = m_attribute.v3Min.z;
-    }
-    if (v3Point.z > m_attribute.v3Max.z)
-    {
-        v3Point.z = m_attribute.v3Max.z;
-    }
+    v3Point.x = std::max(v3Point.x, m_attribute.v3Min.x);
+    v3Point.x = std::min(v3Point.x, m_attribute.v3Max.x);
+    v3Point.y = std::max(v3Point.y, m_attribute.v3Min.y);
+    v3Point.y = std::min(v3Point.y, m_attribute.v3Max.y);
+    v3Point.z = std::max(v3Point.z, m_attribute.v3Min.z);
+    v3Point.z = std::min(v3Point.z, m_attribute.v3Max.z);
 
     if (GetVector3Distance(v3Point, v3Sphere) <= s.fRadius * s.fRadius)
     {
@@ -903,36 +859,18 @@ bool COBBCollisionInstance::OnMovementCollisionDynamicSphere(const CDynamicSpher
 
 bool COBBCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInstance &s) const
 {
-    D3DXVECTOR3 v3Center = 0.5f * (m_attribute.v3Min + m_attribute.v3Max);
+    D3DXVECTOR3 const v3Center = 0.5f * (m_attribute.v3Min + m_attribute.v3Max);
     D3DXVECTOR3 v3Sphere = s.v3Position - v3Center;
     D3DXVec3TransformCoord(&v3Sphere, &v3Sphere, &m_attribute.matRotInv);
     v3Sphere = v3Sphere + v3Center;
 
     D3DXVECTOR3 v3Point = v3Sphere;
-    if (v3Point.x < m_attribute.v3Min.x)
-    {
-        v3Point.x = m_attribute.v3Min.x;
-    }
-    if (v3Point.x > m_attribute.v3Max.x)
-    {
-        v3Point.x = m_attribute.v3Max.x;
-    }
-    if (v3Point.y < m_attribute.v3Min.y)
-    {
-        v3Point.y = m_attribute.v3Min.y;
-    }
-    if (v3Point.y > m_attribute.v3Max.y)
-    {
-        v3Point.y = m_attribute.v3Max.y;
-    }
-    if (v3Point.z < m_attribute.v3Min.z)
-    {
-        v3Point.z = m_attribute.v3Min.z;
-    }
-    if (v3Point.z > m_attribute.v3Max.z)
-    {
-        v3Point.z = m_attribute.v3Max.z;
-    }
+    v3Point.x = std::max(v3Point.x, m_attribute.v3Min.x);
+    v3Point.x = std::min(v3Point.x, m_attribute.v3Max.x);
+    v3Point.y = std::max(v3Point.y, m_attribute.v3Min.y);
+    v3Point.y = std::min(v3Point.y, m_attribute.v3Max.y);
+    v3Point.z = std::max(v3Point.z, m_attribute.v3Min.z);
+    v3Point.z = std::min(v3Point.z, m_attribute.v3Max.z);
 
     if (GetVector3Distance(v3Point, v3Sphere) <= s.fRadius * s.fRadius)
     {
@@ -944,30 +882,12 @@ bool COBBCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInstanc
     v3Sphere = v3Sphere + v3Center;
 
     v3Point = v3Sphere;
-    if (v3Point.x < m_attribute.v3Min.x)
-    {
-        v3Point.x = m_attribute.v3Min.x;
-    }
-    if (v3Point.x > m_attribute.v3Max.x)
-    {
-        v3Point.x = m_attribute.v3Max.x;
-    }
-    if (v3Point.y < m_attribute.v3Min.y)
-    {
-        v3Point.y = m_attribute.v3Min.y;
-    }
-    if (v3Point.y > m_attribute.v3Max.y)
-    {
-        v3Point.y = m_attribute.v3Max.y;
-    }
-    if (v3Point.z < m_attribute.v3Min.z)
-    {
-        v3Point.z = m_attribute.v3Min.z;
-    }
-    if (v3Point.z > m_attribute.v3Max.z)
-    {
-        v3Point.z = m_attribute.v3Max.z;
-    }
+    v3Point.x = std::max(v3Point.x, m_attribute.v3Min.x);
+    v3Point.x = std::min(v3Point.x, m_attribute.v3Max.x);
+    v3Point.y = std::max(v3Point.y, m_attribute.v3Min.y);
+    v3Point.y = std::min(v3Point.y, m_attribute.v3Max.y);
+    v3Point.z = std::max(v3Point.z, m_attribute.v3Min.z);
+    v3Point.z = std::min(v3Point.z, m_attribute.v3Max.z);
 
     if (GetVector3Distance(v3Point, v3Sphere) <= s.fRadius * s.fRadius)
     {
@@ -979,7 +899,7 @@ bool COBBCollisionInstance::OnCollisionDynamicSphere(const CDynamicSphereInstanc
 
 D3DXVECTOR3 COBBCollisionInstance::OnGetCollisionMovementAdjust(const CDynamicSphereInstance &s) const
 {
-    return D3DXVECTOR3(.0f, .0f, .0f);
+    return {.0f, .0f, .0f};
 }
 
 void COBBCollisionInstance::Render(D3DFILLMODE d3dFillMode)
@@ -988,7 +908,6 @@ void COBBCollisionInstance::Render(D3DFILLMODE d3dFillMode)
     STATEMANAGER.SetRenderState(D3DRS_TEXTUREFACTOR, 0xffffffff);
     s.RenderCube(m_attribute.v3Min.x, m_attribute.v3Min.y, m_attribute.v3Min.z, m_attribute.v3Max.x,
                  m_attribute.v3Max.y, m_attribute.v3Max.z, m_attribute.matRot);
-    return;
 }
 
 void COBBCollisionInstance::OnDestroy()

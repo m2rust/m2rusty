@@ -15,7 +15,6 @@ class CSoundData
         SOUND_FILE_MAX_NUM = 5,
     };
 
-  public:
     static void SetPackMode();
 
     CSoundData();
@@ -23,27 +22,26 @@ class CSoundData
 
     void Assign(const char *filename);
     LPVOID Get();
-    ULONG GetSize();
+    ULONG GetSize() const;
     void Release();
-    DWORD GetAccessTime();
+    DWORD GetAccessTime() const;
     const char *GetFileName();
 
     void SetPlayTime(DWORD dwPlayTime);
-    DWORD GetPlayTime();
+    DWORD GetPlayTime() const;
 
   protected:
     bool ReadFromDisk();
     void Destroy();
 
-  protected:
-    char m_filename[128];
-    int m_iRefCount;
+    char m_filename[128]{};
+    int m_iRefCount = 0;
     DWORD m_dwAccessTime;
-    DWORD m_dwPlayTime;
-    ULONG m_size;
+    DWORD m_dwPlayTime = 0;
+    ULONG m_size = 0;
     LPVOID m_data;
-    long m_flag;
-    bool m_assigned;
+    long m_flag = 0;
+    bool m_assigned = false;
 
   private:
     static U32 AILCALLBACK open_callback(char const *filename, U32 *file_handle);

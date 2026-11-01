@@ -29,7 +29,6 @@ class CParticleProperty
         TEXTURE_ANIMATION_TYPE_RANDOM_DIRECTION,
     };
 
-  public:
     CParticleProperty();
     virtual ~CParticleProperty();
 
@@ -38,37 +37,37 @@ class CParticleProperty
     void InsertTexture(const char *c_szFileName);
     bool SetTexture(const char *c_szFileName);
 
-    __forceinline BYTE GetTextureAnimationType()
+    __forceinline BYTE GetTextureAnimationType() const
     {
         return m_byTexAniType;
     }
 
-    __forceinline DWORD GetTextureAnimationFrameCount()
+    __forceinline DWORD GetTextureAnimationFrameCount() const
     {
         return m_ImageVector.size();
     }
 
-    __forceinline float GetTextureAnimationFrameDelay()
+    __forceinline float GetTextureAnimationFrameDelay() const
     {
         return m_fTexAniDelay;
     }
 
-    BYTE m_byTexAniType;
-    float m_fTexAniDelay;
-    BOOL m_bTexAniRandomStartFrameFlag;
+    BYTE m_byTexAniType = 0U;
+    float m_fTexAniDelay = 0.0F;
+    BOOL m_bTexAniRandomStartFrameFlag = 0;
 
-    BYTE m_bySrcBlendType;
-    BYTE m_byDestBlendType;
-    BYTE m_byColorOperationType;
-    BYTE m_byBillboardType;
+    BYTE m_bySrcBlendType = 0U;
+    BYTE m_byDestBlendType = 0U;
+    BYTE m_byColorOperationType = 0U;
+    BYTE m_byBillboardType = 0U;
 
-    BYTE m_byRotationType;
-    float m_fRotationSpeed;
-    WORD m_wRotationRandomStartingBegin;
-    WORD m_wRotationRandomStartingEnd;
+    BYTE m_byRotationType = 0U;
+    float m_fRotationSpeed = 0.0F;
+    WORD m_wRotationRandomStartingBegin = 0U;
+    WORD m_wRotationRandomStartingEnd = 0U;
 
-    BOOL m_bAttachFlag;
-    BOOL m_bStretchFlag;
+    BOOL m_bAttachFlag = 0;
+    BOOL m_bStretchFlag = 0;
 
     TTimeEventTableFloat m_TimeEventGravity;
     TTimeEventTableFloat m_TimeEventAirResistance;

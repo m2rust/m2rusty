@@ -57,10 +57,10 @@ enum EMotionType
     MOTION_TYPE_SKILL,
 };
 
-typedef CDynamicSphereInstance THitTimePosition;
-typedef std::map<float, THitTimePosition> THitTimePositionMap;
+using THitTimePosition = CDynamicSphereInstance;
+using THitTimePositionMap = std::map<float, THitTimePosition>;
 
-typedef struct SAttackData
+using TAttackData = struct SAttackData
 {
     int iAttackType;
     int iHittingType;
@@ -68,29 +68,29 @@ typedef struct SAttackData
     float fExternalForce;
     float fStiffenTime;
     int iHitLimitCount;
-} TAttackData;
+};
 
-typedef struct SHitData
+using THitData = struct SHitData
 {
-    float fAttackStartTime;
-    float fAttackEndTime;
+    float fAttackStartTime = 0.0F;
+    float fAttackEndTime = 0.0F;
 
-    float fWeaponLength;
+    float fWeaponLength = 0.0F;
     std::string strBoneName;
 
     THitTimePositionMap mapHitPosition;
 
     bool Load(CTextFileLoader &rTextFileLoader);
-} THitData;
+};
 
-typedef std::vector<THitData> THitDataContainer;
+using THitDataContainer = std::vector<THitData>;
 
-typedef struct SMotionAttackData : public SAttackData
+using TMotionAttackData = struct SMotionAttackData : public SAttackData
 {
-    int iMotionType;
+    int iMotionType = 0;
 
     THitDataContainer HitDataContainer;
-} TMotionAttackData;
+};
 
 /////////////////////////////////////////////////////////////////////////////////
 // Character Attaching Collision Data
@@ -109,9 +109,9 @@ enum ECollisionShape
     COLLISION_SHAPE_CYLINDER,
 };
 
-typedef struct SCollisionData
+using TCollisionData = struct SCollisionData
 {
-    int iCollisionType;
+    int iCollisionType = 0;
     CSphereCollisionInstanceVector SphereDataVector;
 
     SCollisionData()
@@ -120,9 +120,9 @@ typedef struct SCollisionData
     virtual ~SCollisionData()
     {
     }
-} TCollisionData;
+};
 
-typedef struct SAttachingEffectData
+using TAttachingEffectData = struct SAttachingEffectData
 {
     std::string strFileName;
     D3DXVECTOR3 v3Position;
@@ -134,9 +134,9 @@ typedef struct SAttachingEffectData
     virtual ~SAttachingEffectData()
     {
     }
-} TAttachingEffectData;
+};
 
-typedef struct SAttachingObjectData
+using TAttachingObjectData = struct SAttachingObjectData
 {
     std::string strFileName;
 
@@ -146,9 +146,9 @@ typedef struct SAttachingObjectData
     virtual ~SAttachingObjectData()
     {
     }
-} TAttachingObjectData;
+};
 
-typedef std::vector<TCollisionData> TCollisionDataVector;
+using TCollisionDataVector = std::vector<TCollisionData>;
 
 void DestroySystem();
 
@@ -177,7 +177,7 @@ enum EAttachingDataType
     ATTACHING_DATA_TYPE_MAX_NUM,
 };
 
-typedef struct SAttachingData
+using TAttachingData = struct SAttachingData
 {
     SAttachingData()
         : dwType(0), isAttaching(false), dwAttachingModelIndex(0), pCollisionData(NULL), pEffectData(NULL),
@@ -193,9 +193,9 @@ typedef struct SAttachingData
     TCollisionData *pCollisionData;
     TAttachingEffectData *pEffectData;
     TAttachingObjectData *pObjectData;
-} TAttachingData;
+};
 
-typedef std::vector<TAttachingData> TAttachingDataVector;
+using TAttachingDataVector = std::vector<TAttachingData>;
 
 void SaveAttachingData(FILE *File, int iTabCount, const TAttachingDataVector &c_rAttachingDataVector);
 BOOL LoadAttachingData(CTextFileLoader &rTextFileLoader, TAttachingDataVector *pAttachingDataVector);

@@ -7,14 +7,14 @@ class IPhysicsWorld
   public:
     IPhysicsWorld()
     {
-        assert(ms_pWorld == NULL);
+        assert(ms_pWorld == nullptr);
         ms_pWorld = this;
     }
 
     virtual ~IPhysicsWorld()
     {
         if (this == ms_pWorld)
-            ms_pWorld = NULL;
+            ms_pWorld = nullptr;
     }
 
     static IPhysicsWorld *GetPhysicsWorld()
@@ -38,14 +38,14 @@ class IObjectManager
   public:
     IObjectManager()
     {
-        assert(ms_ObjManager == NULL);
+        assert(ms_ObjManager == nullptr);
         ms_ObjManager = this;
     }
 
     virtual ~IObjectManager()
     {
         if (this == ms_ObjManager)
-            ms_ObjManager = NULL;
+            ms_ObjManager = nullptr;
     }
 
     static IObjectManager *GetObjectManager()
@@ -92,9 +92,8 @@ class CPhysicsObject
   protected:
     void Accumulate(D3DXVECTOR3 *pv3Position);
 
-  protected:
-    float m_fMass;
-    float m_fFriction;
+    float m_fMass = 0.0F;
+    float m_fFriction = 0.0F;
     D3DXVECTOR3 m_v3Direction;
     D3DXVECTOR3 m_v3Acceleration;
     D3DXVECTOR3 m_v3Velocity;

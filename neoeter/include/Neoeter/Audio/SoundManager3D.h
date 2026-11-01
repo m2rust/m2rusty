@@ -13,15 +13,14 @@ class CSoundManager3D : public CSoundBase
         MAX_PROVIDERS = 32,
     };
 
-  public:
     CSoundManager3D();
-    virtual ~CSoundManager3D();
+    ~CSoundManager3D() override;
 
     bool Initialize();
     void Destroy();
 
     int GetEmptyInstanceIndex();
-    int SetInstance(const char *c_szFileName);
+    int SetInstance(const char *c_pszFileName);
     ISoundInstance *GetInstance(DWORD dwIndex);
 
     void SetListenerDirection(float fxDir, float fyDir, float fzDir, float fxUp, float fyUp, float fzUp);
@@ -34,10 +33,9 @@ class CSoundManager3D : public CSoundBase
   protected:
     bool IsValidInstanceIndex(int iIndex);
 
-  protected:
-    bool m_bLockingFlag[INSTANCE_MAX_COUNT];
+    bool m_bLockingFlag[INSTANCE_MAX_COUNT]{};
     CSoundInstance3D m_Instances[INSTANCE_MAX_COUNT];
-    H3DPOBJECT m_pListener;
+    H3DPOBJECT m_pListener = nullptr;
 
     bool m_bInit;
 };

@@ -2,6 +2,7 @@
 #include <Neoeter/Render/StateManager.h>
 
 #include <Client/Game/ActorInstance.h>
+#include <math.h>
 
 bool CActorInstance::ms_isDirLine = false;
 
@@ -167,7 +168,7 @@ void CActorInstance::EndOpacityRender()
     STATEMANAGER.RestoreRenderState(D3DRS_ALPHAFUNC);
 }
 
-void CActorInstance::BeginBlendRender()
+void CActorInstance::BeginBlendRender() const
 {
     STATEMANAGER.SaveRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     STATEMANAGER.SaveRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
@@ -321,7 +322,7 @@ void CActorInstance::RenderCollisionData()
     }*/
     s_Screen.SetDiffuseColor(1.0f, (isShow()) ? 1.0f : 0.0f, 0.0f);
     D3DXVECTOR3 center;
-    float r;
+    float r = NAN;
     GetBoundingSphere(center, r);
     s_Screen.RenderCircle3d(center.x, center.y, center.z, r);
 
@@ -330,9 +331,8 @@ void CActorInstance::RenderCollisionData()
     for (; itor != m_DefendingPointInstanceList.end(); ++itor)
     {
         const TCollisionPointInstance &c_rInstance = *itor;
-        for (DWORD i = 0; i < c_rInstance.SphereInstanceVector.size(); ++i)
+        for (const auto &c_rSphereInstance : c_rInstance.SphereInstanceVector)
         {
-            const CDynamicSphereInstance &c_rSphereInstance = c_rInstance.SphereInstanceVector[i];
             s_Screen.RenderCircle3d(c_rSphereInstance.v3Position.x, c_rSphereInstance.v3Position.y,
                                     c_rSphereInstance.v3Position.z, c_rSphereInstance.fRadius);
         }
@@ -343,9 +343,8 @@ void CActorInstance::RenderCollisionData()
     for (; itor != m_BodyPointInstanceList.end(); ++itor)
     {
         const TCollisionPointInstance &c_rInstance = *itor;
-        for (DWORD i = 0; i < c_rInstance.SphereInstanceVector.size(); ++i)
+        for (const auto &c_rSphereInstance : c_rInstance.SphereInstanceVector)
         {
-            const CDynamicSphereInstance &c_rSphereInstance = c_rInstance.SphereInstanceVector[i];
             s_Screen.RenderCircle3d(c_rSphereInstance.v3Position.x, c_rSphereInstance.v3Position.y,
                                     c_rSphereInstance.v3Position.z, c_rSphereInstance.fRadius);
         }
@@ -354,7 +353,7 @@ void CActorInstance::RenderCollisionData()
     s_Screen.SetDiffuseColor(1.0f, 0.0f, 0.0f);
     //	if (m_SplashArea.fDisappearingTime > GetLocalTime())
     {
-        CDynamicSphereInstanceVector::iterator itor = m_kSplashArea.SphereInstanceVector.begin();
+        auto itor = m_kSplashArea.SphereInstanceVector.begin();
         for (; itor != m_kSplashArea.SphereInstanceVector.end(); ++itor)
         {
             const CDynamicSphereInstance &c_rInstance = *itor;
@@ -371,8 +370,10 @@ void CActorInstance::RenderCollisionData()
 void CActorInstance::RenderToShadowMap()
 {
     if (RENDER_MODE_BLEND == m_iRenderMode)
+    {
         if (GetAlphaValue() < 0.5f)
             return;
+    }
 
     CGraphicThingInstance::RenderToShadowMap();
 

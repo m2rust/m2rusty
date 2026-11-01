@@ -1,9 +1,10 @@
 #include <Client/UI/StdAfx.h>
 #include <Client/UI/PythonApplication.h>
+#include <math.h>
 
 PyObject *sndPlaySound(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
@@ -14,16 +15,16 @@ PyObject *sndPlaySound(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndPlaySound3D(PyObject *poSelf, PyObject *poArgs)
 {
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fx))
         return Py_BuildException();
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fy))
         return Py_BuildException();
-    float fz;
+    float fz = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fz))
         return Py_BuildException();
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 3, &szFileName))
         return Py_BuildException();
 
@@ -34,7 +35,7 @@ PyObject *sndPlaySound3D(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndPlayMusic(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
@@ -45,7 +46,7 @@ PyObject *sndPlayMusic(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndFadeInMusic(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
@@ -56,7 +57,7 @@ PyObject *sndFadeInMusic(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndFadeOutMusic(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
@@ -74,11 +75,11 @@ PyObject *sndFadeOutAllMusic(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndFadeLimitOutMusic(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
-    float fLimitVolume;
+    float fLimitVolume = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fLimitVolume))
         return Py_BuildException();
 
@@ -96,7 +97,7 @@ PyObject *sndStopAllSound(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndSetMusicVolume(PyObject *poSelf, PyObject *poArgs)
 {
-    float fVolume;
+    float fVolume = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fVolume))
         return Py_BuildException();
 
@@ -107,7 +108,7 @@ PyObject *sndSetMusicVolume(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndSetSoundVolumef(PyObject *poSelf, PyObject *poArgs)
 {
-    float fVolume;
+    float fVolume = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fVolume))
         return Py_BuildException();
 
@@ -118,7 +119,7 @@ PyObject *sndSetSoundVolumef(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndSetSoundVolume(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVolume;
+    int iVolume = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVolume))
         return Py_BuildException();
 
@@ -129,7 +130,7 @@ PyObject *sndSetSoundVolume(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndSetSoundScale(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScale;
+    float fScale = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScale))
         return Py_BuildException();
 
@@ -140,7 +141,7 @@ PyObject *sndSetSoundScale(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *sndSetAmbienceSoundScale(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScale;
+    float fScale = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScale))
         return Py_BuildException();
 
@@ -167,7 +168,7 @@ void initsnd()
         {"SetSoundVolume", sndSetSoundVolume, METH_VARARGS},
         {"SetSoundScale", sndSetSoundScale, METH_VARARGS},
         {"SetAmbienceSoundScale", sndSetAmbienceSoundScale, METH_VARARGS},
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     Py_InitModule("snd", s_methods);

@@ -4,7 +4,7 @@
 
 struct ApplicationStringTable
 {
-    HINSTANCE m_hInstance;
+    HINSTANCE m_hInstance = nullptr;
     std::map<DWORD, std::string> m_kMap_dwID_stLocale;
 } gs_kAppStrTable;
 
@@ -27,11 +27,11 @@ const std::string &ApplicationStringTable_GetString(DWORD dwID, LPCSTR szKey)
     strcpy(szLocale, LocaleService_GetLocalePath());
     if (strnicmp(szLocale, "locale/", strlen("locale/")) == 0)
         strcpy(szLocale, LocaleService_GetLocalePath() + strlen("locale/"));
-    ::GetPrivateProfileString(szLocale, szKey, NULL, szBuffer, sizeof(szBuffer) - 1, szIniFileName);
+    ::GetPrivateProfileString(szLocale, szKey, nullptr, szBuffer, sizeof(szBuffer) - 1, szIniFileName);
     if (szBuffer[0] == '\0')
         LoadString(gs_kAppStrTable.m_hInstance, dwID, szBuffer, sizeof(szBuffer) - 1);
     if (szBuffer[0] == '\0')
-        ::GetPrivateProfileString("en", szKey, NULL, szBuffer, sizeof(szBuffer) - 1, szIniFileName);
+        ::GetPrivateProfileString("en", szKey, nullptr, szBuffer, sizeof(szBuffer) - 1, szIniFileName);
     if (szBuffer[0] == '\0')
         strcpy(szBuffer, szKey);
 

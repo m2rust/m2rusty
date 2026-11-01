@@ -1,6 +1,8 @@
 #include <Neoeter/Effect/StdAfx.h>
 #include <Neoeter/Effect/SimpleLightData.h>
 
+#include <algorithm>
+
 CDynamicPool<CLightData> CLightData::ms_kPool;
 
 void CLightData::DestroySystem()
@@ -48,43 +50,40 @@ void CLightData::GetRange(float fTime, float &rRange)
     if (m_TimeEventTableRange.empty())
     {
         rRange = 1.0f * m_fMaxRange;
-        if (rRange < 0.0f)
-            rRange = 0.0f;
+        rRange = std::max(rRange, 0.0f);
         return;
     }
 
     GetTimeEventBlendValue(fTime, m_TimeEventTableRange, &rRange);
     rRange *= m_fMaxRange;
-    if (rRange < 0.0f)
-        rRange = 0.0f;
-    return;
+    rRange = std::max(rRange, 0.0f);
     /*
-    float vecLastRange = m_TimeEventTableRange[0].m_Value;
+     float vecLastRange = m_TimeEventTableRange[0].m_Value;
 
-    for (DWORD dwIndex = 0; dwIndex < m_TimeEventTableRange.size(); ++dwIndex)
-    {
-        if(fTime < m_TimeEventTableRange[dwIndex].m_fTime)
-        {
-            break;
-        }
-    }
+     for (DWORD dwIndex = 0; dwIndex < m_TimeEventTableRange.size(); ++dwIndex)
+     {
+         if(fTime < m_TimeEventTableRange[dwIndex].m_fTime)
+         {
+             break;
+         }
+     }
 
-    if (dwIndex >= m_TimeEventTableRange.size())
-    {
-        rRange = m_TimeEventTableRange[m_TimeEventTableRange.size()-1].m_Value *
-    m_fMaxRange; if (rRange<0.0f) rRange = 0.0f; return;
-    }
+     if (dwIndex >= m_TimeEventTableRange.size())
+     {
+         rRange = m_TimeEventTableRange[m_TimeEventTableRange.size()-1].m_Value *
+     m_fMaxRange; if (rRange<0.0f) rRange = 0.0f; return;
+     }
 
-    TTimeEventTypeFloat & rEffectRange = m_TimeEventTableRange[dwIndex];
-    TTimeEventTypeFloat & rPrevEffectRange = m_TimeEventTableRange[dwIndex-1];
+     TTimeEventTypeFloat & rEffectRange = m_TimeEventTableRange[dwIndex];
+     TTimeEventTypeFloat & rPrevEffectRange = m_TimeEventTableRange[dwIndex-1];
 
-    float Head = fabs(rEffectRange.m_fTime - fTime) / fabs(rEffectRange.m_fTime -
-    rPrevEffectRange.m_fTime); float Tail = 1.0f - fabs(rEffectRange.m_fTime -
-    fTime) / fabs(rEffectRange.m_fTime - rPrevEffectRange.m_fTime); rRange =
-    ((rPrevEffectRange.m_Value*Head) + (rEffectRange.m_Value*Tail) )*m_fMaxRange;
-    if (rRange<0.0f)
-        rRange = 0.0f;
-        */
+     float Head = fabs(rEffectRange.m_fTime - fTime) / fabs(rEffectRange.m_fTime -
+     rPrevEffectRange.m_fTime); float Tail = 1.0f - fabs(rEffectRange.m_fTime -
+     fTime) / fabs(rEffectRange.m_fTime - rPrevEffectRange.m_fTime); rRange =
+     ((rPrevEffectRange.m_Value*Head) + (rEffectRange.m_Value*Tail) )*m_fMaxRange;
+     if (rRange<0.0f)
+         rRange = 0.0f;
+         */
 }
 
 bool CLightData::OnIsData()
@@ -134,11 +133,9 @@ CLightData::CLightData()
     Clear();
 }
 
-CLightData::~CLightData()
-{
-}
+CLightData::~CLightData() = default;
 
-float CLightData::GetDuration()
+float CLightData::GetDuration() const
 {
     return m_fDuration;
 }

@@ -5,8 +5,6 @@
 
 CDynamicPool<CItemData> CItemData::ms_kPool;
 
-extern DWORD GetDefaultCodePage();
-
 CItemData *CItemData::New()
 {
     return ms_kPool.Alloc();
@@ -31,9 +29,10 @@ CGraphicThing *CItemData::GetModelThing()
 CGraphicThing *CItemData::GetSubModelThing()
 {
     if (m_pSubModelThing)
+    {
         return m_pSubModelThing;
-    else
-        return m_pModelThing;
+    }
+    return m_pModelThing;
 }
 
 CGraphicThing *CItemData::GetDropModelThing()
@@ -43,7 +42,7 @@ CGraphicThing *CItemData::GetDropModelThing()
 
 CGraphicSubImage *CItemData::GetIconImage()
 {
-    if (m_pIconImage == NULL && m_strIconFileName.empty() == false)
+    if (m_pIconImage == nullptr && !m_strIconFileName.empty())
         __SetIconImage(m_strIconFileName.c_str());
     return m_pIconImage;
 }
@@ -181,12 +180,16 @@ void CItemData::__LoadFiles()
         m_pModelThing = (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(m_strModelFileName.c_str());
 
     if (!m_strSubModelFileName.empty())
+    {
         m_pSubModelThing =
             (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(m_strSubModelFileName.c_str());
+    }
 
     if (!m_strDropModelFileName.empty())
+    {
         m_pDropModelThing =
             (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(m_strDropModelFileName.c_str());
+    }
 
     if (!m_strLODModelFileNameVector.empty())
     {
@@ -207,10 +210,12 @@ void CItemData::__SetIconImage(const char *c_szFileName)
     if (!CResourceManager::Instance().IsFileExist(c_szFileName))
     {
         TraceError("%s file is missing.CItemData::__SetIconImage", c_szFileName);
-        m_pIconImage = NULL;
+        m_pIconImage = nullptr;
     }
-    else if (m_pIconImage == NULL)
+    else if (m_pIconImage == nullptr)
+    {
         m_pIconImage = (CGraphicSubImage *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
+    }
 }
 
 void CItemData::SetItemTableData(TItemTable *pItemTable)
@@ -412,9 +417,9 @@ UINT CItemData::GetSpecularPoweru() const
 
 float CItemData::GetSpecularPowerf() const
 {
-    UINT uSpecularPower = GetSpecularPoweru();
+    UINT const uSpecularPower = GetSpecularPoweru();
 
-    return float(uSpecularPower) / 100.0f;
+    return static_cast<float>(uSpecularPower) / 100.0f;
 }
 
 // refine 값은 아이템번호 끝자리와 일치한다-_-(테이블이용으로 바꿀 예정)
@@ -445,10 +450,10 @@ void CItemData::Clear()
     m_strIconFileName = "";
     m_strLODModelFileNameVector.clear();
 
-    m_pModelThing = NULL;
-    m_pSubModelThing = NULL;
-    m_pDropModelThing = NULL;
-    m_pIconImage = NULL;
+    m_pModelThing = nullptr;
+    m_pSubModelThing = nullptr;
+    m_pDropModelThing = nullptr;
+    m_pIconImage = nullptr;
     m_pLODModelThingVector.clear();
 
     memset(&m_ItemTable, 0, sizeof(m_ItemTable));
@@ -459,6 +464,4 @@ CItemData::CItemData()
     Clear();
 }
 
-CItemData::~CItemData()
-{
-}
+CItemData::~CItemData() = default;

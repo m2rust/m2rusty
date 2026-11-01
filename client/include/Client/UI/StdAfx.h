@@ -37,7 +37,7 @@ enum
 {
     POINT_MAX_NUM = 255,
     CHARACTER_NAME_MAX_LEN = 24,
-#if defined(LOCALE_SERVICE_JAPAN)
+#ifdef LOCALE_SERVICE_JAPAN
     PLAYER_NAME_MAX_LEN = 16,
 #else
     PLAYER_NAME_MAX_LEN = 12,
@@ -51,7 +51,7 @@ void initchr();
 void initchrmgr();
 void initChat();
 void initTextTail();
-void initime();
+
 void initItem();
 void initNonPlayer();
 void initnet();

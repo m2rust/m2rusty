@@ -57,10 +57,10 @@ void CPythonResource::DumpFileList(const char *c_szFileName)
 
 void CPythonResource::Destroy()
 {
-    for (size_t i = 0; i < ms_destroyHandlers.size(); ++i)
+    for (auto &ms_destroyHandler : ms_destroyHandlers)
     {
-        if (ms_destroyHandlers[i])
-            ms_destroyHandlers[i]();
+        if (ms_destroyHandler)
+            ms_destroyHandler();
     }
 
     CGraphicExpandedImageInstance::DestroySystem();

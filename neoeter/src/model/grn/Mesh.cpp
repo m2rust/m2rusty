@@ -4,17 +4,23 @@
 #include <Neoeter/Model/Grn/Material.h>
 
 granny_data_type_definition GrannyPNT3322VertexType[5] = {
-    {GrannyReal32Member, GrannyVertexPositionName, 0, 3},
-    {GrannyReal32Member, GrannyVertexNormalName, 0, 3},
-    {GrannyReal32Member, GrannyVertexTextureCoordinatesName "0", 0, 2},
-    {GrannyReal32Member, GrannyVertexTextureCoordinatesName "1", 0, 2},
-    {GrannyEndMember}};
+    {.Type = GrannyReal32Member, .Name = GrannyVertexPositionName, .ReferenceType = nullptr, .ArrayWidth = 3},
+    {.Type = GrannyReal32Member, .Name = GrannyVertexNormalName, .ReferenceType = nullptr, .ArrayWidth = 3},
+    {.Type = GrannyReal32Member,
+     .Name = GrannyVertexTextureCoordinatesName "0",
+     .ReferenceType = nullptr,
+     .ArrayWidth = 2},
+    {.Type = GrannyReal32Member,
+     .Name = GrannyVertexTextureCoordinatesName "1",
+     .ReferenceType = nullptr,
+     .ArrayWidth = 2},
+    {.Type = GrannyEndMember}};
 
-void CGrannyMesh::LoadIndices(void *dstBaseIndices)
+void CGrannyMesh::LoadIndices(void *dstBaseIndices) const
 {
     const granny_mesh *pgrnMesh = GetGrannyMeshPointer();
 
-    TIndex *dstIndices = ((TIndex *)dstBaseIndices) + m_idxBasePos;
+    TIndex *dstIndices = (static_cast<TIndex *>(dstBaseIndices)) + m_idxBasePos;
     GrannyCopyMeshIndices(pgrnMesh, sizeof(TIndex), dstIndices);
 }
 
@@ -25,7 +31,7 @@ void CGrannyMesh::LoadPNTVertices(void *dstBaseVertices)
     if (!GrannyMeshIsRigid(pgrnMesh))
         return;
 
-    TPNTVertex *dstVertices = ((TPNTVertex *)dstBaseVertices) + m_vtxBasePos;
+    TPNTVertex *dstVertices = (static_cast<TPNTVertex *>(dstBaseVertices)) + m_vtxBasePos;
     GrannyCopyMeshVertices(pgrnMesh, m_pgrnMeshType, dstVertices);
 }
 
@@ -36,29 +42,30 @@ void CGrannyMesh::NEW_LoadVertices(void *dstBaseVertices)
     if (!GrannyMeshIsRigid(pgrnMesh))
         return;
 
-    TPNTVertex *dstVertices = ((TPNTVertex *)dstBaseVertices) + m_vtxBasePos;
+    TPNTVertex *dstVertices = (static_cast<TPNTVertex *>(dstBaseVertices)) + m_vtxBasePos;
     GrannyCopyMeshVertices(pgrnMesh, m_pgrnMeshType, dstVertices);
 }
 
 void CGrannyMesh::DeformPNTVertices(void *dstBaseVertices, D3DXMATRIX *boneMatrices,
                                     granny_mesh_binding *pgrnMeshBinding) const
 {
-    assert(dstBaseVertices != NULL);
-    assert(boneMatrices != NULL);
-    assert(m_pgrnMeshDeformer != NULL);
+    assert(dstBaseVertices != nullptr);
+    assert(boneMatrices != nullptr);
+    assert(m_pgrnMeshDeformer != nullptr);
 
     const granny_mesh *pgrnMesh = GetGrannyMeshPointer();
 
-    TPNTVertex *srcVertices = (TPNTVertex *)GrannyGetMeshVertices(pgrnMesh);
-    TPNTVertex *dstVertices = ((TPNTVertex *)dstBaseVertices) + m_vtxBasePos;
+    auto *srcVertices = static_cast<TPNTVertex *>(GrannyGetMeshVertices(pgrnMesh));
+    TPNTVertex *dstVertices = (static_cast<TPNTVertex *>(dstBaseVertices)) + m_vtxBasePos;
 
-    int vtxCount = GrannyGetMeshVertexCount(pgrnMesh);
+    int const vtxCount = GrannyGetMeshVertexCount(pgrnMesh);
 
     // WORK
     int *boneIndices = GrannyGetMeshBindingToBoneIndices(pgrnMeshBinding);
     // END_OF_WORK
 
-    GrannyDeformVertices(m_pgrnMeshDeformer, boneIndices, (float *)boneMatrices, vtxCount, srcVertices, dstVertices);
+    GrannyDeformVertices(m_pgrnMeshDeformer, boneIndices, reinterpret_cast<float *>(boneMatrices), vtxCount,
+                         srcVertices, dstVertices);
 }
 
 bool CGrannyMesh::CanDeformPNTVertices() const
@@ -78,7 +85,7 @@ const CGrannyMesh::TTriGroupNode *CGrannyMesh::GetTriGroupNodeList(CGrannyMateri
 
 int CGrannyMesh::GetVertexCount() const
 {
-    assert(m_pgrnMesh != NULL);
+    assert(m_pgrnMesh != nullptr);
     return GrannyGetMeshVertexCount(m_pgrnMesh);
 }
 
@@ -101,10 +108,7 @@ int *CGrannyMesh::GetDefaultBoneIndices() const
 
 bool CGrannyMesh::IsEmpty() const
 {
-    if (m_pgrnMesh)
-        return false;
-
-    return true;
+    return m_pgrnMesh == nullptr;
 }
 
 bool CGrannyMesh::CreateFromGrannyMeshPointer(granny_skeleton *pgrnSkeleton, granny_mesh *pgrnMesh, int vtxBasePos,
@@ -131,7 +135,7 @@ bool CGrannyMesh::CreateFromGrannyMeshPointer(granny_skeleton *pgrnSkeleton, gra
         granny_data_type_definition *pgrnOutputType = m_pgrnMeshType;
 
         m_pgrnMeshDeformer = GrannyNewMeshDeformer(pgrnInputType, pgrnOutputType, GrannyDeformPositionNormal);
-        assert(m_pgrnMeshDeformer != NULL && "Cannot create mesh deformer");
+        assert(m_pgrnMeshDeformer != nullptr && "Cannot create mesh deformer");
     }
 
     // Two Side Mesh
@@ -149,14 +153,14 @@ bool CGrannyMesh::CreateFromGrannyMeshPointer(granny_skeleton *pgrnSkeleton, gra
 
 bool CGrannyMesh::LoadTriGroupNodeList(CGrannyMaterialPalette &rkMtrlPal)
 {
-    assert(m_pgrnMesh != NULL);
-    assert(m_triGroupNodes == NULL);
+    assert(m_pgrnMesh != nullptr);
+    assert(m_triGroupNodes == nullptr);
 
-    int mtrlCount = m_pgrnMesh->MaterialBindingCount;
+    int const mtrlCount = m_pgrnMesh->MaterialBindingCount;
     if (mtrlCount <= 0) // 천의 동굴 2층 크래쉬 발생
         return true;
 
-    int GroupNodeCount = GrannyGetMeshTriangleGroupCount(m_pgrnMesh);
+    int const GroupNodeCount = GrannyGetMeshTriangleGroupCount(m_pgrnMesh);
     if (GroupNodeCount <= 0)
         return true;
 
@@ -169,10 +173,10 @@ bool CGrannyMesh::LoadTriGroupNodeList(CGrannyMaterialPalette &rkMtrlPal)
         const granny_tri_material_group &c_rgrnTriGroup = c_pgrnTriGroups[g];
         TTriGroupNode *pTriGroupNode = m_triGroupNodes + g;
 
-        pTriGroupNode->idxPos = m_idxBasePos + c_rgrnTriGroup.TriFirst * 3;
+        pTriGroupNode->idxPos = m_idxBasePos + (c_rgrnTriGroup.TriFirst * 3);
         pTriGroupNode->triCount = c_rgrnTriGroup.TriCount;
 
-        int iMtrl = c_rgrnTriGroup.MaterialIndex;
+        int const iMtrl = c_rgrnTriGroup.MaterialIndex;
         if (iMtrl < 0 || iMtrl >= mtrlCount)
         {
             pTriGroupNode->mtrlIndex = 0; // m_mtrlIndexVector[iMtrl];
@@ -224,18 +228,18 @@ void CGrannyMesh::RebuildTriGroupNodeList()
 
 bool CGrannyMesh::LoadMaterials(CGrannyMaterialPalette &rkMtrlPal)
 {
-    assert(m_pgrnMesh != NULL);
+    assert(m_pgrnMesh != nullptr);
 
     if (m_pgrnMesh->MaterialBindingCount <= 0)
         return true;
 
-    int mtrlCount = m_pgrnMesh->MaterialBindingCount;
+    int const mtrlCount = m_pgrnMesh->MaterialBindingCount;
     bool bHaveBlendThing = false;
 
     for (int m = 0; m < mtrlCount; ++m)
     {
         granny_material *pgrnMaterial = m_pgrnMesh->MaterialBindings[m].Material;
-        DWORD mtrlIndex = rkMtrlPal.RegisterMaterial(pgrnMaterial);
+        DWORD const mtrlIndex = rkMtrlPal.RegisterMaterial(pgrnMaterial);
         m_mtrlIndexVector.push_back(mtrlIndex);
         bHaveBlendThing |= rkMtrlPal.GetMaterialRef(mtrlIndex).GetType() == CGrannyMaterial::TYPE_BLEND_PNT;
     }
@@ -256,8 +260,8 @@ void CGrannyMesh::SetPNT2Mesh()
 
 void CGrannyMesh::Destroy()
 {
-    if (m_triGroupNodes)
-        delete[] m_triGroupNodes;
+
+    delete[] m_triGroupNodes;
 
     m_mtrlIndexVector.clear();
 
@@ -274,17 +278,17 @@ void CGrannyMesh::Destroy()
 
 void CGrannyMesh::Initialize()
 {
-    for (int r = 0; r < CGrannyMaterial::TYPE_MAX_NUM; ++r)
-        m_triGroupNodeLists[r] = NULL;
+    for (auto &m_triGroupNodeList : m_triGroupNodeLists)
+        m_triGroupNodeList = nullptr;
 
     m_pgrnMeshType = GrannyPNT332VertexType;
-    m_pgrnMesh = NULL;
+    m_pgrnMesh = nullptr;
     // WORK
-    m_pgrnMeshBindingTemp = NULL;
+    m_pgrnMeshBindingTemp = nullptr;
     // END_OF_WORK
-    m_pgrnMeshDeformer = NULL;
+    m_pgrnMeshDeformer = nullptr;
 
-    m_triGroupNodes = NULL;
+    m_triGroupNodes = nullptr;
 
     m_vtxBasePos = 0;
     m_idxBasePos = 0;

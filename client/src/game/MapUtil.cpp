@@ -81,7 +81,7 @@ bool Environment_Load(SEnvironmentData &envData, const char *envFileName)
 
     if (textLoader.SetChildNode("directionallight"))
     {
-        D3DVECTOR v3Dir;
+        D3DVECTOR v3Dir{};
         textLoader.GetTokenDirection("direction", &v3Dir);
 
         if (textLoader.SetChildNode("background"))
@@ -125,7 +125,7 @@ bool Environment_Load(SEnvironmentData &envData, const char *envFileName)
 
     if (textLoader.SetChildNode("filter"))
     {
-        textLoader.GetTokenBoolean("enable", (BOOL *)&envData.bFilteringEnable);
+        textLoader.GetTokenBoolean("enable", (&envData.bFilteringEnable));
         textLoader.GetTokenColor("color", &envData.FilteringColor);
         textLoader.GetTokenByte("alphasrc", &envData.byFilteringAlphaSrc);
         textLoader.GetTokenByte("alphadest", &envData.byFilteringAlphaDest);
@@ -134,7 +134,7 @@ bool Environment_Load(SEnvironmentData &envData, const char *envFileName)
 
     if (textLoader.SetChildNode("skybox"))
     {
-        textLoader.GetTokenBoolean("btexturerendermode", (BOOL *)&envData.bSkyBoxTextureRenderMode);
+        textLoader.GetTokenBoolean("btexturerendermode", (&envData.bSkyBoxTextureRenderMode));
         textLoader.GetTokenVector3("scale", &envData.v3SkyBoxScale);
         textLoader.GetTokenByte("gradientlevelupper", &envData.bySkyBoxGradientLevelUpper);
         textLoader.GetTokenByte("gradientlevellower", &envData.bySkyBoxGradientLevelLower);
@@ -152,8 +152,9 @@ bool Environment_Load(SEnvironmentData &envData, const char *envFileName)
         textLoader.GetTokenVector2("cloudspeed", &envData.v2CloudSpeed);
         textLoader.GetTokenString("cloudtexturefilename", &envData.strCloudTextureFileName);
 
-        CTokenVector *pTokenVectorCloudColor;
+        CTokenVector *pTokenVectorCloudColor = nullptr;
         if (textLoader.GetTokenVector("cloudcolor", &pTokenVectorCloudColor))
+        {
             if (0 == pTokenVectorCloudColor->size() % 8)
             {
                 envData.CloudGradientColor.m_FirstColor.r = atof(pTokenVectorCloudColor->at(0).c_str());
@@ -166,32 +167,41 @@ bool Environment_Load(SEnvironmentData &envData, const char *envFileName)
                 envData.CloudGradientColor.m_SecondColor.b = atof(pTokenVectorCloudColor->at(6).c_str());
                 envData.CloudGradientColor.m_SecondColor.a = atof(pTokenVectorCloudColor->at(7).c_str());
             }
+        }
 
-        BYTE byGradientCount = envData.bySkyBoxGradientLevelUpper + envData.bySkyBoxGradientLevelLower;
-        CTokenVector *pTokenVector;
+        BYTE const byGradientCount = envData.bySkyBoxGradientLevelUpper + envData.bySkyBoxGradientLevelLower;
+        CTokenVector *pTokenVector = nullptr;
         if (textLoader.GetTokenVector("gradient", &pTokenVector))
+        {
             if (0 == pTokenVector->size() % 8)
+            {
                 if (byGradientCount == pTokenVector->size() / 8)
                 {
                     envData.SkyBoxGradientColorVector.clear();
                     envData.SkyBoxGradientColorVector.resize(byGradientCount);
                     for (DWORD i = 0; i < byGradientCount; ++i)
                     {
-                        envData.SkyBoxGradientColorVector[i].m_FirstColor.r = atof(pTokenVector->at(i * 8 + 0).c_str());
-                        envData.SkyBoxGradientColorVector[i].m_FirstColor.g = atof(pTokenVector->at(i * 8 + 1).c_str());
-                        envData.SkyBoxGradientColorVector[i].m_FirstColor.b = atof(pTokenVector->at(i * 8 + 2).c_str());
-                        envData.SkyBoxGradientColorVector[i].m_FirstColor.a = atof(pTokenVector->at(i * 8 + 3).c_str());
+                        envData.SkyBoxGradientColorVector[i].m_FirstColor.r =
+                            atof(pTokenVector->at((i * 8) + 0).c_str());
+                        envData.SkyBoxGradientColorVector[i].m_FirstColor.g =
+                            atof(pTokenVector->at((i * 8) + 1).c_str());
+                        envData.SkyBoxGradientColorVector[i].m_FirstColor.b =
+                            atof(pTokenVector->at((i * 8) + 2).c_str());
+                        envData.SkyBoxGradientColorVector[i].m_FirstColor.a =
+                            atof(pTokenVector->at((i * 8) + 3).c_str());
 
                         envData.SkyBoxGradientColorVector[i].m_SecondColor.r =
-                            atof(pTokenVector->at(i * 8 + 4).c_str());
+                            atof(pTokenVector->at((i * 8) + 4).c_str());
                         envData.SkyBoxGradientColorVector[i].m_SecondColor.g =
-                            atof(pTokenVector->at(i * 8 + 5).c_str());
+                            atof(pTokenVector->at((i * 8) + 5).c_str());
                         envData.SkyBoxGradientColorVector[i].m_SecondColor.b =
-                            atof(pTokenVector->at(i * 8 + 6).c_str());
+                            atof(pTokenVector->at((i * 8) + 6).c_str());
                         envData.SkyBoxGradientColorVector[i].m_SecondColor.a =
-                            atof(pTokenVector->at(i * 8 + 7).c_str());
+                            atof(pTokenVector->at((i * 8) + 7).c_str());
                     }
                 }
+            }
+        }
 
         textLoader.SetParentNode();
     }
@@ -216,7 +226,7 @@ void GetInterpolatedPosition(float curPositionRate, TPixelPosition *PixelPositio
 
 float GetLinearInterpolation(float begin, float end, float curRate)
 {
-    return (end - begin) * curRate + begin;
+    return ((end - begin) * curRate) + begin;
 }
 
 void PixelPositionToAttributeCellPosition(TPixelPosition PixelPosition, TCellPosition *pAttrCellPosition)
@@ -233,10 +243,10 @@ void AttributeCellPositionToPixelPosition(TCellPosition AttrCellPosition, TPixel
 
 float GetPixelPositionDistance(const TPixelPosition &c_rsrcPosition, const TPixelPosition &c_rdstPosition)
 {
-    int idx = c_rsrcPosition.x - c_rdstPosition.x;
-    int idy = c_rsrcPosition.y - c_rdstPosition.y;
+    int const idx = c_rsrcPosition.x - c_rdstPosition.x;
+    int const idy = c_rsrcPosition.y - c_rdstPosition.y;
 
-    return sqrtf(float(idx * idx + idy * idy));
+    return sqrtf(static_cast<float>((idx * idx) + (idy * idy)));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,9 +255,7 @@ CEaseOutInterpolation::CEaseOutInterpolation()
     Initialize();
 }
 
-CEaseOutInterpolation::~CEaseOutInterpolation()
-{
-}
+CEaseOutInterpolation::~CEaseOutInterpolation() = default;
 
 void CEaseOutInterpolation::Initialize()
 {
@@ -272,7 +280,7 @@ BOOL CEaseOutInterpolation::Setup(float fStart, float fEnd, float fTime)
     m_fLastValue = fStart;
 
     m_fSpeed = (2.0f * (fEnd - fStart)) / fTime;
-    m_fAcceleration = 2.0f * (fEnd - fStart) / (fTime * fTime) - 2.0f * m_fSpeed / fTime;
+    m_fAcceleration = (2.0f * (fEnd - fStart) / (fTime * fTime)) - (2.0f * m_fSpeed / fTime);
     m_fRemainingTime = fTime;
 
     return TRUE;
@@ -293,17 +301,17 @@ void CEaseOutInterpolation::Interpolate(float fElapsedTime)
     }
 }
 
-BOOL CEaseOutInterpolation::isPlaying()
+BOOL CEaseOutInterpolation::isPlaying() const
 {
     return m_fRemainingTime > 0.0f;
 }
 
-float CEaseOutInterpolation::GetValue()
+float CEaseOutInterpolation::GetValue() const
 {
     return m_fValue;
 }
 
-float CEaseOutInterpolation::GetChangingValue()
+float CEaseOutInterpolation::GetChangingValue() const
 {
     return m_fValue - m_fLastValue;
 }

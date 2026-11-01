@@ -4,13 +4,17 @@
 #include <Neoeter/Python/Bindings/PythonGridSlotWindow.h>
 #include <Neoeter/Python/Bindings/PythonWindowManager.h>
 
+#include <algorithm>
+
+#include <ranges>
+
 // #define __WINDOW_LEAK_CHECK__
 
 BOOL g_bShowOverInWindowName = FALSE;
 
 namespace UI
 {
-static PyObject *gs_poEmptyTuple = NULL;
+static PyObject *gs_poEmptyTuple = nullptr;
 
 PyObject *BuildEmptyTuple()
 {
@@ -21,23 +25,23 @@ PyObject *BuildEmptyTuple()
 std::set<CWindow *> gs_kSet_pkWnd;
 
 CWindowManager::CWindowManager()
-    : m_pActiveWindow(NULL), m_pPointWindow(NULL), m_pLeftCaptureWindow(NULL), m_pMiddleCaptureWindow(NULL),
-      m_pRightCaptureWindow(NULL), m_pLockWindow(NULL), m_bAttachingFlag(FALSE), m_dwAttachingType(0),
-      m_dwAttachingIndex(0), m_dwAttachingSlotNumber(0), m_poMouseHandler(NULL), m_iHres(0), m_iVres(0),
-      m_bOnceIgnoreMouseLeftButtonUpEventFlag(FALSE)
+    : m_pActiveWindow(nullptr), m_pPointWindow(nullptr), m_pLeftCaptureWindow(nullptr), m_pMiddleCaptureWindow(nullptr),
+      m_pRootWindow(new CWindow(nullptr)), m_pRightCaptureWindow(nullptr), m_pLockWindow(nullptr),
+      m_poMouseHandler(nullptr)
+
 {
-    m_pRootWindow = new CWindow(NULL);
+
     m_pRootWindow->SetName("root");
     m_pRootWindow->Show();
 
     const char *layerTbl[] = {"GAME", "UI_BOTTOM", "UI", "TOP_MOST", "CURTAIN"};
 
-    for (DWORD layer = 0; layer < sizeof(layerTbl) / sizeof(layerTbl[0]); layer++)
+    for (auto &layer : layerTbl)
     {
-        CWindow *pLayer = new CLayer(NULL);
-        pLayer->SetName(layerTbl[layer]);
+        CWindow *pLayer = new CLayer(nullptr);
+        pLayer->SetName(layer);
         pLayer->Show();
-        m_LayerWindowMap.insert(TLayerContainer::value_type(layerTbl[layer], pLayer));
+        m_LayerWindowMap.insert(TLayerContainer::value_type(layer, pLayer));
         m_pRootWindow->AddChild(pLayer);
         m_LayerWindowList.push_back(pLayer);
     }
@@ -58,7 +62,7 @@ CWindowManager::~CWindowManager()
     m_KeyCaptureWindowMap.clear();
 
     delete m_pRootWindow;
-    m_pRootWindow = NULL;
+    m_pRootWindow = nullptr;
 }
 
 void CWindowManager::Destroy()
@@ -83,7 +87,7 @@ CWindow *CWindowManager::RegisterWindow(PyObject *po, const char *c_szLayer)
 {
     assert(m_LayerWindowMap.end() != m_LayerWindowMap.find(c_szLayer));
 
-    CWindow *pWin = new CWindow(po);
+    auto *pWin = new CWindow(po);
     m_LayerWindowMap[c_szLayer]->AddChild(pWin);
 #ifdef __WINDOW_LEAK_CHECK__
     gs_kSet_pkWnd.insert(pWin);
@@ -374,28 +378,28 @@ CWindow *CWindowManager::RegisterNumberLine(PyObject *po, const char *c_szLayer)
 void CWindowManager::NotifyDestroyWindow(CWindow *pWindow)
 {
     if (pWindow == m_pActiveWindow)
-        m_pActiveWindow = NULL;
+        m_pActiveWindow = nullptr;
 
     if (pWindow == m_pPointWindow)
-        m_pPointWindow = NULL;
+        m_pPointWindow = nullptr;
 
     if (pWindow == m_pLeftCaptureWindow)
-        m_pLeftCaptureWindow = NULL;
+        m_pLeftCaptureWindow = nullptr;
 
     if (pWindow == m_pMiddleCaptureWindow)
-        m_pMiddleCaptureWindow = NULL;
+        m_pMiddleCaptureWindow = nullptr;
 
     if (pWindow == m_pRightCaptureWindow)
-        m_pRightCaptureWindow = NULL;
+        m_pRightCaptureWindow = nullptr;
 
     if (pWindow == m_pLockWindow)
-        m_pLockWindow = NULL;
+        m_pLockWindow = nullptr;
 
     m_LockWindowList.remove(pWindow);
     m_ActiveWindowList.remove(pWindow);
     m_PickAlwaysWindowList.remove(pWindow);
 
-    TKeyCaptureWindowMap::iterator itor = m_KeyCaptureWindowMap.begin();
+    auto itor = m_KeyCaptureWindowMap.begin();
     for (; itor != m_KeyCaptureWindowMap.end();)
     {
         if (pWindow == itor->second)
@@ -421,37 +425,37 @@ void CWindowManager::DestroyWindow(CWindow *pWin)
     m_ReserveDeleteWindowList.push_back(pWin);
 }
 
-BOOL CWindowManager::IsDragging()
+BOOL CWindowManager::IsDragging() const
 {
-    long ldx = abs(m_lMouseX - m_lPickedX);
-    long ldy = abs(m_lMouseY - m_lPickedY);
+    long const ldx = abs(m_lMouseX - m_lPickedX);
+    long const ldy = abs(m_lMouseY - m_lPickedY);
     if (ldx + ldy < 10)
         return FALSE;
 
     return TRUE;
 }
 
-BOOL CWindowManager::IsAttaching()
+BOOL CWindowManager::IsAttaching() const
 {
     return m_bAttachingFlag;
 }
 
-DWORD CWindowManager::GetAttachingType()
+DWORD CWindowManager::GetAttachingType() const
 {
     return m_dwAttachingType;
 }
 
-DWORD CWindowManager::GetAttachingIndex()
+DWORD CWindowManager::GetAttachingIndex() const
 {
     return m_dwAttachingIndex;
 }
 
-DWORD CWindowManager::GetAttachingSlotNumber()
+DWORD CWindowManager::GetAttachingSlotNumber() const
 {
     return m_dwAttachingSlotNumber;
 }
 
-void CWindowManager::GetAttachingIconSize(BYTE *pbyWidth, BYTE *pbyHeight)
+void CWindowManager::GetAttachingIconSize(BYTE *pbyWidth, BYTE *pbyHeight) const
 {
     *pbyWidth = m_byAttachingIconWidth;
     *pbyHeight = m_byAttachingIconHeight;
@@ -542,7 +546,7 @@ void CWindowManager::UnlockWindow()
     {
         if (m_LockWindowList.empty())
         {
-            m_pLockWindow = NULL;
+            m_pLockWindow = nullptr;
             if (m_pActiveWindow)
                 m_pActiveWindow->OnSetFocus();
         }
@@ -585,7 +589,7 @@ void CWindowManager::DeactivateWindow()
         if (m_ActiveWindowList.empty())
         {
             m_pActiveWindow->OnKillFocus();
-            m_pActiveWindow = NULL;
+            m_pActiveWindow = nullptr;
         }
         else
         {
@@ -619,7 +623,7 @@ void CWindowManager::SetTopUIWindow()
         return;
 
     // GameLayer에 속해 있는 윈도우가 피킹 됐다면 무조건 SetTop을 해준다.
-    TLayerContainer::iterator itor = m_LayerWindowMap.find("UI");
+    auto itor = m_LayerWindowMap.find("UI");
     if (itor == m_LayerWindowMap.end())
         return;
     CWindow *pGameLayer = itor->second;
@@ -637,9 +641,9 @@ CWindow *CWindowManager::GetActivateWindow()
 
 void CWindowManager::ResetCapture()
 {
-    m_pLeftCaptureWindow = NULL;
-    m_pMiddleCaptureWindow = NULL;
-    m_pRightCaptureWindow = NULL;
+    m_pLeftCaptureWindow = nullptr;
+    m_pMiddleCaptureWindow = nullptr;
+    m_pRightCaptureWindow = nullptr;
 }
 
 void CWindowManager::SetResolution(int hres, int vres)
@@ -651,9 +655,9 @@ void CWindowManager::SetResolution(int hres, int vres)
     m_iVres = vres;
 }
 
-float CWindowManager::GetAspect()
+float CWindowManager::GetAspect() const
 {
-    return (m_iHres) / float(m_iVres);
+    return (m_iHres) / static_cast<float>(m_iVres);
 }
 
 void CWindowManager::SetScreenSize(long lWidth, long lHeight)
@@ -661,18 +665,17 @@ void CWindowManager::SetScreenSize(long lWidth, long lHeight)
     m_lWidth = lWidth;
     m_lHeight = lHeight;
 
-    for (TLayerContainer::iterator itor = m_LayerWindowMap.begin(); itor != m_LayerWindowMap.end(); ++itor)
+    for (auto &itor : m_LayerWindowMap)
     {
-        itor->second->SetSize(lWidth, lHeight);
+        itor.second->SetSize(lWidth, lHeight);
     }
 }
 
 void CWindowManager::__ClearReserveDeleteWindowList()
 {
-    for (TWindowContainer::iterator itor = m_ReserveDeleteWindowList.begin(); itor != m_ReserveDeleteWindowList.end();
-         ++itor)
+    for (auto *pWin : m_ReserveDeleteWindowList)
     {
-        CWindow *pWin = *itor;
+
 #ifdef __WINDOW_LEAK_CHECK__
         gs_kSet_pkWnd.erase(pWin);
 #endif
@@ -700,25 +703,24 @@ CWindow *CWindowManager::__PickWindow(long x, long y)
         return m_pLockWindow->PickWindow(x, y);
     }
 
-    for (TWindowContainer::iterator itor = m_PickAlwaysWindowList.begin(); itor != m_PickAlwaysWindowList.end(); ++itor)
+    for (auto *pWindow : m_PickAlwaysWindowList)
     {
-        CWindow *pWindow = *itor;
         if (pWindow->IsRendering())
+        {
             if (pWindow->IsIn(x, y))
                 return pWindow;
+        }
     }
 
-    for (TWindowContainer::reverse_iterator ritor = m_LayerWindowList.rbegin(); ritor != m_LayerWindowList.rend();
-         ++ritor)
+    for (auto *pLayer : std::ranges::reverse_view(m_LayerWindowList))
     {
-        CWindow *pLayer = *ritor;
         CWindow *pPickedWindow = pLayer->PickWindow(x, y);
 
         if (pPickedWindow != pLayer)
             return pPickedWindow;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void CWindowManager::SetMousePosition(long x, long y)
@@ -733,7 +735,7 @@ void CWindowManager::SetMousePosition(long x, long y)
     m_lMouseY = m_lHeight * y / m_iVres;
 }
 
-void CWindowManager::GetMousePosition(long &rx, long &ry)
+void CWindowManager::GetMousePosition(long &rx, long &ry) const
 {
     rx = m_lMouseX;
     ry = m_lMouseY;
@@ -743,10 +745,8 @@ void CWindowManager::RunMouseMove(long x, long y)
 {
     if (IsAttaching())
     {
-        if (x > m_lWidth)
-            x = m_lWidth;
-        if (y > m_lHeight)
-            y = m_lHeight;
+        x = std::min(x, m_lWidth);
+        y = std::min(y, m_lHeight);
     }
 
     SetMousePosition(x, y);
@@ -756,8 +756,8 @@ void CWindowManager::RunMouseMove(long x, long y)
     {
         if (pPointWindow)
         {
-            static std::string strPickWindowName = "";
-            if (0 != strPickWindowName.compare(pPointWindow->GetName()))
+            static std::string strPickWindowName;
+            if (pPointWindow->GetName() != strPickWindowName)
             {
                 Tracef(" OverInWindowName [%s]\n", pPointWindow->GetName());
                 strPickWindowName = pPointWindow->GetName();
@@ -779,7 +779,8 @@ void CWindowManager::RunMouseMove(long x, long y)
                 y -= pWin->GetParent()->GetRect().top;
             }
 
-            long lx, ly;
+            long lx = 0;
+            long ly = 0;
             pWin->GetPosition(&lx, &ly);
             if (pWin->IsFlag(CWindow::FLAG_RESTRICT_X))
             {
@@ -798,14 +799,22 @@ void CWindowManager::RunMouseMove(long x, long y)
                 limitRect.bottom = m_lHeight - limitRect.bottom;
 
                 if (x < limitRect.left)
+                {
                     x = limitRect.left;
+                }
                 else if (x + pWin->GetWidth() >= limitRect.right)
+                {
                     x = limitRect.right - pWin->GetWidth();
+                }
 
                 if (y < limitRect.top)
+                {
                     y = limitRect.top;
+                }
                 else if (y + pWin->GetHeight() >= limitRect.bottom)
+                {
                     y = limitRect.bottom - pWin->GetHeight();
+                }
             }
 
             pWin->SetPosition(x, y);
@@ -813,8 +822,8 @@ void CWindowManager::RunMouseMove(long x, long y)
         }
         else if (m_pLeftCaptureWindow->IsFlag(CWindow::FLAG_DRAGABLE))
         {
-            long x = m_lMouseX - m_lDragX;
-            long y = m_lMouseY - m_lDragY;
+            long const x = m_lMouseX - m_lDragX;
+            long const y = m_lMouseY - m_lDragY;
             m_pLeftCaptureWindow->OnMouseDrag(x, y);
         }
     }
@@ -889,7 +898,7 @@ void CWindowManager::RunMouseLeftButtonUp(long x, long y)
         {
             // NOTE : 여기서 m_pLeftCaptureWindow가 NULL 일 수 있습니다!! -
             // [levites]
-            m_pLeftCaptureWindow = NULL;
+            m_pLeftCaptureWindow = nullptr;
             return;
         }
     }
@@ -898,7 +907,7 @@ void CWindowManager::RunMouseLeftButtonUp(long x, long y)
     if (pWin)
         pWin->OnMouseLeftButtonUp();
 
-    m_pLeftCaptureWindow = NULL;
+    m_pLeftCaptureWindow = nullptr;
 }
 
 void CWindowManager::RunMouseLeftButtonDoubleClick(long x, long y)
@@ -940,7 +949,7 @@ void CWindowManager::RunMouseRightButtonUp(long x, long y)
     {
         if (m_pRightCaptureWindow->OnMouseRightButtonUp())
         {
-            m_pRightCaptureWindow = NULL;
+            m_pRightCaptureWindow = nullptr;
             return;
         }
     }
@@ -949,7 +958,7 @@ void CWindowManager::RunMouseRightButtonUp(long x, long y)
     if (pWin)
         pWin->OnMouseRightButtonUp();
 
-    m_pRightCaptureWindow = NULL;
+    m_pRightCaptureWindow = nullptr;
     DeattachIcon();
 }
 
@@ -985,7 +994,7 @@ void CWindowManager::RunMouseMiddleButtonUp(long x, long y)
     {
         if (m_pMiddleCaptureWindow->OnMouseMiddleButtonUp())
         {
-            m_pMiddleCaptureWindow = NULL;
+            m_pMiddleCaptureWindow = nullptr;
             return;
         }
     }
@@ -995,7 +1004,7 @@ void CWindowManager::RunMouseMiddleButtonUp(long x, long y)
         return;
 
     pWin->OnMouseMiddleButtonUp();
-    m_pMiddleCaptureWindow = NULL;
+    m_pMiddleCaptureWindow = nullptr;
 }
 
 // IME
@@ -1023,11 +1032,13 @@ void CWindowManager::RunIMETabEvent()
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMETabEvent())
                 return;
         }
+    }
 
     if (!m_pRootWindow->RunIMETabEvent())
     {
@@ -1041,7 +1052,7 @@ void CWindowManager::RunIMETabEvent()
             CWindow *pParentWindow = pWindow;
             CWindow *pCurrentWindow = pWindow->GetParent();
 
-            DWORD dwMaxLoopCount = 20;
+            DWORD const dwMaxLoopCount = 20;
             for (DWORD i = 0; i < dwMaxLoopCount; ++i)
             {
                 if (!pParentWindow)
@@ -1068,11 +1079,13 @@ void CWindowManager::RunIMEReturnEvent()
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMEReturnEvent())
                 return;
         }
+    }
 
     m_pRootWindow->RunIMEReturnEvent();
 }
@@ -1085,11 +1098,13 @@ void CWindowManager::RunIMEKeyDown(int vkey)
             return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->RunIMEKeyDownEvent(vkey))
                 return;
         }
+    }
 
     m_pRootWindow->RunIMEKeyDownEvent(vkey);
 }
@@ -1097,11 +1112,13 @@ void CWindowManager::RunIMEKeyDown(int vkey)
 void CWindowManager::RunChangeCodePage()
 {
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMEChangeCodePage())
                 return;
         }
+    }
 }
 void CWindowManager::RunOpenCandidate()
 {
@@ -1111,11 +1128,13 @@ void CWindowManager::RunOpenCandidate()
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMEOpenCandidateListEvent())
                 return;
         }
+    }
 }
 
 void CWindowManager::RunCloseCandidate()
@@ -1126,11 +1145,13 @@ void CWindowManager::RunCloseCandidate()
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMECloseCandidateListEvent())
                 return;
         }
+    }
 }
 
 void CWindowManager::RunOpenReading()
@@ -1141,11 +1162,13 @@ void CWindowManager::RunOpenReading()
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMEOpenReadingWndEvent())
                 return;
         }
+    }
 }
 
 void CWindowManager::RunCloseReading()
@@ -1156,11 +1179,13 @@ void CWindowManager::RunCloseReading()
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsRendering())
         {
             if (m_pActiveWindow->OnIMECloseReadingWndEvent())
                 return;
         }
+    }
 }
 // IME
 
@@ -1173,6 +1198,7 @@ void CWindowManager::RunKeyDown(int vkey)
         return;
     }
     if (m_pActiveWindow)
+    {
         if (m_pActiveWindow->IsShow())
         {
             if (m_pActiveWindow->OnKeyDown(vkey))
@@ -1181,19 +1207,21 @@ void CWindowManager::RunKeyDown(int vkey)
                 return;
             }
         }
+    }
 
     CWindow *pKeyCaptureWindow = m_pRootWindow->RunKeyDownEvent(vkey);
     if (pKeyCaptureWindow)
-        if (m_ReserveDeleteWindowList.end() ==
-            std::find(m_ReserveDeleteWindowList.begin(), m_ReserveDeleteWindowList.end(), pKeyCaptureWindow))
+    {
+        if (m_ReserveDeleteWindowList.end() == std::ranges::find(m_ReserveDeleteWindowList, pKeyCaptureWindow))
         {
             m_KeyCaptureWindowMap.insert(TKeyCaptureWindowMap::value_type(vkey, pKeyCaptureWindow));
         }
+    }
 }
 
 void CWindowManager::RunKeyUp(int vkey)
 {
-    TKeyCaptureWindowMap::iterator itor = m_KeyCaptureWindowMap.find(vkey);
+    auto itor = m_KeyCaptureWindowMap.find(vkey);
     if (m_KeyCaptureWindowMap.end() != itor)
     {
         CWindow *pKeyCaptureWindow = itor->second;

@@ -4,6 +4,8 @@
 
 #include <Client/Game/MapOutdoor.h>
 
+#include <numbers>
+
 static int recreate = false;
 
 void CMapOutdoor::SetShadowTextureSize(WORD size)
@@ -37,7 +39,7 @@ void CMapOutdoor::CreateCharacterShadowTexture()
     m_ShadowMapViewport.MaxZ = 1.0f;
 
     if (FAILED(ms_lpd3dDevice->CreateTexture(m_wShadowMapSize, m_wShadowMapSize, 1, D3DUSAGE_RENDERTARGET,
-                                             D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &m_lpCharacterShadowMapTexture, NULL)))
+                                             D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &m_lpCharacterShadowMapTexture, nullptr)))
     {
         TraceError("CMapOutdoor Unable to create Character Shadow render target "
                    "texture\n");
@@ -51,7 +53,7 @@ void CMapOutdoor::CreateCharacterShadowTexture()
         return;
     }
 
-    IDirect3DSurface9 *pBackBufferSurface;
+    IDirect3DSurface9 *pBackBufferSurface = nullptr;
     ms_lpd3dDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBufferSurface);
     D3DSURFACE_DESC kDesc;
     pBackBufferSurface->GetDesc(&kDesc);
@@ -59,7 +61,7 @@ void CMapOutdoor::CreateCharacterShadowTexture()
 
     if (FAILED(ms_lpd3dDevice->CreateDepthStencilSurface(m_wShadowMapSize, m_wShadowMapSize, D3DFMT_D16,
                                                          kDesc.MultiSampleType, kDesc.MultiSampleQuality, FALSE,
-                                                         &m_lpCharacterShadowMapDepthSurface, NULL)))
+                                                         &m_lpCharacterShadowMapDepthSurface, nullptr)))
     {
         TraceError("CMapOutdoor Unable to create Character Shadow depth Surface\n");
         return;
@@ -77,7 +79,8 @@ DWORD dwLightEnable = FALSE;
 
 bool CMapOutdoor::BeginRenderCharacterShadowToTexture()
 {
-    D3DXMATRIX matLightView, matLightProj;
+    D3DXMATRIX matLightView;
+    D3DXMATRIX matLightProj;
 
     CCamera *pCurrentCamera = CCameraManager::Instance().GetCurrentCamera();
 
@@ -92,7 +95,8 @@ bool CMapOutdoor::BeginRenderCharacterShadowToTexture()
 
     D3DXVECTOR3 v3Target = pCurrentCamera->GetTarget();
 
-    D3DXVECTOR3 v3Eye(v3Target.x - 1.732f * 1250.0f, v3Target.y - 1250.0f, v3Target.z + 2.0f * 1.732f * 1250.0f);
+    D3DXVECTOR3 v3Eye(v3Target.x - (std::numbers::sqrt3_v<float> * 1250.0f), v3Target.y - 1250.0f,
+                      v3Target.z + (2.0f * std::numbers::sqrt3_v<float> * 1250.0f));
 
     D3DXMatrixLookAtRH(&matLightView, &v3Eye, &v3Target, &D3DXVECTOR3(0.0f, 0.0f, 1.0f));
 
@@ -141,7 +145,7 @@ bool CMapOutdoor::BeginRenderCharacterShadowToTexture()
         bSuccess = false;
     }
 
-    if (FAILED(ms_lpd3dDevice->Clear(0L, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0xFF, 0xFF, 0xFF),
+    if (FAILED(ms_lpd3dDevice->Clear(0L, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0xFF, 0xFF, 0xFF),
                                      1.0f, 0)))
     {
         TraceError("CMapOutdoor::BeginRenderCharacterShadowToTexture : Unable "

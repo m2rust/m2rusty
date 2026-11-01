@@ -15,10 +15,9 @@
 #include <Neoeter/Platform/Base/CPostIt.h>
 
 // Force link ImageLoaderCompat.cpp from libEterBase.a
-extern bool Platform_GetImageInfo(const void *data, size_t size, uint32_t *outW, uint32_t *outH, uint32_t *outFormat);
-extern bool Platform_DecodeImage(const void *data, size_t size, uint32_t *outW, uint32_t *outH,
-                                 std::vector<uint8_t> &outPixels);
-void *g_pForceLinkImageLoader[] = {(void *)&Platform_GetImageInfo, (void *)&Platform_DecodeImage};
+
+void *g_pForceLinkImageLoader[] = {reinterpret_cast<void *>(&Platform_GetImageInfo),
+                                   reinterpret_cast<void *>(&Platform_DecodeImage)};
 
 #ifndef OPENMT2_PLATFORM_LINUX
 // T4.1: the DirectX SDK, Miles (mss32) and the SpeedTree import library are
@@ -35,10 +34,10 @@ extern "C"
     __declspec(dllexport) int32_t AmdPowerXpressRequestHighPerformance = 1;
 };
 #endif
-#include <stdlib.h>
-bool __IS_TEST_SERVER_MODE__ = false;
+#include <cstdlib>
 
-extern bool SetDefaultCodePage(DWORD codePage);
+#include <print>
+bool __IS_TEST_SERVER_MODE__ = false;
 
 #ifdef USE_OPENID
 extern int openid_test;
@@ -143,8 +142,8 @@ bool PackInitialize(const std::string &packFolder)
         return true;
 
     // Initialize variables
-    bool bPackFirst = true;
-    std::string stFolder = packFolder + "/";
+    bool const bPackFirst = true;
+    std::string const stFolder = packFolder + "/";
     std::string stFileName;
 
 #ifdef _DISTRIBUTE
@@ -173,7 +172,7 @@ bool PackInitialize(const std::string &packFolder)
 
     // Set up file reader
     CMappedFile file;
-    LPCVOID pvData;
+    LPCVOID pvData = nullptr;
 
     if (!file.Create(stFileName.c_str(), &pvData, 0, 0))
     {
@@ -192,7 +191,8 @@ bool PackInitialize(const std::string &packFolder)
     CSoundData::SetPackMode(); // Miles 파일 콜백을 셋팅
 
     // Read lines and parse tokens
-    std::string strPackName, strTexCachePackName;
+    std::string strPackName;
+    std::string strTexCachePackName;
     CTokenVector tokens = CTokenVector();
 
     for (DWORD i = 0; i < TextLoader.GetLineCount() - 1; i++)
@@ -305,7 +305,9 @@ bool RunMainScript(CPythonLauncher &pyLauncher, const char *lpCmdLine)
             string_join(" ", stVec, &stCmdLine);
         }
         else
+        {
             stCmdLine = lpCmdLine;
+        }
 
         stRegisterCmdLine = "__COMMAND_LINE__ = ";
         stRegisterCmdLine += '"';
@@ -323,7 +325,7 @@ bool RunMainScript(CPythonLauncher &pyLauncher, const char *lpCmdLine)
         std::vector<std::string> stVec;
         SplitLine(lpCmdLine, " ", &stVec);
 
-        if (stVec.size() != 0 && "--pause-before-create-window" == stVec[0])
+        if (!stVec.empty() && "--pause-before-create-window" == stVec[0])
         {
             system("pause");
         }
@@ -344,7 +346,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
     g_isScreenShotKey = true;
 #endif
 
-    DWORD dwRandSeed = time(NULL) + DWORD((uintptr_t)GetCurrentProcess());
+    DWORD const dwRandSeed = time(nullptr) + static_cast<DWORD>((uintptr_t)GetCurrentProcess());
     srandom(dwRandSeed);
     srand(random());
 
@@ -377,8 +379,8 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #endif
 
     Tracef("[UserInterface] Initializing pack system from 'pack'...\n");
-    static CLZO lzo;
-    static CEterPackManager EterPackManager;
+    static CLZO const lzo;
+    static CEterPackManager const EterPackManager;
 
     if (!PackInitialize("pack"))
     {
@@ -392,7 +394,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
         SetDefaultCodePage(LocaleService_GetCodePage());
 
     Tracef("[UserInterface] Creating and initializing CPythonApplication...\n");
-    CPythonApplication *app = new CPythonApplication;
+    auto *app = new CPythonApplication;
 
     app->Initialize(hInstance);
     Tracef("[UserInterface] CPythonApplication initialized.\n");
@@ -439,7 +441,7 @@ HANDLE CreateMetin2GameMutex()
     SECURITY_ATTRIBUTES sa;
     ZeroMemory(&sa, sizeof(SECURITY_ATTRIBUTES));
     sa.nLength = sizeof(sa);
-    sa.lpSecurityDescriptor = NULL;
+    sa.lpSecurityDescriptor = nullptr;
     sa.bInheritHandle = FALSE;
 
     return CreateMutex(&sa, FALSE, "Metin2GameMutex");
@@ -450,7 +452,7 @@ void DestroyMetin2GameMutex(HANDLE hMutex)
     if (hMutex)
     {
         ReleaseMutex(hMutex);
-        hMutex = NULL;
+        hMutex = nullptr;
     }
 }
 
@@ -478,9 +480,13 @@ void __PrintTimeStamp()
 
 #else
     if (__IS_TEST_SERVER_MODE__)
+    {
         LogBoxf("METIN2 BINARY TEST VERSION %s  ( MS C++ %d Compiled )", __TIMESTAMP__, _MSC_VER);
+    }
     else
+    {
         LogBoxf("METIN2 BINARY DISTRIBUTE VERSION %s ( MS C++ %d Compiled )", __TIMESTAMP__, _MSC_VER);
+    }
 #endif
 }
 
@@ -510,7 +516,7 @@ bool __IsOpenIDTestOption(LPSTR lpCmdLine) // 클라이언트에서 로그인이
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    if (strstr(lpCmdLine, "--hackshield") != 0)
+    if (strstr(lpCmdLine, "--hackshield") != nullptr)
         return 0;
 
 #ifdef _DEBUG
@@ -524,25 +530,25 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     SetDefaultCodePage(LocaleService_GetCodePage());
 
     bool bQuit = false;
-    bool bAuthKeyChecked = false; // OpenID 버전에서 인증키가 들어왔는지 알기 위한 인자.
+    bool const bAuthKeyChecked = false; // OpenID 버전에서 인증키가 들어왔는지 알기 위한 인자.
     int nArgc = 0;
     PCHAR *szArgv = CommandLineToArgv(lpCmdLine, &nArgc);
 
     for (int i = 0; i < nArgc; i++)
     {
-        if (szArgv[i] == 0)
+        if (szArgv[i] == nullptr)
             continue;
         if (__IsLocaleVersion(szArgv[i])) // #0000829: [M2EU] 버전 파일이 항상 생기지 않도록 수정
         {
             char szModuleName[MAX_PATH];
             char szVersionPath[MAX_PATH];
-            GetModuleFileName(NULL, szModuleName, sizeof(szModuleName));
+            GetModuleFileName(nullptr, szModuleName, sizeof(szModuleName));
             sprintf(szVersionPath, "%s.version", szModuleName);
             FILE *fp = fopen(szVersionPath, "wt");
             if (fp)
             {
-                extern int METIN2_GET_VERSION();
-                fprintf(fp, "r%d\n", METIN2_GET_VERSION());
+
+                std::println(fp, "r{}", METIN2_GET_VERSION());
                 fclose(fp);
             }
             bQuit = true;
@@ -550,7 +556,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         else if (__IsLocaleOption(szArgv[i]))
         {
             FILE *fp = fopen("locale.txt", "wt");
-            fprintf(fp, "service[%s] code_page[%d]", LocaleService_GetName(), LocaleService_GetCodePage());
+            std::print(fp, "service[{}] code_page[{}]", LocaleService_GetName(), LocaleService_GetCodePage());
             fclose(fp);
             bQuit = true;
         }
@@ -564,7 +570,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             // locale 설정엔 인자가 두 개 더 필요함 (로케일 명칭, 데이터 경로)
             if (nArgc <= i + 2)
             {
-                MessageBox(NULL, "Invalid arguments", ApplicationStringTable_GetStringz(IDS_APP_NAME, "APP_NAME"),
+                MessageBox(nullptr, "Invalid arguments", ApplicationStringTable_GetStringz(IDS_APP_NAME, "APP_NAME"),
                            MB_ICONSTOP);
                 goto Clean;
             }
@@ -615,7 +621,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     if (bQuit)
         goto Clean;
 
-#if defined(NEEDED_COMMAND_ARGUMENT)
+#ifdef NEEDED_COMMAND_ARGUMENT
     // 옵션이 없으면 비정상 실행으로 간주, 프로그램 종료
     if (strstr(lpCmdLine, NEEDED_COMMAND_ARGUMENT) == 0)
     {
@@ -626,7 +632,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     }
 #endif
 
-#if defined(NEEDED_COMMAND_CLIPBOARD)
+#ifdef NEEDED_COMMAND_CLIPBOARD
     {
         CHAR szSecKey[256];
         CPostIt cPostIt("VOLUME1");
@@ -666,7 +672,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ::CoUninitialize();
 
     if (gs_szErrorString[0])
-        MessageBox(NULL, gs_szErrorString, ApplicationStringTable_GetStringz(IDS_APP_NAME, "APP_NAME"), MB_ICONSTOP);
+        MessageBox(nullptr, gs_szErrorString, ApplicationStringTable_GetStringz(IDS_APP_NAME, "APP_NAME"), MB_ICONSTOP);
 
 Clean:
     SAFE_FREE_GLOBAL(szArgv);
@@ -677,9 +683,9 @@ Clean:
 #ifdef OPENMT2_PLATFORM_LINUX
 int main(int argc, char **argv)
 {
-    printf("====================================================\n");
-    printf("[Metin2 Linux Client] Starting client (PID: %d)...\n", getpid());
-    printf("====================================================\n");
+    std::println("====================================================");
+    std::println("[Metin2 Linux Client] Starting client (PID: {})...", getpid());
+    std::println("====================================================");
     fflush(stdout);
 
     std::string cmdLine;
@@ -689,11 +695,11 @@ int main(int argc, char **argv)
             cmdLine += " ";
         cmdLine += argv[i];
     }
-    int ret = WinMain(NULL, NULL, const_cast<char *>(cmdLine.c_str()), 1);
+    int ret = WinMain(nullptr, nullptr, const_cast<char *>(cmdLine.c_str()), 1);
 
-    printf("====================================================\n");
-    printf("[Metin2 Linux Client] Process terminated with code: %d\n", ret);
-    printf("====================================================\n");
+    std::println("====================================================");
+    std::println("[Metin2 Linux Client] Process terminated with code: {}", ret);
+    std::println("====================================================");
     fflush(stdout);
     return ret;
 }
@@ -710,8 +716,8 @@ int Setup(LPSTR lpCmdLine)
     /*
      *	타이머 정밀도를 올린다.
      */
-    TIMECAPS tc;
-    UINT wTimerRes;
+    TIMECAPS tc{};
+    UINT wTimerRes = 0;
 
     if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR)
         return 0;
@@ -723,9 +729,9 @@ int Setup(LPSTR lpCmdLine)
      *	그래니 에러 핸들링
      */
 
-    granny_log_callback Callback;
+    granny_log_callback Callback{};
     Callback.Function = GrannyError;
-    Callback.UserData = 0;
+    Callback.UserData = nullptr;
     GrannySetLogCallback(&Callback);
     return 1;
 }

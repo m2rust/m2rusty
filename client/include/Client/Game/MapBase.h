@@ -10,9 +10,8 @@ class CMapBase : public CScreen
         MAPTYPE_OUTDOOR,
     };
 
-  public:
     CMapBase();
-    virtual ~CMapBase();
+    ~CMapBase() override;
 
     virtual void Clear();
     virtual bool Initialize() = 0;
@@ -38,7 +37,7 @@ class CMapBase : public CScreen
     void ResetEnvironmentDataPtr(const TEnvironmentData *c_pEnvironmentData);
     bool Enter();
     bool Leave();
-    bool IsReady()
+    bool IsReady() const
     {
         return m_bReady;
     }
@@ -68,7 +67,7 @@ class CMapBase : public CScreen
 
     bool IsCopiedMap() const
     {
-        return m_strParentMapName.length() > 0;
+        return !m_strParentMapName.empty();
     } // "원본 데이터는 따로 있는" 복사 맵인가?
     const std::string &GetParentMapName() const
     {
@@ -86,7 +85,7 @@ class CMapBase : public CScreen
     std::string m_strParentMapName; // 원본 맵의 이름. 이 값이 세팅되어 있다면 실제 모든 맵
                                     // 데이터는 ParentMap/* 경로에서 읽어온다. 맵의 일부만
                                     // 읽어오는 기능은 필요없대서 패스.
-    bool m_bReady;
+    bool m_bReady = false;
 
-    const TEnvironmentData *mc_pEnvironmentData;
+    const TEnvironmentData *mc_pEnvironmentData = nullptr;
 };

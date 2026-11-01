@@ -22,7 +22,7 @@ class SphereInterface
   public:
     SphereInterface();
     virtual ~SphereInterface();
-    virtual int GetVertexCount(void) const = 0;
+    virtual int GetVertexCount() const = 0;
     virtual bool GetVertex(int i, Vector3d &vect) const = 0;
 
   private:
@@ -34,34 +34,32 @@ class Sphere
     Sphere();
     Sphere(const Vector3d &center, float radius);
 
-    virtual ~Sphere()
-    {
-    }
+    virtual ~Sphere() = default;
 
     void Set(const Vector3d &center, float radius);
 
     void Compute(const SphereInterface &source);
 
-    float GetRadius(void) const
+    float GetRadius() const
     {
         return mRadius;
     };
-    float GetRadius2(void) const
+    float GetRadius2() const
     {
         return mRadius2;
     };
-    const Vector3d &GetCenter(void) const
+    const Vector3d &GetCenter() const
     {
         return mCenter;
     };
 
     bool RayIntersection(const Vector3d &rayOrigin, const Vector3d &V, float distance, Vector3d *intersect);
 
-    bool RayIntersection(const Vector3d &rayOrigin, const Vector3d &rayDirection, Vector3d *intersect);
+    bool RayIntersection(const Vector3d &rayOrigin, const Vector3d &dir, Vector3d *intersect);
 
-    bool RayIntersectionInFront(const Vector3d &rayOrigin, const Vector3d &rayDirection, Vector3d *intersect);
+    bool RayIntersectionInFront(const Vector3d &rayOrigin, const Vector3d &V, Vector3d *intersect);
 
-    void Report(void);
+    void Report();
 
     void SetRadius(float radius)
     {
@@ -71,24 +69,20 @@ class Sphere
 
     bool InSphereXY(const Vector3d &pos, float distance) const
     {
-        float dx = pos.x - mCenter.x;
-        float dy = pos.y - mCenter.y;
-        float dist = sqrtf(dx * dx + dy * dy);
-        if (dist < (mRadius + distance))
-            return true;
-        return false;
+        float const dx = pos.x - mCenter.x;
+        float const dy = pos.y - mCenter.y;
+        float const dist = sqrtf((dx * dx) + (dy * dy));
+        return dist < (mRadius + distance);
     };
 
     bool InSphere(const Vector3d &pos, float distance) const
     {
-        float dx = pos.x - mCenter.x;
-        float dy = pos.y - mCenter.y;
-        float dz = pos.z - mCenter.z;
+        float const dx = pos.x - mCenter.x;
+        float const dy = pos.y - mCenter.y;
+        float const dz = pos.z - mCenter.z;
 
-        float dist = sqrtf(dx * dx + dy * dy + dz * dz);
-        if (dist < (mRadius + distance))
-            return true;
-        return false;
+        float const dist = sqrtf((dx * dx) + (dy * dy) + (dz * dz));
+        return dist < (mRadius + distance);
     }
 
   protected:

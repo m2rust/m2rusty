@@ -40,14 +40,13 @@ class CMemoryFileLoader
 
     bool Read(int size, void *pvDst);
 
-    int GetPosition();
-    int GetSize();
+    int GetPosition() const;
+    int GetSize() const;
 
   protected:
-    bool IsReadableSize(int size);
+    bool IsReadableSize(int size) const;
     const char *GetCurrentPositionPointer();
 
-  protected:
     const char *m_pcBase;
     int m_size;
     int m_pos;
@@ -64,14 +63,13 @@ class CDiskFileLoader
     bool Open(const char *c_szFileName);
     bool Read(int size, void *pvDst);
 
-    int GetSize();
+    int GetSize() const;
 
   protected:
     void Initialize();
 
-  protected:
-    FILE *m_fp;
-    int m_size;
+    FILE *m_fp = nullptr;
+    int m_size = 0;
 };
 
-typedef std::map<std::string, std::string> TStringMap;
+using TStringMap = std::map<std::string, std::string>;

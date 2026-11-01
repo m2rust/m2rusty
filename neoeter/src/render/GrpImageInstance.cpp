@@ -46,16 +46,16 @@ void CGraphicImageInstance::OnRender()
     CGraphicImage *pImage = m_roImage.GetPointer();
     CGraphicTexture *pTexture = pImage->GetTexturePointer();
 
-    float fimgWidth = pImage->GetWidth();
-    float fimgHeight = pImage->GetHeight();
+    float const fimgWidth = pImage->GetWidth();
+    float const fimgHeight = pImage->GetHeight();
 
     const RECT &c_rRect = pImage->GetRectReference();
-    float texReverseWidth = 1.0f / float(pTexture->GetWidth());
-    float texReverseHeight = 1.0f / float(pTexture->GetHeight());
-    float su = c_rRect.left * texReverseWidth;
-    float sv = c_rRect.top * texReverseHeight;
-    float eu = (c_rRect.left + (c_rRect.right - c_rRect.left)) * texReverseWidth;
-    float ev = (c_rRect.top + (c_rRect.bottom - c_rRect.top)) * texReverseHeight;
+    float const texReverseWidth = 1.0f / static_cast<float>(pTexture->GetWidth());
+    float const texReverseHeight = 1.0f / static_cast<float>(pTexture->GetHeight());
+    float const su = c_rRect.left * texReverseWidth;
+    float const sv = c_rRect.top * texReverseHeight;
+    float const eu = (c_rRect.left + (c_rRect.right - c_rRect.left)) * texReverseWidth;
+    float const ev = (c_rRect.top + (c_rRect.bottom - c_rRect.top)) * texReverseHeight;
 
     TPDTVertex vertices[4];
     vertices[0].position.x = m_v2Position.x - 0.5f;
@@ -88,7 +88,7 @@ void CGraphicImageInstance::OnRender()
         CGraphicBase::SetDefaultIndexBuffer(CGraphicBase::DEFAULT_IB_FILL_RECT);
 
         STATEMANAGER.SetTexture(0, pTexture->GetD3DTexture());
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 4, 0, 2);
     }
@@ -105,14 +105,12 @@ const CGraphicTexture &CGraphicImageInstance::GetTextureReference() const
     class CEmptyGraphicTexture : public CGraphicTexture
     {
       public:
-        CEmptyGraphicTexture()
-        {
-        }
+        CEmptyGraphicTexture() = default;
     };
 
     if (m_roImage.IsNull())
     {
-        static CEmptyGraphicTexture s_kEmptyTexture;
+        static CEmptyGraphicTexture const s_kEmptyTexture;
         return s_kEmptyTexture;
     }
 
@@ -122,7 +120,7 @@ const CGraphicTexture &CGraphicImageInstance::GetTextureReference() const
 CGraphicTexture *CGraphicImageInstance::GetTexturePointer()
 {
     CGraphicImage *pkImage = m_roImage.GetPointer();
-    return pkImage ? pkImage->GetTexturePointer() : NULL;
+    return pkImage ? pkImage->GetTexturePointer() : nullptr;
 }
 
 CGraphicImage *CGraphicImageInstance::GetGraphicImagePointer()
@@ -182,10 +180,7 @@ void CGraphicImageInstance::ReloadImagePointer(CGraphicImage *pImage)
 
 bool CGraphicImageInstance::IsEmpty() const
 {
-    if (!m_roImage.IsNull() && !m_roImage->IsEmpty())
-        return false;
-
-    return true;
+    return !(!m_roImage.IsNull() && !m_roImage->IsEmpty());
 }
 
 bool CGraphicImageInstance::operator==(const CGraphicImageInstance &rhs) const
@@ -195,7 +190,7 @@ bool CGraphicImageInstance::operator==(const CGraphicImageInstance &rhs) const
 
 DWORD CGraphicImageInstance::Type()
 {
-    static DWORD s_dwType = GetCRC32("CGraphicImageInstance", strlen("CGraphicImageInstance"));
+    static DWORD const s_dwType = GetCRC32("CGraphicImageInstance", strlen("CGraphicImageInstance"));
     return (s_dwType);
 }
 
@@ -224,7 +219,7 @@ void CGraphicImageInstance::Initialize()
 
 void CGraphicImageInstance::Destroy()
 {
-    m_roImage.SetPointer(NULL); // CRef 에서 레퍼런스 카운트가 떨어져야 함.
+    m_roImage.SetPointer(nullptr); // CRef 에서 레퍼런스 카운트가 떨어져야 함.
     Initialize();
 }
 

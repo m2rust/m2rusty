@@ -47,7 +47,7 @@ class CFlare
 {
   public:
     void Draw(float fBrightScale, int nWidth, int nHeight, int nX, int nY);
-    void Init(std::string strPath);
+    void Init(const std::string &strPath);
 
     CFlare();
     virtual ~CFlare();
@@ -55,13 +55,13 @@ class CFlare
   private:
     struct SFlarePiece
     {
-        SFlarePiece() : m_fPosition(0.0f), m_fWidth(0.0f), m_pColor(NULL)
+        SFlarePiece() : m_pColor(nullptr)
         {
         }
         CGraphicImageInstance m_imageInstance;
-        float m_fPosition; // -1.0 = light location, 0.0 = center, 1.0 = far end of
-                           // flare
-        float m_fWidth;    // height = width
+        float m_fPosition = 0.0f; // -1.0 = light location, 0.0 = center, 1.0 = far end of
+                                  // flare
+        float m_fWidth = 0.0f;    // height = width
         float *m_pColor;
     };
 
@@ -74,7 +74,7 @@ class CLensFlare : public CScreen
 {
   public:
     CLensFlare();
-    virtual ~CLensFlare();
+    ~CLensFlare() override;
 
     void Compute(const D3DXVECTOR3 &c_rv3LightDirection); // D3DTS_VIEW로 부터 카메라 방향을
                                                           // 얻어오므로, 카메라 설정 뒤에 해야 함.
@@ -83,7 +83,7 @@ class CLensFlare : public CScreen
     void DrawAfterFlare();
     void DrawFlare();
 
-    void SetMainFlare(std::string strSunFile, float fSunSize);
+    void SetMainFlare(const std::string &strSunFile, float fSunSize);
     void Initialize(std::string strPath);
 
     void SetFlareLocation(double dX, double dY);
@@ -92,7 +92,7 @@ class CLensFlare : public CScreen
     {
         m_bFlareVisible = bState;
     }
-    bool IsVisible()
+    bool IsVisible() const
     {
         return m_bFlareVisible;
     }
@@ -108,17 +108,17 @@ class CLensFlare : public CScreen
     float Interpolate(float fStart, float fEnd, float fPercent);
 
   private:
-    float m_afFlarePos[2], m_afFlareWinPos[2];
-    float m_fBeforeBright, m_fAfterBright;
-    bool m_bFlareVisible, m_bDrawFlare, m_bDrawBrightScreen;
-    float m_fSunSize;
+    float m_afFlarePos[2]{}, m_afFlareWinPos[2]{};
+    float m_fBeforeBright = 0.0f, m_fAfterBright = 0.0f;
+    bool m_bFlareVisible = false, m_bDrawFlare = true, m_bDrawBrightScreen = true;
+    float m_fSunSize = 0;
     CFlare m_cFlare;
     float *m_pControlPixels;
     float *m_pTestPixels;
-    bool m_bEnabled;
-    bool m_bShowMainFlare;
-    float m_fMaxBrightness;
-    float m_afColor[4];
+    bool m_bEnabled = true;
+    bool m_bShowMainFlare = true;
+    float m_fMaxBrightness = 1.0f;
+    float m_afColor[4]{};
 
     CGraphicImageInstance m_SunFlareImageInstance;
 

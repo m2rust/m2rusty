@@ -6,7 +6,7 @@ class CGraphicVertexBuffer : public CGraphicBase
 {
   public:
     CGraphicVertexBuffer();
-    virtual ~CGraphicVertexBuffer();
+    ~CGraphicVertexBuffer() override;
 
     void Destroy();
     virtual bool Create(int vtxCount, DWORD fvf, DWORD usage, D3DPOOL d3dPool);
@@ -30,11 +30,11 @@ class CGraphicVertexBuffer : public CGraphicBase
     int GetVertexStride() const;
     DWORD GetFlexibleVertexFormat() const;
 
-    inline LPDIRECT3DVERTEXBUFFER9 GetD3DVertexBuffer() const
+    LPDIRECT3DVERTEXBUFFER9 GetD3DVertexBuffer() const
     {
         return m_lpd3dVB;
     }
-    inline DWORD GetBufferSize() const
+    DWORD GetBufferSize() const
     {
         return m_dwBufferSize;
     }
@@ -44,13 +44,12 @@ class CGraphicVertexBuffer : public CGraphicBase
   protected:
     void Initialize();
 
-  protected:
-    LPDIRECT3DVERTEXBUFFER9 m_lpd3dVB;
+    LPDIRECT3DVERTEXBUFFER9 m_lpd3dVB = nullptr;
 
-    DWORD m_dwBufferSize;
-    DWORD m_dwFVF;
-    DWORD m_dwUsage;
+    DWORD m_dwBufferSize = 0U;
+    DWORD m_dwFVF = 0U;
+    DWORD m_dwUsage = 0U;
     D3DPOOL m_d3dPool;
-    int m_vtxCount;
-    DWORD m_dwLockFlag;
+    int m_vtxCount = 0;
+    DWORD m_dwLockFlag = 0U;
 };

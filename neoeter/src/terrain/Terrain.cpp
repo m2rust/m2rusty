@@ -10,26 +10,31 @@
 #include <cstring>
 #include <sstream>
 #include <algorithm>
+#include <utility>
 
 //////////////////////////////////////////////////////////////////////////
 // Texture Set
 //////////////////////////////////////////////////////////////////////////
-CTextureSet *CTerrainImpl::ms_pTextureSet = NULL;
+CTextureSet *CTerrainImpl::ms_pTextureSet = nullptr;
 
 void CTerrainImpl::SetTextureSet(CTextureSet *pTextureSet)
 {
     static CTextureSet s_EmptyTextureSet;
 
     if (!pTextureSet)
+    {
         ms_pTextureSet = &s_EmptyTextureSet;
+    }
     else
+    {
         ms_pTextureSet = pTextureSet;
+    }
 }
 
 CTextureSet *CTerrainImpl::GetTextureSet()
 {
     if (!ms_pTextureSet)
-        SetTextureSet(NULL);
+        SetTextureSet(nullptr);
 
     return ms_pTextureSet;
 }
@@ -59,7 +64,7 @@ void CTerrainImpl::Initialize()
 
     m_fHeightScale = 0.0f;
 
-    m_lpShadowTexture = NULL;
+    m_lpShadowTexture = nullptr;
 
     m_lSplatTilesX = 0;
     m_lSplatTilesY = 0;
@@ -72,7 +77,7 @@ void CTerrainImpl::Clear()
         if (m_lpAlphaTexture[i])
         {
             m_lpAlphaTexture[i]->Release();
-            m_lpAlphaTexture[i] = NULL;
+            m_lpAlphaTexture[i] = nullptr;
         }
     }
 
@@ -91,7 +96,7 @@ bool CTerrainImpl::LoadHeightMap(const char *c_szFileName)
         return false;
     }
 
-    data.read((char *)m_awRawHeightMap, sizeof(WORD) * HEIGHTMAP_RAW_XSIZE * HEIGHTMAP_RAW_YSIZE);
+    data.read(reinterpret_cast<char *>(m_awRawHeightMap), sizeof(WORD) * HEIGHTMAP_RAW_XSIZE * HEIGHTMAP_RAW_YSIZE);
     if (!data)
     {
         // Could not read data
@@ -105,7 +110,7 @@ bool CTerrainImpl::LoadHeightMap(const char *c_szFileName)
 
 bool CTerrainImpl::LoadAttrMap(const char *c_szFileName)
 {
-    DWORD dwStart = ELTimer_GetMSec();
+    DWORD const dwStart = ELTimer_GetMSec();
     Tracef("LoadAttrMapFile %s ", c_szFileName);
 
     std::stringstream data;
@@ -127,8 +132,8 @@ bool CTerrainImpl::LoadAttrMap(const char *c_szFileName)
         };
 #pragma pack(pop)
 
-        SAttrMapHeader kAttrMapHeader;
-        data.read((char *)&kAttrMapHeader, sizeof(kAttrMapHeader));
+        SAttrMapHeader kAttrMapHeader{};
+        data.read(reinterpret_cast<char *>(&kAttrMapHeader), sizeof(kAttrMapHeader));
         if (!data)
         {
             TraceError(" CTerrainImpl::LoadAttrMap - %s FILE SIZE ERROR", c_szFileName);
@@ -159,7 +164,7 @@ bool CTerrainImpl::LoadAttrMap(const char *c_szFileName)
             return false;
         }
 
-        data.read((char *)m_abyAttrMap, sizeof(m_abyAttrMap));
+        data.read(reinterpret_cast<char *>(m_abyAttrMap), sizeof(m_abyAttrMap));
         if (!data)
         {
             TraceError("CTerrainImpl::LoadAttrMap - %s FILE DATA SIZE ERROR", c_szFileName);
@@ -183,7 +188,7 @@ bool CTerrainImpl::RAW_LoadTileMap(const char *c_szFileName)
         return false;
     }
 
-    data.read((char *)m_abyTileMap, sizeof(BYTE) * (TILEMAP_RAW_XSIZE) * (TILEMAP_RAW_YSIZE));
+    data.read(reinterpret_cast<char *>(m_abyTileMap), sizeof(BYTE) * (TILEMAP_RAW_XSIZE) * (TILEMAP_RAW_YSIZE));
     if (!data)
     {
         // Could not read data
@@ -197,7 +202,7 @@ bool CTerrainImpl::RAW_LoadTileMap(const char *c_szFileName)
 
 bool CTerrainImpl::LoadWaterMap(const char *c_szFileName)
 {
-    DWORD dwStart = ELTimer_GetMSec();
+    DWORD const dwStart = ELTimer_GetMSec();
 
     if (!LoadWaterMapFile(c_szFileName))
     {
@@ -240,8 +245,8 @@ bool CTerrainImpl::LoadWaterMapFile(const char *c_szFileName)
         };
 #pragma pack(pop)
 
-        SWaterMapHeader kWaterMapHeader;
-        data.read((char *)&kWaterMapHeader, sizeof(kWaterMapHeader));
+        SWaterMapHeader kWaterMapHeader{};
+        data.read(reinterpret_cast<char *>(&kWaterMapHeader), sizeof(kWaterMapHeader));
         if (!data)
         {
             TraceError("CTerrainImpl::LoadWaterMap - %s FILE SIZE ERROR", c_szFileName);
@@ -275,21 +280,21 @@ bool CTerrainImpl::LoadWaterMapFile(const char *c_szFileName)
 
         m_byNumWater = kWaterMapHeader.m_byLayerCount;
 
-        DWORD dwFileRestSize = fileSize - sizeof(kWaterMapHeader);
-        DWORD dwFileNeedSize = sizeof(m_abyWaterMap) + sizeof(LONG) * m_byNumWater;
-        DWORD dwFileNeedSize2 = sizeof(m_abyWaterMap) + sizeof(WORD) * m_byNumWater;
+        DWORD const dwFileRestSize = fileSize - sizeof(kWaterMapHeader);
+        DWORD const dwFileNeedSize = sizeof(m_abyWaterMap) + (sizeof(LONG) * m_byNumWater);
+        DWORD const dwFileNeedSize2 = sizeof(m_abyWaterMap) + (sizeof(WORD) * m_byNumWater);
         if (dwFileRestSize == dwFileNeedSize2)
         {
             WORD wWaterHeight[MAX_WATER_NUM + 1];
 
-            data.read((char *)m_abyWaterMap, sizeof(m_abyWaterMap));
+            data.read(reinterpret_cast<char *>(m_abyWaterMap), sizeof(m_abyWaterMap));
             if (!data)
                 return false;
 
             m_byNumWater = MIN(static_cast<BYTE>(MAX_WATER_NUM), m_byNumWater);
             if (m_byNumWater)
             {
-                data.read((char *)wWaterHeight, sizeof(WORD) * m_byNumWater);
+                data.read(reinterpret_cast<char *>(wWaterHeight), sizeof(WORD) * m_byNumWater);
                 if (!data)
                     return false;
 
@@ -305,13 +310,13 @@ bool CTerrainImpl::LoadWaterMapFile(const char *c_szFileName)
             return false;
         }
 
-        data.read((char *)m_abyWaterMap, sizeof(m_abyWaterMap));
+        data.read(reinterpret_cast<char *>(m_abyWaterMap), sizeof(m_abyWaterMap));
         if (!data)
             return false;
 
         if (m_byNumWater)
         {
-            data.read((char *)m_lWaterHeight, sizeof(LONG) * m_byNumWater);
+            data.read(reinterpret_cast<char *>(m_lWaterHeight), sizeof(LONG) * m_byNumWater);
             if (!data)
                 return false;
         }
@@ -322,14 +327,15 @@ bool CTerrainImpl::LoadWaterMapFile(const char *c_szFileName)
 
 DWORD CTerrainImpl::GetShadowMapColor(float fx, float fy)
 {
-    float fMapSize = (float)(TERRAIN_XSIZE);
-    float fooMapSize = 1.0f / fMapSize;
+    auto fMapSize = static_cast<float>(TERRAIN_XSIZE);
+    float const fooMapSize = 1.0f / fMapSize;
     if (fx < 0 || fy < 0 || fx >= fMapSize || fy >= fMapSize)
         return 0xFFFFFFFF;
 
-    fx = fx * fooMapSize * (float)(SHADOWMAP_XSIZE - 1);
-    fy = fy * fooMapSize * (float)(SHADOWMAP_YSIZE - 1);
-    int ix, iy;
+    fx = fx * fooMapSize * static_cast<float>(SHADOWMAP_XSIZE - 1);
+    fy = fy * fooMapSize * static_cast<float>(SHADOWMAP_YSIZE - 1);
+    int ix = 0;
+    int iy = 0;
     PR_FLOAT_TO_INT(fx, ix);
     PR_FLOAT_TO_INT(fy, iy);
 
@@ -344,6 +350,6 @@ DWORD CTerrainImpl::GetShadowMapColor(float fx, float fy)
     int r = w & 0x1f;
     r <<= 3;
 
-    return (DWORD)((0xffU << 24) | (static_cast<DWORD>(g) << 16) | (static_cast<DWORD>(g) << 8) |
-                   static_cast<DWORD>(r));
+    return static_cast<DWORD>((0xffU << 24) | (static_cast<DWORD>(g) << 16) | (static_cast<DWORD>(g) << 8) |
+                              static_cast<DWORD>(r));
 }

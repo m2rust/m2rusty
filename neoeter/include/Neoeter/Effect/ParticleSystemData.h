@@ -12,7 +12,7 @@ class CParticleInstance;
 class CParticleSystemData : public CEffectElementBase
 {
   public:
-    virtual ~CParticleSystemData();
+    ~CParticleSystemData() override;
     CParticleSystemData();
 
     CEmitterProperty *GetEmitterPropertyPointer();
@@ -23,10 +23,10 @@ class CParticleSystemData : public CEffectElementBase
     void BuildDecorator(CParticleInstance *pInstance);
 
   protected:
-    BOOL OnLoadScript(CTextFileLoader &rTextFileLoader);
+    BOOL OnLoadScript(CTextFileLoader &rTextFileLoader) override;
 
-    void OnClear();
-    bool OnIsData();
+    void OnClear() override;
+    bool OnIsData() override;
 
     CEmitterProperty m_EmitterProperty;
     CParticleProperty m_ParticleProperty;

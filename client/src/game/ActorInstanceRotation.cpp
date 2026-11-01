@@ -76,7 +76,7 @@ void CActorInstance::RotationProcess()
 
 void CActorInstance::LookAtFromXY(float x, float y, CActorInstance *pDestInstance)
 {
-    float rot = GetDegreeFromPosition2(pDestInstance->m_x, pDestInstance->m_y, x, y);
+    float const rot = GetDegreeFromPosition2(pDestInstance->m_x, pDestInstance->m_y, x, y);
 
     LookAt(rot);
 }
@@ -88,7 +88,7 @@ void CActorInstance::LookAt(float fDirRot)
 
 void CActorInstance::LookAt(float fx, float fy)
 {
-    float rot = GetDegreeFromPosition2(m_x, m_y, fx, fy);
+    float const rot = GetDegreeFromPosition2(m_x, m_y, fx, fy);
 
     LookAt(rot);
 }
@@ -105,22 +105,22 @@ void CActorInstance::LookWith(CActorInstance *pInstance)
     BlendRotation(pInstance->m_rotEnd, 0.3f);
 }
 
-float CActorInstance::GetRotation()
+float CActorInstance::GetRotation() const
 {
     return m_fcurRotation;
 }
 
-float CActorInstance::GetTargetRotation()
+float CActorInstance::GetTargetRotation() const
 {
     return m_rotEnd;
 }
 
-float CActorInstance::GetRotatingTime()
+float CActorInstance::GetRotatingTime() const
 {
     return m_rotEndTime;
 }
 
-float CActorInstance::GetAdvancingRotation()
+float CActorInstance::GetAdvancingRotation() const
 {
     return m_fAdvancingRotation;
 }

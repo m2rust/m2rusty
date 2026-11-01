@@ -31,12 +31,12 @@ void CPythonExchange::SetElkToSelf(DWORD elk)
     m_self.elk = elk;
 }
 
-DWORD CPythonExchange::GetElkFromTarget()
+DWORD CPythonExchange::GetElkFromTarget() const
 {
     return m_victim.elk;
 }
 
-DWORD CPythonExchange::GetElkFromSelf()
+DWORD CPythonExchange::GetElkFromSelf() const
 {
     return m_self.elk;
 }
@@ -179,25 +179,25 @@ void CPythonExchange::GetItemAttributeFromSelf(BYTE pos, int iAttrPos, BYTE *pby
 
 void CPythonExchange::SetAcceptToTarget(BYTE Accept)
 {
-    m_victim.accept = Accept ? true : false;
+    m_victim.accept = Accept != 0;
 }
 
 void CPythonExchange::SetAcceptToSelf(BYTE Accept)
 {
-    m_self.accept = Accept ? true : false;
+    m_self.accept = Accept != 0;
 }
 
-bool CPythonExchange::GetAcceptFromTarget()
+bool CPythonExchange::GetAcceptFromTarget() const
 {
-    return m_victim.accept ? true : false;
+    return m_victim.accept != 0;
 }
 
-bool CPythonExchange::GetAcceptFromSelf()
+bool CPythonExchange::GetAcceptFromSelf() const
 {
-    return m_self.accept ? true : false;
+    return m_self.accept != 0;
 }
 
-bool CPythonExchange::GetElkMode()
+bool CPythonExchange::GetElkMode() const
 {
     return m_elk_mode;
 }
@@ -217,7 +217,7 @@ void CPythonExchange::End()
     m_isTrading = false;
 }
 
-bool CPythonExchange::isTrading()
+bool CPythonExchange::isTrading() const
 {
     return m_isTrading;
 }
@@ -234,15 +234,12 @@ void CPythonExchange::Clear()
     */
 }
 
-CPythonExchange::CPythonExchange()
+CPythonExchange::CPythonExchange() : m_isTrading(false), m_elk_mode(false)
 {
     Clear();
-    m_isTrading = false;
-    m_elk_mode = false;
+
     // Clear로 옴겨놓으면 안됨.
     // trade_start 페킷이 오면 Clear를 실행하는데
     // m_elk_mode는 클리어 되선 안됨.;
 }
-CPythonExchange::~CPythonExchange()
-{
-}
+CPythonExchange::~CPythonExchange() = default;

@@ -24,16 +24,15 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
 {
   public:
     CGraphicObjectInstance();
-    virtual ~CGraphicObjectInstance();
+    ~CGraphicObjectInstance() override;
     virtual int GetType() const = 0;
 
-  public:
     const D3DXVECTOR3 &GetPosition() const;
     const D3DXVECTOR3 &GetScale() const;
     float GetRotation();
-    float GetYaw();
-    float GetPitch();
-    float GetRoll();
+    float GetYaw() const;
+    float GetPitch() const;
+    float GetRoll() const;
 
     void SetPosition(float x, float y, float z);
     void SetPosition(const D3DXVECTOR3 &newposition);
@@ -55,14 +54,14 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
 
     void Show();
     void Hide();
-    bool isShow();
+    bool isShow() const;
 
     // Camera Block
     void BlockCamera(bool bBlock)
     {
         m_BlockCamera = bBlock;
     }
-    bool BlockCamera()
+    bool BlockCamera() const
     {
         return m_BlockCamera;
     }
@@ -105,7 +104,7 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
     virtual void OnInitialize();
 
     // Bounding Sphere
-  public:
+
     void UpdateBoundingSphere();
     void RegisterBoundingSphere();
     virtual bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius) = 0;
@@ -129,17 +128,17 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
     D3DXVECTOR3 m_v3Position;
     D3DXVECTOR3 m_v3Scale;
 
-    float m_fYaw;
-    float m_fPitch;
-    float m_fRoll;
+    float m_fYaw = 0.0F;
+    float m_fPitch = 0.0F;
+    float m_fRoll = 0.0F;
 
     D3DXMATRIX m_mRotation;
 
-    bool m_isVisible;
+    bool m_isVisible = false;
     D3DXMATRIX m_worldMatrix;
 
     // Camera Block
-    bool m_BlockCamera;
+    bool m_BlockCamera = false;
 
     // Bounding Box
     D3DXVECTOR4 m_v4TBBox[8];
@@ -147,7 +146,7 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
     D3DXVECTOR3 m_v3BBoxMin, m_v3BBoxMax;
 
     // Portal
-    BYTE m_abyPortalID[PORTAL_ID_MAX_NUM];
+    BYTE m_abyPortalID[PORTAL_ID_MAX_NUM]{};
 
     // Culling
     CCullingManager::CullingHandle m_CullingHandle;
@@ -161,7 +160,7 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
     D3DXVECTOR3
     GetCollisionMovementAdjust(const CDynamicSphereInstance &s) const;
 
-    void UpdateCollisionData(const CStaticCollisionDataVector *pscdVector = 0);
+    void UpdateCollisionData(const CStaticCollisionDataVector *pscdVector = nullptr);
 
   protected:
     CCollisionInstanceVector m_StaticCollisionInstanceVector;
@@ -173,17 +172,17 @@ class CGraphicObjectInstance : public CGraphicCollisionObject
     CBaseCollisionInstance *GetCollisionInstanceData(DWORD dwIndex);
 
     // Height Data
-  public:
+
     void SetHeightInstance(CAttributeInstance *pAttributeInstance);
     void ClearHeightInstance();
 
-    void UpdateHeightInstance(CAttributeInstance *pAttributeInstance = 0);
+    void UpdateHeightInstance(CAttributeInstance *pAttributeInstance = nullptr);
 
     bool IsObjectHeight();
     bool GetObjectHeight(float fX, float fY, float *pfHeight);
 
   protected:
-    CAttributeInstance *m_pHeightAttributeInstance;
+    CAttributeInstance *m_pHeightAttributeInstance = nullptr;
     virtual void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance) = 0;
     virtual bool OnGetObjectHeight(float fX, float fY, float *pfHeight) = 0;
 };

@@ -4,7 +4,7 @@ class CFlyTrace : public CScreen
 {
   public:
     CFlyTrace();
-    virtual ~CFlyTrace();
+    ~CFlyTrace() override;
 
     void Destroy();
 
@@ -18,17 +18,16 @@ class CFlyTrace : public CScreen
   protected:
     void __Initialize();
 
-  protected:
-    typedef std::pair<float, D3DXVECTOR3> TTimePosition;
-    typedef std::deque<TTimePosition> TTimePositionDeque;
+    using TTimePosition = std::pair<float, D3DXVECTOR3>;
+    using TTimePositionDeque = std::deque<TTimePosition>;
 
     // CGraphicImageInstance m_ImageInstance;
     // LPDIRECT3DTEXTURE9 m_lpTexture;
 
-    bool m_bRectShape;
-    DWORD m_dwColor;
-    float m_fSize;
-    float m_fTailLength;
+    bool m_bRectShape = false;
+    DWORD m_dwColor = 0U;
+    float m_fSize = 0.0F;
+    float m_fTailLength = 0.0F;
 
     TTimePositionDeque m_TimePositionDeque;
 

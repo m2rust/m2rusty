@@ -33,7 +33,7 @@ long CPythonPlayer::SPlayerStatus::GetPoint(UINT ePoint)
 
 bool CPythonPlayer::AffectIndexToSkillIndex(DWORD dwAffectIndex, DWORD *pdwSkillIndex)
 {
-    if (m_kMap_dwAffectIndexToSkillIndex.end() == m_kMap_dwAffectIndexToSkillIndex.find(dwAffectIndex))
+    if (!m_kMap_dwAffectIndexToSkillIndex.contains(dwAffectIndex))
         return false;
 
     *pdwSkillIndex = m_kMap_dwAffectIndexToSkillIndex[dwAffectIndex];
@@ -42,7 +42,7 @@ bool CPythonPlayer::AffectIndexToSkillIndex(DWORD dwAffectIndex, DWORD *pdwSkill
 
 bool CPythonPlayer::AffectIndexToSkillSlotIndex(UINT uAffect, DWORD *pdwSkillSlotIndex)
 {
-    DWORD dwSkillIndex = m_kMap_dwAffectIndexToSkillIndex[uAffect];
+    DWORD const dwSkillIndex = m_kMap_dwAffectIndexToSkillIndex[uAffect];
 
     return GetSkillSlotIndex(dwSkillIndex, pdwSkillSlotIndex);
 }
@@ -66,7 +66,7 @@ bool CPythonPlayer::__GetPickedActorID(DWORD *pdwActorID)
 
 bool CPythonPlayer::__GetPickedItemID(DWORD *pdwItemID)
 {
-    CPythonItem &rkItemMgr = CPythonItem::Instance();
+    CPythonItem const &rkItemMgr = CPythonItem::Instance();
     return rkItemMgr.GetPickedItemID(pdwItemID);
 }
 
@@ -74,7 +74,7 @@ bool CPythonPlayer::__GetPickedGroundPos(TPixelPosition *pkPPosPicked)
 {
     CPythonBackground &rkBG = CPythonBackground::Instance();
 
-    TPixelPosition kPPosPicked;
+    TPixelPosition const kPPosPicked;
     if (rkBG.GetPickingPoint(pkPPosPicked))
     {
         pkPPosPicked->y = -pkPPosPicked->y;
@@ -86,7 +86,7 @@ bool CPythonPlayer::__GetPickedGroundPos(TPixelPosition *pkPPosPicked)
 
 void CPythonPlayer::NEW_GetMainActorPosition(TPixelPosition *pkPPosActor)
 {
-    TPixelPosition kPPosMainActor;
+    TPixelPosition const kPPosMainActor;
 
     IAbstractPlayer &rkPlayer = IAbstractPlayer::GetSingleton();
     CInstanceBase *pInstance = rkPlayer.NEW_GetMainActorPtr();
@@ -115,8 +115,8 @@ void CPythonPlayer::NEW_ShowEffect(int dwEID, TPixelPosition kPPosDst)
     if (dwEID >= EFFECT_NUM)
         return;
 
-    D3DXVECTOR3 kD3DVt3Pos(kPPosDst.x, -kPPosDst.y, kPPosDst.z);
-    D3DXVECTOR3 kD3DVt3Dir(0.0f, 0.0f, 1.0f);
+    D3DXVECTOR3 const kD3DVt3Pos(kPPosDst.x, -kPPosDst.y, kPPosDst.z);
+    D3DXVECTOR3 const kD3DVt3Dir(0.0f, 0.0f, 1.0f);
 
     CEffectManager &rkEftMgr = CEffectManager::Instance();
     rkEftMgr.CreateEffect(m_adwEffect[dwEID], kD3DVt3Pos, kD3DVt3Dir);
@@ -150,7 +150,9 @@ void CPythonPlayer::Update()
             TPixelPosition PixelPosition;
             pInstance->NEW_GetPixelPosition(&PixelPosition);
 
-            if (abs(int(PixelPosition.x) - m_ixDestPos) + abs(int(PixelPosition.y) - m_iyDestPos) < 10000)
+            if (abs(static_cast<int>(PixelPosition.x) - m_ixDestPos) +
+                    abs(static_cast<int>(PixelPosition.y) - m_iyDestPos) <
+                10000)
             {
                 m_isDestPosition = FALSE;
             }
@@ -166,10 +168,10 @@ void CPythonPlayer::Update()
 
     if (m_isConsumingStamina)
     {
-        float fElapsedTime = CTimer::Instance().GetElapsedSecond();
+        float const fElapsedTime = CTimer::Instance().GetElapsedSecond();
         m_fCurrentStamina -= (fElapsedTime * m_fConsumeStaminaPerSec);
 
-        SetStatus(POINT_STAMINA, DWORD(m_fCurrentStamina));
+        SetStatus(POINT_STAMINA, static_cast<DWORD>(m_fCurrentStamina));
 
         PyCallClassMemberFunc(m_ppyGameWindow, "RefreshStamina", Py_BuildValue("()"));
     }
@@ -193,13 +195,13 @@ bool CPythonPlayer::__IsUsingChargeSkill()
     if (m_dwSkillSlotIndexReserved >= SKILL_MAX_NUM)
         return false;
 
-    TSkillInstance &rkSkillInst = m_playerStatus.aSkill[m_dwSkillSlotIndexReserved];
+    TSkillInstance const &rkSkillInst = m_playerStatus.aSkill[m_dwSkillSlotIndexReserved];
 
-    CPythonSkill::TSkillData *pSkillData;
+    CPythonSkill::TSkillData *pSkillData = nullptr;
     if (!CPythonSkill::Instance().GetSkillData(rkSkillInst.dwIndex, &pSkillData))
         return false;
 
-    return pSkillData->IsChargeSkill() ? true : false;
+    return pSkillData->IsChargeSkill() != 0;
 }
 
 void CPythonPlayer::__Update_AutoAttack()
@@ -252,7 +254,8 @@ void CPythonPlayer::__Update_NotifyGuildAreaEvent()
         TPixelPosition kPixelPosition;
         pkInstMain->NEW_GetPixelPosition(&kPixelPosition);
 
-        DWORD dwAreaID = CPythonMiniMap::Instance().GetGuildAreaID(ULONG(kPixelPosition.x), ULONG(kPixelPosition.y));
+        DWORD const dwAreaID = CPythonMiniMap::Instance().GetGuildAreaID(static_cast<ULONG>(kPixelPosition.x),
+                                                                         static_cast<ULONG>(kPixelPosition.y));
 
         if (dwAreaID != m_inGuildAreaID)
         {
@@ -318,7 +321,7 @@ void CPythonPlayer::SetRace(DWORD dwRace)
     m_dwRace = dwRace;
 }
 
-DWORD CPythonPlayer::GetRace()
+DWORD CPythonPlayer::GetRace() const
 {
     return m_dwRace;
 }
@@ -364,24 +367,24 @@ DWORD CPythonPlayer::__GetWeaponAtk(DWORD dwWeaponPower)
 
 DWORD CPythonPlayer::__GetTotalAtk(DWORD dwWeaponPower, DWORD dwRefineBonus)
 {
-    DWORD dwLvAtk = __GetLevelAtk();
-    DWORD dwStAtk = __GetStatAtk();
+    DWORD const dwLvAtk = __GetLevelAtk();
+    DWORD const dwStAtk = __GetStatAtk();
 
     /////
 
-    DWORD dwWepAtk;
-    DWORD dwTotalAtk;
+    DWORD dwWepAtk = 0;
+    DWORD dwTotalAtk = 0;
 
     if (LocaleService_IsCHEONMA())
     {
         dwWepAtk = __GetWeaponAtk(dwWeaponPower + dwRefineBonus);
-        dwTotalAtk = dwLvAtk + (dwStAtk + dwWepAtk) * (GetStatus(POINT_DX) + 210) / 300;
+        dwTotalAtk = dwLvAtk + ((dwStAtk + dwWepAtk) * (GetStatus(POINT_DX) + 210) / 300);
     }
     else
     {
-        int hr = __GetHitRate();
+        int const hr = __GetHitRate();
         dwWepAtk = __GetWeaponAtk(dwWeaponPower + dwRefineBonus);
-        dwTotalAtk = dwLvAtk + (dwStAtk + dwWepAtk) * hr / 100;
+        dwTotalAtk = dwLvAtk + ((dwStAtk + dwWepAtk) * hr / 100);
     }
 
     return dwTotalAtk;
@@ -531,8 +534,8 @@ void CPythonPlayer::MoveItemData(TItemPos SrcCell, TItemPos DstCell)
     if (!SrcCell.IsValidCell() || !DstCell.IsValidCell())
         return;
 
-    TItemData src_item(*GetItemData(SrcCell));
-    TItemData dst_item(*GetItemData(DstCell));
+    TItemData const src_item(*GetItemData(SrcCell));
+    TItemData const dst_item(*GetItemData(DstCell));
     SetItemData(DstCell, src_item);
     SetItemData(SrcCell, dst_item);
 }
@@ -540,7 +543,7 @@ void CPythonPlayer::MoveItemData(TItemPos SrcCell, TItemPos DstCell)
 const TItemData *CPythonPlayer::GetItemData(TItemPos Cell) const
 {
     if (!Cell.IsValidCell())
-        return NULL;
+        return nullptr;
 
     switch (Cell.window_type)
     {
@@ -550,7 +553,7 @@ const TItemData *CPythonPlayer::GetItemData(TItemPos Cell) const
     case DRAGON_SOUL_INVENTORY:
         return &m_playerStatus.aDSItem[Cell.cell];
     default:
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -561,7 +564,7 @@ void CPythonPlayer::SetItemData(TItemPos Cell, const TItemData &c_rkItemInst)
 
     if (c_rkItemInst.vnum != 0)
     {
-        CItemData *pItemData;
+        CItemData *pItemData = nullptr;
         if (!CItemManager::Instance().GetItemDataPointer(c_rkItemInst.vnum, &pItemData))
         {
             TraceError("CPythonPlayer::SetItemData(window_type : %d, "
@@ -596,7 +599,7 @@ DWORD CPythonPlayer::GetItemFlags(TItemPos Cell)
     if (!Cell.IsValidCell())
         return 0;
     const TItemData *pItem = GetItemData(Cell);
-    assert(pItem != NULL);
+    assert(pItem != nullptr);
     return pItem->flags;
 }
 
@@ -605,19 +608,19 @@ DWORD CPythonPlayer::GetItemCount(TItemPos Cell)
     if (!Cell.IsValidCell())
         return 0;
     const TItemData *pItem = GetItemData(Cell);
-    if (pItem == NULL)
+    if (pItem == nullptr)
+    {
         return 0;
-    else
-        return pItem->count;
+    }
+    return pItem->count;
 }
 
 DWORD CPythonPlayer::GetItemCountByVnum(DWORD dwVnum)
 {
     DWORD dwCount = 0;
 
-    for (int i = 0; i < c_Inventory_Count; ++i)
+    for (const auto &c_rItemData : m_playerStatus.aItem)
     {
-        const TItemData &c_rItemData = m_playerStatus.aItem[i];
         if (c_rItemData.vnum == dwVnum)
         {
             dwCount += c_rItemData.count;
@@ -627,7 +630,7 @@ DWORD CPythonPlayer::GetItemCountByVnum(DWORD dwVnum)
     return dwCount;
 }
 
-DWORD CPythonPlayer::GetItemMetinSocket(TItemPos Cell, DWORD dwMetinSocketIndex)
+DWORD CPythonPlayer::GetItemMetinSocket(TItemPos Cell, DWORD dwMetinSocketIndex) const
 {
     if (!Cell.IsValidCell())
         return 0;
@@ -638,7 +641,7 @@ DWORD CPythonPlayer::GetItemMetinSocket(TItemPos Cell, DWORD dwMetinSocketIndex)
     return GetItemData(Cell)->alSockets[dwMetinSocketIndex];
 }
 
-void CPythonPlayer::GetItemAttribute(TItemPos Cell, DWORD dwAttrSlotIndex, BYTE *pbyType, short *psValue)
+void CPythonPlayer::GetItemAttribute(TItemPos Cell, DWORD dwAttrSlotIndex, BYTE *pbyType, short *psValue) const
 {
     *pbyType = 0;
     *psValue = 0;
@@ -683,7 +686,7 @@ void CPythonPlayer::SetItemAttribute(TItemPos Cell, DWORD dwAttrIndex, BYTE byTy
     (const_cast<TItemData *>(GetItemData(Cell)))->aAttr[dwAttrIndex].sValue = sValue;
 }
 
-int CPythonPlayer::GetQuickPage()
+int CPythonPlayer::GetQuickPage() const
 {
     return m_playerStatus.lQuickPageIndex;
 }
@@ -691,30 +694,36 @@ int CPythonPlayer::GetQuickPage()
 void CPythonPlayer::SetQuickPage(int nQuickPageIndex)
 {
     if (nQuickPageIndex < 0)
+    {
         m_playerStatus.lQuickPageIndex = QUICKSLOT_MAX_LINE + nQuickPageIndex;
+    }
     else if (nQuickPageIndex >= QUICKSLOT_MAX_LINE)
+    {
         m_playerStatus.lQuickPageIndex = nQuickPageIndex % QUICKSLOT_MAX_LINE;
+    }
     else
+    {
         m_playerStatus.lQuickPageIndex = nQuickPageIndex;
+    }
 
     PyCallClassMemberFunc(m_ppyGameWindow, "RefreshInventory", Py_BuildValue("()"));
 }
 
-DWORD CPythonPlayer::LocalQuickSlotIndexToGlobalQuickSlotIndex(DWORD dwLocalSlotIndex)
+DWORD CPythonPlayer::LocalQuickSlotIndexToGlobalQuickSlotIndex(DWORD dwLocalSlotIndex) const
 {
-    return m_playerStatus.lQuickPageIndex * QUICKSLOT_MAX_COUNT_PER_LINE + dwLocalSlotIndex;
+    return (m_playerStatus.lQuickPageIndex * QUICKSLOT_MAX_COUNT_PER_LINE) + dwLocalSlotIndex;
 }
 
 void CPythonPlayer::GetGlobalQuickSlotData(DWORD dwGlobalSlotIndex, DWORD *pdwWndType, DWORD *pdwWndItemPos)
 {
-    TQuickSlot &rkQuickSlot = __RefGlobalQuickSlot(dwGlobalSlotIndex);
+    TQuickSlot const &rkQuickSlot = __RefGlobalQuickSlot(dwGlobalSlotIndex);
     *pdwWndType = rkQuickSlot.Type;
     *pdwWndItemPos = rkQuickSlot.Position;
 }
 
 void CPythonPlayer::GetLocalQuickSlotData(DWORD dwSlotPos, DWORD *pdwWndType, DWORD *pdwWndItemPos)
 {
-    TQuickSlot &rkQuickSlot = __RefLocalQuickSlot(dwSlotPos);
+    TQuickSlot const &rkQuickSlot = __RefLocalQuickSlot(dwSlotPos);
     *pdwWndType = rkQuickSlot.Type;
     *pdwWndItemPos = rkQuickSlot.Position;
 }
@@ -742,12 +751,14 @@ void CPythonPlayer::RemoveQuickSlotByValue(int iType, int iPosition)
     for (BYTE i = 0; i < QUICKSLOT_MAX_NUM; ++i)
     {
         if (iType == m_playerStatus.aQuickSlot[i].Type)
+        {
             if (iPosition == m_playerStatus.aQuickSlot[i].Position)
                 CPythonNetworkStream::Instance().SendQuickSlotDelPacket(i);
+        }
     }
 }
 
-char CPythonPlayer::IsItem(TItemPos Cell)
+char CPythonPlayer::IsItem(TItemPos Cell) const
 {
     if (!Cell.IsValidCell())
         return 0;
@@ -759,10 +770,11 @@ void CPythonPlayer::RequestMoveGlobalQuickSlotToLocalQuickSlot(DWORD dwGlobalSrc
 {
     // DWORD
     // dwGlobalSrcSlotIndex=LocalQuickSlotIndexToGlobalQuickSlotIndex(dwLocalSrcSlotIndex);
-    DWORD dwGlobalDstSlotIndex = LocalQuickSlotIndexToGlobalQuickSlotIndex(dwLocalDstSlotIndex);
+    DWORD const dwGlobalDstSlotIndex = LocalQuickSlotIndexToGlobalQuickSlotIndex(dwLocalDstSlotIndex);
 
     CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
-    rkNetStream.SendQuickSlotMovePacket((BYTE)dwGlobalSrcSlotIndex, (BYTE)dwGlobalDstSlotIndex);
+    rkNetStream.SendQuickSlotMovePacket(static_cast<BYTE>(dwGlobalSrcSlotIndex),
+                                        static_cast<BYTE>(dwGlobalDstSlotIndex));
 }
 
 void CPythonPlayer::RequestAddLocalQuickSlot(DWORD dwLocalSlotIndex, DWORD dwWndType, DWORD dwWndItemPos)
@@ -770,23 +782,25 @@ void CPythonPlayer::RequestAddLocalQuickSlot(DWORD dwLocalSlotIndex, DWORD dwWnd
     if (dwLocalSlotIndex >= QUICKSLOT_MAX_COUNT_PER_LINE)
         return;
 
-    DWORD dwGlobalSlotIndex = LocalQuickSlotIndexToGlobalQuickSlotIndex(dwLocalSlotIndex);
+    DWORD const dwGlobalSlotIndex = LocalQuickSlotIndexToGlobalQuickSlotIndex(dwLocalSlotIndex);
 
     CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
-    rkNetStream.SendQuickSlotAddPacket((BYTE)dwGlobalSlotIndex, (BYTE)dwWndType, (BYTE)dwWndItemPos);
+    rkNetStream.SendQuickSlotAddPacket(static_cast<BYTE>(dwGlobalSlotIndex), static_cast<BYTE>(dwWndType),
+                                       static_cast<BYTE>(dwWndItemPos));
 }
 
 void CPythonPlayer::RequestAddToEmptyLocalQuickSlot(DWORD dwWndType, DWORD dwWndItemPos)
 {
     for (int i = 0; i < QUICKSLOT_MAX_COUNT_PER_LINE; ++i)
     {
-        TQuickSlot &rkQuickSlot = __RefLocalQuickSlot(i);
+        TQuickSlot const &rkQuickSlot = __RefLocalQuickSlot(i);
 
         if (0 == rkQuickSlot.Type)
         {
-            DWORD dwGlobalQuickSlotIndex = LocalQuickSlotIndexToGlobalQuickSlotIndex(i);
+            DWORD const dwGlobalQuickSlotIndex = LocalQuickSlotIndexToGlobalQuickSlotIndex(i);
             CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
-            rkNetStream.SendQuickSlotAddPacket((BYTE)dwGlobalQuickSlotIndex, (BYTE)dwWndType, (BYTE)dwWndItemPos);
+            rkNetStream.SendQuickSlotAddPacket(static_cast<BYTE>(dwGlobalQuickSlotIndex), static_cast<BYTE>(dwWndType),
+                                               static_cast<BYTE>(dwWndItemPos));
             return;
         }
     }
@@ -804,7 +818,7 @@ void CPythonPlayer::RequestDeleteGlobalQuickSlot(DWORD dwGlobalSlotIndex)
     // dwGlobalSlotIndex=LocalQuickSlotIndexToGlobalQuickSlotIndex(dwLocalSlotIndex);
 
     CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
-    rkNetStream.SendQuickSlotDelPacket((BYTE)dwGlobalSlotIndex);
+    rkNetStream.SendQuickSlotDelPacket(static_cast<BYTE>(dwGlobalSlotIndex));
 }
 
 void CPythonPlayer::RequestUseLocalQuickSlot(DWORD dwLocalSlotIndex)
@@ -812,15 +826,15 @@ void CPythonPlayer::RequestUseLocalQuickSlot(DWORD dwLocalSlotIndex)
     if (dwLocalSlotIndex >= QUICKSLOT_MAX_COUNT_PER_LINE)
         return;
 
-    DWORD dwRegisteredType;
-    DWORD dwRegisteredItemPos;
+    DWORD dwRegisteredType = 0;
+    DWORD dwRegisteredItemPos = 0;
     GetLocalQuickSlotData(dwLocalSlotIndex, &dwRegisteredType, &dwRegisteredItemPos);
 
     switch (dwRegisteredType)
     {
     case SLOT_TYPE_INVENTORY: {
         CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
-        rkNetStream.SendItemUsePacket(TItemPos(INVENTORY, (WORD)dwRegisteredItemPos));
+        rkNetStream.SendItemUsePacket(TItemPos(INVENTORY, static_cast<WORD>(dwRegisteredItemPos)));
         break;
     }
     case SLOT_TYPE_SKILL: {
@@ -892,12 +906,12 @@ bool CPythonPlayer::IsEquipItemInSlot(TItemPos Cell)
 
     const TItemData *pData = GetItemData(Cell);
 
-    if (NULL == pData)
+    if (nullptr == pData)
     {
         return false;
     }
 
-    DWORD dwItemIndex = pData->vnum;
+    DWORD const dwItemIndex = pData->vnum;
 
     CItemManager::Instance().SelectItemData(dwItemIndex);
     CItemData *pItemData = CItemManager::Instance().GetSelectedItemDataPointer();
@@ -909,7 +923,7 @@ bool CPythonPlayer::IsEquipItemInSlot(TItemPos Cell)
         return false;
     }
 
-    return pItemData->IsEquipment() ? true : false;
+    return pItemData->IsEquipment() != 0;
 }
 
 void CPythonPlayer::SetSkill(DWORD dwSlotIndex, DWORD dwSkillIndex)
@@ -931,7 +945,7 @@ int CPythonPlayer::GetSkillIndex(DWORD dwSlotIndex)
 
 bool CPythonPlayer::GetSkillSlotIndex(DWORD dwSkillIndex, DWORD *pdwSlotIndex)
 {
-    std::map<DWORD, DWORD>::iterator f = m_skillSlotDict.find(dwSkillIndex);
+    auto f = m_skillSlotDict.find(dwSkillIndex);
     if (m_skillSlotDict.end() == f)
     {
         return false;
@@ -987,7 +1001,7 @@ void CPythonPlayer::SetSkillLevel(DWORD dwSlotIndex, DWORD dwSkillLevel)
 
 void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD dwSkillLevel)
 {
-    DWORD dwSlotIndex;
+    DWORD dwSlotIndex = 0;
     if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
         return;
 
@@ -1032,7 +1046,7 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 
 void CPythonPlayer::SetSkillCoolTime(DWORD dwSkillIndex)
 {
-    DWORD dwSlotIndex;
+    DWORD dwSlotIndex = 0;
     if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
     {
         Tracenf("CPythonPlayer::SetSkillCoolTime(dwSkillIndex=%d) - FIND SLOT ERROR", dwSkillIndex);
@@ -1052,7 +1066,7 @@ void CPythonPlayer::SetSkillCoolTime(DWORD dwSkillIndex)
 
 void CPythonPlayer::EndSkillCoolTime(DWORD dwSkillIndex)
 {
-    DWORD dwSlotIndex;
+    DWORD dwSlotIndex = 0;
     if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
     {
         Tracenf("CPythonPlayer::EndSkillCoolTime(dwSkillIndex=%d) - FIND SLOT ERROR", dwSkillIndex);
@@ -1131,9 +1145,9 @@ BOOL CPythonPlayer::IsToggleSkill(DWORD dwSlotIndex)
     if (dwSlotIndex >= SKILL_MAX_NUM)
         return FALSE;
 
-    DWORD dwSkillIndex = m_playerStatus.aSkill[dwSlotIndex].dwIndex;
+    DWORD const dwSkillIndex = m_playerStatus.aSkill[dwSlotIndex].dwIndex;
 
-    CPythonSkill::TSkillData *pSkillData;
+    CPythonSkill::TSkillData *pSkillData = nullptr;
     if (!CPythonSkill::Instance().GetSkillData(dwSkillIndex, &pSkillData))
         return FALSE;
 
@@ -1145,7 +1159,7 @@ void CPythonPlayer::SetPlayTime(DWORD dwPlayTime)
     m_dwPlayTime = dwPlayTime;
 }
 
-DWORD CPythonPlayer::GetPlayTime()
+DWORD CPythonPlayer::GetPlayTime() const
 {
     return m_dwPlayTime;
 }
@@ -1157,20 +1171,21 @@ void CPythonPlayer::SendClickItemPacket(DWORD dwIID)
 
     static DWORD s_dwNextTCPTime = 0;
 
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
 
     if (dwCurTime >= s_dwNextTCPTime)
     {
         s_dwNextTCPTime = dwCurTime + 500;
 
-        const char *c_szOwnerName;
+        const char *c_szOwnerName = nullptr;
         if (!CPythonItem::Instance().GetOwnership(dwIID, &c_szOwnerName))
             return;
 
         if (strlen(c_szOwnerName) > 0)
+        {
             if (0 != strcmp(c_szOwnerName, GetName()))
             {
-                CItemData *pItemData;
+                CItemData *pItemData = nullptr;
                 if (!CItemManager::Instance().GetItemDataPointer(
                         CPythonItem::Instance().GetVirtualNumberOfGroundItem(dwIID), &pItemData))
                 {
@@ -1186,6 +1201,7 @@ void CPythonPlayer::SendClickItemPacket(DWORD dwIID)
                     return;
                 }
             }
+        }
 
         CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
         rkNetStream.SendItemPickUpPacket(dwIID);
@@ -1197,17 +1213,23 @@ void CPythonPlayer::__SendClickActorPacket(CInstanceBase &rkInstVictim)
     // 말을 타고 광산을 캐는 것에 대한 예외 처리
     CInstanceBase *pkInstMain = NEW_GetMainActorPtr();
     if (pkInstMain)
+    {
         if (pkInstMain->IsHoldingPickAxe())
+        {
             if (pkInstMain->IsMountingHorse())
+            {
                 if (rkInstVictim.IsResource())
                 {
                     PyCallClassMemberFunc(m_ppyGameWindow, "OnCannotMining", Py_BuildValue("()"));
                     return;
                 }
+            }
+        }
+    }
 
     static DWORD s_dwNextTCPTime = 0;
 
-    DWORD dwCurTime = ELTimer_GetMSec();
+    DWORD const dwCurTime = ELTimer_GetMSec();
 
     if (dwCurTime >= s_dwNextTCPTime)
     {
@@ -1215,7 +1237,7 @@ void CPythonPlayer::__SendClickActorPacket(CInstanceBase &rkInstVictim)
 
         CPythonNetworkStream &rkNetStream = CPythonNetworkStream::Instance();
 
-        DWORD dwVictimVID = rkInstVictim.GetVirtualID();
+        DWORD const dwVictimVID = rkInstVictim.GetVirtualID();
         rkNetStream.SendOnClickPacket(dwVictimVID);
     }
 }
@@ -1246,7 +1268,7 @@ void CPythonPlayer::EndEmotionProcess()
     m_bisProcessingEmotion = FALSE;
 }
 
-BOOL CPythonPlayer::__IsProcessingEmotion()
+BOOL CPythonPlayer::__IsProcessingEmotion() const
 {
     return m_bisProcessingEmotion;
 }
@@ -1274,9 +1296,10 @@ void CPythonPlayer::AlarmHaveToGo()
     TPixelPosition PixelPosition;
     pInstance->NEW_GetPixelPosition(&PixelPosition);
 
-    float fAngle = GetDegreeFromPosition2(PixelPosition.x, PixelPosition.y, float(m_ixDestPos), float(m_iyDestPos));
+    float fAngle = GetDegreeFromPosition2(PixelPosition.x, PixelPosition.y, static_cast<float>(m_ixDestPos),
+                                          static_cast<float>(m_iyDestPos));
     fAngle = fmod(540.0f - fAngle, 360.0f);
-    D3DXVECTOR3 v3Rotation(0.0f, 0.0f, fAngle);
+    D3DXVECTOR3 const v3Rotation(0.0f, 0.0f, fAngle);
 
     PixelPosition.y *= -1.0f;
 
@@ -1300,7 +1323,7 @@ void CPythonPlayer::AppendPartyMember(DWORD dwPID, const char *c_szName)
 
 void CPythonPlayer::LinkPartyMember(DWORD dwPID, DWORD dwVID)
 {
-    TPartyMemberInfo *pPartyMemberInfo;
+    TPartyMemberInfo *pPartyMemberInfo = nullptr;
     if (!GetPartyMemberPtr(dwPID, &pPartyMemberInfo))
     {
         TraceError(" CPythonPlayer::LinkPartyMember(dwPID=%d, dwVID=%d) - "
@@ -1318,7 +1341,7 @@ void CPythonPlayer::LinkPartyMember(DWORD dwPID, DWORD dwVID)
 
 void CPythonPlayer::UnlinkPartyMember(DWORD dwPID)
 {
-    TPartyMemberInfo *pPartyMemberInfo;
+    TPartyMemberInfo *pPartyMemberInfo = nullptr;
     if (!GetPartyMemberPtr(dwPID, &pPartyMemberInfo))
     {
         TraceError(" CPythonPlayer::UnlinkPartyMember(dwPID=%d) - Failed to "
@@ -1332,7 +1355,7 @@ void CPythonPlayer::UnlinkPartyMember(DWORD dwPID)
 
 void CPythonPlayer::UpdatePartyMemberInfo(DWORD dwPID, BYTE byState, BYTE byHPPercentage)
 {
-    TPartyMemberInfo *pPartyMemberInfo;
+    TPartyMemberInfo *pPartyMemberInfo = nullptr;
     if (!GetPartyMemberPtr(dwPID, &pPartyMemberInfo))
     {
         TraceError(" CPythonPlayer::UpdatePartyMemberInfo(dwPID=%d, byState=%d, "
@@ -1356,7 +1379,7 @@ void CPythonPlayer::UpdatePartyMemberAffect(DWORD dwPID, BYTE byAffectSlotIndex,
         return;
     }
 
-    TPartyMemberInfo *pPartyMemberInfo;
+    TPartyMemberInfo *pPartyMemberInfo = nullptr;
     if (!GetPartyMemberPtr(dwPID, &pPartyMemberInfo))
     {
         TraceError(" CPythonPlayer::UpdatePartyMemberAffect(dwPID=%d, "
@@ -1372,7 +1395,7 @@ void CPythonPlayer::UpdatePartyMemberAffect(DWORD dwPID, BYTE byAffectSlotIndex,
 void CPythonPlayer::RemovePartyMember(DWORD dwPID)
 {
     DWORD dwVID = 0;
-    TPartyMemberInfo *pPartyMemberInfo;
+    TPartyMemberInfo *pPartyMemberInfo = nullptr;
     if (GetPartyMemberPtr(dwPID, &pPartyMemberInfo))
     {
         dwVID = pPartyMemberInfo->dwVID;
@@ -1390,10 +1413,10 @@ void CPythonPlayer::RemovePartyMember(DWORD dwPID)
 
 bool CPythonPlayer::IsPartyMemberByVID(DWORD dwVID)
 {
-    std::map<DWORD, TPartyMemberInfo>::iterator itor = m_PartyMemberMap.begin();
+    auto itor = m_PartyMemberMap.begin();
     for (; itor != m_PartyMemberMap.end(); ++itor)
     {
-        TPartyMemberInfo &rPartyMemberInfo = itor->second;
+        TPartyMemberInfo const &rPartyMemberInfo = itor->second;
         if (dwVID == rPartyMemberInfo.dwVID)
             return true;
     }
@@ -1403,11 +1426,11 @@ bool CPythonPlayer::IsPartyMemberByVID(DWORD dwVID)
 
 bool CPythonPlayer::IsPartyMemberByName(const char *c_szName)
 {
-    std::map<DWORD, TPartyMemberInfo>::iterator itor = m_PartyMemberMap.begin();
+    auto itor = m_PartyMemberMap.begin();
     for (; itor != m_PartyMemberMap.end(); ++itor)
     {
-        TPartyMemberInfo &rPartyMemberInfo = itor->second;
-        if (0 == rPartyMemberInfo.strName.compare(c_szName))
+        TPartyMemberInfo const &rPartyMemberInfo = itor->second;
+        if (c_szName == rPartyMemberInfo.strName)
             return true;
     }
 
@@ -1416,7 +1439,7 @@ bool CPythonPlayer::IsPartyMemberByName(const char *c_szName)
 
 bool CPythonPlayer::GetPartyMemberPtr(DWORD dwPID, TPartyMemberInfo **ppPartyMemberInfo)
 {
-    std::map<DWORD, TPartyMemberInfo>::iterator itor = m_PartyMemberMap.find(dwPID);
+    auto itor = m_PartyMemberMap.find(dwPID);
 
     if (m_PartyMemberMap.end() == itor)
         return false;
@@ -1428,7 +1451,7 @@ bool CPythonPlayer::GetPartyMemberPtr(DWORD dwPID, TPartyMemberInfo **ppPartyMem
 
 bool CPythonPlayer::PartyMemberPIDToVID(DWORD dwPID, DWORD *pdwVID)
 {
-    std::map<DWORD, TPartyMemberInfo>::iterator itor = m_PartyMemberMap.find(dwPID);
+    auto itor = m_PartyMemberMap.find(dwPID);
 
     if (m_PartyMemberMap.end() == itor)
         return false;
@@ -1441,10 +1464,10 @@ bool CPythonPlayer::PartyMemberPIDToVID(DWORD dwPID, DWORD *pdwVID)
 
 bool CPythonPlayer::PartyMemberVIDToPID(DWORD dwVID, DWORD *pdwPID)
 {
-    std::map<DWORD, TPartyMemberInfo>::iterator itor = m_PartyMemberMap.begin();
+    auto itor = m_PartyMemberMap.begin();
     for (; itor != m_PartyMemberMap.end(); ++itor)
     {
-        TPartyMemberInfo &rPartyMemberInfo = itor->second;
+        TPartyMemberInfo const &rPartyMemberInfo = itor->second;
         if (dwVID == rPartyMemberInfo.dwVID)
         {
             *pdwPID = rPartyMemberInfo.dwPID;
@@ -1484,15 +1507,15 @@ void CPythonPlayer::ForgetInstance(DWORD dwVID)
 
 bool CPythonPlayer::IsChallengeInstance(DWORD dwVID)
 {
-    return m_ChallengeInstanceSet.end() != m_ChallengeInstanceSet.find(dwVID);
+    return m_ChallengeInstanceSet.contains(dwVID);
 }
 bool CPythonPlayer::IsRevengeInstance(DWORD dwVID)
 {
-    return m_RevengeInstanceSet.end() != m_RevengeInstanceSet.find(dwVID);
+    return m_RevengeInstanceSet.contains(dwVID);
 }
 bool CPythonPlayer::IsCantFightInstance(DWORD dwVID)
 {
-    return m_CantFightInstanceSet.end() != m_CantFightInstanceSet.find(dwVID);
+    return m_CantFightInstanceSet.contains(dwVID);
 }
 
 void CPythonPlayer::OpenPrivateShop()
@@ -1504,7 +1527,7 @@ void CPythonPlayer::ClosePrivateShop()
     m_isOpenPrivateShop = FALSE;
 }
 
-bool CPythonPlayer::IsOpenPrivateShop()
+bool CPythonPlayer::IsOpenPrivateShop() const
 {
     return m_isOpenPrivateShop;
 }
@@ -1514,7 +1537,7 @@ void CPythonPlayer::SetObserverMode(bool isEnable)
     m_isObserverMode = isEnable;
 }
 
-bool CPythonPlayer::IsObserverMode()
+bool CPythonPlayer::IsObserverMode() const
 {
     return m_isObserverMode;
 }
@@ -1534,8 +1557,8 @@ BOOL CPythonPlayer::__ToggleLevelLimit()
 void CPythonPlayer::StartStaminaConsume(DWORD dwConsumePerSec, DWORD dwCurrentStamina)
 {
     m_isConsumingStamina = TRUE;
-    m_fConsumeStaminaPerSec = float(dwConsumePerSec);
-    m_fCurrentStamina = float(dwCurrentStamina);
+    m_fConsumeStaminaPerSec = static_cast<float>(dwConsumePerSec);
+    m_fCurrentStamina = static_cast<float>(dwCurrentStamina);
 
     SetStatus(POINT_STAMINA, dwCurrentStamina);
 }
@@ -1544,7 +1567,7 @@ void CPythonPlayer::StopStaminaConsume(DWORD dwCurrentStamina)
 {
     m_isConsumingStamina = FALSE;
     m_fConsumeStaminaPerSec = 0.0f;
-    m_fCurrentStamina = float(dwCurrentStamina);
+    m_fCurrentStamina = static_cast<float>(dwCurrentStamina);
 
     SetStatus(POINT_STAMINA, dwCurrentStamina);
 }
@@ -1570,22 +1593,26 @@ void CPythonPlayer::NEW_ClearSkillData(bool bAll)
     for (it = m_skillSlotDict.begin(); it != m_skillSlotDict.end();)
     {
         if (bAll || __GetSkillType(it->first) == CPythonSkill::SKILL_TYPE_ACTIVE)
+        {
             it = m_skillSlotDict.erase(it);
+        }
         else
+        {
             ++it;
+        }
     }
 
-    for (int i = 0; i < SKILL_MAX_NUM; ++i)
+    for (auto &i : m_playerStatus.aSkill)
     {
-        ZeroMemory(&m_playerStatus.aSkill[i], sizeof(TSkillInstance));
+        ZeroMemory(&i, sizeof(TSkillInstance));
     }
 
-    for (int j = 0; j < SKILL_MAX_NUM; ++j)
+    for (auto &j : m_playerStatus.aSkill)
     {
         // 2004.09.30.myevan.스킬갱신시 스킬 포인트업[+] 버튼이 안나와 처리
-        m_playerStatus.aSkill[j].iGrade = 0;
-        m_playerStatus.aSkill[j].fcurEfficientPercentage = 0.0f;
-        m_playerStatus.aSkill[j].fnextEfficientPercentage = 0.05f;
+        j.iGrade = 0;
+        j.fcurEfficientPercentage = 0.0f;
+        j.fnextEfficientPercentage = 0.05f;
     }
 
     if (m_ppyGameWindow)
@@ -1657,7 +1684,7 @@ void CPythonPlayer::Clear()
     m_dwVIDPicked = 0;
     m_dwIIDPicked = 0;
 
-    m_dwcurSkillSlotIndex = DWORD(-1);
+    m_dwcurSkillSlotIndex = static_cast<DWORD>(-1);
 
     m_dwTargetVID = 0;
     m_dwTargetEndTime = 0;
@@ -1679,35 +1706,32 @@ void CPythonPlayer::Clear()
     __ClearAutoAttackTargetActorID();
 }
 
-CPythonPlayer::CPythonPlayer(void)
+CPythonPlayer::CPythonPlayer()
+    : m_ppyGameWindow(nullptr), m_dwPlayTime(0), m_iLastAlarmTime(0), m_isDestPosition(FALSE), m_ixDestPos(0),
+      m_iyDestPos(0), m_sysIsCoolTime(TRUE), m_sysIsLevelLimit(TRUE)
 {
     SetMovableGroundDistance(40.0f);
 
     // AffectIndex To SkillIndex
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_JEONGWI), 3));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_GEOMGYEONG), 4));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_CHEONGEUN), 19));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_GYEONGGONG), 49));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_EUNHYEONG), 34));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_GONGPO), 64));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_JUMAGAP), 65));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_HOSIN), 94));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_BOHO), 95));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_KWAESOK), 110));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_GICHEON), 96));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_JEUNGRYEOK), 111));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_PABEOP), 66));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_FALLEN_CHEONGEUN), 19));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_JEONGWI), 3));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_GEOMGYEONG), 4));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_CHEONGEUN), 19));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_GYEONGGONG), 49));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_EUNHYEONG), 34));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_GONGPO), 64));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_JUMAGAP), 65));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_HOSIN), 94));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_BOHO), 95));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_KWAESOK), 110));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_GICHEON), 96));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_JEUNGRYEOK), 111));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_PABEOP), 66));
+    m_kMap_dwAffectIndexToSkillIndex.insert(
+        std::make_pair(static_cast<int>(CInstanceBase::AFFECT_FALLEN_CHEONGEUN), 19));
     /////
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_GWIGEOM), 63));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_MUYEONG), 78));
-    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(int(CInstanceBase::AFFECT_HEUKSIN), 79));
-
-    m_ppyGameWindow = NULL;
-
-    m_sysIsCoolTime = TRUE;
-    m_sysIsLevelLimit = TRUE;
-    m_dwPlayTime = 0;
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_GWIGEOM), 63));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_MUYEONG), 78));
+    m_kMap_dwAffectIndexToSkillIndex.insert(std::make_pair(static_cast<int>(CInstanceBase::AFFECT_HEUKSIN), 79));
 
     m_aeMBFButton[MBT_LEFT] = CPythonPlayer::MBF_SMART;
     m_aeMBFButton[MBT_RIGHT] = CPythonPlayer::MBF_CAMERA;
@@ -1715,14 +1739,7 @@ CPythonPlayer::CPythonPlayer(void)
 
     memset(m_adwEffect, 0, sizeof(m_adwEffect));
 
-    m_isDestPosition = FALSE;
-    m_ixDestPos = 0;
-    m_iyDestPos = 0;
-    m_iLastAlarmTime = 0;
-
     Clear();
 }
 
-CPythonPlayer::~CPythonPlayer(void)
-{
-}
+CPythonPlayer::~CPythonPlayer() = default;

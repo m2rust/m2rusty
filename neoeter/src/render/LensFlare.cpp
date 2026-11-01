@@ -28,8 +28,10 @@
 #include <Neoeter/Render/Camera.h>
 #include <Neoeter/Render/StateManager.h>
 #include <Neoeter/Render/ResourceManager.h>
-
 #include <math.h>
+
+#include <cmath>
+#include <utility>
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////
@@ -48,11 +50,11 @@ static float g_afColors[][4] = {{1.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0
 //	CLensFlare::CLensFlare
 
 CLensFlare::CLensFlare()
-    : m_fSunSize(0), m_fBeforeBright(0.0f), m_fAfterBright(0.0f), m_bFlareVisible(false), m_bDrawFlare(true),
-      m_bDrawBrightScreen(true), m_bEnabled(true), m_bShowMainFlare(true), m_fMaxBrightness(1.0f)
+    : m_pControlPixels(new float[c_nDepthTestDimension * c_nDepthTestDimension]),
+      m_pTestPixels(new float[c_nDepthTestDimension * c_nDepthTestDimension])
+
 {
-    m_pControlPixels = new float[c_nDepthTestDimension * c_nDepthTestDimension];
-    m_pTestPixels = new float[c_nDepthTestDimension * c_nDepthTestDimension];
+
     m_afColor[0] = m_afColor[1] = m_afColor[2] = 1.0f;
 }
 
@@ -70,7 +72,7 @@ CLensFlare::~CLensFlare()
 
 float CLensFlare::Interpolate(float fStart, float fEnd, float fPercent)
 {
-    return fStart + (fEnd - fStart) * fPercent;
+    return fStart + ((fEnd - fStart) * fPercent);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -80,21 +82,22 @@ void CLensFlare::Compute(const D3DXVECTOR3 &c_rv3LightDirection)
 {
     float afSunPos[3];
 
-    D3DXVECTOR3 v3Target = CCameraManager::Instance().GetCurrentCamera()->GetTarget();
+    D3DXVECTOR3 const v3Target = CCameraManager::Instance().GetCurrentCamera()->GetTarget();
 
-    afSunPos[0] = v3Target.x - c_rv3LightDirection.x * 99999999.0f;
-    afSunPos[1] = v3Target.y - c_rv3LightDirection.y * 99999999.0f;
-    afSunPos[2] = v3Target.z - c_rv3LightDirection.z * 99999999.0f;
+    afSunPos[0] = v3Target.x - (c_rv3LightDirection.x * 99999999.0f);
+    afSunPos[1] = v3Target.y - (c_rv3LightDirection.y * 99999999.0f);
+    afSunPos[2] = v3Target.z - (c_rv3LightDirection.z * 99999999.0f);
 
-    float fX, fY;
+    float fX = NAN;
+    float fY = NAN;
     ProjectPosition(afSunPos[0], afSunPos[1], afSunPos[2], &fX, &fY);
 
     // set flare location
     SetFlareLocation(fX, fY);
 
     // determine visibility
-    float fSunVectorMagnitude =
-        sqrtf(afSunPos[0] * afSunPos[0] + afSunPos[1] * afSunPos[1] + afSunPos[2] * afSunPos[2]);
+    float const fSunVectorMagnitude =
+        sqrtf((afSunPos[0] * afSunPos[0]) + (afSunPos[1] * afSunPos[1]) + (afSunPos[2] * afSunPos[2]));
     float afSunVector[3];
     afSunVector[0] = -afSunPos[0] / fSunVectorMagnitude;
     afSunVector[1] = -afSunPos[1] / fSunVectorMagnitude;
@@ -105,21 +108,25 @@ void CLensFlare::Compute(const D3DXVECTOR3 &c_rv3LightDirection)
     afCameraDirection[1] = ms_matView._23;
     afCameraDirection[2] = ms_matView._33;
 
-    float fDotProduct = (afSunVector[0] * afCameraDirection[0]) + (afSunVector[1] * afCameraDirection[1]) +
-                        (afSunVector[2] * afCameraDirection[2]);
+    float const fDotProduct = (afSunVector[0] * afCameraDirection[0]) + (afSunVector[1] * afCameraDirection[1]) +
+                              (afSunVector[2] * afCameraDirection[2]);
 
-    if (acosf(fDotProduct) < 0.5f * D3DX_PI)
+    if (acosf(fDotProduct) < 0.5f * std::numbers::pi_v<float>)
+    {
         SetVisible(true);
+    }
     else
+    {
         SetVisible(false);
+    }
 
     // set flare brightness
     fX /= ms_Viewport.Width;
     fY /= ms_Viewport.Height;
 
-    float fDistance = sqrtf(((0.5f - fX) * (0.5f - fX)) + ((0.5f - fY) * (0.5f - fY)));
-    float fBeforeBright = Interpolate(0.0f, c_fHalfMaxBright, 1.0f - (fDistance * c_fDistanceScale));
-    float fAfterBright = Interpolate(0.0f, 1.0f, 1.0f - (fDistance * c_fDistanceScale));
+    float const fDistance = sqrtf(((0.5f - fX) * (0.5f - fX)) + ((0.5f - fY) * (0.5f - fY)));
+    float const fBeforeBright = Interpolate(0.0f, c_fHalfMaxBright, 1.0f - (fDistance * c_fDistanceScale));
+    float const fAfterBright = Interpolate(0.0f, 1.0f, 1.0f - (fDistance * c_fDistanceScale));
 
     SetBrightnesses(fBeforeBright, fAfterBright);
 }
@@ -172,9 +179,9 @@ void CLensFlare::DrawBeforeFlare()
         glEnd();
     }
     */
-    float fAspectRatio = ms_Viewport.Width / float(ms_Viewport.Height);
-    float fHeight = m_fSunSize * fAspectRatio;
-    D3DXCOLOR color(1.0f, 1.0f, 1.0f, 1.0f);
+    float const fAspectRatio = ms_Viewport.Width / static_cast<float>(ms_Viewport.Height);
+    float const fHeight = m_fSunSize * fAspectRatio;
+    D3DXCOLOR const color(1.0f, 1.0f, 1.0f, 1.0f);
 
     SVertex vertices[4];
     vertices[0].x = -m_fSunSize;
@@ -206,7 +213,7 @@ void CLensFlare::DrawBeforeFlare()
     vertices[3].v = 1.0f;
 
     STATEMANAGER.SetTexture(0, m_SunFlareImageInstance.GetTexturePointer()->GetD3DTexture());
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(1, nullptr);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
@@ -245,7 +252,7 @@ void CLensFlare::DrawAfterFlare()
 ///////////////////////////////////////////////////////////////////////
 //	CLensFlare::SetMainFlare
 
-void CLensFlare::SetMainFlare(string strSunFile, float fSunSize)
+void CLensFlare::SetMainFlare(const string &strSunFile, float fSunSize)
 {
     if (m_bEnabled && m_bShowMainFlare)
     {
@@ -325,7 +332,7 @@ void CLensFlare::CharacterizeFlare(bool bEnabled, bool bShowMainFlare, float fMa
 void CLensFlare::Initialize(std::string strPath)
 {
     if (m_bEnabled)
-        m_cFlare.Init(strPath);
+        m_cFlare.Init(std::move(strPath));
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -334,11 +341,11 @@ void CLensFlare::SetFlareLocation(double dX, double dY)
 {
     if (m_bEnabled)
     {
-        m_afFlareWinPos[0] = float(dX);
-        m_afFlareWinPos[1] = float(dY);
+        m_afFlareWinPos[0] = static_cast<float>(dX);
+        m_afFlareWinPos[1] = static_cast<float>(dY);
 
-        m_afFlarePos[0] = float(dX) / ms_Viewport.Width;
-        m_afFlarePos[1] = float(dY) / ms_Viewport.Height;
+        m_afFlarePos[0] = static_cast<float>(dX) / ms_Viewport.Width;
+        m_afFlarePos[1] = static_cast<float>(dY) / ms_Viewport.Height;
     }
 }
 
@@ -377,8 +384,10 @@ void CLensFlare::AdjustBrightness()
         int nDifferent = 0;
 
         for (int i = 0; i < c_nDepthTestDimension * c_nDepthTestDimension; ++i)
+        {
             if (m_pTestPixels[i] != m_pControlPixels[i])
                 ++nDifferent;
+        }
 
         float fAdjust = (static_cast<float>(nDifferent) / (c_nDepthTestDimension * c_nDepthTestDimension));
         fAdjust = sqrtf(fAdjust) * 0.85f;
@@ -416,16 +425,24 @@ void CLensFlare::ClampBrightness()
 {
     // before
     if (m_fBeforeBright < 0.0f)
+    {
         m_fBeforeBright = 0.0f;
+    }
     else if (m_fBeforeBright > 1.0f)
+    {
         m_fBeforeBright = 1.0f;
+    }
 
     m_fBeforeBright *= m_fMaxBrightness;
 
     if (m_fAfterBright < 0.0f)
+    {
         m_fAfterBright = 0.0f;
+    }
     else if (m_fAfterBright > 1.0f)
+    {
         m_fAfterBright = 1.0f;
+    }
 
     m_fAfterBright *= m_fMaxBrightness;
 }
@@ -437,25 +454,21 @@ void CLensFlare::ClampBrightness()
 ///////////////////////////////////////////////////////////////////////
 //	CFlare::CFlare
 
-CFlare::CFlare()
-{
-}
+CFlare::CFlare() = default;
 
 ///////////////////////////////////////////////////////////////////////
 //	CFlare::~CFlare
 
-CFlare::~CFlare()
-{
-}
+CFlare::~CFlare() = default;
 
 ///////////////////////////////////////////////////////////////////////
 //	CFlare::Init
 
-void CFlare::Init(std::string strPath)
+void CFlare::Init(const std::string &strPath)
 {
     int i = 0;
 
-    while (g_strFiles[i] != "")
+    while (!g_strFiles[i].empty())
     {
         CResource *pResource =
             CResourceManager::Instance().GetResourcePointer((strPath + "/" + string(g_strFiles[i])).c_str());
@@ -463,7 +476,7 @@ void CFlare::Init(std::string strPath)
         if (!pResource->IsType(CGraphicImage::Type()))
             assert(false);
 
-        SFlarePiece *pPiece = new SFlarePiece;
+        auto *pPiece = new SFlarePiece;
 
         pPiece->m_imageInstance.SetImagePointer(static_cast<CGraphicImage *>(pResource));
         pPiece->m_fPosition = g_fPosition[i];
@@ -481,10 +494,10 @@ void CFlare::Draw(float fBrightScale, int nWidth, int nHeight, int nX, int nY)
 {
     STATEMANAGER.SaveRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 
-    float fDX = float(nX) - float(nWidth) / 2.0f;
-    float fDY = float(nY) - float(nHeight) / 2.0f;
+    float const fDX = static_cast<float>(nX) - (static_cast<float>(nWidth) / 2.0f);
+    float const fDY = static_cast<float>(nY) - (static_cast<float>(nHeight) / 2.0f);
 
-    STATEMANAGER.SetTexture(1, NULL);
+    STATEMANAGER.SetTexture(1, nullptr);
     STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
 
     STATEMANAGER.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
@@ -494,16 +507,16 @@ void CFlare::Draw(float fBrightScale, int nWidth, int nHeight, int nX, int nY)
     STATEMANAGER.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
     STATEMANAGER.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
 
-    for (unsigned int i = 0; i < m_vFlares.size(); i++)
+    for (auto &m_vFlare : m_vFlares)
     {
-        float fCenterX = float(nX) - (m_vFlares[i]->m_fPosition + 1.0f) * fDX;
-        float fCenterY = float(nY) - (m_vFlares[i]->m_fPosition + 1.0f) * fDY;
-        float fW = m_vFlares[i]->m_fWidth;
+        float const fCenterX = static_cast<float>(nX) - ((m_vFlare->m_fPosition + 1.0f) * fDX);
+        float const fCenterY = static_cast<float>(nY) - ((m_vFlare->m_fPosition + 1.0f) * fDY);
+        float const fW = m_vFlare->m_fWidth;
 
-        D3DXCOLOR d3dColor(m_vFlares[i]->m_pColor[0] * fBrightScale, m_vFlares[i]->m_pColor[1] * fBrightScale,
-                           m_vFlares[i]->m_pColor[2] * fBrightScale, m_vFlares[i]->m_pColor[3] * fBrightScale);
+        D3DXCOLOR const d3dColor(m_vFlare->m_pColor[0] * fBrightScale, m_vFlare->m_pColor[1] * fBrightScale,
+                                 m_vFlare->m_pColor[2] * fBrightScale, m_vFlare->m_pColor[3] * fBrightScale);
 
-        STATEMANAGER.SetTexture(0, m_vFlares[i]->m_imageInstance.GetTexturePointer()->GetD3DTexture());
+        STATEMANAGER.SetTexture(0, m_vFlare->m_imageInstance.GetTexturePointer()->GetD3DTexture());
 
         TVertex vertices[4];
 

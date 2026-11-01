@@ -8,21 +8,21 @@ namespace NSound
 {
 extern std::string strResult;
 
-typedef struct SSoundData
+using TSoundData = struct SSoundData
 {
-    float fTime;
+    float fTime = 0.0F;
     std::string strSoundFileName;
-} TSoundData;
-typedef struct SSoundInstance
+};
+using TSoundInstance = struct SSoundInstance
 {
-    DWORD dwFrame;
+    DWORD dwFrame = 0U;
     std::string strSoundFileName;
-} TSoundInstance;
-typedef std::vector<TSoundData> TSoundDataVector;
-typedef std::vector<TSoundInstance> TSoundInstanceVector;
+};
+using TSoundDataVector = std::vector<TSoundData>;
+using TSoundInstanceVector = std::vector<TSoundInstance>;
 
 bool LoadSoundInformationPiece(const char *c_szFileName, TSoundDataVector &rSoundDataVector,
-                               const char *c_szPathHeader = NULL);
+                               const char *c_szPathHeader = nullptr);
 bool SaveSoundInformationPiece(const char *c_szFileName, TSoundDataVector &rSoundDataVector);
 void DataToInstance(const TSoundDataVector &c_rSoundDataVector, TSoundInstanceVector *pSoundInstanceVector);
 

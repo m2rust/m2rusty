@@ -13,10 +13,10 @@ enum EResourceTypes
 class CPythonResource : public CSingleton<CPythonResource>
 {
   public:
-    typedef void (*TDestroyHandler)();
+    using TDestroyHandler = void (*)();
 
     CPythonResource();
-    virtual ~CPythonResource();
+    ~CPythonResource() override;
 
     void Destroy();
 

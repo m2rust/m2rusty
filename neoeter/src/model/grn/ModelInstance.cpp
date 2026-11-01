@@ -34,7 +34,7 @@ int CGrannyModelInstance::ResetLocalTime()
     return 0;
 }
 
-float CGrannyModelInstance::GetLocalTime()
+float CGrannyModelInstance::GetLocalTime() const
 {
     return m_fLocalTime;
 }
@@ -42,7 +42,7 @@ float CGrannyModelInstance::GetLocalTime()
 void CGrannyModelInstance::SetParentModelInstance(const CGrannyModelInstance *c_pParentModelInstance,
                                                   const char *c_szBoneName)
 {
-    int iBoneIndex;
+    int iBoneIndex = 0;
     if (!c_pParentModelInstance->GetBoneIndexByName(c_szBoneName, &iBoneIndex))
         return;
 
@@ -87,31 +87,31 @@ void CGrannyModelInstance::__Initialize()
     {
         m_pModel->Release();
     }
-    m_pModel = NULL;
-    mc_pParentInstance = NULL;
+    m_pModel = nullptr;
+    mc_pParentInstance = nullptr;
     m_iParentBoneIndex = 0;
 
-    m_pgrnModelInstance = NULL;
+    m_pgrnModelInstance = nullptr;
 
     // WORK
-    m_pgrnWorldPoseReal = NULL;
+    m_pgrnWorldPoseReal = nullptr;
     // END_OF_WORK
 
     // TEST
     // m_pgrnWorldPose = NULL;
-    m_ppkSkeletonInst = NULL;
+    m_ppkSkeletonInst = nullptr;
     // END_OF_TEST
 
-    m_meshMatrices = NULL;
-    m_pgrnCtrl = NULL;
-    m_pgrnAni = NULL;
+    m_meshMatrices = nullptr;
+    m_pgrnCtrl = nullptr;
+    m_pgrnAni = nullptr;
 
     m_dwOldUpdateFrame = 0;
 }
 
-CGrannyModelInstance::CGrannyModelInstance()
+CGrannyModelInstance::CGrannyModelInstance() : m_pModel(nullptr)
 {
-    m_pModel = NULL;
+
     __Initialize();
 }
 

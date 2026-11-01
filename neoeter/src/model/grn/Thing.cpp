@@ -16,21 +16,20 @@ CGraphicThing::~CGraphicThing()
 
 void CGraphicThing::Initialize()
 {
-    m_pgrnFile = NULL;
-    m_pgrnFileInfo = NULL;
-    m_pgrnAni = NULL;
+    m_pgrnFile = nullptr;
+    m_pgrnFileInfo = nullptr;
+    m_pgrnAni = nullptr;
 
-    m_models = NULL;
-    m_motions = NULL;
+    m_models = nullptr;
+    m_motions = nullptr;
 }
 
 void CGraphicThing::OnClear()
 {
-    if (m_motions)
-        delete[] m_motions;
 
-    if (m_models)
-        delete[] m_models;
+    delete[] m_motions;
+
+    delete[] m_models;
 
     if (m_pgrnFile)
         GrannyFreeFile(m_pgrnFile);
@@ -40,13 +39,13 @@ void CGraphicThing::OnClear()
 
 CGraphicThing::TType CGraphicThing::Type()
 {
-    static TType s_type = StringToType("CGraphicThing");
+    static TType const s_type = StringToType("CGraphicThing");
     return s_type;
 }
 
 bool CGraphicThing::OnIsEmpty() const
 {
-    return m_pgrnFile ? false : true;
+    return m_pgrnFile == nullptr;
 }
 
 bool CGraphicThing::OnIsType(TType type)
@@ -91,7 +90,7 @@ bool CGraphicThing::CheckModelIndex(int iModel) const
         return false;
     }
 
-    assert(m_pgrnFileInfo != NULL);
+    assert(m_pgrnFileInfo != nullptr);
 
     if (iModel < 0)
         return false;
@@ -109,7 +108,7 @@ bool CGraphicThing::CheckMotionIndex(int iMotion) const
         return false;
     // Temporary
 
-    assert(m_pgrnFileInfo != NULL);
+    assert(m_pgrnFileInfo != nullptr);
 
     if (iMotion < 0)
         return false;
@@ -123,7 +122,7 @@ bool CGraphicThing::CheckMotionIndex(int iMotion) const
 CGrannyModel *CGraphicThing::GetModelPointer(int iModel)
 {
     assert(CheckModelIndex(iModel));
-    assert(m_models != NULL);
+    assert(m_models != nullptr);
     return m_models + iModel;
 }
 
@@ -132,9 +131,9 @@ CGrannyMotion *CGraphicThing::GetMotionPointer(int iMotion)
     assert(CheckMotionIndex(iMotion));
 
     if (iMotion >= m_pgrnFileInfo->AnimationCount)
-        return NULL;
+        return nullptr;
 
-    assert(m_motions != NULL);
+    assert(m_motions != nullptr);
     return (m_motions + iMotion);
 }
 
@@ -159,7 +158,7 @@ bool CGraphicThing::OnLoad(int iSize, const void *c_pvBuf)
     if (!c_pvBuf)
         return false;
 
-    m_pgrnFile = GrannyReadEntireFileFromMemory(iSize, (void *)c_pvBuf);
+    m_pgrnFile = GrannyReadEntireFileFromMemory(iSize, const_cast<void *>(c_pvBuf));
 
     if (!m_pgrnFile)
         return false;
@@ -185,8 +184,8 @@ const std::string &GetModelLocalPath()
 
 bool CGraphicThing::LoadModels()
 {
-    assert(m_pgrnFile != NULL);
-    assert(m_models == NULL);
+    assert(m_pgrnFile != nullptr);
+    assert(m_models == nullptr);
 
     if (m_pgrnFileInfo->ModelCount <= 0)
         return false;
@@ -197,12 +196,12 @@ bool CGraphicThing::LoadModels()
     // char localPath[256] = "";
     if (fileName.length() > 2 && fileName[1] != ':')
     {
-        int sepPos = fileName.rfind('\\');
+        int const sepPos = fileName.rfind('\\');
         gs_modelLocalPath.assign(fileName, 0, sepPos + 1);
     }
     // END_OF_SUPPORT_LOCAL_TEXTURE
 
-    int modelCount = m_pgrnFileInfo->ModelCount;
+    int const modelCount = m_pgrnFileInfo->ModelCount;
 
     m_models = new CGrannyModel[modelCount];
 
@@ -224,19 +223,21 @@ bool CGraphicThing::LoadModels()
 
 bool CGraphicThing::LoadMotions()
 {
-    assert(m_pgrnFile != NULL);
-    assert(m_motions == NULL);
+    assert(m_pgrnFile != nullptr);
+    assert(m_motions == nullptr);
 
     if (m_pgrnFileInfo->AnimationCount <= 0)
         return false;
 
-    int motionCount = m_pgrnFileInfo->AnimationCount;
+    int const motionCount = m_pgrnFileInfo->AnimationCount;
 
     m_motions = new CGrannyMotion[motionCount];
 
     for (int m = 0; m < motionCount; ++m)
+    {
         if (!m_motions[m].BindGrannyAnimation(m_pgrnFileInfo->Animations[m]))
             return false;
+    }
 
     return true;
 }

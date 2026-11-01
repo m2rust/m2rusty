@@ -1,5 +1,5 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <Neoeter/Platform/Base/Debug.h>
 #include <Neoeter/Platform/Base/lzo.h>
@@ -15,7 +15,6 @@ static class LZOFreeMemoryMgr
         REUSING_CAPACITY = 64 * 1024,
     };
 
-  public:
     ~LZOFreeMemoryMgr()
     {
         std::vector<BYTE *>::iterator i;
@@ -47,7 +46,7 @@ static class LZOFreeMemoryMgr
     }
     void Free(BYTE *ptr, unsigned capacity)
     {
-        assert(ptr != NULL);
+        assert(ptr != nullptr);
         assert(capacity > 0);
         if (capacity < REUSING_CAPACITY)
         {
@@ -74,11 +73,11 @@ CLZObject::CLZObject()
 void CLZObject::Initialize()
 {
     m_bInBuffer = false;
-    m_pbBuffer = NULL;
+    m_pbBuffer = nullptr;
     m_dwBufferSize = 0;
 
-    m_pHeader = NULL;
-    m_pbIn = NULL;
+    m_pHeader = nullptr;
+    m_pbIn = nullptr;
     m_bCompressed = false;
 }
 
@@ -107,17 +106,20 @@ DWORD CLZObject::GetSize()
     if (m_bCompressed)
     {
         if (m_pHeader->dwEncryptSize)
+        {
             return sizeof(THeader) + sizeof(DWORD) + m_pHeader->dwEncryptSize;
-        else
-            return sizeof(THeader) + sizeof(DWORD) + m_pHeader->dwCompressedSize;
+        }
+        return sizeof(THeader) + sizeof(DWORD) + m_pHeader->dwCompressedSize;
     }
     else
+    {
         return m_pHeader->dwRealSize;
+    }
 }
 
 void CLZObject::BeginCompress(const void *pvIn, UINT uiInLen)
 {
-    m_pbIn = (const BYTE *)pvIn;
+    m_pbIn = static_cast<const BYTE *>(pvIn);
 
     // sizeof(SHeader) +
     // 암호화를 위한 fourCC 4바이트
@@ -128,7 +130,7 @@ void CLZObject::BeginCompress(const void *pvIn, UINT uiInLen)
     m_pbBuffer = gs_freeMemMgr.Alloc(m_dwBufferSize);
     memset(m_pbBuffer, 0, m_dwBufferSize);
 
-    m_pHeader = (THeader *)m_pbBuffer;
+    m_pHeader = reinterpret_cast<THeader *>(m_pbBuffer);
     m_pHeader->dwFourCC = ms_dwFourCC;
     m_pHeader->dwEncryptSize = m_pHeader->dwCompressedSize = m_pHeader->dwRealSize = 0;
     m_pHeader->dwRealSize = uiInLen;
@@ -136,7 +138,7 @@ void CLZObject::BeginCompress(const void *pvIn, UINT uiInLen)
 
 void CLZObject::BeginCompressInBuffer(const void *pvIn, UINT uiInLen, void * /*pvOut*/)
 {
-    m_pbIn = (const BYTE *)pvIn;
+    m_pbIn = static_cast<const BYTE *>(pvIn);
 
     // sizeof(SHeader) +
     // 암호화를 위한 fourCC 4바이트
@@ -147,7 +149,7 @@ void CLZObject::BeginCompressInBuffer(const void *pvIn, UINT uiInLen, void * /*p
     m_pbBuffer = gs_freeMemMgr.Alloc(m_dwBufferSize);
     memset(m_pbBuffer, 0, m_dwBufferSize);
 
-    m_pHeader = (THeader *)m_pbBuffer;
+    m_pHeader = reinterpret_cast<THeader *>(m_pbBuffer);
     m_pHeader->dwFourCC = ms_dwFourCC;
     m_pHeader->dwEncryptSize = m_pHeader->dwCompressedSize = m_pHeader->dwRealSize = 0;
     m_pHeader->dwRealSize = uiInLen;
@@ -157,15 +159,15 @@ void CLZObject::BeginCompressInBuffer(const void *pvIn, UINT uiInLen, void * /*p
 bool CLZObject::Compress()
 {
     lzo_uint iOutLen = 0;
-    BYTE *pbBuffer;
+    BYTE *pbBuffer = nullptr;
 
     pbBuffer = m_pbBuffer + sizeof(THeader);
-    *(DWORD *)pbBuffer = ms_dwFourCC;
+    *reinterpret_cast<DWORD *>(pbBuffer) = ms_dwFourCC;
     pbBuffer += sizeof(DWORD);
 
-#if defined(LZO1X_999_MEM_COMPRESS)
-    int r =
-        lzo1x_999_compress((BYTE *)m_pbIn, m_pHeader->dwRealSize, pbBuffer, &iOutLen, CLZO::Instance().GetWorkMemory());
+#ifdef LZO1X_999_MEM_COMPRESS
+    int const r = lzo1x_999_compress(const_cast<BYTE *>(m_pbIn), m_pHeader->dwRealSize, pbBuffer, &iOutLen,
+                                     CLZO::Instance().GetWorkMemory());
 #else
     int r =
         lzo1x_1_compress((BYTE *)m_pbIn, m_pHeader->dwRealSize, pbBuffer, &iOutLen, CLZO::Instance().GetWorkMemory());
@@ -184,7 +186,7 @@ bool CLZObject::Compress()
 
 bool CLZObject::BeginDecompress(const void *pvIn)
 {
-    THeader *pHeader = (THeader *)pvIn;
+    auto *pHeader = (THeader *)pvIn;
 
     if (pHeader->dwFourCC != ms_dwFourCC)
     {
@@ -193,7 +195,7 @@ bool CLZObject::BeginDecompress(const void *pvIn)
     }
 
     m_pHeader = pHeader;
-    m_pbIn = (const BYTE *)pvIn + (sizeof(THeader) + sizeof(DWORD));
+    m_pbIn = static_cast<const BYTE *>(pvIn) + (sizeof(THeader) + sizeof(DWORD));
 
     /*
     static unsigned sum = 0;
@@ -216,7 +218,6 @@ class DecryptBuffer
         LOCAL_BUF_SIZE = 8 * 1024,
     };
 
-  public:
     DecryptBuffer(unsigned size)
     {
         static unsigned count = 0;
@@ -259,30 +260,30 @@ class DecryptBuffer
 
   private:
     char *m_buf;
-    char m_local_buf[LOCAL_BUF_SIZE];
+    char m_local_buf[LOCAL_BUF_SIZE]{};
 };
 
 bool CLZObject::Decompress(DWORD *pdwKey)
 {
     lzo_uint uiSize = 0;
-    int r;
+    int r = 0;
 
     if (m_pHeader->dwEncryptSize)
     {
         DecryptBuffer buf(m_pHeader->dwEncryptSize);
 
-        BYTE *pbDecryptedBuffer = (BYTE *)buf.GetBufferPtr();
+        BYTE *pbDecryptedBuffer = static_cast<BYTE *>(buf.GetBufferPtr());
 
         __Decrypt(pdwKey, pbDecryptedBuffer);
 
-        if (*(DWORD *)pbDecryptedBuffer != ms_dwFourCC)
+        if (*reinterpret_cast<DWORD *>(pbDecryptedBuffer) != ms_dwFourCC)
         {
             TraceError("LZObject: key incorrect");
             return false;
         }
 
         if (LZO_E_OK != (r = lzo1x_decompress(pbDecryptedBuffer + sizeof(DWORD), m_pHeader->dwCompressedSize,
-                                              m_pbBuffer, &uiSize, NULL)))
+                                              m_pbBuffer, &uiSize, nullptr)))
         {
             TraceError("LZObject: Decompress failed(decrypt) ret %d\n", r);
             return false;
@@ -294,7 +295,7 @@ bool CLZObject::Decompress(DWORD *pdwKey)
 
         // if (LZO_E_OK != (r = lzo1x_decompress_safe(m_pbIn,
         // m_pHeader->dwCompressedSize, m_pbBuffer, &uiSize, NULL)))
-        if (LZO_E_OK != (r = lzo1x_decompress(m_pbIn, m_pHeader->dwCompressedSize, m_pbBuffer, &uiSize, NULL)))
+        if (LZO_E_OK != (r = lzo1x_decompress(m_pbIn, m_pHeader->dwCompressedSize, m_pbBuffer, &uiSize, nullptr)))
         {
             TraceError("LZObject: Decompress failed : ret %d, CompressedSize %d\n", r, m_pHeader->dwCompressedSize);
             return false;
@@ -353,7 +354,7 @@ void CLZObject::CopyBuffer(const char* pbSrc, DWORD dwSrcSize)
 }
 */
 
-CLZO::CLZO() : m_pWorkMem(NULL)
+CLZO::CLZO() : m_pWorkMem(nullptr)
 {
     if (lzo_init() != LZO_E_OK)
     {
@@ -361,13 +362,13 @@ CLZO::CLZO() : m_pWorkMem(NULL)
         return;
     }
 
-#if defined(LZO1X_999_MEM_COMPRESS)
-    m_pWorkMem = (BYTE *)malloc(LZO1X_999_MEM_COMPRESS);
+#ifdef LZO1X_999_MEM_COMPRESS
+    m_pWorkMem = static_cast<BYTE *>(malloc(LZO1X_999_MEM_COMPRESS));
 #else
     m_pWorkMem = (BYTE *)malloc(LZO1X_1_MEM_COMPRESS);
 #endif
 
-    if (NULL == m_pWorkMem)
+    if (nullptr == m_pWorkMem)
     {
         TraceError("LZO: cannot alloc memory");
         return;
@@ -379,7 +380,7 @@ CLZO::~CLZO()
     if (m_pWorkMem)
     {
         free(m_pWorkMem);
-        m_pWorkMem = NULL;
+        m_pWorkMem = nullptr;
     }
 }
 
@@ -395,10 +396,7 @@ bool CLZO::CompressEncryptedMemory(CLZObject &rObj, const void *pIn, UINT uiInLe
 
     if (rObj.Compress())
     {
-        if (rObj.Encrypt(pdwKey))
-            return true;
-
-        return false;
+        return rObj.Encrypt(pdwKey);
     }
 
     return false;

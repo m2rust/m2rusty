@@ -36,7 +36,7 @@ bool CPythonApplication::CreateCursors()
     {
         HANDLE hCursor = Platform_CreateSystemCursor(s_systemCursors[i]);
 
-        if (NULL == hCursor)
+        if (nullptr == hCursor)
             return false;
 
         m_CursorHandleMap.insert(TCursorHandleMap::value_type(i, hCursor));
@@ -68,17 +68,17 @@ void CPythonApplication::SetCursorVisible(BOOL bFlag, bool bLiarCursorOn)
     }
 }
 
-BOOL CPythonApplication::GetCursorVisible()
+BOOL CPythonApplication::GetCursorVisible() const
 {
     return m_bCursorVisible;
 }
 
-bool CPythonApplication::GetLiarCursorOn()
+bool CPythonApplication::GetLiarCursorOn() const
 {
     return m_bLiarCursorOn;
 }
 
-int CPythonApplication::GetCursorMode()
+int CPythonApplication::GetCursorMode() const
 {
     return m_iCursorMode;
 }
@@ -119,7 +119,7 @@ BOOL CPythonApplication::SetCursorNum(int iCursorNum)
 
     if (CURSOR_MODE_HARDWARE == m_iCursorMode)
     {
-        TCursorHandleMap::iterator itor = m_CursorHandleMap.find(iCursorNum);
+        auto itor = m_CursorHandleMap.find(iCursorNum);
         if (m_CursorHandleMap.end() == itor)
             return FALSE;
 
@@ -147,7 +147,7 @@ void CPythonApplication::SetCursorMode(int iMode)
 
     case CURSOR_MODE_SOFTWARE:
         m_iCursorMode = CURSOR_MODE_SOFTWARE;
-        Platform_SetCursorHandle(NULL);
+        Platform_SetCursorHandle(nullptr);
         Platform_ShowCursorFlag(FALSE);
         break;
     }

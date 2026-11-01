@@ -5,13 +5,11 @@ CTargaResource::CTargaResource(const char *c_pszFileName) : CResource(c_pszFileN
 {
 }
 
-CTargaResource::~CTargaResource()
-{
-}
+CTargaResource::~CTargaResource() = default;
 
 CTargaResource::TType CTargaResource::Type()
 {
-    static TType s_type = StringToType("CTargaResource");
+    static TType const s_type = StringToType("CTargaResource");
     return s_type;
 }
 

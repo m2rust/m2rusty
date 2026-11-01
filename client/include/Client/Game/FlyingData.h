@@ -21,23 +21,23 @@ class CFlyingData //: public CPooledObject<CFlyingData>
 
     struct TFlyingAttachData
     {
-        int iType;
-        int iFlyType;
+        int iType = 0;
+        int iFlyType = 0;
         std::string strFilename;
 
-        bool bHasTail;
-        DWORD dwTailColor;
-        float fTailLength;
-        float fTailSize;
-        bool bRectShape;
+        bool bHasTail = false;
+        DWORD dwTailColor = 0U;
+        float fTailLength = 0.0F;
+        float fTailSize = 0.0F;
+        bool bRectShape = false;
 
-        float fRoll;
+        float fRoll = 0.0F;
         // nothing for LINE
         // for MULTI_LINE
-        float fDistance;
+        float fDistance = 0.0F;
         // for SINE, EXP
-        float fPeriod;
-        float fAmplitude;
+        float fPeriod = 0.0F;
+        float fAmplitude = 0.0F;
     };
 
     friend class CFlyingInstance;
@@ -77,31 +77,31 @@ class CFlyingData //: public CPooledObject<CFlyingData>
 
     std::string m_strFilename;
 
-    bool m_bSpreading;
-    bool m_bMaintainParallel;
+    bool m_bSpreading = false;
+    bool m_bMaintainParallel = false;
 
-    float m_fInitVel;
-    float m_fConeAngle;
-    float m_fRollAngle;
+    float m_fInitVel = 0.0F;
+    float m_fConeAngle = 0.0F;
+    float m_fRollAngle = 0.0F;
 
     D3DXVECTOR3 m_v3AngVel;
 
-    float m_fGravity;
+    float m_fGravity = 0.0F;
 
-    float m_fBombRange;
+    float m_fBombRange = 0.0F;
     std::string m_strBombEffectName;
-    DWORD m_dwBombEffectID;
+    DWORD m_dwBombEffectID = 0U;
 
-    bool m_bIsHoming;
-    float m_fHomingMaxAngle;
-    float m_fHomingStartTime;
+    bool m_bIsHoming = false;
+    float m_fHomingMaxAngle = 0.0F;
+    float m_fHomingStartTime = 0.0F;
 
-    bool m_bHitOnBackground;
-    bool m_bHitOnAnotherMonster;
-    int m_iPierceCount;
-    float m_fCollisionSphereRadius;
+    bool m_bHitOnBackground = false;
+    bool m_bHitOnAnotherMonster = false;
+    int m_iPierceCount = 0;
+    float m_fCollisionSphereRadius = 0.0F;
 
-    float m_fRange;
+    float m_fRange = 0.0F;
     D3DXVECTOR3 m_v3Accel;
 
     std::vector<TFlyingAttachData> m_AttachDataVector;

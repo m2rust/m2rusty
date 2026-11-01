@@ -10,11 +10,11 @@
 
 PyObject *chrmgrSetEmpireNameMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iEnable;
+    int iEnable = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iEnable))
         return Py_BadArgument();
 
-    CInstanceBase::SetEmpireNameMode(iEnable ? true : false);
+    CInstanceBase::SetEmpireNameMode(iEnable != 0);
     CPythonCharacterManager::Instance().RefreshAllPCTextTail();
 
     return Py_BuildNone();
@@ -22,10 +22,10 @@ PyObject *chrmgrSetEmpireNameMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterTitleName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BadArgument();
-    char *szTitleName;
+    char *szTitleName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szTitleName))
         return Py_BadArgument();
 
@@ -35,17 +35,17 @@ PyObject *chrmgrRegisterTitleName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterNameColor(PyObject *poSelf, PyObject *poArgs)
 {
-    int index;
+    int index = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &index))
         return Py_BadArgument();
 
-    int ir;
+    int ir = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ir))
         return Py_BadArgument();
-    int ig;
+    int ig = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &ig))
         return Py_BadArgument();
-    int ib;
+    int ib = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &ib))
         return Py_BadArgument();
 
@@ -55,16 +55,16 @@ PyObject *chrmgrRegisterNameColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterTitleColor(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BadArgument();
-    int ir;
+    int ir = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ir))
         return Py_BadArgument();
-    int ig;
+    int ig = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &ig))
         return Py_BadArgument();
-    int ib;
+    int ib = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &ib))
         return Py_BadArgument();
 
@@ -76,16 +76,17 @@ PyObject *chrmgrGetPickedVID(PyObject *poSelf, PyObject *poArgs)
 {
     CPythonCharacterManager &rkChrMgr = CPythonCharacterManager::Instance();
 
-    DWORD dwPickedActorID;
+    DWORD dwPickedActorID = 0;
     if (rkChrMgr.OLD_GetPickedInstanceVID(&dwPickedActorID))
+    {
         return Py_BuildValue("i", dwPickedActorID);
-    else
-        return Py_BuildValue("i", -1);
+    }
+    return Py_BuildValue("i", -1);
 }
 
 PyObject *chrmgrGetVIDInfo(PyObject *poSelf, PyObject *poArgs)
 {
-    int nVID;
+    int nVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nVID))
         return Py_BadArgument();
 
@@ -101,7 +102,7 @@ PyObject *chrmgrGetVIDInfo(PyObject *poSelf, PyObject *poArgs)
         LONG xInst = kPPosInst.x;
         LONG yInst = kPPosInst.y;
 
-        CPythonBackground &rkBG = CPythonBackground::Instance();
+        CPythonBackground const &rkBG = CPythonBackground::Instance();
         rkBG.LocalPositionToGlobalPosition(xInst, yInst);
         sprintf(szDetail, "pos=(%d, %d)", xInst, yInst);
     }
@@ -115,7 +116,7 @@ PyObject *chrmgrGetVIDInfo(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrSetPathName(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szPathName;
+    char *szPathName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szPathName))
         return Py_BadArgument();
 
@@ -125,7 +126,7 @@ PyObject *chrmgrSetPathName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrCreateRace(PyObject *poSelf, PyObject *poArgs)
 {
-    int iRace;
+    int iRace = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iRace))
         return Py_BadArgument();
 
@@ -135,7 +136,7 @@ PyObject *chrmgrCreateRace(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrSelectRace(PyObject *poSelf, PyObject *poArgs)
 {
-    int iRace;
+    int iRace = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iRace))
         return Py_BadArgument();
 
@@ -145,10 +146,10 @@ PyObject *chrmgrSelectRace(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterAttachingBoneName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iPartIndex;
+    int iPartIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iPartIndex))
         return Py_BadArgument();
-    char *szBoneName;
+    char *szBoneName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szBoneName))
         return Py_BadArgument();
 
@@ -162,7 +163,7 @@ PyObject *chrmgrRegisterAttachingBoneName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterMotionMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionIndex))
         return Py_BadArgument();
 
@@ -176,19 +177,19 @@ PyObject *chrmgrRegisterMotionMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrSetMotionRandomWeight(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMode))
         return Py_BadArgument();
 
-    int iMotion;
+    int iMotion = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iMotion))
         return Py_BadArgument();
 
-    int iSubMotion;
+    int iSubMotion = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iSubMotion))
         return Py_BadArgument();
 
-    int iPercentage;
+    int iPercentage = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iPercentage))
         return Py_BadArgument();
 
@@ -204,11 +205,11 @@ PyObject *chrmgrSetMotionRandomWeight(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterNormalAttack(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMode))
         return Py_BadArgument();
 
-    int iMotion;
+    int iMotion = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iMotion))
         return Py_BadArgument();
 
@@ -224,11 +225,11 @@ PyObject *chrmgrRegisterNormalAttack(PyObject *poSelf, PyObject *poArgs)
 // 없어질 함수들
 PyObject *chrmgrReserveComboAttack(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMode))
         return Py_BadArgument();
 
-    int iCount;
+    int iCount = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iCount))
         return Py_BadArgument();
 
@@ -242,15 +243,15 @@ PyObject *chrmgrReserveComboAttack(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterComboAttack(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMode))
         return Py_BadArgument();
 
-    int iComboIndex;
+    int iComboIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iComboIndex))
         return Py_BadArgument();
 
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iMotionIndex))
         return Py_BadArgument();
 
@@ -266,15 +267,15 @@ PyObject *chrmgrRegisterComboAttack(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrReserveComboAttackNew(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionMode;
+    int iMotionMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionMode))
         return Py_BadArgument();
 
-    int iComboType;
+    int iComboType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iComboType))
         return Py_BadArgument();
 
-    int iCount;
+    int iCount = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iCount))
         return Py_BadArgument();
 
@@ -288,19 +289,19 @@ PyObject *chrmgrReserveComboAttackNew(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterComboAttackNew(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionMode;
+    int iMotionMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionMode))
         return Py_BadArgument();
 
-    int iComboType;
+    int iComboType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iComboType))
         return Py_BadArgument();
 
-    int iComboIndex;
+    int iComboIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iComboIndex))
         return Py_BadArgument();
 
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iMotionIndex))
         return Py_BadArgument();
 
@@ -314,7 +315,7 @@ PyObject *chrmgrRegisterComboAttackNew(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrLoadRaceData(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BadArgument();
 
@@ -333,7 +334,7 @@ PyObject *chrmgrLoadRaceData(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrLoadLocalRaceData(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BadArgument();
 
@@ -380,15 +381,15 @@ Py_BuildNone();
 
 PyObject *chrmgrRegisterCacheMotionData(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMode))
         return Py_BadArgument();
 
-    int iMotion;
+    int iMotion = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iMotion))
         return Py_BadArgument();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szFileName))
         return Py_BadArgument();
 
@@ -411,15 +412,15 @@ PyObject *chrmgrRegisterCacheMotionData(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterMotionData(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMode;
+    int iMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMode))
         return Py_BadArgument();
 
-    int iMotion;
+    int iMotion = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iMotion))
         return Py_BadArgument();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szFileName))
         return Py_BadArgument();
 
@@ -439,11 +440,11 @@ PyObject *chrmgrRegisterMotionData(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterRaceSrcName(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BadArgument();
 
-    char *szSrcName;
+    char *szSrcName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szSrcName))
         return Py_BadArgument();
 
@@ -454,11 +455,11 @@ PyObject *chrmgrRegisterRaceSrcName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterRaceName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iRaceIndex;
+    int iRaceIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iRaceIndex))
         return Py_BadArgument();
 
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szName))
         return Py_BadArgument();
 
@@ -469,11 +470,11 @@ PyObject *chrmgrRegisterRaceName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrSetShapeModel(PyObject *poSelf, PyObject *poArgs)
 {
-    int eShape;
+    int eShape = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &eShape))
         return Py_BadArgument();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BadArgument();
 
@@ -487,19 +488,19 @@ PyObject *chrmgrSetShapeModel(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrAppendShapeSkin(PyObject *poSelf, PyObject *poArgs)
 {
-    int eShape;
+    int eShape = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &eShape))
         return Py_BadArgument();
 
-    int ePart;
+    int ePart = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ePart))
         return Py_BadArgument();
 
-    char *szSrcFileName;
+    char *szSrcFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szSrcFileName))
         return Py_BadArgument();
 
-    char *szDstFileName;
+    char *szDstFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 3, &szDstFileName))
         return Py_BadArgument();
 
@@ -536,15 +537,15 @@ PyObject *chrmgrSetMovingSpeed(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int eEftType;
+    int eEftType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &eEftType))
         return Py_BadArgument();
 
-    char *szBoneName;
+    char *szBoneName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szBoneName))
         return Py_BadArgument();
 
-    char *szPathName;
+    char *szPathName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szPathName))
         return Py_BadArgument();
 
@@ -554,15 +555,15 @@ PyObject *chrmgrRegisterEffect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterCacheEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int eEftType;
+    int eEftType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &eEftType))
         return Py_BadArgument();
 
-    char *szBoneName;
+    char *szBoneName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szBoneName))
         return Py_BadArgument();
 
-    char *szPathName;
+    char *szPathName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szPathName))
         return Py_BadArgument();
 
@@ -573,7 +574,7 @@ PyObject *chrmgrRegisterCacheEffect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrSetDustGap(PyObject *poSelf, PyObject *poArgs)
 {
-    int nGap;
+    int nGap = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nGap))
         return Py_BadArgument();
 
@@ -583,7 +584,7 @@ PyObject *chrmgrSetDustGap(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrSetHorseDustGap(PyObject *poSelf, PyObject *poArgs)
 {
-    int nGap;
+    int nGap = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nGap))
         return Py_BadArgument();
 
@@ -602,11 +603,11 @@ PyObject *chrmgrToggleDirectionLine(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrRegisterPointEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int iEft;
+    int iEft = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iEft))
         return Py_BadArgument();
 
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szFileName))
         return Py_BadArgument();
 
@@ -617,11 +618,11 @@ PyObject *chrmgrRegisterPointEffect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrShowPointEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int nVID;
+    int nVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nVID))
         return Py_BadArgument();
 
-    int nEft;
+    int nEft = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &nEft))
         return Py_BadArgument();
 
@@ -636,20 +637,20 @@ void CPythonCharacterManager::SCRIPT_SetAffect(DWORD dwVID, DWORD eState, BOOL i
     if (!pkInstSel)
         return;
 
-    pkInstSel->SCRIPT_SetAffect(eState, isVisible ? true : false);
+    pkInstSel->SCRIPT_SetAffect(eState, isVisible != 0);
 }
 
 PyObject *chrmgrSetAffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int nVID;
+    int nVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nVID))
         return Py_BadArgument();
 
-    int nEft;
+    int nEft = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &nEft))
         return Py_BadArgument();
 
-    int nVisible;
+    int nVisible = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &nVisible))
         return Py_BadArgument();
 
@@ -678,11 +679,11 @@ bool CPythonCharacterManager::IsPossibleEmoticon(DWORD dwVID)
 
 PyObject *chrmgrSetEmoticon(PyObject *poSelf, PyObject *poArgs)
 {
-    int nVID;
+    int nVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nVID))
         return Py_BadArgument();
 
-    int nEft;
+    int nEft = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &nEft))
         return Py_BadArgument();
 
@@ -693,12 +694,12 @@ PyObject *chrmgrSetEmoticon(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrmgrIsPossibleEmoticon(PyObject *poSelf, PyObject *poArgs)
 {
-    int nVID;
+    int nVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &nVID))
         return Py_BadArgument();
 
     CPythonCharacterManager &rkChrMgr = CPythonCharacterManager::Instance();
-    int result = rkChrMgr.IsPossibleEmoticon(nVID >= 0 ? nVID : 0xffffffff);
+    int const result = rkChrMgr.IsPossibleEmoticon(nVID >= 0 ? nVID : 0xffffffff);
 
     return Py_BuildValue("i", result);
 }
@@ -749,7 +750,7 @@ void initchrmgr()
         {"RegisterNameColor", chrmgrRegisterNameColor, METH_VARARGS},
         {"RegisterTitleColor", chrmgrRegisterTitleColor, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("chrmgr", s_methods);

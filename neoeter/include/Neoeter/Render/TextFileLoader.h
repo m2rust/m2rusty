@@ -9,25 +9,25 @@
 class CTextFileLoader
 {
   public:
-    typedef struct SGroupNode
+    using TGroupNode = struct SGroupNode
     {
         static DWORD GenNameKey(const char *c_szGroupName, UINT uGroupNameLen);
 
         void SetGroupName(const std::string &c_rstGroupName);
-        bool IsGroupNameKey(DWORD dwGroupNameKey);
+        bool IsGroupNameKey(DWORD dwGroupNameKey) const;
 
-        const std::string &GetGroupName();
+        const std::string &GetGroupName() const;
 
         CTokenVector *GetTokenVector(const std::string &c_rstGroupName);
         bool IsExistTokenVector(const std::string &c_rstGroupName);
         void InsertTokenVector(const std::string &c_rstGroupName, const CTokenVector &c_rkVct_stToken);
 
-        DWORD m_dwGroupNameKey;
+        DWORD m_dwGroupNameKey = 0U;
         std::string m_strGroupName;
 
         std::map<DWORD, CTokenVector> m_kMap_dwKey_kVct_stToken;
 
-        SGroupNode *pParentNode;
+        SGroupNode *pParentNode = nullptr;
         std::vector<SGroupNode *> ChildNodeVector;
 
         static SGroupNode *New();
@@ -35,9 +35,9 @@ class CTextFileLoader
 
         static void DestroySystem();
         static CDynamicPool<SGroupNode> ms_kPool;
-    } TGroupNode;
+    };
 
-    typedef std::vector<TGroupNode *> TGroupNodeVector;
+    using TGroupNodeVector = std::vector<TGroupNode *>;
 
     class CGotoChild
     {
@@ -58,14 +58,12 @@ class CTextFileLoader
         CTextFileLoader *m_pOwner;
     };
 
-  public:
     static void DestroySystem();
 
     static void SetCacheMode();
 
     static CTextFileLoader *Cache(const char *c_szFileName);
 
-  public:
     CTextFileLoader();
     virtual ~CTextFileLoader();
 
@@ -90,7 +88,7 @@ class CTextFileLoader
     BOOL GetTokenByte(const std::string &c_rstrKey, BYTE *pData);
     BOOL GetTokenWord(const std::string &c_rstrKey, WORD *pData);
     BOOL GetTokenInteger(const std::string &c_rstrKey, int *pData);
-    BOOL GetTokenDoubleWord(const std::string &c_rstrKey, DWORD *pData);
+    BOOL GetTokenDoubleWord(const std::string &c_rstrKey, const DWORD *pData);
     BOOL GetTokenFloat(const std::string &c_rstrKey, float *pData);
     BOOL GetTokenVector2(const std::string &c_rstrKey, D3DXVECTOR2 *pVector2);
     BOOL GetTokenVector3(const std::string &c_rstrKey, D3DXVECTOR3 *pVector3);
@@ -108,23 +106,21 @@ class CTextFileLoader
 
     bool LoadGroup(TGroupNode *pGroupNode);
 
-  protected:
     std::string m_strFileName;
 
     char *m_acBufData;
     DWORD m_dwBufSize;
     DWORD m_dwBufCapacity;
 
-    DWORD m_dwcurLineIndex;
+    DWORD m_dwcurLineIndex = 0U;
 
     CMemoryTextFileLoader m_textFileLoader;
 
     TGroupNode m_GlobalNode;
-    TGroupNode *m_pcurNode;
+    TGroupNode *m_pcurNode = nullptr;
 
     std::vector<SGroupNode *> m_kVct_pkNode;
 
-  protected:
     static std::map<DWORD, CTextFileLoader *> ms_kMap_dwNameKey_pkTextFileLoader;
     static bool ms_isCacheMode;
 };

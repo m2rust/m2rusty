@@ -51,7 +51,7 @@ void CInstanceBase::StartFishing(float frot)
     BlendRotation(frot);
 
     const TPixelPosition &c_rkPPosCur = m_GraphicThingInstance.NEW_GetCurPixelPositionRef();
-    float fRot = m_GraphicThingInstance.GetTargetRotation();
+    float const fRot = m_GraphicThingInstance.GetTargetRotation();
     // float fPlainCoordRot=ELRightCoord_ConvertToPlainCoordDegree(fRightCoordRot);
 
     TPixelPosition kPPosFishing;
@@ -91,7 +91,7 @@ void CInstanceBase::CatchFail()
 BOOL CInstanceBase::GetFishingRot(int *pirot)
 {
     const TPixelPosition &c_rkPPosCur = m_GraphicThingInstance.NEW_GetCurPixelPositionRef();
-    float fCharacterRot = m_GraphicThingInstance.GetRotation();
+    float const fCharacterRot = m_GraphicThingInstance.GetRotation();
 
     // float frot = fCharacterRot;
 
@@ -143,13 +143,13 @@ void CInstanceBase::ActDualEmotion(CInstanceBase &rkDstInst, WORD wMotionNumber1
     const float c_fEmotionDistance = 100.0f;
     const TPixelPosition &c_rMainPosition = NEW_GetCurPixelPositionRef();
     const TPixelPosition &c_rTargetPosition = rkDstInst.NEW_GetCurPixelPositionRef();
-    TPixelPosition kDirection = c_rMainPosition - c_rTargetPosition;
-    float fDistance = sqrtf((kDirection.x * kDirection.x) + (kDirection.y * kDirection.y));
+    TPixelPosition const kDirection = c_rMainPosition - c_rTargetPosition;
+    float const fDistance = sqrtf((kDirection.x * kDirection.x) + (kDirection.y * kDirection.y));
     TPixelPosition kDstPosition;
-    kDstPosition.x = c_rTargetPosition.x + (kDirection.x / fDistance) * c_fEmotionDistance;
-    kDstPosition.y = c_rTargetPosition.y + (kDirection.y / fDistance) * c_fEmotionDistance;
+    kDstPosition.x = c_rTargetPosition.x + ((kDirection.x / fDistance) * c_fEmotionDistance);
+    kDstPosition.y = c_rTargetPosition.y + ((kDirection.y / fDistance) * c_fEmotionDistance);
 
-    DWORD dwCurTime = ELTimer_GetServerMSec() + 500;
+    DWORD const dwCurTime = ELTimer_GetServerMSec() + 500;
     PushTCPStateExpanded(dwCurTime, kDstPosition, 0.0f, FUNC_EMOTION, MAKELONG(wMotionNumber1, wMotionNumber2),
                          rkDstInst.GetVirtualID());
 

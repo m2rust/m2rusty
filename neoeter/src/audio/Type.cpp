@@ -2,6 +2,8 @@
 #include <Neoeter/Audio/Type.h>
 #include <Neoeter/Render/TextFileLoader.h>
 
+#include <print>
+
 std::string NSound::strResult;
 
 const char *NSound::GetResultString()
@@ -35,7 +37,7 @@ bool NSound::LoadSoundInformationPiece(const char *c_szFileName, NSound::TSoundD
 
     rkTextFileLoader.SetTop();
 
-    int iCount;
+    int iCount = 0;
     if (!rkTextFileLoader.GetTokenInteger("sounddatacount", &iCount))
     {
         SetResultString((strResult + " \xC6\xC4\xC0\xCF \xC6\xF7\xB8\xE4 "
@@ -52,7 +54,7 @@ bool NSound::LoadSoundInformationPiece(const char *c_szFileName, NSound::TSoundD
     for (DWORD i = 0; i < rSoundDataVector.size(); ++i)
     {
         _snprintf(szSoundDataHeader, sizeof(szSoundDataHeader), "sounddata%02d", i);
-        CTokenVector *pTokenVector;
+        CTokenVector *pTokenVector = nullptr;
         if (!rkTextFileLoader.GetTokenVector(szSoundDataHeader, &pTokenVector))
         {
             SetResultString((strResult + " \xC6\xC4\xC0\xCF \xC6\xF7\xB8\xE4 \xBF\xA1\xB7\xAF: " + szSoundDataHeader +
@@ -70,15 +72,15 @@ bool NSound::LoadSoundInformationPiece(const char *c_szFileName, NSound::TSoundD
             return false;
         }
 
-        rSoundDataVector[i].fTime = (float)atof(pTokenVector->at(0).c_str());
+        rSoundDataVector[i].fTime = static_cast<float>(atof(pTokenVector->at(0).c_str()));
         if (c_szPathHeader)
         {
             rSoundDataVector[i].strSoundFileName = c_szPathHeader;
-            rSoundDataVector[i].strSoundFileName += pTokenVector->at(1).c_str();
+            rSoundDataVector[i].strSoundFileName += pTokenVector->at(1);
         }
         else
         {
-            rSoundDataVector[i].strSoundFileName = pTokenVector->at(1).c_str();
+            rSoundDataVector[i].strSoundFileName = pTokenVector->at(1);
         }
     }
 
@@ -120,16 +122,16 @@ bool NSound::SaveSoundInformationPiece(const char *c_szFileName, NSound::TSoundD
         return false;
     }
 
-    fprintf(File, "ScriptType        CharacterSoundInformation\n");
-    fprintf(File, "\n");
+    std::println(File, "ScriptType        CharacterSoundInformation");
+    std::println(File, "");
 
-    fprintf(File, "SoundDataCount    %d\n", (int)rSoundDataVector.size());
+    std::println(File, "SoundDataCount    {}", static_cast<int>(rSoundDataVector.size()));
 
     for (DWORD i = 0; i < rSoundDataVector.size(); ++i)
     {
         NSound::TSoundData &rSoundData = rSoundDataVector[i];
-        fprintf(File, "SoundData%02u       %f \"%s\"\n", (unsigned int)i, rSoundData.fTime,
-                rSoundData.strSoundFileName.c_str());
+        std::println(File, "SoundData{:02}       {:f} \"{}\"", static_cast<unsigned int>(i), rSoundData.fTime,
+                     rSoundData.strSoundFileName);
     }
 
     fclose(File);
@@ -141,8 +143,8 @@ void NSound::DataToInstance(const TSoundDataVector &c_rSoundDataVector, TSoundIn
     if (c_rSoundDataVector.empty())
         return;
 
-    DWORD dwFPS = 60;
-    const float c_fFrameTime = 1.0f / float(dwFPS);
+    DWORD const dwFPS = 60;
+    const float c_fFrameTime = 1.0f / static_cast<float>(dwFPS);
 
     pSoundInstanceVector->clear();
     pSoundInstanceVector->resize(c_rSoundDataVector.size());
@@ -151,7 +153,7 @@ void NSound::DataToInstance(const TSoundDataVector &c_rSoundDataVector, TSoundIn
         const TSoundData &c_rSoundData = c_rSoundDataVector[i];
         TSoundInstance &rSoundInstance = pSoundInstanceVector->at(i);
 
-        rSoundInstance.dwFrame = (DWORD)(c_rSoundData.fTime / c_fFrameTime);
+        rSoundInstance.dwFrame = static_cast<DWORD>(c_rSoundData.fTime / c_fFrameTime);
         rSoundInstance.strSoundFileName = c_rSoundData.strSoundFileName;
     }
 }

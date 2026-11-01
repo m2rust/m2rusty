@@ -5,7 +5,7 @@
 
 bool CPropertyLoader::OnFolder(const char *c_szFilter, const char *c_szPathName, const char *c_szFileName)
 {
-    std::string stPathName = "";
+    std::string stPathName;
     stPathName += c_szPathName;
     stPathName += c_szFileName;
 
@@ -23,7 +23,7 @@ bool CPropertyLoader::OnFile(const char *c_szPathName, const char *c_szFileName)
 
 DWORD CPropertyLoader::RegisterFile(const char *c_szPathName, const char *c_szFileName)
 {
-    std::string strFileName = "";
+    std::string strFileName;
     strFileName += c_szPathName;
     strFileName += c_szFileName;
 
@@ -37,20 +37,18 @@ DWORD CPropertyLoader::RegisterFile(const char *c_szPathName, const char *c_szFi
     StringPath(strFileName);
 
     // 예약된 CRC 처리 (지워진 CRC)
-    if (0 == strFileName.compare("property/reserve"))
+    if ("property/reserve" == strFileName)
     {
         m_pPropertyManager->LoadReservedCRC(strFileName.c_str());
         return 1;
     }
-    else
-    {
-        CProperty *pProperty;
 
-        if (m_pPropertyManager->Register(strFileName.c_str(), &pProperty))
-            return pProperty->GetCRC();
-        else
-            return 0;
-    }
+    CProperty *pProperty = nullptr;
+
+    if (m_pPropertyManager->Register(strFileName.c_str(), &pProperty))
+        return pProperty->GetCRC();
+    else
+        return 0;
 }
 
 void CPropertyLoader::SetPropertyManager(CPropertyManager *pPropertyManager)
@@ -58,11 +56,8 @@ void CPropertyLoader::SetPropertyManager(CPropertyManager *pPropertyManager)
     m_pPropertyManager = pPropertyManager;
 }
 
-CPropertyLoader::CPropertyLoader()
+CPropertyLoader::CPropertyLoader() : m_pPropertyManager(nullptr)
 {
-    m_pPropertyManager = NULL;
 }
 
-CPropertyLoader::~CPropertyLoader()
-{
-}
+CPropertyLoader::~CPropertyLoader() = default;

@@ -27,12 +27,12 @@ DWORD CRaceData::GetSmokeEffectID(UINT eSmoke)
 
 CRaceData::SHair *CRaceData::FindHair(UINT eHair)
 {
-    std::map<DWORD, SHair>::iterator f = m_kMap_dwHairKey_kHair.find(eHair);
+    auto f = m_kMap_dwHairKey_kHair.find(eHair);
     if (m_kMap_dwHairKey_kHair.end() == f)
     {
         if (eHair != 0)
             TraceError("Hair number %d is not exist.", eHair);
-        return NULL;
+        return nullptr;
     }
 
     return &f->second;
@@ -53,9 +53,9 @@ void CRaceData::SetHairSkin(UINT eHair, UINT ePart, const char *c_szModelFileNam
 
 CRaceData::SShape *CRaceData::FindShape(UINT eShape)
 {
-    std::map<DWORD, SShape>::iterator f = m_kMap_dwShapeKey_kShape.find(eShape);
+    auto f = m_kMap_dwShapeKey_kShape.find(eShape);
     if (m_kMap_dwShapeKey_kShape.end() == f)
-        return NULL;
+        return nullptr;
 
     return &f->second;
 }
@@ -117,11 +117,11 @@ BOOL CRaceData::NextMotionModeIterator(TMotionModeDataIterator &itor)
 
 BOOL CRaceData::GetMotionKey(WORD wMotionModeIndex, WORD wMotionIndex, MOTION_KEY *pMotionKey)
 {
-    TMotionModeData *pMotionModeData;
+    TMotionModeData *pMotionModeData = nullptr;
     if (!GetMotionModeDataPointer(wMotionModeIndex, &pMotionModeData))
         return FALSE;
 
-    if (pMotionModeData->MotionVectorMap.end() == pMotionModeData->MotionVectorMap.find(wMotionIndex))
+    if (!pMotionModeData->MotionVectorMap.contains(wMotionIndex))
     {
         WORD wGeneralMode = CRaceMotionData::MODE_GENERAL;
 
@@ -141,11 +141,11 @@ BOOL CRaceData::GetMotionKey(WORD wMotionModeIndex, WORD wMotionIndex, MOTION_KE
             break;
         }
 
-        TMotionModeData *pMotionModeGeneralData;
+        TMotionModeData *pMotionModeGeneralData = nullptr;
         if (!GetMotionModeDataPointer(wGeneralMode, &pMotionModeGeneralData))
             return FALSE;
 
-        if (pMotionModeGeneralData->MotionVectorMap.end() == pMotionModeGeneralData->MotionVectorMap.find(wMotionIndex))
+        if (!pMotionModeGeneralData->MotionVectorMap.contains(wMotionIndex))
             return FALSE;
 
         *pMotionKey = MAKE_MOTION_KEY(wGeneralMode, wMotionIndex);
@@ -160,7 +160,7 @@ BOOL CRaceData::GetMotionKey(WORD wMotionModeIndex, WORD wMotionIndex, MOTION_KE
 
 BOOL CRaceData::GetMotionModeDataPointer(WORD wMotionMode, TMotionModeData **ppMotionModeData)
 {
-    TMotionModeDataIterator itor = m_pMotionModeDataMap.find(wMotionMode);
+    auto itor = m_pMotionModeDataMap.find(wMotionMode);
     if (itor == m_pMotionModeDataMap.end())
         return FALSE;
 
@@ -171,7 +171,7 @@ BOOL CRaceData::GetMotionModeDataPointer(WORD wMotionMode, TMotionModeData **ppM
 
 BOOL CRaceData::GetModelDataPointer(DWORD dwModelIndex, const TModelData **c_ppModelData)
 {
-    TModelDataMapIterator itor = m_ModelDataMap.find(dwModelIndex);
+    auto itor = m_ModelDataMap.find(dwModelIndex);
     if (m_ModelDataMap.end() == itor)
         return false;
 
@@ -182,11 +182,11 @@ BOOL CRaceData::GetModelDataPointer(DWORD dwModelIndex, const TModelData **c_ppM
 
 BOOL CRaceData::GetMotionVectorPointer(WORD wMotionMode, WORD wMotionIndex, TMotionVector **ppMotionVector)
 {
-    TMotionModeData *pMotionModeData;
+    TMotionModeData *pMotionModeData = nullptr;
     if (!GetMotionModeDataPointer(wMotionMode, &pMotionModeData))
         return FALSE;
 
-    TMotionVectorMap::iterator itor = pMotionModeData->MotionVectorMap.find(wMotionIndex);
+    auto itor = pMotionModeData->MotionVectorMap.find(wMotionIndex);
     if (pMotionModeData->MotionVectorMap.end() == itor)
         return FALSE;
 
@@ -198,7 +198,7 @@ BOOL CRaceData::GetMotionVectorPointer(WORD wMotionMode, WORD wMotionIndex, TMot
 BOOL CRaceData::GetMotionDataPointer(WORD wMotionMode, WORD wMotionIndex, WORD wMotionSubIndex,
                                      CRaceMotionData **c_ppMotionData)
 {
-    const TMotionVector *c_pMotionVector;
+    const TMotionVector *c_pMotionVector = nullptr;
     if (!GetMotionVectorPointer(wMotionMode, wMotionIndex, &c_pMotionVector))
         return FALSE;
 
@@ -223,7 +223,7 @@ BOOL CRaceData::GetMotionDataPointer(DWORD dwMotionKey, CRaceMotionData **c_ppMo
 
 BOOL CRaceData::GetMotionVectorPointer(WORD wMotionMode, WORD wMotionIndex, const TMotionVector **c_ppMotionVector)
 {
-    TMotionVector *pMotionVector;
+    TMotionVector *pMotionVector = nullptr;
     if (!GetMotionVectorPointer(wMotionMode, wMotionIndex, &pMotionVector))
         return FALSE;
 
@@ -262,16 +262,18 @@ BOOL CRaceData::GetCollisionDataPointer(DWORD dwIndex, const NRaceData::TAttachi
 
 BOOL CRaceData::GetBodyCollisionDataPointer(const NRaceData::TAttachingData **c_ppAttachingData)
 {
-    for (DWORD i = 0; i < m_AttachingDataVector.size(); ++i)
+    for (auto &i : m_AttachingDataVector)
     {
-        const NRaceData::TAttachingData *pAttachingData = &m_AttachingDataVector[i];
+        const NRaceData::TAttachingData *pAttachingData = &i;
 
         if (NRaceData::ATTACHING_DATA_TYPE_COLLISION_DATA == pAttachingData->dwType)
+        {
             if (NRaceData::COLLISION_TYPE_BODY == pAttachingData->pCollisionData->iCollisionType)
             {
                 *c_ppAttachingData = pAttachingData;
                 return true;
             }
+        }
     }
 
     return FALSE;
@@ -298,13 +300,13 @@ void CRaceData::RegisterMotionMode(WORD wMotionModeIndex)
 CGraphicThing *CRaceData::NEW_RegisterMotion(CRaceMotionData *pkMotionData, WORD wMotionModeIndex, WORD wMotionIndex,
                                              const char *c_szFileName, BYTE byPercentage)
 {
-    CGraphicThing *pMotionThing = (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
+    auto *pMotionThing = (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
 
-    TMotionModeData *pMotionModeData;
+    TMotionModeData *pMotionModeData = nullptr;
     if (!GetMotionModeDataPointer(wMotionModeIndex, &pMotionModeData))
     {
         AssertLog("Failed getting motion mode data!");
-        return NULL;
+        return nullptr;
     }
 
     TMotion kMotion;
@@ -326,8 +328,8 @@ CGraphicThing *CRaceData::RegisterMotionData(WORD wMotionMode, WORD wMotionIndex
                    "LoadMotionData(c_szFileName=%s) ERROR",
                    c_szFileName);
         CRaceMotionData::Delete(pRaceMotionData);
-        pRaceMotionData = NULL;
-        return NULL;
+        pRaceMotionData = nullptr;
+        return nullptr;
     }
 
     // 2004. 3. 15. myevan. 원래는 모션내 인덱스 정보가 있어야 한다.
@@ -354,25 +356,25 @@ CGraphicThing *CRaceData::RegisterMotionData(WORD wMotionMode, WORD wMotionIndex
 void CRaceData::OLD_RegisterMotion(WORD wMotionModeIndex, WORD wMotionIndex, const char *c_szFileName,
                                    BYTE byPercentage)
 {
-    CGraphicThing *pThing = (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
+    auto *pThing = (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
 
     TMotion Motion;
     Motion.byPercentage = byPercentage;
     Motion.pMotion = pThing;
-    Motion.pMotionData = NULL;
+    Motion.pMotionData = nullptr;
     __OLD_RegisterMotion(wMotionModeIndex, wMotionIndex, Motion);
 }
 
 void CRaceData::__OLD_RegisterMotion(WORD wMotionMode, WORD wMotionIndex, const TMotion &rMotion)
 {
-    TMotionModeData *pMotionModeData;
+    TMotionModeData *pMotionModeData = nullptr;
     if (!GetMotionModeDataPointer(wMotionMode, &pMotionModeData))
     {
         AssertLog("Failed getting motion mode data!");
         return;
     }
 
-    TMotionVectorMap::iterator itor = pMotionModeData->MotionVectorMap.find(wMotionIndex);
+    auto itor = pMotionModeData->MotionVectorMap.find(wMotionIndex);
     if (pMotionModeData->MotionVectorMap.end() == itor)
     {
         TMotionVector MotionVector;
@@ -389,7 +391,7 @@ void CRaceData::__OLD_RegisterMotion(WORD wMotionMode, WORD wMotionIndex, const 
 
 bool CRaceData::SetMotionRandomWeight(WORD wMotionModeIndex, WORD wMotionIndex, WORD wMotionSubIndex, BYTE byPercentage)
 {
-    TMotionModeData *pMotionModeData;
+    TMotionModeData *pMotionModeData = nullptr;
 
     if (!GetMotionModeDataPointer(wMotionModeIndex, &pMotionModeData))
     {
@@ -397,7 +399,7 @@ bool CRaceData::SetMotionRandomWeight(WORD wMotionModeIndex, WORD wMotionIndex, 
         return false;
     }
 
-    TMotionVectorMap::iterator itor = pMotionModeData->MotionVectorMap.find(wMotionIndex);
+    auto itor = pMotionModeData->MotionVectorMap.find(wMotionIndex);
 
     if (pMotionModeData->MotionVectorMap.end() != itor)
     {
@@ -430,7 +432,7 @@ void CRaceData::RegisterNormalAttack(WORD wMotionModeIndex, WORD wMotionIndex)
 }
 BOOL CRaceData::GetNormalAttackIndex(WORD wMotionModeIndex, WORD *pwMotionIndex)
 {
-    TNormalAttackIndexMap::iterator itor = m_NormalAttackIndexMap.find(wMotionModeIndex);
+    auto itor = m_NormalAttackIndexMap.find(wMotionModeIndex);
 
     if (m_NormalAttackIndexMap.end() == itor)
         return FALSE;
@@ -451,7 +453,7 @@ void CRaceData::ReserveComboAttack(WORD wMotionModeIndex, WORD wComboType, DWORD
 
 void CRaceData::RegisterComboAttack(WORD wMotionModeIndex, WORD wComboType, DWORD dwComboIndex, WORD wMotionIndex)
 {
-    TComboAttackDataIterator itor = m_ComboAttackDataMap.find(MAKE_COMBO_KEY(wMotionModeIndex, wComboType));
+    auto itor = m_ComboAttackDataMap.find(MAKE_COMBO_KEY(wMotionModeIndex, wComboType));
     if (m_ComboAttackDataMap.end() == itor)
         return;
 
@@ -467,7 +469,7 @@ void CRaceData::RegisterComboAttack(WORD wMotionModeIndex, WORD wComboType, DWOR
 
 BOOL CRaceData::GetComboDataPointer(WORD wMotionModeIndex, WORD wComboType, TComboData **ppComboData)
 {
-    TComboAttackDataIterator itor = m_ComboAttackDataMap.find(MAKE_COMBO_KEY(wMotionModeIndex, wComboType));
+    auto itor = m_ComboAttackDataMap.find(MAKE_COMBO_KEY(wMotionModeIndex, wComboType));
 
     if (m_ComboAttackDataMap.end() == itor)
         return FALSE;
@@ -506,7 +508,7 @@ CGraphicThing *CRaceData::GetLODModelThing()
 {
     if (!m_pLODModelThing)
     {
-        std::string strLODFileName = CFileNameHelper::NoExtension(m_strBaseModelFileName) + "_lod_01.gr2";
+        std::string const strLODFileName = CFileNameHelper::NoExtension(m_strBaseModelFileName) + "_lod_01.gr2";
         if (CResourceManager::Instance().IsFileExist(strLODFileName.c_str()))
         {
             m_pLODModelThing = (CGraphicThing *)CResourceManager::Instance().GetResourcePointer(strLODFileName.c_str());
@@ -519,17 +521,17 @@ CGraphicThing *CRaceData::GetLODModelThing()
 CAttributeData *CRaceData::GetAttributeDataPtr()
 {
     if (m_strAttributeFileName.empty())
-        return NULL;
+        return nullptr;
 
     if (!CResourceManager::Instance().IsFileExist(m_strAttributeFileName.c_str()))
-        return NULL;
+        return nullptr;
 
     return (CAttributeData *)CResourceManager::Instance().GetResourcePointer(m_strAttributeFileName.c_str());
 }
 
 BOOL CRaceData::GetAttachingBoneName(DWORD dwPartIndex, const char **c_pszBoneName)
 {
-    TAttachingBoneNameMap::iterator itor = m_AttachingBoneNameMap.find(dwPartIndex);
+    auto itor = m_AttachingBoneNameMap.find(dwPartIndex);
     if (itor == m_AttachingBoneNameMap.end())
         return FALSE;
 
@@ -566,18 +568,18 @@ void CRaceData::Destroy()
     m_NormalAttackIndexMap.clear();
     m_ComboAttackDataMap.clear();
 
-    TMotionModeDataMap::iterator itorMode = m_pMotionModeDataMap.begin();
+    auto itorMode = m_pMotionModeDataMap.begin();
     for (; itorMode != m_pMotionModeDataMap.end(); ++itorMode)
     {
         TMotionModeData *pMotionModeData = itorMode->second;
 
-        TMotionVectorMap::iterator itorMotion = pMotionModeData->MotionVectorMap.begin();
+        auto itorMotion = pMotionModeData->MotionVectorMap.begin();
         for (; itorMotion != pMotionModeData->MotionVectorMap.end(); ++itorMotion)
         {
-            TMotionVector &rMotionVector = itorMotion->second;
-            for (DWORD i = 0; i < rMotionVector.size(); ++i)
+            TMotionVector const &rMotionVector = itorMotion->second;
+            for (auto &i : rMotionVector)
             {
-                CRaceMotionData::Delete(rMotionVector[i].pMotionData);
+                CRaceMotionData::Delete(i.pMotionData);
             }
         }
 
@@ -592,8 +594,8 @@ void CRaceData::__Initialize()
 {
     m_strMotionListFileName = "motlist.txt";
 
-    m_pBaseModelThing = NULL;
-    m_pLODModelThing = NULL;
+    m_pBaseModelThing = nullptr;
+    m_pLODModelThing = nullptr;
 
     m_dwRaceIndex = 0;
 

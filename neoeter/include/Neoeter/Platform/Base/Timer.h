@@ -11,23 +11,23 @@ class CTimer : public CSingleton<CTimer>
 {
   public:
     CTimer();
-    virtual ~CTimer();
+    ~CTimer() override;
 
     void Advance();
     void Adjust(int iTimeGap);
     void SetBaseTime();
 
-    float GetCurrentSecond();
-    DWORD GetCurrentMillisecond();
+    float GetCurrentSecond() const;
+    DWORD GetCurrentMillisecond() const;
 
     float GetElapsedSecond();
-    DWORD GetElapsedMilliecond();
+    DWORD GetElapsedMilliecond() const;
 
     void UseCustomTime();
 
   protected:
     bool m_bUseRealTime;
-    DWORD m_dwBaseTime;
+    DWORD m_dwBaseTime = 0U;
     DWORD m_dwCurrentTime;
     float m_fCurrentTime;
     DWORD m_dwElapsedTime;

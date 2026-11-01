@@ -6,7 +6,7 @@ class CGraphicShadowTexture : public CGraphicTexture
 {
   public:
     CGraphicShadowTexture();
-    virtual ~CGraphicShadowTexture();
+    ~CGraphicShadowTexture() override;
 
     void Destroy();
 
@@ -22,14 +22,13 @@ class CGraphicShadowTexture : public CGraphicTexture
   protected:
     void Initialize();
 
-  protected:
     D3DXMATRIX m_d3dLightVPMatrix;
-    D3DVIEWPORT9 m_d3dOldViewport;
+    D3DVIEWPORT9 m_d3dOldViewport{};
 
-    LPDIRECT3DTEXTURE9 m_lpd3dShadowTexture;
-    LPDIRECT3DSURFACE9 m_lpd3dShadowSurface;
-    LPDIRECT3DSURFACE9 m_lpd3dDepthSurface;
+    LPDIRECT3DTEXTURE9 m_lpd3dShadowTexture = nullptr;
+    LPDIRECT3DSURFACE9 m_lpd3dShadowSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpd3dDepthSurface = nullptr;
 
-    LPDIRECT3DSURFACE9 m_lpd3dOldBackBufferSurface;
-    LPDIRECT3DSURFACE9 m_lpd3dOldDepthBufferSurface;
+    LPDIRECT3DSURFACE9 m_lpd3dOldBackBufferSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpd3dOldDepthBufferSurface = nullptr;
 };

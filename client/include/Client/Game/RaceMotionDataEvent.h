@@ -5,9 +5,9 @@
 
 namespace NMotionEvent
 {
-typedef struct SMotionEventData
+using TMotionEventData = struct SMotionEventData
 {
-    int iType;
+    int iType = 0;
     DWORD dwFrame;
     float fStartingTime;
     float fDurationTime;
@@ -24,13 +24,13 @@ typedef struct SMotionEventData
     {
         return true;
     }
-} TMotionEventData;
+};
 
 // Screen Waving
-typedef struct SMotionEventDataScreenWaving : public SMotionEventData
+using TMotionEventDataScreenWaving = struct SMotionEventDataScreenWaving : public SMotionEventData
 {
-    int iPower;
-    int iAffectingRange;
+    int iPower = 0;
+    int iAffectingRange = 0;
 
     SMotionEventDataScreenWaving()
     {
@@ -57,10 +57,10 @@ typedef struct SMotionEventDataScreenWaving : public SMotionEventData
 
         return true;
     }
-} TMotionEventDataScreenWaving;
+};
 
 // Screen Flashing
-typedef struct SMotionEventDataScreenFlashing : public SMotionEventData
+using TMotionEventDataScreenFlashing = struct SMotionEventDataScreenFlashing : public SMotionEventData
 {
     D3DXCOLOR FlashingColor;
 
@@ -78,18 +78,18 @@ typedef struct SMotionEventDataScreenFlashing : public SMotionEventData
     {
         return true;
     }
-} TMotionEventDataScreenFlashing;
+};
 
 // Effect
-typedef struct SMotionEventDataEffect : public SMotionEventData
+using TMotionEventDataEffect = struct SMotionEventDataEffect : public SMotionEventData
 {
-    BOOL isAttaching;
-    BOOL isFollowing;
-    BOOL isIndependent;
+    BOOL isAttaching = 0;
+    BOOL isFollowing = 0;
+    BOOL isIndependent = 0;
     std::string strAttachingBoneName;
     D3DXVECTOR3 v3EffectPosition;
 
-    DWORD dwEffectIndex;
+    DWORD dwEffectIndex = 0U;
     std::string strEffectFileName;
 
     SMotionEventDataEffect()
@@ -131,17 +131,17 @@ typedef struct SMotionEventDataEffect : public SMotionEventData
 
         return true;
     }
-} TMotionEventDataEffect;
+};
 
 // Effect To Target
-typedef struct SMotionEventDataEffectToTarget : public SMotionEventData
+using TMotionEventDataEffectToTarget = struct SMotionEventDataEffectToTarget : public SMotionEventData
 {
-    DWORD dwEffectIndex;
+    DWORD dwEffectIndex = 0U;
 
     std::string strEffectFileName;
     D3DXVECTOR3 v3EffectPosition;
-    BOOL isFollowing;
-    BOOL isFishingEffect;
+    BOOL isFollowing = 0;
+    BOOL isFishingEffect = 0;
 
     SMotionEventDataEffectToTarget()
     {
@@ -180,16 +180,16 @@ typedef struct SMotionEventDataEffectToTarget : public SMotionEventData
 
         return true;
     }
-} TMotionEventDataEffectToTarget;
+};
 
 // Fly
-typedef struct SMotionEventDataFly : public SMotionEventData
+using TMotionEventDataFly = struct SMotionEventDataFly : public SMotionEventData
 {
-    BOOL isAttaching;
+    BOOL isAttaching = 0;
     std::string strAttachingBoneName;
     D3DXVECTOR3 v3FlyPosition;
 
-    DWORD dwFlyIndex;
+    DWORD dwFlyIndex = 0U;
     std::string strFlyFileName;
 
     SMotionEventDataFly()
@@ -226,14 +226,14 @@ typedef struct SMotionEventDataFly : public SMotionEventData
 
         return true;
     }
-} TMotionEventDataFly;
+};
 
 // Attacking
-typedef struct SMotionEventDataAttack : public SMotionEventData
+using TMotionEventDataAttacking = struct SMotionEventDataAttack : public SMotionEventData
 {
     NRaceData::TCollisionData CollisionData;
-    NRaceData::TAttackData AttackData;
-    BOOL isEnableHitProcess;
+    NRaceData::TAttackData AttackData{};
+    BOOL isEnableHitProcess = 0;
 
     SMotionEventDataAttack()
     {
@@ -269,10 +269,10 @@ typedef struct SMotionEventDataAttack : public SMotionEventData
 
         return true;
     }
-} TMotionEventDataAttacking;
+};
 
 // Sound
-typedef struct SMotionEventDataSound : public SMotionEventData
+using TMotionEventDataSound = struct SMotionEventDataSound : public SMotionEventData
 {
     std::string strSoundFileName; // Direct Sound Node
 
@@ -290,15 +290,12 @@ typedef struct SMotionEventDataSound : public SMotionEventData
     }
     bool Load(CTextFileLoader &rTextFileLoader)
     {
-        if (!rTextFileLoader.GetTokenString("soundfilename", &strSoundFileName))
-            return false;
-
-        return true;
+        return rTextFileLoader.GetTokenString("soundfilename", &strSoundFileName) != 0;
     }
-} TMotionEventDataSound;
+};
 
 // Character Show
-typedef struct SMotionEventDataCharacterShow : public SMotionEventData
+using TMotionEventDataCharacterShow = struct SMotionEventDataCharacterShow : public SMotionEventData
 {
     SMotionEventDataCharacterShow()
     {
@@ -313,10 +310,10 @@ typedef struct SMotionEventDataCharacterShow : public SMotionEventData
     void Load()
     {
     }
-} TMotionEventDataCharacterShow;
+};
 
 // Character Hide
-typedef struct SMotionEventDataCharacterHide : public SMotionEventData
+using TMotionEventDataCharacterHide = struct SMotionEventDataCharacterHide : public SMotionEventData
 {
     SMotionEventDataCharacterHide()
     {
@@ -331,10 +328,10 @@ typedef struct SMotionEventDataCharacterHide : public SMotionEventData
     void Load()
     {
     }
-} TMotionEventDataCharacterHide;
+};
 
 // Warp
-typedef struct SMotionEventDataWarp : public SMotionEventData
+using TMotionWarpEventData = struct SMotionEventDataWarp : public SMotionEventData
 {
     SMotionEventDataWarp()
     {
@@ -349,5 +346,5 @@ typedef struct SMotionEventDataWarp : public SMotionEventData
     void Load()
     {
     }
-} TMotionWarpEventData;
+};
 }; // namespace NMotionEvent

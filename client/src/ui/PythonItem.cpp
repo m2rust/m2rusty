@@ -6,6 +6,9 @@
 
 #include <Client/UI/PythonItem.h>
 #include <Client/UI/PythonTextTail.h>
+#include <math.h>
+
+#include <numbers>
 
 const float c_fDropStartHeight = 100.0f;
 const float c_fDropTime = 0.5f;
@@ -67,13 +70,13 @@ bool CPythonItem::TGroundItemInstance::Update()
     }
     else
     {
-        DWORD time = CTimer::Instance().GetCurrentMillisecond() - dwStartTime;
-        DWORD etime = dwEndTime - CTimer::Instance().GetCurrentMillisecond();
-        float rate = time * 1.0f / (dwEndTime - dwStartTime);
+        DWORD const time = CTimer::Instance().GetCurrentMillisecond() - dwStartTime;
+        DWORD const etime = dwEndTime - CTimer::Instance().GetCurrentMillisecond();
+        float const rate = time * 1.0f / (dwEndTime - dwStartTime);
 
-        D3DXVECTOR3 v3NewPosition = v3EndPosition;            // = rate*(v3EndPosition - v3StartPosition) +
-                                                              // v3StartPosition;
-        v3NewPosition.z += 100 - 100 * rate * (3 * rate - 2); //-100*(rate-1)*(3*rate+2);
+        D3DXVECTOR3 v3NewPosition = v3EndPosition;              // = rate*(v3EndPosition - v3StartPosition) +
+                                                                // v3StartPosition;
+        v3NewPosition.z += 100 - (100 * rate * (3 * rate - 2)); //-100*(rate-1)*(3*rate+2);
 
         D3DXQUATERNION q;
         D3DXQuaternionRotationAxis(&q, &v3RotationAxis, etime * 0.03f * (-1 + rate * (3 * rate - 2)));
@@ -111,7 +114,7 @@ bool CPythonItem::TGroundItemInstance::Update()
 
 void CPythonItem::Update(const POINT &c_rkPtMouse)
 {
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.begin();
+    auto itor = m_GroundItemInstanceMap.begin();
     for (; itor != m_GroundItemInstanceMap.end(); ++itor)
     {
         itor->second->Update();
@@ -123,7 +126,7 @@ void CPythonItem::Update(const POINT &c_rkPtMouse)
 void CPythonItem::Render()
 {
     CPythonGraphic::Instance().SetDiffuseOperation();
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.begin();
+    auto itor = m_GroundItemInstanceMap.begin();
     for (; itor != m_GroundItemInstanceMap.end(); ++itor)
     {
         CGraphicThingInstance &rInstance = itor->second->ThingInstance;
@@ -157,11 +160,11 @@ void CPythonItem::PlayUseSound(DWORD dwItemID)
 {
     // CItemManager& rkItemMgr=CItemManager::Instance();
 
-    CItemData *pkItemData;
+    CItemData *pkItemData = nullptr;
     if (!CItemManager::Instance().GetItemDataPointer(dwItemID, &pkItemData))
         return;
 
-    DWORD eItemType = __GetUseSoundType(*pkItemData);
+    DWORD const eItemType = __GetUseSoundType(*pkItemData);
     if (eItemType == USESOUND_NONE)
         return;
     if (eItemType >= USESOUND_NUM)
@@ -174,11 +177,11 @@ void CPythonItem::PlayDropSound(DWORD dwItemID)
 {
     // CItemManager& rkItemMgr=CItemManager::Instance();
 
-    CItemData *pkItemData;
+    CItemData *pkItemData = nullptr;
     if (!CItemManager::Instance().GetItemDataPointer(dwItemID, &pkItemData))
         return;
 
-    DWORD eItemType = __GetDropSoundType(*pkItemData);
+    DWORD const eItemType = __GetDropSoundType(*pkItemData);
     if (eItemType >= DROPSOUND_NUM)
         return;
 
@@ -291,7 +294,7 @@ void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, 
 {
     // CItemManager& rkItemMgr=CItemManager::Instance();
 
-    CItemData *pItemData;
+    CItemData *pItemData = nullptr;
     if (!CItemManager::Instance().GetItemDataPointer(dwVirtualNumber, &pItemData))
         return;
 
@@ -329,7 +332,7 @@ void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, 
     }
 
     D3DXVECTOR3 normal;
-    if (!CPythonBackground::Instance().GetNormal(int(x), int(y), &normal))
+    if (!CPythonBackground::Instance().GetNormal(static_cast<int>(x), static_cast<int>(y), &normal))
         normal = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
 
     pGroundItemInstance->ThingInstance.Clear();
@@ -343,7 +346,9 @@ void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, 
         pGroundItemInstance->ThingInstance.SetPosition(0, 0, 0);
     }
     else
+    {
         pGroundItemInstance->ThingInstance.SetPosition(x, -y, z);
+    }
 
     pGroundItemInstance->ThingInstance.Update();
     pGroundItemInstance->ThingInstance.Transform();
@@ -351,7 +356,8 @@ void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, 
 
     if (bDrop)
     {
-        D3DXVECTOR3 vMin, vMax;
+        D3DXVECTOR3 vMin;
+        D3DXVECTOR3 vMax;
         pGroundItemInstance->ThingInstance.GetBoundBox(&vMin, &vMax);
         pGroundItemInstance->v3Center = (vMin + vMax) * 0.5f;
 
@@ -394,28 +400,29 @@ void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, 
             {
                 // y,z = by normal
                 pGroundItemInstance->qEnd =
-                    RotationArc(D3DXVECTOR3(((float)(random() % 2)) * 2 - 1 + frandom(-0.1f, 0.1f),
+                    RotationArc(D3DXVECTOR3(((static_cast<float>(random() % 2)) * 2) - 1 + frandom(-0.1f, 0.1f),
                                             0 + frandom(-0.1f, 0.1f), 0 + frandom(-0.1f, 0.1f)),
                                 D3DXVECTOR3(0, 0, 1) /*normal*/);
             }
             else if (f[0].second == 1)
             {
-                pGroundItemInstance->qEnd = RotationArc(
-                    D3DXVECTOR3(0 + frandom(-0.1f, 0.1f), ((float)(random() % 2)) * 2 - 1 + frandom(-0.1f, 0.1f),
-                                0 + frandom(-0.1f, 0.1f)),
-                    D3DXVECTOR3(0, 0, 1) /*normal*/);
+                pGroundItemInstance->qEnd =
+                    RotationArc(D3DXVECTOR3(0 + frandom(-0.1f, 0.1f),
+                                            ((static_cast<float>(random() % 2)) * 2) - 1 + frandom(-0.1f, 0.1f),
+                                            0 + frandom(-0.1f, 0.1f)),
+                                D3DXVECTOR3(0, 0, 1) /*normal*/);
             }
             else
             {
                 pGroundItemInstance->qEnd =
                     RotationArc(D3DXVECTOR3(0 + frandom(-0.1f, 0.1f), 0 + frandom(-0.1f, 0.1f),
-                                            ((float)(random() % 2)) * 2 - 1 + frandom(-0.1f, 0.1f)),
+                                            ((static_cast<float>(random() % 2)) * 2) - 1 + frandom(-0.1f, 0.1f)),
                                 D3DXVECTOR3(0, 0, 1) /*normal*/);
             }
         }
         // D3DXQuaternionRotationYawPitchRoll(&pGroundItemInstance->qEnd, rEnd.y,
         // rEnd.x, rEnd.z );
-        float rot = frandom(0, 2 * 3.1415926535f);
+        float const rot = frandom(0, 2 * std::numbers::pi_v<float>);
         D3DXQUATERNION q(0, 0, cosf(rot), sinf(rot));
         D3DXQuaternionMultiply(&pGroundItemInstance->qEnd, &pGroundItemInstance->qEnd, &q);
         q = RotationArc(D3DXVECTOR3(0, 0, 1), normal);
@@ -465,7 +472,7 @@ void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, 
 
 void CPythonItem::SetOwnership(DWORD dwVID, const char *c_pszName)
 {
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.find(dwVID);
+    auto itor = m_GroundItemInstanceMap.find(dwVID);
 
     if (m_GroundItemInstanceMap.end() == itor)
         return;
@@ -479,7 +486,7 @@ void CPythonItem::SetOwnership(DWORD dwVID, const char *c_pszName)
 
 bool CPythonItem::GetOwnership(DWORD dwVID, const char **c_pszName)
 {
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.find(dwVID);
+    auto itor = m_GroundItemInstanceMap.find(dwVID);
 
     if (m_GroundItemInstanceMap.end() == itor)
         return false;
@@ -507,7 +514,7 @@ void CPythonItem::DeleteAllItems()
 
 void CPythonItem::DeleteItem(DWORD dwVirtualID)
 {
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.find(dwVirtualID);
+    auto itor = m_GroundItemInstanceMap.find(dwVirtualID);
     if (m_GroundItemInstanceMap.end() == itor)
         return;
 
@@ -533,18 +540,18 @@ bool CPythonItem::GetCloseMoney(const TPixelPosition &c_rPixelPosition, DWORD *p
         if (pInstance->dwVirtualNumber != VNUM_MONEY)
             continue;
 
-        DWORD dwxDistance = DWORD(c_rPixelPosition.x - pInstance->v3EndPosition.x);
-        DWORD dwyDistance = DWORD(c_rPixelPosition.y - (-pInstance->v3EndPosition.y));
-        DWORD dwDistance = DWORD(dwxDistance * dwxDistance + dwyDistance * dwyDistance);
+        auto dwxDistance = static_cast<DWORD>(c_rPixelPosition.x - pInstance->v3EndPosition.x);
+        auto dwyDistance = static_cast<DWORD>(c_rPixelPosition.y - (-pInstance->v3EndPosition.y));
+        auto dwDistance = ((dwxDistance * dwxDistance) + (dwyDistance * dwyDistance));
 
-        if (dwxDistance * dwxDistance + dwyDistance * dwyDistance < dwCloseItemDistance)
+        if ((dwxDistance * dwxDistance) + (dwyDistance * dwyDistance) < dwCloseItemDistance)
         {
             dwCloseItemID = i->first;
             dwCloseItemDistance = dwDistance;
         }
     }
 
-    if (dwCloseItemDistance > float(dwDistance) * float(dwDistance))
+    if (dwCloseItemDistance > static_cast<float>(dwDistance) * static_cast<float>(dwDistance))
         return false;
 
     *pdwItemID = dwCloseItemID;
@@ -562,18 +569,18 @@ bool CPythonItem::GetCloseItem(const TPixelPosition &c_rPixelPosition, DWORD *pd
     {
         TGroundItemInstance *pInstance = i->second;
 
-        DWORD dwxDistance = DWORD(c_rPixelPosition.x - pInstance->v3EndPosition.x);
-        DWORD dwyDistance = DWORD(c_rPixelPosition.y - (-pInstance->v3EndPosition.y));
-        DWORD dwDistance = DWORD(dwxDistance * dwxDistance + dwyDistance * dwyDistance);
+        auto dwxDistance = static_cast<DWORD>(c_rPixelPosition.x - pInstance->v3EndPosition.x);
+        auto dwyDistance = static_cast<DWORD>(c_rPixelPosition.y - (-pInstance->v3EndPosition.y));
+        auto dwDistance = ((dwxDistance * dwxDistance) + (dwyDistance * dwyDistance));
 
-        if (dwxDistance * dwxDistance + dwyDistance * dwyDistance < dwCloseItemDistance)
+        if ((dwxDistance * dwxDistance) + (dwyDistance * dwyDistance) < dwCloseItemDistance)
         {
             dwCloseItemID = i->first;
             dwCloseItemDistance = dwDistance;
         }
     }
 
-    if (dwCloseItemDistance > float(dwDistance) * float(dwDistance))
+    if (dwCloseItemDistance > static_cast<float>(dwDistance) * static_cast<float>(dwDistance))
         return false;
 
     *pdwItemID = dwCloseItemID;
@@ -583,7 +590,7 @@ bool CPythonItem::GetCloseItem(const TPixelPosition &c_rPixelPosition, DWORD *pd
 
 BOOL CPythonItem::GetGroundItemPosition(DWORD dwVirtualID, TPixelPosition *pPosition)
 {
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.find(dwVirtualID);
+    auto itor = m_GroundItemInstanceMap.find(dwVirtualID);
     if (m_GroundItemInstanceMap.end() == itor)
         return FALSE;
 
@@ -600,9 +607,11 @@ BOOL CPythonItem::GetGroundItemPosition(DWORD dwVirtualID, TPixelPosition *pPosi
 
 DWORD CPythonItem::__Pick(const POINT &c_rkPtMouse)
 {
-    float fu, fv, ft;
+    float fu = NAN;
+    float fv = NAN;
+    float ft = NAN;
 
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.begin();
+    auto itor = m_GroundItemInstanceMap.begin();
     for (; itor != m_GroundItemInstanceMap.end(); ++itor)
     {
         TGroundItemInstance *pInstance = itor->second;
@@ -617,7 +626,7 @@ DWORD CPythonItem::__Pick(const POINT &c_rkPtMouse)
     return rkTextTailMgr.Pick(c_rkPtMouse.x, c_rkPtMouse.y);
 }
 
-bool CPythonItem::GetPickedItemID(DWORD *pdwPickedItemID)
+bool CPythonItem::GetPickedItemID(DWORD *pdwPickedItemID) const
 {
     if (INVALID_ID == m_dwPickedItemID)
         return false;
@@ -628,12 +637,13 @@ bool CPythonItem::GetPickedItemID(DWORD *pdwPickedItemID)
 
 DWORD CPythonItem::GetVirtualNumberOfGroundItem(DWORD dwVID)
 {
-    TGroundItemInstanceMap::iterator itor = m_GroundItemInstanceMap.find(dwVID);
+    auto itor = m_GroundItemInstanceMap.find(dwVID);
 
     if (itor == m_GroundItemInstanceMap.end())
+    {
         return 0;
-    else
-        return itor->second->dwVirtualNumber;
+    }
+    return itor->second->dwVirtualNumber;
 }
 
 void CPythonItem::BuildNoGradeNameData(int iType)
@@ -662,7 +672,7 @@ DWORD CPythonItem::GetNoGradeNameDataCount()
 CItemData *CPythonItem::GetNoGradeNameDataPtr(DWORD dwIndex)
 {
     if (dwIndex >= m_NoGradeNameItemData.size())
-        return NULL;
+        return nullptr;
 
     return m_NoGradeNameItemData[dwIndex];
 }
@@ -678,10 +688,9 @@ void CPythonItem::Create()
     CEffectManager::Instance().RegisterEffect2("d:/ymir work/effect/etc/dropitem/dropitem.mse", &m_dwDropItemEffectID);
 }
 
-CPythonItem::CPythonItem()
+CPythonItem::CPythonItem() : m_dwPickedItemID(INVALID_ID)
 {
     m_GroundItemInstancePool.SetName("CDynamicPool<TGroundItemInstance>");
-    m_dwPickedItemID = INVALID_ID;
 }
 
 CPythonItem::~CPythonItem()

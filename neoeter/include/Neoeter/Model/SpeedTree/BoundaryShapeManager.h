@@ -40,8 +40,8 @@ struct SPoint
 struct SBoundaryShape
 {
     std::vector<std::vector<SPoint>> m_vContours;
-    float m_afMin[3];
-    float m_afMax[3];
+    float m_afMin[3]{};
+    float m_afMax[3]{};
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ class CBoundaryShapeManager
     CBoundaryShapeManager();
     virtual ~CBoundaryShapeManager();
 
-    bool LoadBsfFile(const char *pFilename);
+    bool LoadBsfFile(const char *pszFilename);
 
     bool PointInside(float fX, float fY);
     bool RandomPoint(float &fX, float &fY);

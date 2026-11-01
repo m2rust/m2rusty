@@ -13,7 +13,7 @@ CGrannyMotion::~CGrannyMotion()
 
 bool CGrannyMotion::IsEmpty()
 {
-    return m_pgrnAni ? false : true;
+    return m_pgrnAni == nullptr;
 }
 
 void CGrannyMotion::Destroy()
@@ -23,7 +23,7 @@ void CGrannyMotion::Destroy()
 
 void CGrannyMotion::Initialize()
 {
-    m_pgrnAni = NULL;
+    m_pgrnAni = nullptr;
 }
 
 bool CGrannyMotion::BindGrannyAnimation(granny_animation *pgrnAni)
@@ -61,10 +61,12 @@ void CGrannyMotion::GetTextTrack(const char *c_szTextTrackName, int *pCount, flo
 
     for (int i = 0; i < pTrack->TextTrackCount; ++i)
     {
-        granny_text_track &rTextTrack = pTrack->TextTracks[i];
+        granny_text_track const &rTextTrack = pTrack->TextTracks[i];
 
         for (int j = 0; j < rTextTrack.EntryCount; ++j)
+        {
             if (!stricmp(c_szTextTrackName, rTextTrack.Entries[j].Text))
                 pArray[(*pCount)++] = rTextTrack.Entries[j].TimeStamp;
+        }
     }
 }

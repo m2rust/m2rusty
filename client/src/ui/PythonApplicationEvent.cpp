@@ -210,8 +210,9 @@ void CPythonApplication::OnMouseUpdate()
     }
 #endif _DEBUG
 
-    UI::CWindowManager &rkWndMgr = UI::CWindowManager::Instance();
-    long lx, ly;
+    UI::CWindowManager const &rkWndMgr = UI::CWindowManager::Instance();
+    long lx = 0;
+    long ly = 0;
     rkWndMgr.GetMousePosition(lx, ly);
     PyCallClassMemberFunc(m_poMouseHandler, "Update", Py_BuildValue("(ii)", lx, ly));
 }

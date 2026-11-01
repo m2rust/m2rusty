@@ -17,7 +17,6 @@ class CFlyingInstance
     void SetDataPointer(CFlyingData *pData, const D3DXVECTOR3 &v3StartPosition);
     void SetFlyTarget(const CFlyTarget &cr_Target); // Shot at Target
 
-  public:
     friend class CSceneFly;
 
     struct TAttachEffectInstance
@@ -37,7 +36,7 @@ class CFlyingInstance
     bool Update();
     void Render();
 
-    bool IsAlive()
+    bool IsAlive() const
     {
         return m_bAlive;
     }
@@ -49,7 +48,7 @@ class CFlyingInstance
 
     void AdjustDirectionForHoming(const D3DXVECTOR3 &v3TargetPosition);
 
-    typedef std::vector<TAttachEffectInstance> TAttachEffectInstanceVector;
+    using TAttachEffectInstanceVector = std::vector<TAttachEffectInstance>;
 
     void BuildAttachInstance();
     void UpdateAttachInstance();
@@ -62,7 +61,7 @@ class CFlyingInstance
     }
     void ClearEventHandler()
     {
-        m_pHandler = 0;
+        m_pHandler = nullptr;
     }
 
     void SetPierceCount(int iCount)
@@ -82,44 +81,43 @@ class CFlyingInstance
     void __Explode(bool bBomb = true);
     void __Bomb();
 
-    DWORD ID;
+    DWORD ID = 0U;
 
   protected:
     void __Initialize();
 
     void __SetDataPointer(CFlyingData *pData, const D3DXVECTOR3 &v3StartPosition);
     void __SetTargetDirection(const CFlyTarget &c_rkTarget);
-    void __SetTargetNormalizedDirection(const D3DXVECTOR3 &v3NormalizedDirection); // 시작 타겟 방향 설정
+    void __SetTargetNormalizedDirection(const D3DXVECTOR3 &v3NomalizedDirection); // 시작 타겟 방향 설정
 
-  protected:
-    CFlyingData *m_pData;
+    CFlyingData *m_pData = nullptr;
     D3DXQUATERNION m_qRot;
 
-    float m_fStartTime;
+    float m_fStartTime = 0.0F;
 
-    bool m_bAlive;
-    bool m_canAttack;
+    bool m_bAlive = false;
+    bool m_canAttack = false;
 
-    int m_iPierceCount;
-    DWORD m_dwSkillIndex;
+    int m_iPierceCount = 0;
+    DWORD m_dwSkillIndex = 0U;
 
     D3DXVECTOR3 m_v3Position;
     D3DXVECTOR3 m_v3Velocity;
     D3DXVECTOR3 m_v3LocalVelocity;
     D3DXVECTOR3 m_v3Accel;
 
-    float m_fRemainRange;
+    float m_fRemainRange = 0.0F;
 
     CFlyTarget m_FlyTarget;
 
     D3DXQUATERNION m_qAttachRotation;
     TAttachEffectInstanceVector m_vecAttachEffectInstance;
 
-    IFlyEventHandler *m_pHandler;
+    IFlyEventHandler *m_pHandler = nullptr;
 
-    IActorInstance *m_pOwner;
+    IActorInstance *m_pOwner = nullptr;
 
-    BOOL m_bTargetHitted;
+    BOOL m_bTargetHitted = 0;
     std::set<IActorInstance *> m_HittedObjectSet;
 
   public:

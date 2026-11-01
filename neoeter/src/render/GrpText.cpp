@@ -6,9 +6,7 @@ CGraphicText::CGraphicText(const char *c_szFileName) : CResource(c_szFileName)
 {
 }
 
-CGraphicText::~CGraphicText()
-{
-}
+CGraphicText::~CGraphicText() = default;
 
 bool CGraphicText::CreateDeviceObjects()
 {
@@ -27,14 +25,14 @@ CGraphicFontTexture *CGraphicText::GetFontTexturePointer()
 
 CGraphicText::TType CGraphicText::Type()
 {
-    static TType s_type = StringToType("CGraphicText");
+    static TType const s_type = StringToType("CGraphicText");
     return s_type;
 }
 
 bool CGraphicText::OnLoad(int /*iSize*/, const void * /*c_pvBuf*/)
 {
     static char strName[32];
-    int size;
+    int size = 0;
     bool bItalic = false;
 
     // format
@@ -71,7 +69,9 @@ bool CGraphicText::OnLoad(int /*iSize*/, const void * /*c_pvBuf*/)
             strName[0] = '\0';
         }
         else
+        {
             strncpy(strName, GetFileName(), MIN(31, p - GetFileName()));
+        }
 
         size = 12;
     }

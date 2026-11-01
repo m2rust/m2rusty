@@ -1,10 +1,11 @@
 #include <Client/UI/StdAfx.h>
 #include <Client/UI/PythonCharacterManager.h>
 #include <Client/UI/PythonNonPlayer.h>
+#include <math.h>
 
 PyObject *chrRaceToJob(PyObject *poSelf, PyObject *poArgs)
 {
-    int race;
+    int race = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &race))
         return Py_BuildException();
 
@@ -13,7 +14,7 @@ PyObject *chrRaceToJob(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrRaceToSex(PyObject *poSelf, PyObject *poArgs)
 {
-    int race;
+    int race = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &race))
         return Py_BuildException();
 
@@ -53,7 +54,7 @@ PyObject *chrRenderCollision(PyObject *poSelf, PyObject *poArgs)
 // Functions For Python Test Code
 PyObject *chrCreateInstance(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -110,7 +111,7 @@ PyObject *chrCreateInstance(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrDeleteInstance(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -120,7 +121,7 @@ PyObject *chrDeleteInstance(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrDeleteInstanceByFade(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -130,7 +131,7 @@ PyObject *chrDeleteInstanceByFade(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSelectInstance(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -140,17 +141,17 @@ PyObject *chrSelectInstance(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrHasInstance(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
-    bool bFlag = CPythonCharacterManager::Instance().GetInstancePtr(iVirtualID) ? TRUE : FALSE;
+    bool const bFlag = CPythonCharacterManager::Instance().GetInstancePtr(iVirtualID) ? TRUE : FALSE;
     return Py_BuildValue("i", bFlag);
 }
 
 PyObject *chrIsEnemy(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -163,7 +164,7 @@ PyObject *chrIsEnemy(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrIsNPC(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -176,7 +177,7 @@ PyObject *chrIsNPC(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrIsGameMaster(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -189,7 +190,7 @@ PyObject *chrIsGameMaster(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrIsPartyMember(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -202,7 +203,7 @@ PyObject *chrIsPartyMember(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSelect(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -230,17 +231,17 @@ PyObject *chrSelect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetAddRenderMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fr))
         return Py_BuildException();
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fg))
         return Py_BuildException();
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fb))
         return Py_BuildException();
 
@@ -257,11 +258,11 @@ PyObject *chrSetAddRenderMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetBlendRenderMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
-    float fAlpha;
+    float fAlpha = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fAlpha))
         return Py_BuildException();
 
@@ -277,7 +278,7 @@ PyObject *chrSetBlendRenderMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrUnselect(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -293,9 +294,10 @@ PyObject *chrPick(PyObject *poSelf, PyObject *poArgs)
 {
     DWORD VirtualID = 0;
     if (CPythonCharacterManager::Instance().OLD_GetPickedInstanceVID(&VirtualID))
+    {
         return Py_BuildValue("i", VirtualID);
-    else
-        return Py_BuildValue("i", -1);
+    }
+    return Py_BuildValue("i", -1);
 }
 
 PyObject *chrHide(PyObject *poSelf, PyObject *poArgs)
@@ -320,13 +322,13 @@ PyObject *chrShow(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrPickAll(PyObject *poSelf, PyObject *poArgs)
 {
-    DWORD VirtualID = CPythonCharacterManager::Instance().PickAll();
+    DWORD const VirtualID = CPythonCharacterManager::Instance().PickAll();
     return Py_BuildValue("i", VirtualID);
 }
 
 PyObject *chrSetRace(PyObject *poSelf, PyObject *poArgs)
 {
-    int iRace;
+    int iRace = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iRace))
         return Py_BuildException();
 
@@ -341,7 +343,7 @@ PyObject *chrSetRace(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetHair(PyObject *poSelf, PyObject *poArgs)
 {
-    int iRace;
+    int iRace = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iRace))
         return Py_BuildException();
 
@@ -356,7 +358,7 @@ PyObject *chrSetHair(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrChangeHair(PyObject *poSelf, PyObject *poArgs)
 {
-    int iHair;
+    int iHair = 0;
 
     if (!PyTuple_GetInteger(poArgs, 0, &iHair))
         return Py_BuildException();
@@ -369,7 +371,7 @@ PyObject *chrChangeHair(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetArmor(PyObject *poSelf, PyObject *poArgs)
 {
-    int iForm;
+    int iForm = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iForm))
         return Py_BuildException();
 
@@ -386,7 +388,7 @@ PyObject *chrSetArmor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrChangeShape(PyObject *poSelf, PyObject *poArgs)
 {
-    int iForm;
+    int iForm = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iForm))
         return Py_BuildException();
 
@@ -401,7 +403,7 @@ PyObject *chrChangeShape(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetWeapon(PyObject *poSelf, PyObject *poArgs)
 {
-    int iForm;
+    int iForm = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iForm))
         return Py_BuildException();
 
@@ -416,7 +418,7 @@ PyObject *chrSetWeapon(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetVirtualID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVID;
+    int iVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVID))
         return Py_BuildException();
 
@@ -429,7 +431,7 @@ PyObject *chrSetVirtualID(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetNameString(PyObject *poSelf, PyObject *poArgs)
 {
-    char *c_szName;
+    char *c_szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &c_szName))
         return Py_BuildException();
 
@@ -442,7 +444,7 @@ PyObject *chrSetNameString(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetInstanceType(PyObject *poSelf, PyObject *poArgs)
 {
-    int iInstanceType;
+    int iInstanceType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iInstanceType))
         return Py_BuildException();
 
@@ -455,18 +457,18 @@ PyObject *chrSetInstanceType(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrAttachEffectByName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iParentPartIndex;
+    int iParentPartIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iParentPartIndex))
         return Py_BuildException();
 
-    char *pszBoneName;
+    char *pszBoneName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &pszBoneName))
     {
-        pszBoneName = NULL;
+        pszBoneName = nullptr;
         // return Py_BuildException();
     }
 
-    char *pszEffectName;
+    char *pszEffectName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &pszEffectName))
         return Py_BuildException();
 
@@ -490,19 +492,19 @@ PyObject *chrAttachEffectByName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrAttachEffectByID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iParentPartIndex;
+    int iParentPartIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iParentPartIndex))
         return Py_BuildException();
 
-    char *pszBoneName;
+    char *pszBoneName = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &pszBoneName))
     {
-        pszBoneName = NULL;
+        pszBoneName = nullptr;
     }
     //	return Py_BuildException();
 
     // FIXME : bug or error on getting unsigned value
-    int iEffectID;
+    int iEffectID = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iEffectID))
         return Py_BuildException();
 
@@ -573,11 +575,11 @@ PyObject *chrDie(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrLookAt(PyObject *poSelf, PyObject *poArgs)
 {
-    int iCellX;
+    int iCellX = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iCellX))
         return Py_BuildException();
 
-    int iCellY;
+    int iCellY = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iCellY))
         return Py_BuildException();
 
@@ -591,7 +593,7 @@ PyObject *chrLookAt(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetMotionMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionMode;
+    int iMotionMode = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionMode))
         return Py_BuildException();
 
@@ -605,42 +607,42 @@ PyObject *chrSetMotionMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetLoopMotion(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionIndex))
         return Py_BuildException();
 
     CInstanceBase *pkInst = CPythonCharacterManager::Instance().GetSelectedInstancePtr();
     if (!pkInst)
         return Py_BuildNone();
-    pkInst->SetLoopMotion(WORD(iMotionIndex));
+    pkInst->SetLoopMotion(static_cast<WORD>(iMotionIndex));
 
     return Py_BuildNone();
 }
 
 PyObject *chrBlendLoopMotion(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionIndex))
         return Py_BuildException();
-    float fBlendTime;
+    float fBlendTime = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fBlendTime))
         return Py_BuildException();
 
     CInstanceBase *pkInst = CPythonCharacterManager::Instance().GetSelectedInstancePtr();
     if (!pkInst)
         return Py_BuildNone();
-    pkInst->SetLoopMotion(WORD(iMotionIndex), fBlendTime);
+    pkInst->SetLoopMotion(static_cast<WORD>(iMotionIndex), fBlendTime);
 
     return Py_BuildNone();
 }
 
 PyObject *chrPushOnceMotion(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionIndex))
         return Py_BuildException();
 
-    float fBlendTime;
+    float fBlendTime = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fBlendTime))
     {
         fBlendTime = 0.1f;
@@ -649,18 +651,18 @@ PyObject *chrPushOnceMotion(PyObject *poSelf, PyObject *poArgs)
     CInstanceBase *pkInst = CPythonCharacterManager::Instance().GetSelectedInstancePtr();
     if (!pkInst)
         return Py_BuildNone();
-    pkInst->PushOnceMotion(WORD(iMotionIndex), fBlendTime);
+    pkInst->PushOnceMotion(static_cast<WORD>(iMotionIndex), fBlendTime);
 
     return Py_BuildNone();
 }
 
 PyObject *chrPushLoopMotion(PyObject *poSelf, PyObject *poArgs)
 {
-    int iMotionIndex;
+    int iMotionIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iMotionIndex))
         return Py_BuildException();
 
-    float fBlendTime;
+    float fBlendTime = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fBlendTime))
     {
         fBlendTime = 0.1f;
@@ -669,17 +671,17 @@ PyObject *chrPushLoopMotion(PyObject *poSelf, PyObject *poArgs)
     CInstanceBase *pkInst = CPythonCharacterManager::Instance().GetSelectedInstancePtr();
     if (!pkInst)
         return Py_BuildNone();
-    pkInst->PushLoopMotion(WORD(iMotionIndex), fBlendTime);
+    pkInst->PushLoopMotion(static_cast<WORD>(iMotionIndex), fBlendTime);
 
     return Py_BuildNone();
 }
 
 PyObject *chrSetPixelPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iX;
+    int iX = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iX))
         return Py_BuildException();
-    int iY;
+    int iY = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iY))
         return Py_BuildException();
 
@@ -687,7 +689,7 @@ PyObject *chrSetPixelPosition(PyObject *poSelf, PyObject *poArgs)
     if (!pkInst)
         return Py_BuildNone();
 
-    int iZ;
+    int iZ = 0;
     if (PyTuple_GetInteger(poArgs, 2, &iZ))
     {
         pkInst->NEW_SetPixelPosition(TPixelPosition(iX, iY, iZ));
@@ -701,7 +703,7 @@ PyObject *chrSetPixelPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetDirection(PyObject *poSelf, PyObject *poArgs)
 {
-    int iDirection;
+    int iDirection = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iDirection))
         return Py_BuildException();
 
@@ -712,7 +714,7 @@ PyObject *chrSetDirection(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrGetPixelPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -729,7 +731,7 @@ PyObject *chrGetPixelPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetRotation(PyObject *poSelf, PyObject *poArgs)
 {
-    float fRotation;
+    float fRotation = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fRotation))
         return Py_BuildException();
 
@@ -747,13 +749,13 @@ PyObject *chrSetRotation(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrSetRotationAll(PyObject *poSelf, PyObject *poArgs)
 {
-    float fRotX;
+    float fRotX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fRotX))
         return Py_BuildException();
-    float fRotY;
+    float fRotY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fRotY))
         return Py_BuildException();
-    float fRotZ;
+    float fRotZ = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fRotZ))
         return Py_BuildException();
 
@@ -768,10 +770,10 @@ PyObject *chrSetRotationAll(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrBlendRotation(PyObject *poSelf, PyObject *poArgs)
 {
-    float fRotation;
+    float fRotation = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fRotation))
         return Py_BuildException();
-    float fBlendTime;
+    float fBlendTime = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fBlendTime))
         return Py_BuildException();
 
@@ -792,7 +794,7 @@ PyObject *chrGetRotation(PyObject *poSelf, PyObject *poArgs)
     if (!pCharacterInstance)
         return Py_BuildValue("f", 0.0f);
 
-    float fRotation = pCharacterInstance->GetRotation();
+    float const fRotation = pCharacterInstance->GetRotation();
 
     return Py_BuildValue("f", 360.0f - fRotation);
 }
@@ -819,7 +821,7 @@ PyObject *chrGetName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrGetNameByVID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -833,7 +835,7 @@ PyObject *chrGetNameByVID(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrGetGuildID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -847,10 +849,10 @@ PyObject *chrGetGuildID(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrGetProjectPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    int iHeight;
+    int iHeight = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iHeight))
         return Py_BuildException();
 
@@ -864,24 +866,27 @@ PyObject *chrGetProjectPosition(PyObject *poSelf, PyObject *poArgs)
 
     CPythonGraphic &rpyGraphic = CPythonGraphic::Instance();
 
-    float fx, fy, fz;
-    rpyGraphic.ProjectPosition(PixelPosition.x, -PixelPosition.y, PixelPosition.z + float(iHeight), &fx, &fy, &fz);
+    float fx = NAN;
+    float fy = NAN;
+    float fz = NAN;
+    rpyGraphic.ProjectPosition(PixelPosition.x, -PixelPosition.y, PixelPosition.z + static_cast<float>(iHeight), &fx,
+                               &fy, &fz);
 
-    if (1 == int(fz))
+    if (1 == static_cast<int>(fz))
         return Py_BuildValue("ii", -100, -100);
 
-    return Py_BuildValue("ii", int(fx), int(fy));
+    return Py_BuildValue("ii", static_cast<int>(fx), static_cast<int>(fy));
 }
 
 PyObject *chrGetVirtualNumber(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
     CInstanceBase *pkInst = CPythonCharacterManager::Instance().GetInstancePtr(iVirtualID);
 
-    if (NULL != pkInst)
+    if (nullptr != pkInst)
         return Py_BuildValue("i", pkInst->GetVirtualNumber());
 
     return Py_BuildValue("i", CActorInstance::TYPE_PC);
@@ -889,13 +894,13 @@ PyObject *chrGetVirtualNumber(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrGetInstanceType(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
     CInstanceBase *pkInst = CPythonCharacterManager::Instance().GetInstancePtr(iVirtualID);
 
-    if (NULL != pkInst)
+    if (nullptr != pkInst)
         return Py_BuildValue("i", pkInst->GetInstanceType());
 
     return Py_BuildValue("i", CActorInstance::TYPE_PC);
@@ -908,7 +913,8 @@ PyObject *chrGetBoundBoxOnlyXY(PyObject *poSelf, PyObject *poArgs)
     if (!pkInst)
         return Py_BuildValue("ffff", 0.0f, 0.0f, 0.0f, 0.0f);
 
-    D3DXVECTOR3 v3Min, v3Max;
+    D3DXVECTOR3 v3Min;
+    D3DXVECTOR3 v3Max;
     pkInst->GetBoundBox(&v3Min, &v3Max);
 
     return Py_BuildValue("ffff", v3Min.x, v3Min.y, v3Max.x, v3Max.y);
@@ -926,7 +932,7 @@ PyObject *chrtestGetPKData(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetComboType(PyObject *poSelf, PyObject *poArgs)
 {
-    int iComboType;
+    int iComboType = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iComboType))
         return Py_BuildException();
 
@@ -941,10 +947,10 @@ PyObject *chrtestSetComboType(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetAddRenderMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    int iColor;
+    int iColor = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iColor))
         return Py_BuildException();
 
@@ -960,10 +966,10 @@ PyObject *chrtestSetAddRenderMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetModulateRenderMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    int iColor;
+    int iColor = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iColor))
         return Py_BuildException();
 
@@ -979,16 +985,16 @@ PyObject *chrtestSetModulateRenderMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetAddRenderModeRGB(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fr))
         return Py_BuildException();
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fg))
         return Py_BuildException();
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fb))
         return Py_BuildException();
 
@@ -1004,16 +1010,16 @@ PyObject *chrtestSetAddRenderModeRGB(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetModulateRenderModeRGB(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fr))
         return Py_BuildException();
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fg))
         return Py_BuildException();
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fb))
         return Py_BuildException();
 
@@ -1029,13 +1035,13 @@ PyObject *chrtestSetModulateRenderModeRGB(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetSpecularRenderMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    int iPart;
+    int iPart = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iPart))
         return Py_BuildException();
-    float fAlpha;
+    float fAlpha = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fAlpha))
         return Py_BuildException();
 
@@ -1050,13 +1056,13 @@ PyObject *chrtestSetSpecularRenderMode(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetSpecularRenderMode2(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
-    int iPart;
+    int iPart = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iPart))
         return Py_BuildException();
-    float fAlpha;
+    float fAlpha = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fAlpha))
         return Py_BuildException();
 
@@ -1071,7 +1077,7 @@ PyObject *chrtestSetSpecularRenderMode2(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestRestoreRenderMode(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -1141,7 +1147,7 @@ PyObject *chrSetAttackSpeed(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrWeaponTraceSetTexture(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szPathName;
+    char *szPathName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szPathName))
         return Py_BadArgument();
 
@@ -1175,14 +1181,14 @@ PyObject *chrWeaponTraceUseAlpha(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrMoveToDestPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVID;
+    int iVID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVID))
         return Py_BadArgument();
 
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ix))
         return Py_BadArgument();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iy))
         return Py_BadArgument();
 
@@ -1197,10 +1203,10 @@ PyObject *chrMoveToDestPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *chrtestSetRideMan(PyObject *poSelf, PyObject *poArgs)
 {
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ix))
         return Py_BadArgument();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iy))
         return Py_BadArgument();
     int imount = 20030;
@@ -1320,7 +1326,7 @@ void initchr()
         {"testRestoreRenderMode", chrtestRestoreRenderMode, METH_VARARGS},
         {"testSetRideMan", chrtestSetRideMan, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("chr", s_methods);

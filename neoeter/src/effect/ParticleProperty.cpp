@@ -4,7 +4,7 @@
 
 void CParticleProperty::InsertTexture(const char *c_szFileName)
 {
-    CGraphicImage *pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
+    auto *pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer(c_szFileName);
 
     m_ImageVector.push_back(pImage);
 #ifdef WORLD_EDITOR
@@ -70,12 +70,8 @@ void CParticleProperty::Clear()
     m_ImageVector.clear();
 }
 
-CParticleProperty::CParticleProperty()
-{
-}
-CParticleProperty::~CParticleProperty()
-{
-}
+CParticleProperty::CParticleProperty() = default;
+CParticleProperty::~CParticleProperty() = default;
 
 CParticleProperty &CParticleProperty::operator=(const CParticleProperty &c_ParticleProperty)
 {

@@ -1,29 +1,31 @@
 #include <Neoeter/Platform/Base/StdAfx.h>
 
-#include <time.h>
-#include <stdio.h>
+#include <ctime>
+#include <cstdio>
 #include <Neoeter/Platform/Base/Debug.h>
 #include <Neoeter/Platform/Base/Singleton.h>
 #include <Neoeter/Platform/Base/Timer.h>
 
+#include <print>
+
 const DWORD DEBUG_STRING_MAX_LEN = 1024;
 
 static int isLogFile = false;
-HWND g_PopupHwnd = NULL;
+HWND g_PopupHwnd = nullptr;
 
 class CLogFile : public CSingleton<CLogFile>
 {
   public:
-    CLogFile() : m_fp(NULL)
+    CLogFile() : m_fp(nullptr)
     {
     }
 
-    virtual ~CLogFile()
+    ~CLogFile() override
     {
         if (m_fp)
             fclose(m_fp);
 
-        m_fp = NULL;
+        m_fp = nullptr;
     }
 
     void Initialize()
@@ -36,11 +38,11 @@ class CLogFile : public CSingleton<CLogFile>
         if (!m_fp)
             return;
 
-        time_t ct = time(0);
+        time_t const ct = time(nullptr);
         struct tm ctm = *localtime(&ct);
 
-        fprintf(m_fp, "%02d%02d %02d:%02d:%05d :: %s", ctm.tm_mon + 1, ctm.tm_mday, ctm.tm_hour, ctm.tm_min,
-                ELTimer_GetMSec() % 60000, c_pszMsg);
+        std::print(m_fp, "{:02}{:02} {:02}:{:02}:{:05} :: {}", ctm.tm_mon + 1, ctm.tm_mday, ctm.tm_hour, ctm.tm_min,
+                   ELTimer_GetMSec() % 60000, c_pszMsg);
 
         fflush(m_fp);
     }
@@ -100,7 +102,7 @@ void Lognf(UINT uLevel, const char *c_szFormat, ...)
     va_start(args, c_szFormat);
 
     char szBuf[DEBUG_STRING_MAX_LEN + 2];
-    int len = _vsnprintf(szBuf, sizeof(szBuf) - 1, c_szFormat, args);
+    int const len = _vsnprintf(szBuf, sizeof(szBuf) - 1, c_szFormat, args);
 
     if (len > 0)
     {
@@ -122,7 +124,7 @@ void Trace(const char *c_szMsg)
 {
 #if defined(_DEBUG) || defined(OPENMT2_PLATFORM_LINUX)
     OutputDebugString(c_szMsg);
-    printf("%s", c_szMsg);
+    std::print("{}", c_szMsg);
     fflush(stdout);
 #endif
 
@@ -156,7 +158,7 @@ void Tracenf(const char *c_szFormat, ...)
     va_start(args, c_szFormat);
 
     char szBuf[DEBUG_STRING_MAX_LEN + 2];
-    int len = _vsnprintf(szBuf, sizeof(szBuf) - 1, c_szFormat, args);
+    int const len = _vsnprintf(szBuf, sizeof(szBuf) - 1, c_szFormat, args);
 
     if (len > 0)
     {
@@ -166,7 +168,7 @@ void Tracenf(const char *c_szFormat, ...)
     va_end(args);
 #if defined(_DEBUG) || defined(OPENMT2_PLATFORM_LINUX)
     OutputDebugString(szBuf);
-    printf("%s", szBuf);
+    std::print("{}", szBuf);
     fflush(stdout);
 #endif
 
@@ -208,11 +210,11 @@ void TraceError(const char *c_szFormat, ...)
     szBuf[len] = '\n';
     szBuf[len + 1] = '\0';
 
-    time_t ct = time(0);
+    time_t const ct = time(nullptr);
     struct tm ctm = *localtime(&ct);
 
-    fprintf(stderr, "%02d%02d %02d:%02d:%05d :: %s", ctm.tm_mon + 1, ctm.tm_mday, ctm.tm_hour, ctm.tm_min,
-            ELTimer_GetMSec() % 60000, szBuf + 8);
+    std::print(stderr, "{:02}{:02} {:02}:{:02}:{:05} :: {}", ctm.tm_mon + 1, ctm.tm_mday, ctm.tm_hour, ctm.tm_min,
+               ELTimer_GetMSec() % 60000, szBuf + 8);
     fflush(stderr);
 
 #if defined(_DEBUG) || defined(OPENMT2_PLATFORM_LINUX)
@@ -234,11 +236,11 @@ void TraceErrorWithoutEnter(const char *c_szFormat, ...)
     _vsnprintf(szBuf, sizeof(szBuf), c_szFormat, args);
     va_end(args);
 
-    time_t ct = time(0);
+    time_t const ct = time(nullptr);
     struct tm ctm = *localtime(&ct);
 
-    fprintf(stderr, "%02d%02d %02d:%02d:%05d :: %s", ctm.tm_mon + 1, ctm.tm_mday, ctm.tm_hour, ctm.tm_min,
-            ELTimer_GetMSec() % 60000, szBuf + 8);
+    std::print(stderr, "{:02}{:02} {:02}:{:02}:{:05} :: {}", ctm.tm_mon + 1, ctm.tm_mday, ctm.tm_hour, ctm.tm_min,
+               ELTimer_GetMSec() % 60000, szBuf + 8);
     fflush(stderr);
 
 #if defined(_DEBUG) || defined(OPENMT2_PLATFORM_LINUX)
@@ -264,13 +266,13 @@ void LogBoxf(const char *c_szFormat, ...)
 
 void LogBox(const char *c_szMsg, const char *c_szCaption, HWND hWnd)
 {
-#if defined(_WIN32)
+#ifdef _WIN32
     if (!hWnd)
         hWnd = g_PopupHwnd;
 
     MessageBox(hWnd, c_szMsg, c_szCaption ? c_szCaption : "LOG", MB_OK);
 #else
-    fprintf(stderr, "[%s] %s\n", c_szCaption ? c_szCaption : "LOG", c_szMsg);
+    std::println(stderr, "[{}] {}", c_szCaption ? c_szCaption : "LOG", c_szMsg);
 #endif
     Tracen(c_szMsg);
 }
@@ -305,7 +307,7 @@ void OpenLogFile(bool bUseLogFIle)
 
 void OpenConsoleWindow()
 {
-#if defined(_WIN32)
+#ifdef _WIN32
     AllocConsole();
 
     freopen("CONOUT$", "a", stdout);

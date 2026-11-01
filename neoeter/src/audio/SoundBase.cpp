@@ -1,20 +1,16 @@
 #include <Neoeter/Audio/StdAfx.h>
 #include <Neoeter/Audio/SoundBase.h>
 
-HDIGDRIVER CSoundBase::ms_DIGDriver = NULL;
+HDIGDRIVER CSoundBase::ms_DIGDriver = nullptr;
 TSoundDataMap CSoundBase::ms_dataMap;
-TProvider *CSoundBase::ms_pProviderDefault = NULL;
+TProvider *CSoundBase::ms_pProviderDefault = nullptr;
 std::vector<TProvider> CSoundBase::ms_ProviderVector;
 bool CSoundBase::ms_bInitialized = false;
 int CSoundBase::ms_iRefCount = 0;
 
-CSoundBase::CSoundBase()
-{
-}
+CSoundBase::CSoundBase() = default;
 
-CSoundBase::~CSoundBase()
-{
-}
+CSoundBase::~CSoundBase() = default;
 
 void CSoundBase::Destroy()
 {
@@ -62,7 +58,7 @@ DWORD CSoundBase::GetFileCRC(const char *filename)
 
 CSoundData *CSoundBase::AddFile(DWORD dwFileCRC, const char *filename)
 {
-    CSoundData *pSoundData = new CSoundData;
+    auto *pSoundData = new CSoundData;
     pSoundData->Assign(filename);
     ms_dataMap.insert(TSoundDataMap::value_type(dwFileCRC, pSoundData));
     return pSoundData;

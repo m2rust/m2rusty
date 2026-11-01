@@ -4,12 +4,8 @@
 class IBackground : public CSingleton<IBackground>
 {
   public:
-    IBackground()
-    {
-    }
-    virtual ~IBackground()
-    {
-    }
+    IBackground() = default;
+    ~IBackground() override = default;
 
     virtual bool IsBlock(int x, int y) = 0;
 };

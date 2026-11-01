@@ -2,6 +2,8 @@
 #include <Client/Game/ActorInstance.h>
 #include <Client/Game/WeaponTrace.h>
 
+#include <algorithm>
+
 void CActorInstance::TraceProcess()
 {
     if (!m_WeaponTraceVector.empty())
@@ -19,21 +21,21 @@ void CActorInstance::TraceProcess()
 
 void CActorInstance::RenderTrace()
 {
-    for_each(m_WeaponTraceVector.begin(), m_WeaponTraceVector.end(), std::void_mem_fun(&CWeaponTrace::Render));
+    std::ranges::for_each(m_WeaponTraceVector, std::void_mem_fun(&CWeaponTrace::Render));
 }
 
 void CActorInstance::__DestroyWeaponTrace()
 {
-    std::for_each(m_WeaponTraceVector.begin(), m_WeaponTraceVector.end(), CWeaponTrace::Delete);
+    std::ranges::for_each(m_WeaponTraceVector, CWeaponTrace::Delete);
     m_WeaponTraceVector.clear();
 }
 
 void CActorInstance::__ShowWeaponTrace()
 {
-    for_each(m_WeaponTraceVector.begin(), m_WeaponTraceVector.end(), std::void_mem_fun(&CWeaponTrace::TurnOn));
+    std::ranges::for_each(m_WeaponTraceVector, std::void_mem_fun(&CWeaponTrace::TurnOn));
 }
 
 void CActorInstance::__HideWeaponTrace()
 {
-    for_each(m_WeaponTraceVector.begin(), m_WeaponTraceVector.end(), std::void_mem_fun(&CWeaponTrace::TurnOff));
+    std::ranges::for_each(m_WeaponTraceVector, std::void_mem_fun(&CWeaponTrace::TurnOff));
 }

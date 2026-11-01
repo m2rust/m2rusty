@@ -26,7 +26,6 @@ class CMainPacketHeaderMap : public CNetworkPacketHeaderMap
         DYNAMIC_SIZE_PACKET = true,
     };
 
-  public:
     CMainPacketHeaderMap()
     {
         Set(HEADER_GC_EMPIRE, CNetworkPacketHeaderMap::TPacketType(sizeof(TPacketGCEmpire), STATIC_SIZE_PACKET));
@@ -303,7 +302,7 @@ bool CPythonNetworkStream::__IsNotPing()
     return false;
 }
 
-DWORD CPythonNetworkStream::GetGuildID()
+DWORD CPythonNetworkStream::GetGuildID() const
 {
     return m_dwGuildID;
 }
@@ -352,7 +351,7 @@ UINT CPythonNetworkStream::UploadMark(const char *c_szImageFileName)
     return ERROR_NONE;
 }
 
-UINT CPythonNetworkStream::UploadSymbol(const char *c_szImageFileName)
+UINT CPythonNetworkStream::UploadSymbol(const char *c_szImageFileName) const
 {
     UINT uError = ERROR_UNKNOWN;
     CGuildMarkUploader &rkGuildMarkUploader = CGuildMarkUploader::Instance();
@@ -381,21 +380,21 @@ UINT CPythonNetworkStream::UploadSymbol(const char *c_szImageFileName)
     return ERROR_NONE;
 }
 
-void CPythonNetworkStream::__DownloadMark()
+void CPythonNetworkStream::__DownloadMark() const
 {
     // 3분 안에는 다시 접속하지 않는다.
-    DWORD curTime = ELTimer_GetMSec();
+    DWORD const curTime = ELTimer_GetMSec();
 
     if (curTime < gs_nextDownloadMarkTime)
         return;
 
-    gs_nextDownloadMarkTime = curTime + 60000 * 3; // 3분
+    gs_nextDownloadMarkTime = curTime + (60000 * 3); // 3분
 
     CGuildMarkDownloader &rkGuildMarkDownloader = CGuildMarkDownloader::Instance();
     rkGuildMarkDownloader.Connect(m_kMarkAuth.m_kNetAddr, m_kMarkAuth.m_dwHandle, m_kMarkAuth.m_dwRandomKey);
 }
 
-void CPythonNetworkStream::__DownloadSymbol(const std::vector<DWORD> &c_rkVec_dwGuildID)
+void CPythonNetworkStream::__DownloadSymbol(const std::vector<DWORD> &c_rkVec_dwGuildID) const
 {
     CGuildMarkDownloader &rkGuildMarkDownloader = CGuildMarkDownloader::Instance();
     rkGuildMarkDownloader.ConnectToRecvSymbol(m_kMarkAuth.m_kNetAddr, m_kMarkAuth.m_dwHandle, m_kMarkAuth.m_dwRandomKey,
@@ -418,7 +417,7 @@ void CPythonNetworkStream::ClearPhaseWindow(UINT ePhaseWnd, PyObject *poPhaseWnd
     if (poPhaseWnd != m_apoPhaseWnd[ePhaseWnd])
         return;
 
-    m_apoPhaseWnd[ePhaseWnd] = 0;
+    m_apoPhaseWnd[ePhaseWnd] = nullptr;
 }
 
 void CPythonNetworkStream::SetServerCommandParserWindow(PyObject *poWnd)
@@ -426,12 +425,9 @@ void CPythonNetworkStream::SetServerCommandParserWindow(PyObject *poWnd)
     m_poSerCommandParserWnd = poWnd;
 }
 
-bool CPythonNetworkStream::IsSelectedEmpire()
+bool CPythonNetworkStream::IsSelectedEmpire() const
 {
-    if (m_dwEmpireID)
-        return true;
-
-    return false;
+    return m_dwEmpireID != 0;
 }
 
 UINT CPythonNetworkStream::GetAccountCharacterSlotDatau(UINT iSlot, UINT eType)
@@ -439,7 +435,7 @@ UINT CPythonNetworkStream::GetAccountCharacterSlotDatau(UINT iSlot, UINT eType)
     if (iSlot >= PLAYER_PER_ACCOUNT4)
         return 0;
 
-    TSimplePlayerInformation &rkSimplePlayerInfo = m_akSimplePlayerInfo[iSlot];
+    TSimplePlayerInformation const &rkSimplePlayerInfo = m_akSimplePlayerInfo[iSlot];
 
     switch (eType)
     {
@@ -493,9 +489,9 @@ const char *CPythonNetworkStream::GetAccountCharacterSlotDataz(UINT iSlot, UINT 
         BYTE ip[4];
 
         const int LEN = 4;
-        for (int i = 0; i < LEN; i++)
+        for (unsigned char &i : ip)
         {
-            ip[i] = BYTE(rkSimplePlayerInfo.lAddr & 0xff);
+            i = static_cast<BYTE>(rkSimplePlayerInfo.lAddr & 0xff);
             rkSimplePlayerInfo.lAddr >>= 8;
         }
 
@@ -533,8 +529,8 @@ void CPythonNetworkStream::ConnectGameServer(UINT iChrSlot)
 
     __DirectEnterMode_Set(iChrSlot);
 
-    TSimplePlayerInformation &rkSimplePlayerInfo = m_akSimplePlayerInfo[iChrSlot];
-    CNetworkStream::Connect((DWORD)rkSimplePlayerInfo.lAddr, rkSimplePlayerInfo.wPort);
+    TSimplePlayerInformation const &rkSimplePlayerInfo = m_akSimplePlayerInfo[iChrSlot];
+    CNetworkStream::Connect(static_cast<DWORD>(rkSimplePlayerInfo.lAddr), rkSimplePlayerInfo.wPort);
 }
 
 void CPythonNetworkStream::SetLoginInfo(const char *c_szID, const char *c_szPassword)
@@ -543,7 +539,7 @@ void CPythonNetworkStream::SetLoginInfo(const char *c_szID, const char *c_szPass
     m_stPassword = c_szPassword;
 }
 
-void CPythonNetworkStream::ClearLoginInfo(void)
+void CPythonNetworkStream::ClearLoginInfo()
 {
     m_stPassword = "";
 }
@@ -559,7 +555,7 @@ bool CPythonNetworkStream::CheckPacket(TPacketHeader *pRetHeader)
 
     static CMainPacketHeaderMap s_packetHeaderMap;
 
-    TPacketHeader header;
+    TPacketHeader header = 0;
 
     if (!Peek(sizeof(TPacketHeader), &header))
         return false;
@@ -789,7 +785,7 @@ void CPythonNetworkStream::SetGameOffline()
     m_isGameOnline = FALSE;
 }
 
-BOOL CPythonNetworkStream::IsGameOnline()
+BOOL CPythonNetworkStream::IsGameOnline() const
 {
     return m_isGameOnline;
 }
@@ -801,22 +797,22 @@ void CPythonNetworkStream::SetHandler(PyObject *poHandler)
 }
 
 // ETC
-DWORD CPythonNetworkStream::GetMainActorVID()
+DWORD CPythonNetworkStream::GetMainActorVID() const
 {
     return m_dwMainActorVID;
 }
 
-DWORD CPythonNetworkStream::GetMainActorRace()
+DWORD CPythonNetworkStream::GetMainActorRace() const
 {
     return m_dwMainActorRace;
 }
 
-DWORD CPythonNetworkStream::GetMainActorEmpire()
+DWORD CPythonNetworkStream::GetMainActorEmpire() const
 {
     return m_dwMainActorEmpire;
 }
 
-DWORD CPythonNetworkStream::GetMainActorSkillGroup()
+DWORD CPythonNetworkStream::GetMainActorSkillGroup() const
 {
     return m_dwMainActorSkillGroup;
 }
@@ -826,7 +822,7 @@ void CPythonNetworkStream::SetEmpireID(DWORD dwEmpireID)
     m_dwEmpireID = dwEmpireID;
 }
 
-DWORD CPythonNetworkStream::GetEmpireID()
+DWORD CPythonNetworkStream::GetEmpireID() const
 {
     return m_dwEmpireID;
 }
@@ -854,7 +850,7 @@ void CPythonNetworkStream::__DirectEnterMode_Set(UINT uChrSlotIndex)
     m_kDirectEnterMode.m_dwChrSlotIndex = uChrSlotIndex;
 }
 
-bool CPythonNetworkStream::__DirectEnterMode_IsSet()
+bool CPythonNetworkStream::__DirectEnterMode_IsSet() const
 {
     return m_kDirectEnterMode.m_isSet;
 }
@@ -881,7 +877,7 @@ void CPythonNetworkStream::__BettingGuildWar_SetBettingMoney(UINT uBettingMoney)
     m_kBettingGuildWar.m_dwBettingMoney = uBettingMoney;
 }
 
-DWORD CPythonNetworkStream::EXPORT_GetBettingGuildWarValue(const char *c_szValueName)
+DWORD CPythonNetworkStream::EXPORT_GetBettingGuildWarValue(const char *c_szValueName) const
 {
     if (stricmp(c_szValueName, "OBSERVER_COUNT") == 0)
         return m_kBettingGuildWar.m_dwObserverCount;
@@ -906,36 +902,25 @@ void CPythonNetworkStream::SetWaitFlag()
 void CPythonNetworkStream::SendEmoticon(UINT eEmoticon)
 {
     if (eEmoticon < m_EmoticonStringVector.size())
+    {
         SendChatPacket(m_EmoticonStringVector[eEmoticon].c_str());
+    }
     else
+    {
         assert(false && "SendEmoticon Error");
+    }
 }
 
 CPythonNetworkStream::CPythonNetworkStream()
+    : m_rokNetActorMgr(new CNetworkActorManager), m_bComboSkillFlag(FALSE), m_dwEmpireID(0), m_dwGuildID(0),
+      m_dwLastGamePingTime(0), m_dwLoginKey(0), m_dwMainActorEmpire(0), m_dwMainActorRace(0),
+      m_dwMainActorSkillGroup(0), m_dwMainActorVID(0), m_isEnableChatInsultFilter(FALSE), m_isStartGame(FALSE),
+      m_isWaitLoginKey(FALSE), m_poHandler(nullptr), m_poSerCommandParserWnd(nullptr), m_strPhase("OffLine")
 {
-    m_rokNetActorMgr = new CNetworkActorManager;
 
     memset(m_akSimplePlayerInfo, 0, sizeof(m_akSimplePlayerInfo));
 
     m_phaseProcessFunc.Clear();
-
-    m_dwEmpireID = 0;
-    m_dwGuildID = 0;
-
-    m_dwMainActorVID = 0;
-    m_dwMainActorRace = 0;
-    m_dwMainActorEmpire = 0;
-    m_dwMainActorSkillGroup = 0;
-    m_poHandler = NULL;
-
-    m_dwLastGamePingTime = 0;
-
-    m_dwLoginKey = 0;
-    m_isWaitLoginKey = FALSE;
-    m_isStartGame = FALSE;
-    m_isEnableChatInsultFilter = FALSE;
-    m_bComboSkillFlag = FALSE;
-    m_strPhase = "OffLine";
 
     __InitializeGamePhase();
     __InitializeMarkAuth();
@@ -943,8 +928,7 @@ CPythonNetworkStream::CPythonNetworkStream()
     __DirectEnterMode_Initialize();
     __BettingGuildWar_Initialize();
 
-    std::fill(m_apoPhaseWnd, m_apoPhaseWnd + PHASE_WINDOW_NUM, (PyObject *)NULL);
-    m_poSerCommandParserWnd = NULL;
+    std::fill(m_apoPhaseWnd, m_apoPhaseWnd + PHASE_WINDOW_NUM, (PyObject *)nullptr);
 
     SetOffLinePhase();
 }

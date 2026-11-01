@@ -1,14 +1,16 @@
 #include <Neoeter/IO/StdAfx.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <chrono>
 #include <cstdio>
 #include <cassert>
 #include <filesystem>
-#include <algorithm>
+#include <print>
+#include <utility>
 
-#if defined(_WIN32)
+#ifdef _WIN32
 #include <io.h> // _access
 #endif
 
@@ -20,21 +22,21 @@ static std::string FindCaseInsensitiveFile(const std::string &path)
         return path;
 
     std::error_code ec;
-    fs::path p(path);
+    fs::path const p(path);
     fs::path parent = p.parent_path();
     if (parent.empty())
         parent = ".";
-    std::string filename = p.filename().string();
+    std::string const filename = p.filename().string();
     std::string lowerFilename = filename;
-    std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+    std::ranges::transform(lowerFilename, lowerFilename.begin(), ::tolower);
 
     if (fs::is_directory(parent, ec))
     {
         for (const auto &entry : fs::directory_iterator(parent, ec))
         {
-            std::string entryName = entry.path().filename().string();
+            std::string const entryName = entry.path().filename().string();
             std::string entryLower = entryName;
-            std::transform(entryLower.begin(), entryLower.end(), entryLower.begin(), ::tolower);
+            std::ranges::transform(entryLower, entryLower.begin(), ::tolower);
             if (entryLower == lowerFilename)
             {
                 return (parent / entryName).string();
@@ -57,7 +59,7 @@ static std::vector<std::string> FindCaseInsensitiveDirs(const std::string &path)
     if (parent.empty())
         parent = ".";
     std::string lowerFilename = p.filename().string();
-    std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+    std::ranges::transform(lowerFilename, lowerFilename.begin(), ::tolower);
 
     if (fs::is_directory(parent, ec))
     {
@@ -65,17 +67,17 @@ static std::vector<std::string> FindCaseInsensitiveDirs(const std::string &path)
         {
             if (!entry.is_directory(ec))
                 continue;
-            std::string entryName = entry.path().filename().string();
+            std::string const entryName = entry.path().filename().string();
             std::string entryLower = entryName;
-            std::transform(entryLower.begin(), entryLower.end(), entryLower.begin(), ::tolower);
+            std::ranges::transform(entryLower, entryLower.begin(), ::tolower);
             if (entryLower == lowerFilename)
                 result.push_back((parent / entryName).string());
         }
     }
 
     // Register the exact-case folder last so its files win on conflicts.
-    std::stable_partition(result.begin(), result.end(),
-                          [&](const std::string &dir) { return fs::path(dir).filename() != p.filename(); });
+    std::ranges::stable_partition(result,
+                                  [&](const std::string &dir) { return fs::path(dir).filename() != p.filename(); });
     return result;
 }
 
@@ -123,7 +125,7 @@ static std::string NormalizeSeparators(const std::string &path)
 // StringPath std::string 버전
 std::string CEterPackManager::ConvertFileName(std::string fileName)
 {
-    std::string convertedFileName = fileName;
+    std::string convertedFileName = std::move(fileName);
     stl_lowers(convertedFileName);
 
     for (size_t i = 0; i < convertedFileName.length(); i++)
@@ -154,13 +156,12 @@ bool CEterPackManager::CompareName(const char *c_szDirectoryName, DWORD /*dwLeng
 
 struct TimeChecker
 {
-    TimeChecker(const char *name) : name(name)
+    TimeChecker(const char *name) : name(name), baseTime(timeGetTime())
     {
-        baseTime = timeGetTime();
     }
     ~TimeChecker()
     {
-        printf("load %s (%u)\n", name, timeGetTime() - baseTime);
+        std::println("load {} ({})", name, timeGetTime() - baseTime);
     }
 
     const char *name;
@@ -214,9 +215,9 @@ struct FinderLock
 
 bool CEterPackManager::GetFromPack(const std::string &fileName, TPackDataPtr &dataPtr)
 {
-    FinderLock lock(m_csFinder);
+    FinderLock const lock(m_csFinder);
 
-    std::string strFileName = ConvertFileName(fileName);
+    std::string const strFileName = ConvertFileName(fileName);
 
     auto pkFileItem = m_FileMap.find(strFileName);
 
@@ -241,13 +242,13 @@ bool CEterPackManager::GetFromPack(const std::string &fileName, TPackDataPtr &da
 
 bool CEterPackManager::GetFromFile(const std::string &fileName, TPackDataPtr &dataPtr)
 {
-    std::string normalizedPath = NormalizeSeparators(fileName);
+    std::string const normalizedPath = NormalizeSeparators(fileName);
 
     // Try to open the file with exact case first, then normalized lowercase
     std::ifstream file(normalizedPath, std::ios::binary);
     if (!file.is_open())
     {
-        std::string lowerPath = ConvertFileName(fileName);
+        std::string const lowerPath = ConvertFileName(fileName);
         file.open(lowerPath, std::ios::binary);
         if (!file.is_open())
             return false;
@@ -261,7 +262,7 @@ bool CEterPackManager::GetFromFile(const std::string &fileName, TPackDataPtr &da
 
 bool CEterPackManager::isExistInPack(const char *c_szFileName)
 {
-    std::string strFileName = ConvertFileName(c_szFileName);
+    std::string const strFileName = ConvertFileName(c_szFileName);
 
     auto pkFileItem = m_FileMap.find(strFileName);
 
@@ -271,13 +272,13 @@ bool CEterPackManager::isExistInPack(const char *c_szFileName)
     if (!pkFileItem->second)
         return false;
 
-    return pkFileItem->second->fileExists(strFileName.c_str());
+    return pkFileItem->second->fileExists(strFileName);
 }
 
 bool CEterPackManager::isExist(const char *c_szFileName)
 {
-    std::string normPath = NormalizeSeparators(c_szFileName);
-    std::string lowerPath = ConvertFileName(c_szFileName);
+    std::string const normPath = NormalizeSeparators(c_szFileName);
+    std::string const lowerPath = ConvertFileName(c_szFileName);
 
     if (m_iSearchMode == SEARCH_PACK_FIRST)
     {
@@ -295,15 +296,15 @@ bool CEterPackManager::isExist(const char *c_szFileName)
 
 bool CEterPackManager::PackExists(const std::string &name, const std::string &container)
 {
-    std::string normName = NormalizeSeparators(name);
+    std::string const normName = NormalizeSeparators(name);
     if (container == "FOLDER")
     {
-        std::string realFolder = FindCaseInsensitiveFile(normName);
+        std::string const realFolder = FindCaseInsensitiveFile(normName);
         return !realFolder.empty();
     }
-    else if (container == "ZIP")
+    if (container == "ZIP")
     {
-        std::string realZip = FindCaseInsensitiveFile(normName + ".zip");
+        std::string const realZip = FindCaseInsensitiveFile(normName + ".zip");
         return !realZip.empty();
     }
 
@@ -319,7 +320,7 @@ bool CEterPackManager::RegisterPack(const std::string &name, const std::string &
 
     try
     {
-        std::string normName = NormalizeSeparators(name);
+        std::string const normName = NormalizeSeparators(name);
         std::shared_ptr<FileProvider> pack;
 
         // Determine requested container type
@@ -339,7 +340,7 @@ bool CEterPackManager::RegisterPack(const std::string &name, const std::string &
             m_PackMap.insert({name, pack});
             return true;
         }
-        else if (container == "ZIP")
+        if (container == "ZIP")
         {
             std::string realZip = FindCaseInsensitiveFile(normName + ".zip");
             if (realZip.empty())
@@ -376,12 +377,12 @@ void CEterPackManager::SetSearchMode(bool bPackFirst)
     m_iSearchMode = bPackFirst ? SEARCH_PACK_FIRST : SEARCH_FILE_FIRST;
 }
 
-int CEterPackManager::GetSearchMode()
+int CEterPackManager::GetSearchMode() const
 {
     return m_iSearchMode;
 }
 
-CEterPackManager::CEterPackManager() : m_iSearchMode(SEARCH_FILE_FIRST)
+CEterPackManager::CEterPackManager()
 {
     InitializeCriticalSection(&m_csFinder);
 }

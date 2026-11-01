@@ -10,7 +10,7 @@
 //
 // TB.3 removes this duplication when the platform headers are consolidated.
 
-#if defined(_WIN32)
+#ifdef _WIN32
 
 #include <atomic>
 

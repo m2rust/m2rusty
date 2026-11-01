@@ -6,7 +6,7 @@ class CTextBar : public CDibBar
 {
   public:
     CTextBar(int fontSize, bool isBold);
-    virtual ~CTextBar();
+    ~CTextBar() override;
 
     void TextOut(int ix, int iy, const char *c_szText);
     void SetTextColor(int r, int g, int b);
@@ -15,10 +15,9 @@ class CTextBar : public CDibBar
   protected:
     void __SetFont(int fontSize, bool isBold);
 
-    void OnCreate();
+    void OnCreate() override;
 
-  protected:
-    HFONT m_hFont;
+    HFONT m_hFont = nullptr;
     HFONT m_hOldFont;
 
     int m_fontSize;

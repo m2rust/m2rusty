@@ -13,7 +13,7 @@ class CMSWindow
 
     void Destroy();
     bool Create(const char *c_szName, int brush = BLACK_BRUSH, DWORD cs = 0, DWORD ws = WS_OVERLAPPEDWINDOW,
-                HICON hIcon = NULL, int iCursorResource = 32512, int width = 0, int height = 0);
+                HICON hIcon = nullptr, int iCursorResource = 32512, int width = 0, int height = 0);
 
     void Show();
     void Hide();
@@ -28,8 +28,8 @@ class CMSWindow
     void AdjustSize(int width, int height);
     void SetSize(int width, int height);
 
-    bool IsVisible();
-    bool IsActive();
+    bool IsVisible() const;
+    bool IsActive() const;
 
     void GetMousePosition(POINT *ppt);
     void GetClientRect(RECT *prc);
@@ -62,10 +62,9 @@ class CMSWindow
 
   protected:
     HWND m_hWnd;
-    RECT m_rect;
+    RECT m_rect{};
     bool m_isActive;
     bool m_isVisible;
 
-  protected:
     static HINSTANCE ms_hInstance;
 };

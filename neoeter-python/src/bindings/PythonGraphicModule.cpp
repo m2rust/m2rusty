@@ -5,13 +5,14 @@
 #ifdef _WIN32
 #include <shlobj.h>
 #else
+#include <math.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #endif
 
 bool PyTuple_GetTextBar(PyObject *poArgs, int pos, CTextBar **ppTextBar)
 {
-    long iHandle;
+    long iHandle = 0;
     if (!PyTuple_GetLong(poArgs, pos, &iHandle))
         return false;
 
@@ -21,18 +22,18 @@ bool PyTuple_GetTextBar(PyObject *poArgs, int pos, CTextBar **ppTextBar)
 
 PyObject *grpCreateTextBar(PyObject *poSelf, PyObject *poArgs)
 {
-    int iWidth;
+    int iWidth = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iWidth))
         return Py_BuildException();
-    int iHeight;
+    int iHeight = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iHeight))
         return Py_BuildException();
 
-    CTextBar *pTextBar = new CTextBar(12, false);
-    if (!pTextBar->Create(NULL, iWidth, iHeight))
+    auto *pTextBar = new CTextBar(12, false);
+    if (!pTextBar->Create(nullptr, iWidth, iHeight))
     {
         delete pTextBar;
-        return Py_BuildValue("l", (intptr_t)NULL);
+        return Py_BuildValue("l", static_cast<intptr_t>(NULL));
     }
 
     return Py_BuildValue("l", (intptr_t)pTextBar);
@@ -40,22 +41,22 @@ PyObject *grpCreateTextBar(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpCreateBigTextBar(PyObject *poSelf, PyObject *poArgs)
 {
-    int iWidth;
+    int iWidth = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iWidth))
         return Py_BuildException();
-    int iHeight;
+    int iHeight = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iHeight))
         return Py_BuildException();
 
-    int iFontSize;
+    int iFontSize = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iFontSize))
         return Py_BuildException();
 
-    CTextBar *pTextBar = new CTextBar(iFontSize, true);
-    if (!pTextBar->Create(NULL, iWidth, iHeight))
+    auto *pTextBar = new CTextBar(iFontSize, true);
+    if (!pTextBar->Create(nullptr, iWidth, iHeight))
     {
         delete pTextBar;
-        return Py_BuildValue("l", (intptr_t)NULL);
+        return Py_BuildValue("l", static_cast<intptr_t>(NULL));
     }
 
     return Py_BuildValue("l", (intptr_t)pTextBar);
@@ -63,7 +64,7 @@ PyObject *grpCreateBigTextBar(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpDestroyTextBar(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
 
@@ -74,13 +75,13 @@ PyObject *grpDestroyTextBar(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpRenderTextBar(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ix))
         return Py_BuildException();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iy))
         return Py_BuildException();
 
@@ -92,16 +93,16 @@ PyObject *grpRenderTextBar(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpTextBarSetTextColor(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
-    int r;
+    int r = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &r))
         return Py_BuildException();
-    int g;
+    int g = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &g))
         return Py_BuildException();
-    int b;
+    int b = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &b))
         return Py_BuildException();
 
@@ -113,10 +114,10 @@ PyObject *grpTextBarSetTextColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpTextBarGetTextExtent(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
-    char *szText;
+    char *szText = nullptr;
     if (!PyTuple_GetString(poArgs, 1, &szText))
         return Py_BuildException();
 
@@ -129,16 +130,16 @@ PyObject *grpTextBarGetTextExtent(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpTextBarTextOut(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &ix))
         return Py_BuildException();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &iy))
         return Py_BuildException();
-    char *szText;
+    char *szText = nullptr;
     if (!PyTuple_GetString(poArgs, 3, &szText))
         return Py_BuildException();
 
@@ -150,7 +151,7 @@ PyObject *grpTextBarTextOut(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpClearTextBar(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
 
@@ -162,19 +163,19 @@ PyObject *grpClearTextBar(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetTextBarClipRect(PyObject *poSelf, PyObject *poArgs)
 {
-    CTextBar *pTextBar;
+    CTextBar *pTextBar = nullptr;
     if (!PyTuple_GetTextBar(poArgs, 0, &pTextBar))
         return Py_BuildException();
-    int isx;
+    int isx = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &isx))
         return Py_BuildException();
-    int isy;
+    int isy = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &isy))
         return Py_BuildException();
-    int iex;
+    int iex = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &iex))
         return Py_BuildException();
-    int iey;
+    int iey = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &iey))
         return Py_BuildException();
 
@@ -236,15 +237,15 @@ PyObject *grpPopMatrix(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpTranslate(PyObject *poSelf, PyObject *poArgs)
 {
-    float x;
+    float x = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &x))
         return Py_BuildException("grp.Translate:Wrong X");
 
-    float y;
+    float y = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &y))
         return Py_BuildException("grp.Translate:Wrong Y");
 
-    float z;
+    float z = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &z))
         return Py_BuildException("grp.Translate:Wrong Z");
 
@@ -255,19 +256,19 @@ PyObject *grpTranslate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpRotate(PyObject *poSelf, PyObject *poArgs)
 {
-    float Degree;
+    float Degree = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &Degree))
         return Py_BuildException();
 
-    float x;
+    float x = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &x))
         return Py_BuildException();
 
-    float y;
+    float y = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &y))
         return Py_BuildException();
 
-    float z;
+    float z = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &z))
         return Py_BuildException();
 
@@ -283,19 +284,19 @@ PyObject *grpSetColorRenderState(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetAroundCamera(PyObject *poSelf, PyObject *poArgs)
 {
-    float distance;
+    float distance = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &distance))
         return Py_BuildException();
 
-    float pitch;
+    float pitch = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &pitch))
         return Py_BuildException();
 
-    float roll;
+    float roll = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &roll))
         return Py_BuildException();
 
-    float lookAtZ;
+    float lookAtZ = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &lookAtZ))
         return Py_BuildException();
 
@@ -305,27 +306,27 @@ PyObject *grpSetAroundCamera(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetPositionCamera(PyObject *poSelf, PyObject *poArgs)
 {
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fx))
         return Py_BuildException();
 
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fy))
         return Py_BuildException();
 
-    float fz;
+    float fz = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fz))
         return Py_BuildException();
 
-    float distance;
+    float distance = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &distance))
         return Py_BuildException();
 
-    float pitch;
+    float pitch = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &pitch))
         return Py_BuildException();
 
-    float roll;
+    float roll = NAN;
     if (!PyTuple_GetFloat(poArgs, 5, &roll))
         return Py_BuildException();
 
@@ -335,39 +336,39 @@ PyObject *grpSetPositionCamera(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetEyeCamera(PyObject *poSelf, PyObject *poArgs)
 {
-    float xEye;
+    float xEye = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &xEye))
         return Py_BuildException();
 
-    float yEye;
+    float yEye = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &yEye))
         return Py_BuildException();
 
-    float zEye;
+    float zEye = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &zEye))
         return Py_BuildException();
 
-    float xCenter;
+    float xCenter = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &xCenter))
         return Py_BuildException();
 
-    float yCenter;
+    float yCenter = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &yCenter))
         return Py_BuildException();
 
-    float zCenter;
+    float zCenter = NAN;
     if (!PyTuple_GetFloat(poArgs, 5, &zCenter))
         return Py_BuildException();
 
-    float xUp;
+    float xUp = NAN;
     if (!PyTuple_GetFloat(poArgs, 6, &xUp))
         return Py_BuildException();
 
-    float yUp;
+    float yUp = NAN;
     if (!PyTuple_GetFloat(poArgs, 7, &yUp))
         return Py_BuildException();
 
-    float zUp;
+    float zUp = NAN;
     if (!PyTuple_GetFloat(poArgs, 8, &zUp))
         return Py_BuildException();
 
@@ -377,19 +378,19 @@ PyObject *grpSetEyeCamera(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetPerspective(PyObject *poSelf, PyObject *poArgs)
 {
-    float fov;
+    float fov = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fov))
         return Py_BuildException();
 
-    float aspect;
+    float aspect = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &aspect))
         return Py_BuildException();
 
-    float zNear;
+    float zNear = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &zNear))
         return Py_BuildException();
 
-    float zFar;
+    float zFar = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &zFar))
         return Py_BuildException();
 
@@ -399,15 +400,15 @@ PyObject *grpSetPerspective(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetOrtho2D(PyObject *poSelf, PyObject *poArgs)
 {
-    float width;
+    float width = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &width))
         return Py_BuildException();
 
-    float height;
+    float height = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &height))
         return Py_BuildException();
 
-    float length;
+    float length = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &length))
         return Py_BuildException();
 
@@ -417,19 +418,19 @@ PyObject *grpSetOrtho2D(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetOrtho3D(PyObject *poSelf, PyObject *poArgs)
 {
-    float width;
+    float width = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &width))
         return Py_BuildException();
 
-    float height;
+    float height = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &height))
         return Py_BuildException();
 
-    float zmin;
+    float zmin = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &zmin))
         return Py_BuildException();
 
-    float zmax;
+    float zmax = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &zmax))
         return Py_BuildException();
 
@@ -439,19 +440,19 @@ PyObject *grpSetOrtho3D(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpGenerateColor(PyObject *poSelf, PyObject *poArgs)
 {
-    float r;
+    float r = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &r))
         return Py_BuildException();
 
-    float g;
+    float g = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &g))
         return Py_BuildException();
 
-    float b;
+    float b = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &b))
         return Py_BuildException();
 
-    float a;
+    float a = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &a))
         return Py_BuildException();
 
@@ -460,17 +461,17 @@ PyObject *grpGenerateColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetColor(PyObject *poSelf, PyObject *poArgs)
 {
-    int color;
+    int color = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &color))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().SetDiffuseColor(DWORD(color));
+    CPythonGraphic::Instance().SetDiffuseColor(static_cast<DWORD>(color));
     return Py_BuildNone();
 }
 
 PyObject *grpSetAlpha(PyObject *poSelf, PyObject *poArgs)
 {
-    float Alpha;
+    float Alpha = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &Alpha))
         return Py_BuildException();
 
@@ -480,17 +481,19 @@ PyObject *grpSetAlpha(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpGetCursorPosition3d(PyObject *poSelf, PyObject *poArgs)
 {
-    float x, y, z;
+    float x = NAN;
+    float y = NAN;
+    float z = NAN;
     CPythonGraphic::Instance().GetCursorPosition(&x, &y, &z);
     return Py_BuildValue("(fff)", x, y, z);
 }
 
 PyObject *grpSetCursorPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int ix;
+    int ix = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &ix))
         return Py_BuildException();
-    int iy;
+    int iy = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iy))
         return Py_BuildException();
 
@@ -500,48 +503,49 @@ PyObject *grpSetCursorPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpRenderLine(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BuildException();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BuildException();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BuildException();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().RenderLine2d((float)x, (float)y, (float)x + width, (float)y + height);
+    CPythonGraphic::Instance().RenderLine2d(static_cast<float>(x), static_cast<float>(y), static_cast<float>(x) + width,
+                                            static_cast<float>(y) + height);
     return Py_BuildNone();
 }
 
 PyObject *grpRenderRoundBox(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BuildException();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BuildException();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BuildException();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BuildException();
 
-    float fx = float(x);
-    float fy = float(y);
-    float fWidth = float(width);
-    float fHeight = float(height);
+    auto fx = static_cast<float>(x);
+    auto fy = static_cast<float>(y);
+    auto fWidth = static_cast<float>(width);
+    auto fHeight = static_cast<float>(height);
 
     CPythonGraphic::Instance().RenderLine2d(fx + 2.0f, fy, fx + 2.0f + (fWidth - 3.0f), fy);
     CPythonGraphic::Instance().RenderLine2d(fx + 2.0f, fy + fHeight, fx + 2.0f + (fWidth - 3.0f), fy + fHeight);
@@ -556,71 +560,73 @@ PyObject *grpRenderRoundBox(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpRenderBox(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BuildException();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BuildException();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BuildException();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().RenderBox2d((float)x, (float)y, (float)x + width, (float)y + height);
+    CPythonGraphic::Instance().RenderBox2d(static_cast<float>(x), static_cast<float>(y), static_cast<float>(x) + width,
+                                           static_cast<float>(y) + height);
     return Py_BuildNone();
 }
 
 PyObject *grpRenderBar(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BuildException();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BuildException();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BuildException();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().RenderBar2d((float)x, (float)y, (float)x + width, (float)y + height);
+    CPythonGraphic::Instance().RenderBar2d(static_cast<float>(x), static_cast<float>(y), static_cast<float>(x) + width,
+                                           static_cast<float>(y) + height);
     return Py_BuildNone();
 }
 
 PyObject *grpRenderCube(PyObject *poSelf, PyObject *poArgs)
 {
-    float sx;
+    float sx = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &sx))
         return Py_BuildException();
 
-    float sy;
+    float sy = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &sy))
         return Py_BuildException();
 
-    float sz;
+    float sz = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &sz))
         return Py_BuildException();
 
-    float ex;
+    float ex = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &ex))
         return Py_BuildException();
 
-    float ey;
+    float ey = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &ey))
         return Py_BuildException();
 
-    float ez;
+    float ez = NAN;
     if (!PyTuple_GetFloat(poArgs, 5, &ez))
         return Py_BuildException();
 
@@ -630,27 +636,27 @@ PyObject *grpRenderCube(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpRenderBar3d(PyObject *poSelf, PyObject *poArgs)
 {
-    int sx;
+    int sx = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &sx))
         return Py_BuildException();
 
-    int sy;
+    int sy = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &sy))
         return Py_BuildException();
 
-    int sz;
+    int sz = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &sz))
         return Py_BuildException();
 
-    int ex;
+    int ex = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &ex))
         return Py_BuildException();
 
-    int ey;
+    int ey = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &ey))
         return Py_BuildException();
 
-    int ez;
+    int ez = 0;
     if (!PyTuple_GetInteger(poArgs, 5, &ez))
         return Py_BuildException();
 
@@ -660,120 +666,123 @@ PyObject *grpRenderBar3d(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpRenderGradationBar(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BadArgument();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BadArgument();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BadArgument();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BadArgument();
 
-    int iStartColor;
+    int iStartColor = 0;
     if (!PyTuple_GetInteger(poArgs, 4, &iStartColor))
         return Py_BadArgument();
 
-    int iEndColor;
+    int iEndColor = 0;
     if (!PyTuple_GetInteger(poArgs, 5, &iEndColor))
         return Py_BadArgument();
 
-    CPythonGraphic::Instance().RenderGradationBar2d((float)x, (float)y, (float)x + width, (float)y + height,
+    CPythonGraphic::Instance().RenderGradationBar2d(static_cast<float>(x), static_cast<float>(y),
+                                                    static_cast<float>(x) + width, static_cast<float>(y) + height,
                                                     iStartColor, iEndColor);
     return Py_BuildNone();
 }
 
 PyObject *grpRenderDownButton(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BuildException();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BuildException();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BuildException();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().RenderDownButton((float)x, (float)y, (float)x + width, (float)y + height);
+    CPythonGraphic::Instance().RenderDownButton(static_cast<float>(x), static_cast<float>(y),
+                                                static_cast<float>(x) + width, static_cast<float>(y) + height);
     return Py_BuildNone();
 }
 
 PyObject *grpRenderUpButton(PyObject *poSelf, PyObject *poArgs)
 {
-    int x;
+    int x = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &x))
         return Py_BuildException();
 
-    int y;
+    int y = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &y))
         return Py_BuildException();
 
-    int width;
+    int width = 0;
     if (!PyTuple_GetInteger(poArgs, 2, &width))
         return Py_BuildException();
 
-    int height;
+    int height = 0;
     if (!PyTuple_GetInteger(poArgs, 3, &height))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().RenderUpButton((float)x, (float)y, (float)x + width, (float)y + height);
+    CPythonGraphic::Instance().RenderUpButton(static_cast<float>(x), static_cast<float>(y),
+                                              static_cast<float>(x) + width, static_cast<float>(y) + height);
     return Py_BuildNone();
 }
 
 PyObject *grpRenderBox3d(PyObject *poSelf, PyObject *poArgs)
 {
-    float sx;
+    float sx = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &sx))
         return Py_BuildException();
 
-    float sy;
+    float sy = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &sy))
         return Py_BuildException();
 
-    float sz;
+    float sz = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &sz))
         return Py_BuildException();
 
-    float ex;
+    float ex = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &ex))
         return Py_BuildException();
 
-    float ey;
+    float ey = NAN;
     if (!PyTuple_GetFloat(poArgs, 4, &ey))
         return Py_BuildException();
 
-    float ez;
+    float ez = NAN;
     if (!PyTuple_GetFloat(poArgs, 5, &ez))
         return Py_BuildException();
 
-    CPythonGraphic::Instance().RenderBox3d((float)sx, (float)sy, (float)sz, (float)ex, (float)ey, (float)ez);
+    CPythonGraphic::Instance().RenderBox3d(sx, sy, sz, ex, ey, ez);
     return Py_BuildNone();
 }
 
 PyObject *grpSetClearColor(PyObject *poSelf, PyObject *poArgs)
 {
-    float fr;
+    float fr = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fr))
         return Py_BuildException();
 
-    float fg;
+    float fg = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fg))
         return Py_BuildException();
 
-    float fb;
+    float fb = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fb))
         return Py_BuildException();
 
@@ -783,19 +792,19 @@ PyObject *grpSetClearColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetDiffuseColor(PyObject *poSelf, PyObject *poArgs)
 {
-    float r;
+    float r = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &r))
         return Py_BuildException();
 
-    float g;
+    float g = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &g))
         return Py_BuildException();
 
-    float b;
+    float b = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &b))
         return Py_BuildException();
 
-    float a;
+    float a = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &a))
         return Py_BuildException();
 
@@ -805,44 +814,44 @@ PyObject *grpSetDiffuseColor(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpIdentity(PyObject *poSelf, PyObject *poArgs)
 {
-    CPythonGraphic::Instance().Identity();
+    CPythonGraphic::Identity();
     return Py_BuildNone();
 }
 
 PyObject *grpGetAvailableMemory(PyObject *poSelf, PyObject *poArgs)
 {
-    int iValue = CPythonGraphic::Instance().GetAvailableMemory();
+    int const iValue = CPythonGraphic::Instance().GetAvailableMemory();
     return Py_BuildValue("i", iValue);
 }
 
 // SCREENSHOT_CWDSAVE
 PyObject *grpSaveScreenShotToPath(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szBasePath;
+    char *szBasePath = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szBasePath))
         return Py_BuildException();
 
-    struct tm *tmNow;
-    time_t ct;
+    struct tm *tmNow = nullptr;
+    time_t ct = 0;
 
-    ct = time(0);
+    ct = time(nullptr);
     tmNow = localtime(&ct);
 
     char szPath[MAX_PATH + 256];
     snprintf(szPath, sizeof(szPath), "%s%02d%02d_%02d%02d%02d.jpg", szBasePath, tmNow->tm_mon + 1, tmNow->tm_mday,
              tmNow->tm_hour, tmNow->tm_min, tmNow->tm_sec);
 
-    BOOL bResult = CPythonGraphic::Instance().SaveScreenShot(szPath);
+    BOOL const bResult = CPythonGraphic::Instance().SaveScreenShot(szPath);
     return Py_BuildValue("(is)", bResult, szPath);
 }
 // END_OF_SCREENSHOT_CWDSAVE
 
 PyObject *grpSaveScreenShot(PyObject *poSelf, PyObject *poArgs)
 {
-    struct tm *tmNow;
-    time_t ct;
+    struct tm *tmNow = nullptr;
+    time_t ct = 0;
 
-    ct = time(0);
+    ct = time(nullptr);
     tmNow = localtime(&ct);
 
     char szPath[MAX_PATH + 256];
@@ -852,28 +861,34 @@ PyObject *grpSaveScreenShot(PyObject *poSelf, PyObject *poArgs)
 #else
     const char *home = getenv("HOME");
     if (home)
+    {
         snprintf(szPath, sizeof(szPath), "%s/.metin2/screenshots/", home);
+    }
     else
+    {
         snprintf(szPath, sizeof(szPath), "./screenshots/");
+    }
 #endif
 
     if (-1 == _access(szPath, 0))
-        if (!CreateDirectory(szPath, NULL))
+    {
+        if (!CreateDirectory(szPath, nullptr))
         {
             TraceError("Failed to create directory [%s]\n", szPath);
             return Py_BuildValue("(is)", FALSE, "");
         }
+    }
 
     sprintf(szPath + strlen(szPath), "%02d%02d_%02d%02d%02d.jpg", tmNow->tm_mon + 1, tmNow->tm_mday, tmNow->tm_hour,
             tmNow->tm_min, tmNow->tm_sec);
 
-    BOOL bResult = CPythonGraphic::Instance().SaveScreenShot(szPath);
+    BOOL const bResult = CPythonGraphic::Instance().SaveScreenShot(szPath);
     return Py_BuildValue("(is)", bResult, szPath);
 }
 
 PyObject *grpSetGamma(PyObject *poSelf, PyObject *poArgs)
 {
-    float gamma;
+    float gamma = NAN;
 
     if (!PyTuple_GetFloat(poArgs, 0, &gamma))
         return Py_BuildException();
@@ -896,23 +911,23 @@ PyObject *grpSetGameRenderState(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpSetViewport(PyObject *poSelf, PyObject *poArgs)
 {
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fx))
         return Py_BuildException();
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fy))
         return Py_BuildException();
 
-    float fWidth;
+    float fWidth = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fWidth))
         return Py_BuildException();
-    float fHeight;
+    float fHeight = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fHeight))
         return Py_BuildException();
 
-    UINT uWidth;
-    UINT uHeight;
-    CPythonGraphic::Instance().GetBackBufferSize(&uWidth, &uHeight);
+    UINT uWidth = 0;
+    UINT uHeight = 0;
+    CPythonGraphic::GetBackBufferSize(&uWidth, &uHeight);
     CPythonGraphic::Instance().SetViewport(fx * uWidth, fy * uHeight, fWidth * uWidth, fHeight * uHeight);
     return Py_BuildNone();
 }
@@ -931,13 +946,13 @@ PyObject *grpSetOmniLight(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *grpGetCameraPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    D3DXVECTOR3 v3Eye = CCameraManager::Instance().GetCurrentCamera()->GetEye();
+    D3DXVECTOR3 const v3Eye = CCameraManager::Instance().GetCurrentCamera()->GetEye();
     return Py_BuildValue("fff", v3Eye.x, v3Eye.y, v3Eye.z);
 }
 
 PyObject *grpGetTargetPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    D3DXVECTOR3 v3Target = CCameraManager::Instance().GetCurrentCamera()->GetTarget();
+    D3DXVECTOR3 const v3Target = CCameraManager::Instance().GetCurrentCamera()->GetTarget();
     return Py_BuildValue("fff", v3Target.x, v3Target.y, v3Target.z);
 }
 
@@ -1000,7 +1015,7 @@ void initgrp()
         {"ClearTextBar", grpClearTextBar, METH_VARARGS},
         {"SetTextBarClipRect", grpSetTextBarClipRect, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     Py_InitModule("grp", s_methods);

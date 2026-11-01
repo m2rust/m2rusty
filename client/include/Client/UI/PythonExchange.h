@@ -13,7 +13,7 @@ class CPythonExchange : public CSingleton<CPythonExchange>
         EXCHANGE_ITEM_MAX_NUM = 12,
     };
 
-    typedef struct trade
+    using TExchangeData = struct trade
     {
         char name[CHARACTER_NAME_MAX_LEN + 1];
 
@@ -24,17 +24,16 @@ class CPythonExchange : public CSingleton<CPythonExchange>
 
         BYTE accept;
         DWORD elk;
-    } TExchangeData;
+    };
 
-  public:
     CPythonExchange();
-    virtual ~CPythonExchange();
+    ~CPythonExchange() override;
 
     void Clear();
 
     void Start();
     void End();
-    bool isTrading();
+    bool isTrading() const;
 
     // Interface
 
@@ -47,8 +46,8 @@ class CPythonExchange : public CSingleton<CPythonExchange>
     void SetElkToTarget(DWORD elk);
     void SetElkToSelf(DWORD elk);
 
-    DWORD GetElkFromTarget();
-    DWORD GetElkFromSelf();
+    DWORD GetElkFromTarget() const;
+    DWORD GetElkFromSelf() const;
 
     void SetItemToTarget(DWORD pos, DWORD vnum, BYTE count);
     void SetItemToSelf(DWORD pos, DWORD vnum, BYTE count);
@@ -77,16 +76,16 @@ class CPythonExchange : public CSingleton<CPythonExchange>
     void SetAcceptToTarget(BYTE Accept);
     void SetAcceptToSelf(BYTE Accept);
 
-    bool GetAcceptFromTarget();
-    bool GetAcceptFromSelf();
+    bool GetAcceptFromTarget() const;
+    bool GetAcceptFromSelf() const;
 
-    bool GetElkMode();
+    bool GetElkMode() const;
     void SetElkMode(bool value);
 
   protected:
     bool m_isTrading;
 
     bool m_elk_mode; // 엘크를 클릭해서 교환했을때를 위한 변종임.
-    TExchangeData m_self;
-    TExchangeData m_victim;
+    TExchangeData m_self{};
+    TExchangeData m_victim{};
 };

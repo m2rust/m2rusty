@@ -6,7 +6,7 @@ class CGraphicCollisionObject : public CGraphicBase
 {
   public:
     CGraphicCollisionObject();
-    virtual ~CGraphicCollisionObject();
+    ~CGraphicCollisionObject() override;
 
   protected:
     bool IntersectTriangle(const D3DXVECTOR3 &c_orig, const D3DXVECTOR3 &c_dir, const D3DXVECTOR3 &c_v0,

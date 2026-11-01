@@ -6,29 +6,29 @@
 
 PyObject *nonplayerGetEventType(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualNumber;
+    int iVirtualNumber = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualNumber))
         return Py_BuildException();
 
-    BYTE iType = CPythonNonPlayer::Instance().GetEventType(iVirtualNumber);
+    BYTE const iType = CPythonNonPlayer::Instance().GetEventType(iVirtualNumber);
 
     return Py_BuildValue("i", iType);
 }
 
 PyObject *nonplayerGetEventTypeByVID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
-    BYTE iType = CPythonNonPlayer::Instance().GetEventTypeByVID(iVirtualID);
+    BYTE const iType = CPythonNonPlayer::Instance().GetEventTypeByVID(iVirtualID);
 
     return Py_BuildValue("i", iType);
 }
 
 PyObject *nonplayerGetLevelByVID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -45,12 +45,12 @@ PyObject *nonplayerGetLevelByVID(PyObject *poSelf, PyObject *poArgs)
     float fAverageLevel = pMobTable->bLevel; //(float(pMobTable->abLevelRange[0]) +
                                              // float(pMobTable->abLevelRange[1])) / 2.0f;
     fAverageLevel = floor(fAverageLevel + 0.5f);
-    return Py_BuildValue("i", int(fAverageLevel));
+    return Py_BuildValue("i", static_cast<int>(fAverageLevel));
 }
 
 PyObject *nonplayerGetGradeByVID(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVirtualID;
+    int iVirtualID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVirtualID))
         return Py_BuildException();
 
@@ -69,7 +69,7 @@ PyObject *nonplayerGetGradeByVID(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *nonplayerGetMonsterName(PyObject *poSelf, PyObject *poArgs)
 {
-    int iVNum;
+    int iVNum = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iVNum))
         return Py_BuildException();
 
@@ -79,7 +79,7 @@ PyObject *nonplayerGetMonsterName(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *nonplayerLoadNonPlayerData(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
@@ -98,7 +98,7 @@ void initNonPlayer()
 
         {"LoadNonPlayerData", nonplayerLoadNonPlayerData, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("nonplayer", s_methods);

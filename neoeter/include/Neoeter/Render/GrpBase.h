@@ -9,35 +9,35 @@ void D3DXVECTOR3ToPixelPosition(const D3DXVECTOR3 &c_rv3Src, D3DXVECTOR3 *pv3Dst
 
 class CGraphicTexture;
 
-typedef WORD TIndex;
+using TIndex = WORD;
 
-typedef struct SFace
+using TFace = struct SFace
 {
     TIndex indices[3];
-} TFace;
+};
 
-typedef D3DXVECTOR3 TPosition;
+using TPosition = D3DXVECTOR3;
 
-typedef D3DXVECTOR3 TNormal;
+using TNormal = D3DXVECTOR3;
 
-typedef D3DXVECTOR2 TTextureCoordinate;
+using TTextureCoordinate = D3DXVECTOR2;
 
-typedef DWORD TDiffuse;
-typedef DWORD TAmbient;
-typedef DWORD TSpecular;
+using TDiffuse = DWORD;
+using TAmbient = DWORD;
+using TSpecular = DWORD;
 
-typedef union UDepth {
+using TDepth = union UDepth {
     float f;
     long l;
     DWORD dw;
-} TDepth;
+};
 
-typedef struct SVertex
+using TVertex = struct SVertex
 {
     float x, y, z;
     DWORD color;
     float u, v;
-} TVertex;
+};
 
 struct STVertex
 {
@@ -49,11 +49,11 @@ struct SPVertex
     float x, y, z;
 };
 
-typedef struct SPDVertex
+using TPDVertex = struct SPDVertex
 {
     float x, y, z;
     DWORD color;
-} TPDVertex;
+};
 
 struct SPDTVertexRaw
 {
@@ -62,55 +62,55 @@ struct SPDTVertexRaw
     float u, v;
 };
 
-typedef struct SPTVertex
+using TPTVertex = struct SPTVertex
 {
     TPosition position;
     TTextureCoordinate texCoord;
-} TPTVertex;
+};
 
-typedef struct SPDTVertex
+using TPDTVertex = struct SPDTVertex
 {
     TPosition position;
-    TDiffuse diffuse;
+    TDiffuse diffuse = 0U;
     TTextureCoordinate texCoord;
-} TPDTVertex;
+};
 
-typedef struct SPNTVertex
+using TPNTVertex = struct SPNTVertex
 {
     TPosition position;
     TNormal normal;
     TTextureCoordinate texCoord;
-} TPNTVertex;
+};
 
-typedef struct SPNT2Vertex
+using TPNT2Vertex = struct SPNT2Vertex
 {
     TPosition position;
     TNormal normal;
     TTextureCoordinate texCoord;
     TTextureCoordinate texCoord2;
-} TPNT2Vertex;
+};
 
-typedef struct SPDT2Vertex
+using TPDT2Vertex = struct SPDT2Vertex
 {
     TPosition position;
-    DWORD diffuse;
+    DWORD diffuse = 0U;
     TTextureCoordinate texCoord;
     TTextureCoordinate texCoord2;
-} TPDT2Vertex;
+};
 
-typedef struct SNameInfo
+using TNameInfo = struct SNameInfo
 {
     DWORD name;
     TDepth depth;
-} TNameInfo;
+};
 
-typedef struct SBoundBox
+using TBoundBox = struct SBoundBox
 {
     float sx, sy, sz;
     float ex, ey, ez;
     int meshIndex;
     int boneIndex;
-} TBoundBox;
+};
 
 const WORD c_FillRectIndices[6] = {0, 2, 1, 2, 3, 1};
 
@@ -146,7 +146,6 @@ class CGraphicBase
         DEFAULT_IB_NUM,
     };
 
-  public:
     CGraphicBase();
     virtual ~CGraphicBase();
 
@@ -154,7 +153,7 @@ class CGraphicBase
     void SetEyeCamera(float xEye, float yEye, float zEye, float xCenter, float yCenter, float zCenter, float xUp,
                       float yUp, float zUp);
     void SetAroundCamera(float distance, float pitch, float roll, float lookAtZ = 0.0f);
-    void SetPositionCamera(float fx, float fy, float fz, float fDistance, float fPitch, float fRotation);
+    void SetPositionCamera(float fx, float fy, float fz, float fDistance, float fPitch, float roll);
     void MoveCamera(float fdeltax, float fdeltay, float fdeltaz);
 
     void GetTargetPosition(float *px, float *py, float *pz);
@@ -211,7 +210,7 @@ class CGraphicBase
     static bool IsHighTextureMemory();
 
     static void SetDefaultIndexBuffer(UINT eDefIB);
-    static bool SetPDTStream(SPDTVertexRaw *pVertices, UINT uVtxCount);
+    static bool SetPDTStream(SPDTVertexRaw *pSrcVertices, UINT uVtxCount);
     static bool SetPDTStream(SPDTVertex *pVertices, UINT uVtxCount);
 
   protected:
@@ -225,16 +224,13 @@ class CGraphicBase
     static D3DXMATRIX ms_matWorld;
     static D3DXMATRIX ms_matWorldView;
 
-  protected:
     // void		UpdatePrePipeLineMatrix();
     void UpdatePipeLineMatrix();
 
-  protected:
     // 각종 D3DX Mesh 들 (컬루젼 데이터 등을 표시활 때 쓴다)
     static LPD3DXMESH ms_lpSphereMesh;
     static LPD3DXMESH ms_lpCylinderMesh;
 
-  protected:
     static HRESULT ms_hLastResult;
 
     static int ms_iWidth;

@@ -13,13 +13,13 @@ class CLZObject
 {
   public:
 #pragma pack(4)
-    typedef struct SHeader
+    using THeader = struct SHeader
     {
         DWORD dwFourCC;
         DWORD dwEncryptSize;    // 암호화된 크기
         DWORD dwCompressedSize; // 압축된 데이터 크기
         DWORD dwRealSize;       // 실제 데이터 크기
-    } THeader;
+    };
 #pragma pack()
 
     CLZObject();
@@ -32,7 +32,7 @@ class CLZObject
     bool Compress();
 
     bool BeginDecompress(const void *pvIn);
-    bool Decompress(DWORD *pdwKey = NULL);
+    bool Decompress(DWORD *pdwKey = nullptr);
 
     bool Encrypt(DWORD *pdwKey);
     bool __Decrypt(DWORD *key, BYTE *data);
@@ -46,8 +46,8 @@ class CLZObject
         return m_pbBuffer;
     }
     DWORD GetSize();
-    void AllocBuffer(DWORD dwSize);
-    DWORD GetBufferSize()
+    void AllocBuffer(DWORD dwSrcSize);
+    DWORD GetBufferSize() const
     {
         return m_dwBufferSize;
     }
@@ -56,14 +56,14 @@ class CLZObject
   private:
     void Initialize();
 
-    BYTE *m_pbBuffer;
-    DWORD m_dwBufferSize;
+    BYTE *m_pbBuffer = nullptr;
+    DWORD m_dwBufferSize = 0U;
 
-    THeader *m_pHeader;
-    const BYTE *m_pbIn;
-    bool m_bCompressed;
+    THeader *m_pHeader = nullptr;
+    const BYTE *m_pbIn = nullptr;
+    bool m_bCompressed = false;
 
-    bool m_bInBuffer;
+    bool m_bInBuffer = false;
 
   public:
     static DWORD ms_dwFourCC;
@@ -73,11 +73,11 @@ class CLZO : public CSingleton<CLZO>
 {
   public:
     CLZO();
-    virtual ~CLZO();
+    ~CLZO() override;
 
     bool CompressMemory(CLZObject &rObj, const void *pIn, UINT uiInLen);
     bool CompressEncryptedMemory(CLZObject &rObj, const void *pIn, UINT uiInLen, DWORD *pdwKey);
-    bool Decompress(CLZObject &rObj, const BYTE *pbBuf, DWORD *pdwKey = NULL);
+    bool Decompress(CLZObject &rObj, const BYTE *pbBuf, DWORD *pdwKey = nullptr);
     BYTE *GetWorkMemory();
 
   private:

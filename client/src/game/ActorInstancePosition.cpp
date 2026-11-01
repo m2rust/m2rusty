@@ -79,7 +79,7 @@ const TPixelPosition &CActorInstance::NEW_GetCurPixelPositionRef()
     return m_kPPosCur;
 }
 
-void CActorInstance::GetPixelPosition(TPixelPosition *pPixelPosition)
+void CActorInstance::GetPixelPosition(TPixelPosition *pPixelPosition) const
 {
     pPixelPosition->x = m_x;
     pPixelPosition->y = m_y;

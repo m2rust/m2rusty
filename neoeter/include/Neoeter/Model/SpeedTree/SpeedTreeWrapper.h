@@ -81,7 +81,7 @@ class CSpeedTreeWrapper : public CGraphicObjectInstance
     {
         ID = TREE_OBJECT
     };
-    int GetType() const
+    int GetType() const override
     {
         return ID;
     }
@@ -91,110 +91,106 @@ class CSpeedTreeWrapper : public CGraphicObjectInstance
     UINT GetCollisionObjectCount();
     void GetCollisionObject(UINT nIndex, CSpeedTreeRT::ECollisionObjectType &eType, float *pPosition,
                             float *pDimensions);
-    virtual void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector);
-    virtual void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance)
+    void OnUpdateCollisionData(const CStaticCollisionDataVector *pscdVector) override;
+    void OnUpdateHeighInstance(CAttributeInstance *pAttributeInstance) override
     {
     }
-    virtual bool OnGetObjectHeight(float fX, float fY, float *pfHeight)
+    bool OnGetObjectHeight(float fX, float fY, float *pfHeight) override
     {
         return false;
     }
     // Bounding Sphere
   public:
-    virtual bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius);
+    bool GetBoundingSphere(D3DXVECTOR3 &v3Center, float &fRadius) override;
 
-  public:
     static bool ms_bSelfShadowOn;
 
-  public:
     // methods from CGraphicObjectInstance
     virtual void SetPosition(float x, float y, float z);
     virtual void CalculateBBox();
-    virtual void OnRender();
-    virtual void OnRenderPCBlocker();
-    virtual void OnBlendRender()
+    void OnRender() override;
+    void OnRenderPCBlocker() override;
+    void OnBlendRender() override
     {
     }
-    virtual void OnRenderToShadowMap()
+    void OnRenderToShadowMap() override
     {
     }
-    virtual void OnRenderShadow()
+    void OnRenderShadow() override
     {
     }
 
-  public:
     CSpeedTreeWrapper();
-    virtual ~CSpeedTreeWrapper();
+    ~CSpeedTreeWrapper() override;
 
     // geometry
     bool LoadTree(const char *pszSptFile, const BYTE *c_pbBlock, unsigned int uiBlockSize, unsigned int nSeed = 1,
                   float fSize = -1.0f, float fSizeVariance = -1.0f);
-    const float *GetBoundingBox(void) const
+    const float *GetBoundingBox() const
     {
         return m_afBoundingBox;
     }
 
     // rendering
-    void SetupBranchForTreeType(void) const;
-    void SetupFrondForTreeType(void) const;
-    void SetupLeafForTreeType(void) const;
-    void EndLeafForTreeType(void);
-    void RenderBranches(void) const;
-    void RenderFronds(void) const;
-    void RenderLeaves(void) const;
-    void RenderBillboards(void) const;
+    void SetupBranchForTreeType() const;
+    void SetupFrondForTreeType() const;
+    void SetupLeafForTreeType() const;
+    void EndLeafForTreeType();
+    void RenderBranches() const;
+    void RenderFronds() const;
+    void RenderLeaves() const;
+    void RenderBillboards() const;
 
     // instancing
     CSpeedTreeWrapper **GetInstances(unsigned int &nCount);
-    CSpeedTreeWrapper *InstanceOf(void) const
+    CSpeedTreeWrapper *InstanceOf() const
     {
         return m_pInstanceOf;
     }
-    CSpeedTreeWrapper *MakeInstance(void);
+    CSpeedTreeWrapper *MakeInstance();
     void DeleteInstance(CSpeedTreeWrapper *pInstance);
-    CSpeedTreeRT *GetSpeedTree(void) const
+    CSpeedTreeRT *GetSpeedTree() const
     {
         return m_pSpeedTree;
     }
 
     // lighting
-    const CSpeedTreeMaterial &GetBranchMaterial(void) const
+    const CSpeedTreeMaterial &GetBranchMaterial() const
     {
         return m_cBranchMaterial;
     }
-    const CSpeedTreeMaterial &GetFrondMaterial(void) const
+    const CSpeedTreeMaterial &GetFrondMaterial() const
     {
         return m_cFrondMaterial;
     }
-    const CSpeedTreeMaterial &GetLeafMaterial(void) const
+    const CSpeedTreeMaterial &GetLeafMaterial() const
     {
         return m_cLeafMaterial;
     }
-    float GetLeafLightingAdjustment(void) const
+    float GetLeafLightingAdjustment() const
     {
         return m_pSpeedTree->GetLeafLightingAdjustment();
     }
 
     // wind
-    void Advance(void);
+    void Advance();
 
     // utility
-    void CleanUpMemory(void);
+    void CleanUpMemory();
 
   private:
-    void SetupBuffers(void);
-    void SetupBranchBuffers(void);
-    void SetupFrondBuffers(void);
-    void SetupLeafBuffers(void);
-    void PositionTree(void) const;
+    void SetupBuffers();
+    void SetupBranchBuffers();
+    void SetupFrondBuffers();
+    void SetupLeafBuffers();
+    void PositionTree() const;
     static bool LoadTexture(const char *pFilename, CGraphicImageInstance &rImage);
     void SetShaderConstants(const float *pMaterial) const;
 
-  private:
     // SpeedTreeRT data
     CSpeedTreeRT *m_pSpeedTree;                    // the SpeedTree object
     CSpeedTreeRT::STextures *m_pTextureInfo;       // texture info cache
-    bool m_bIsInstance;                            // is this an instance?
+    bool m_bIsInstance = false;                    // is this an instance?
     std::vector<CSpeedTreeWrapper *> m_vInstances; // what is an instance of us
     CSpeedTreeWrapper *m_pInstanceOf;              // which tree is this an instance of
 
@@ -204,26 +200,26 @@ class CSpeedTreeWrapper : public CGraphicObjectInstance
 
     // branch buffers
     LPDIRECT3DVERTEXBUFFER9 m_pBranchVertexBuffer; // branch vertex buffer
-    unsigned int m_unBranchVertexCount;            // number of vertices in branches
+    unsigned int m_unBranchVertexCount = 0;        // number of vertices in branches
     LPDIRECT3DINDEXBUFFER9 m_pBranchIndexBuffer;   // branch index buffer
     unsigned short *m_pBranchIndexCounts;          // number of indexes per branch LOD level
 
     // frond buffers
     LPDIRECT3DVERTEXBUFFER9 m_pFrondVertexBuffer; // frond vertex buffer
-    unsigned int m_unFrondVertexCount;            // number of vertices in frond
-    unsigned int m_unNumFrondLods;
+    unsigned int m_unFrondVertexCount = 0;        // number of vertices in frond
+    unsigned int m_unNumFrondLods = 0;
     LPDIRECT3DINDEXBUFFER9 *m_pFrondIndexBuffers;
     unsigned short *m_pFrondIndexCounts;
 
     // leaf buffers
-    unsigned short m_usNumLeafLods;               // the number of leaf LODs
+    unsigned short m_usNumLeafLods = 0;           // the number of leaf LODs
     LPDIRECT3DVERTEXBUFFER9 *m_pLeafVertexBuffer; // leaf vertex buffer
     bool *m_pLeavesUpdatedByCpu;                  // stores which LOD's have been updated already
                                                   // per frame
 
     // tree properties
-    float m_afPos[3];         // tree position
-    float m_afBoundingBox[6]; // tree bounding box
+    float m_afPos[3]{};         // tree position
+    float m_afBoundingBox[6]{}; // tree bounding box
 
     // materials
     CSpeedTreeMaterial m_cBranchMaterial; // branch material

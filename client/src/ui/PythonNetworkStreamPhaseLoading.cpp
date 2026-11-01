@@ -58,10 +58,10 @@ bool CPythonNetworkStream::LoadConvertTable(DWORD dwEmpireID, const char *c_szFi
     if (!CEterPackManager::Instance().Get(c_szFileName, data))
         return false;
 
-    DWORD dwEngCount = 26;
-    DWORD dwHanCount = (0xc8 - 0xb0 + 1) * (0xfe - 0xa1 + 1);
-    DWORD dwHanSize = dwHanCount * 2;
-    DWORD dwFileSize = dwEngCount * 2 + dwHanSize;
+    DWORD const dwEngCount = 26;
+    DWORD const dwHanCount = (0xc8 - 0xb0 + 1) * (0xfe - 0xa1 + 1);
+    DWORD const dwHanSize = dwHanCount * 2;
+    DWORD const dwFileSize = (dwEngCount * 2) + dwHanSize;
 
     if (data.str().length() < dwFileSize)
         return false;
@@ -69,19 +69,16 @@ bool CPythonNetworkStream::LoadConvertTable(DWORD dwEmpireID, const char *c_szFi
     STextConvertTable &rkTextConvTable = m_aTextConvTable[dwEmpireID - 1];
     data.read((char *)rkTextConvTable.acUpper, dwEngCount);
     data.read((char *)rkTextConvTable.acLower, dwEngCount);
-    data.read((char *)rkTextConvTable.aacHan, dwHanSize);
+    data.read(reinterpret_cast<char *>(rkTextConvTable.aacHan), dwHanSize);
 
-    if (!data)
-        return false;
-
-    return true;
+    return !!data;
 }
 
 // Loading
 // ---------------------------------------------------------------------------
 void CPythonNetworkStream::LoadingPhase()
 {
-    TPacketHeader header;
+    TPacketHeader header = 0;
 
     if (!CheckPacket(&header))
         return;

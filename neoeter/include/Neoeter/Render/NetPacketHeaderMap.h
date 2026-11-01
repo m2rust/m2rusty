@@ -5,19 +5,16 @@
 class CNetworkPacketHeaderMap
 {
   public:
-    typedef struct SPacketType
+    using TPacketType = struct SPacketType
     {
-        SPacketType(int iSize = 0, bool bFlag = false)
+        SPacketType(int iSize = 0, bool bFlag = false) : iPacketSize(iSize), isDynamicSizePacket(bFlag)
         {
-            iPacketSize = iSize;
-            isDynamicSizePacket = bFlag;
         }
 
         int iPacketSize;
         bool isDynamicSizePacket;
-    } TPacketType;
+    };
 
-  public:
     CNetworkPacketHeaderMap();
     virtual ~CNetworkPacketHeaderMap();
 

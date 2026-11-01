@@ -40,13 +40,13 @@ void CMonsterAreaInfo::SetSize(long lSizeX, long lSizeY)
     SetLRTB();
 }
 
-void CMonsterAreaInfo::GetOrigin(long *plOriginX, long *plOriginY)
+void CMonsterAreaInfo::GetOrigin(long *plOriginX, long *plOriginY) const
 {
     *plOriginX = m_lOriginX;
     *plOriginY = m_lOriginY;
 }
 
-void CMonsterAreaInfo::GetSize(long *plSizeX, long *plSizeY)
+void CMonsterAreaInfo::GetSize(long *plSizeX, long *plSizeY) const
 {
     *plSizeX = m_lSizeX;
     *plSizeY = m_lSizeY;
@@ -72,8 +72,8 @@ void CMonsterAreaInfo::SetMonsterCount(DWORD dwCount)
 
     for (DWORD dwI = 0; dwI < dwCount; ++dwI)
     {
-        m_TempMonsterPosVector[dwI].x = (float)random_range(m_lLeft, m_lRight);
-        m_TempMonsterPosVector[dwI].y = (float)random_range(m_lTop, m_lBottom);
+        m_TempMonsterPosVector[dwI].x = static_cast<float>(random_range(m_lLeft, m_lRight));
+        m_TempMonsterPosVector[dwI].y = static_cast<float>(random_range(m_lTop, m_lBottom));
     }
 }
 
@@ -86,7 +86,7 @@ void CMonsterAreaInfo::SetMonsterDirection(EMonsterDir eMonsterDir)
     switch (m_eMonsterDir)
     {
     case DIR_RANDOM:
-        fDegree = (float)random_range(0, 7) * 45.0f;
+        fDegree = static_cast<float>(random_range(0, 7)) * 45.0f;
         break;
     case DIR_NORTH:
         fDegree = 0.0f;
@@ -142,6 +142,6 @@ void CMonsterAreaInfo::RemoveAllMonsters()
 D3DXVECTOR2 CMonsterAreaInfo::GetTempMonsterPos(DWORD dwIndex)
 {
     if (dwIndex >= m_TempMonsterPosVector.size())
-        return D3DXVECTOR2(0.0f, 0.0f);
+        return {0.0f, 0.0f};
     return m_TempMonsterPosVector[dwIndex];
 }

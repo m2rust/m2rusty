@@ -8,14 +8,12 @@
 
 bool CResource::ms_bDeleteImmediately = false;
 
-CResource::CResource(const char *c_szFileName) : me_state(STATE_EMPTY)
+CResource::CResource(const char *c_szFileName)
 {
     SetFileName(c_szFileName);
 }
 
-CResource::~CResource()
-{
-}
+CResource::~CResource() = default;
 
 void CResource::SetDeleteImmediately(bool isSet)
 {
@@ -30,9 +28,13 @@ void CResource::OnConstruct()
 void CResource::OnSelfDestruct()
 {
     if (ms_bDeleteImmediately)
+    {
         Clear();
+    }
     else
+    {
         CResourceManager::Instance().ReserveDeletingResource(this);
+    }
 }
 
 void CResource::Load()
@@ -42,7 +44,7 @@ void CResource::Load()
 
     const char *c_szFileName = GetFileName();
 
-    DWORD dwStart = ELTimer_GetMSec();
+    DWORD const dwStart = ELTimer_GetMSec();
     CEterPackManager::TPackDataPtr fileData;
 
     // Tracenf("Load %s", c_szFileName);
@@ -66,8 +68,10 @@ void CResource::Load()
     }
     else
     {
-        if (OnLoad(0, NULL))
+        if (OnLoad(0, nullptr))
+        {
             me_state = STATE_EXIST;
+        }
         else
         {
             Tracef("CResource::Load file not exist %s\n", c_szFileName);
@@ -97,8 +101,10 @@ void CResource::Reload()
     }
     else
     {
-        if (OnLoad(0, NULL))
+        if (OnLoad(0, nullptr))
+        {
             me_state = STATE_EXIST;
+        }
         else
         {
             me_state = STATE_ERROR;
@@ -113,15 +119,19 @@ CResource::TType CResource::StringToType(const char *c_szType)
 
 int CResource::ConvertPathName(const char *c_szPathName, char *pszRetPathName, int retLen)
 {
-    const char *pc;
+    const char *pc = nullptr;
     int len = 0;
 
     for (pc = c_szPathName; *pc && len < retLen; ++pc, ++len)
     {
         if (*pc == '/')
+        {
             *(pszRetPathName++) = '\\';
+        }
         else
-            *(pszRetPathName++) = (char)korean_tolower(*pc);
+        {
+            *(pszRetPathName++) = korean_tolower(*pc);
+        }
     }
 
     *pszRetPathName = '\0';
@@ -148,16 +158,13 @@ bool CResource::IsType(TType type)
 
 CResource::TType CResource::Type()
 {
-    static TType s_type = StringToType("CResource");
+    static TType const s_type = StringToType("CResource");
     return s_type;
 }
 
 bool CResource::OnIsType(TType type)
 {
-    if (CResource::Type() == type)
-        return true;
-
-    return false;
+    return CResource::Type() == type;
 }
 
 bool CResource::IsData() const

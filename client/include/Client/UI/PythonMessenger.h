@@ -3,8 +3,8 @@
 class CPythonMessenger : public CSingleton<CPythonMessenger>
 {
   public:
-    typedef std::set<std::string> TFriendNameMap;
-    typedef std::map<std::string, BYTE> TGuildMemberStateMap;
+    using TFriendNameMap = std::set<std::string>;
+    using TGuildMemberStateMap = std::map<std::string, BYTE>;
 
     enum EMessengerGroupIndex
     {
@@ -12,9 +12,8 @@ class CPythonMessenger : public CSingleton<CPythonMessenger>
         MESSENGER_GRUOP_INDEX_GUILD,
     };
 
-  public:
     CPythonMessenger();
-    virtual ~CPythonMessenger();
+    ~CPythonMessenger() override;
 
     void Destroy();
 

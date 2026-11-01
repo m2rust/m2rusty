@@ -4,18 +4,18 @@
 #include "Ref.h"
 #include "CollisionData.h"
 
-typedef struct SHeightData
+using THeightData = struct SHeightData
 {
-    char szName[32 + 1];
+    char szName[32 + 1]{};
     std::vector<D3DXVECTOR3> v3VertexVector;
-} THeightData;
+};
 
-typedef std::vector<THeightData> THeightDataVector;
+using THeightDataVector = std::vector<THeightData>;
 
 class CAttributeData : public CResource
 {
   public:
-    typedef CRef<CAttributeData> TRef;
+    using TRef = CRef<CAttributeData>;
 
     /*
     enum ECollisionType
@@ -36,12 +36,10 @@ class CAttributeData : public CResource
         D3DXQUATERNION quatRotation;
     } TCollisionData;*/
 
-  public:
     static TType Type();
 
-  public:
     CAttributeData(const char *c_szFileName);
-    virtual ~CAttributeData();
+    ~CAttributeData() override;
 
     // DWORD GetCollisionDataCount() const;
     // BOOL GetCollisionDataPointer(DWORD dwIndex, const TCollisionData **
@@ -54,16 +52,15 @@ class CAttributeData : public CResource
     DWORD GetHeightDataCount() const;
     BOOL GetHeightDataPointer(DWORD dwIndex, const THeightData **c_ppHeightData) const;
 
-    float GetMaximizeRadius();
+    float GetMaximizeRadius() const;
 
   protected:
-    bool OnLoad(int iSize, const void *c_pvBuf);
-    void OnClear();
-    bool OnIsEmpty() const;
-    bool OnIsType(TType type);
-    void OnSelfDestruct();
+    bool OnLoad(int iSize, const void *c_pvBuf) override;
+    void OnClear() override;
+    bool OnIsEmpty() const override;
+    bool OnIsType(TType type) override;
+    void OnSelfDestruct() override;
 
-  protected:
     float m_fMaximizeRadius;
 
     // std::vector<TCollisionData> m_CollisionDataVector;

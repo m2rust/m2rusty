@@ -6,9 +6,7 @@ CGraphicImage::CGraphicImage(const char *c_szFileName, DWORD dwFilter) : CResour
     m_rect.bottom = m_rect.right = m_rect.top = m_rect.left = 0;
 }
 
-CGraphicImage::~CGraphicImage()
-{
-}
+CGraphicImage::~CGraphicImage() = default;
 
 bool CGraphicImage::CreateDeviceObjects()
 {
@@ -22,7 +20,7 @@ void CGraphicImage::DestroyDeviceObjects()
 
 CGraphicImage::TType CGraphicImage::Type()
 {
-    static TType s_type = StringToType("CGraphicImage");
+    static TType const s_type = StringToType("CGraphicImage");
     return s_type;
 }
 

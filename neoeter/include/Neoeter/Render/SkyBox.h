@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_SKYBOX_H__AB5049E1_8F1C_4C35_9406_45EC7EF4AD1B__INCLUDED_)
+#ifndef AFX_SKYBOX_H__AB5049E1_8F1C_4C35_9406_45EC7EF4AD1B__INCLUDED_
 #define AFX_SKYBOX_H__AB5049E1_8F1C_4C35_9406_45EC7EF4AD1B__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -17,13 +17,13 @@
 #include <map>
 #include <string>
 
-typedef struct SColor
+using TColor = struct SColor
 {
     SColor(float _r = 0.0f, float _g = 0.0f, float _b = 0.0f, float _a = 0.0f) : r(_r), g(_g), b(_b), a(_a)
     {
     }
     float r, g, b, a;
-} TColor;
+};
 
 typedef struct
 {
@@ -31,8 +31,8 @@ typedef struct
     TColor m_SecondColor;
 } TGradientColor;
 
-typedef std::vector<TGradientColor> TVectorGradientColor;
-typedef TVectorGradientColor::iterator TVectorGradientIterator;
+using TVectorGradientColor = std::vector<TGradientColor>;
+using TVectorGradientIterator = TVectorGradientColor::iterator;
 
 class CSkyObjectQuad
 {
@@ -55,7 +55,7 @@ class CSkyObjectQuad
 
   private:
     TPDTVertex m_Vertex[4];
-    TIndex m_Indices[4]; // 인덱스 버퍼...
+    TIndex m_Indices[4]{}; // 인덱스 버퍼...
     CColorTransitionHelper m_Helper[4];
 };
 
@@ -73,7 +73,7 @@ class CSkyObject : public CScreen
     };
 
     CSkyObject();
-    virtual ~CSkyObject();
+    ~CSkyObject() override;
 
     virtual void Destroy() = 0;
 
@@ -86,21 +86,20 @@ class CSkyObject : public CScreen
         m_ucRenderMode = ucRenderMode;
     }
 
-    const bool &isTransitionStarted()
+    const bool &isTransitionStarted() const
     {
         return m_bTransitionStarted;
     }
 
   protected:
     CGraphicImageInstance *GenerateTexture(const char *szfilename);
-    void DeleteTexture(CGraphicImageInstance *pGraphicImageInstance);
+    void DeleteTexture(CGraphicImageInstance *pImageInstance);
 
-  protected:
     //////////////////////////////////////////////////////////////////////////
     // 타입 정의
 
-    typedef std::vector<CSkyObjectQuad> TSkyObjectQuadVector;
-    typedef TSkyObjectQuadVector::iterator TSkyObjectQuadIterator;
+    using TSkyObjectQuadVector = std::vector<CSkyObjectQuad>;
+    using TSkyObjectQuadIterator = TSkyObjectQuadVector::iterator;
 
     typedef struct
     {
@@ -112,7 +111,7 @@ class CSkyObject : public CScreen
         TSkyObjectQuadVector m_SkyObjectQuadVector;
     } TSkyObjectFace;
 
-    typedef std::map<std::string, CGraphicImageInstance *> TGraphicImageInstanceMap;
+    using TGraphicImageInstanceMap = std::map<std::string, CGraphicImageInstance *>;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -120,9 +119,9 @@ class CSkyObject : public CScreen
     TSkyObjectFace m_FaceCloud; // 구름 일단 한장...
     D3DXMATRIX m_matWorldCloud, m_matTranslationCloud, m_matTextureCloud;
     D3DXVECTOR3 m_v3PositionCloud;
-    float m_fCloudScaleX, m_fCloudScaleY, m_fCloudHeight;
-    float m_fCloudTextureScaleX, m_fCloudTextureScaleY;
-    float m_fCloudScrollSpeedU, m_fCloudScrollSpeedV;
+    float m_fCloudScaleX = 0.0F, m_fCloudScaleY = 0.0F, m_fCloudHeight = 0.0F;
+    float m_fCloudTextureScaleX = 0.0F, m_fCloudTextureScaleY = 0.0F;
+    float m_fCloudScrollSpeedU = 0.0F, m_fCloudScrollSpeedV = 0.0F;
     float m_fCloudPositionU, m_fCloudPositionV;
 
     DWORD m_dwlastTime;
@@ -133,10 +132,10 @@ class CSkyObject : public CScreen
     // Transform...
     D3DXMATRIX m_matWorld, m_matTranslation;
     D3DXVECTOR3 m_v3Position;
-    float m_fScaleX, m_fScaleY, m_fScaleZ;
+    float m_fScaleX = 1.0f, m_fScaleY = 1.0f, m_fScaleZ = 1.0f;
 
     // 랜더링 관련... 임시 변수..
-    unsigned char m_ucRenderMode;
+    unsigned char m_ucRenderMode = 0U;
 
     std::string m_strCurTime;
     bool m_bTransitionStarted;
@@ -149,13 +148,13 @@ class CSkyBox : public CSkyObject
 {
   public:
     CSkyBox();
-    virtual ~CSkyBox();
+    ~CSkyBox() override;
 
-    void Update();
-    void Render();
+    void Update() override;
+    void Render() override;
     void RenderCloud();
 
-    void Destroy();
+    void Destroy() override;
     void Unload();
 
     void SetSkyBoxScale(const D3DXVECTOR3 &c_rv3Scale);
@@ -171,15 +170,14 @@ class CSkyBox : public CSkyObject
     void Refresh();
     void SetSkyColor(const TVectorGradientColor &c_rColorVector, const TVectorGradientColor &c_rNextColorVector,
                      long lTransitionTime);
-    void StartTransition();
+    void StartTransition() override;
 
   protected:
-    void SetSkyObjectQuadVertical(TSkyObjectQuadVector *pSkyObjectQuadVector, const D3DXVECTOR2 *c_pv2QuadPoints);
+    void SetSkyObjectQuadVertical(TSkyObjectQuadVector *pSkyObjectQuadVector, const D3DXVECTOR2 *c_pv2QuadPoints) const;
     void SetSkyObjectQuadHorizon(TSkyObjectQuadVector *pSkyObjectQuadVector, const D3DXVECTOR3 *c_pv3QuadPoints);
 
     // void UpdateSkyFaceQuadTransform(D3DXVECTOR3 * c_pv3QuadPoints);
 
-  protected:
     unsigned char m_ucVirticalGradientLevelUpper;
     unsigned char m_ucVirticalGradientLevelLower;
     TSkyObjectFace m_Faces[6];

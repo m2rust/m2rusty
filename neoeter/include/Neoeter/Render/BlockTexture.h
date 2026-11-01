@@ -8,7 +8,7 @@ class CBlockTexture : public CGraphicBase
 {
   public:
     CBlockTexture();
-    virtual ~CBlockTexture();
+    ~CBlockTexture() override;
 
     bool Create(CGraphicDib *pDIB, const RECT &c_rRect, DWORD dwWidth, DWORD dwHeight);
     void SetClipRect(const RECT &c_rRect);
@@ -17,10 +17,10 @@ class CBlockTexture : public CGraphicBase
 
   protected:
     CGraphicDib *m_pDIB;
-    RECT m_rect;
-    RECT m_clipRect;
-    BOOL m_bClipEnable;
-    DWORD m_dwWidth;
-    DWORD m_dwHeight;
+    RECT m_rect{};
+    RECT m_clipRect{};
+    BOOL m_bClipEnable = 0;
+    DWORD m_dwWidth = 0U;
+    DWORD m_dwHeight = 0U;
     LPDIRECT3DTEXTURE9 m_lpd3dTexture;
 };

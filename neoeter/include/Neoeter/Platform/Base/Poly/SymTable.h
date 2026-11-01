@@ -9,7 +9,7 @@ class CSymTable
     CSymTable(int aTok, std::string aStr);
     virtual ~CSymTable();
 
-    double dVal;
+    double dVal = 0;
     int token;
     std::string strlex;
 };

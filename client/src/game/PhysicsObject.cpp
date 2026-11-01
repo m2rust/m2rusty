@@ -4,8 +4,8 @@
 const float c_fFrameTime = 0.02f;
 const float EPSILON = 0.001f;
 
-IPhysicsWorld *IPhysicsWorld::ms_pWorld = NULL;
-IObjectManager *IObjectManager::ms_ObjManager = NULL;
+IPhysicsWorld *IPhysicsWorld::ms_pWorld = nullptr;
+IObjectManager *IObjectManager::ms_ObjManager = nullptr;
 
 void CPhysicsObject::Update(float fElapsedTime)
 {
@@ -95,7 +95,7 @@ void CPhysicsObject::IncreaseExternalForce(const D3DXVECTOR3 &c_rvBasePosition, 
             break;
     }
 
-    SetLastPosition(v3Movement, float(LoopValue) * c_fFrameTime);
+    SetLastPosition(v3Movement, static_cast<float>(LoopValue) * c_fFrameTime);
 
     if (m_pActorInstance)
     {
@@ -106,9 +106,9 @@ void CPhysicsObject::IncreaseExternalForce(const D3DXVECTOR3 &c_rvBasePosition, 
 
 void CPhysicsObject::SetLastPosition(const TPixelPosition &c_rPosition, float fBlendingTime)
 {
-    m_v3LastPosition.x = float(c_rPosition.x);
-    m_v3LastPosition.y = float(c_rPosition.y);
-    m_v3LastPosition.z = float(c_rPosition.z);
+    m_v3LastPosition.x = (c_rPosition.x);
+    m_v3LastPosition.y = (c_rPosition.y);
+    m_v3LastPosition.z = (c_rPosition.z);
     m_xPushingPosition.Setup(0.0f, c_rPosition.x, fBlendingTime);
     m_yPushingPosition.Setup(0.0f, c_rPosition.y, fBlendingTime);
 }
@@ -163,11 +163,8 @@ void CPhysicsObject::Initialize()
     m_yPushingPosition.Initialize();
 }
 
-CPhysicsObject::CPhysicsObject()
+CPhysicsObject::CPhysicsObject() : m_pActorInstance(nullptr)
 {
-    m_pActorInstance = NULL;
 }
 
-CPhysicsObject::~CPhysicsObject()
-{
-}
+CPhysicsObject::~CPhysicsObject() = default;

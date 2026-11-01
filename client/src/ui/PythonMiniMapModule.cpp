@@ -1,9 +1,10 @@
 #include <Client/UI/StdAfx.h>
 #include <Client/UI/PythonMiniMap.h>
+#include <math.h>
 
 PyObject *miniMapSetScale(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScale;
+    float fScale = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScale))
         return Py_BuildException();
 
@@ -13,11 +14,11 @@ PyObject *miniMapSetScale(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapSetCenterPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    float fCenterX;
+    float fCenterX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fCenterX))
         return Py_BuildException();
 
-    float fCenterY;
+    float fCenterY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fCenterY))
         return Py_BuildException();
 
@@ -27,11 +28,11 @@ PyObject *miniMapSetCenterPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapSetMiniMapSize(PyObject *poSelf, PyObject *poArgs)
 {
-    float fWidth;
+    float fWidth = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fWidth))
         return Py_BuildException();
 
-    float fHeight;
+    float fHeight = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fHeight))
         return Py_BuildException();
 
@@ -53,11 +54,11 @@ PyObject *miniMapCreate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapUpdate(PyObject *poSelf, PyObject *poArgs)
 {
-    float fCenterX;
+    float fCenterX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fCenterX))
         return Py_BuildException();
 
-    float fCenterY;
+    float fCenterY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fCenterY))
         return Py_BuildException();
 
@@ -67,11 +68,11 @@ PyObject *miniMapUpdate(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapRender(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScrrenX;
+    float fScrrenX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScrrenX))
         return Py_BuildException();
 
-    float fScrrenY;
+    float fScrrenY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fScrrenY))
         return Py_BuildException();
 
@@ -93,7 +94,7 @@ PyObject *miniMapHide(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapisShow(PyObject *poSelf, PyObject *poArgs)
 {
-    bool bShow = CPythonMiniMap::Instance().CanShow();
+    bool const bShow = CPythonMiniMap::Instance().CanShow();
     return Py_BuildValue("b", bShow);
 }
 
@@ -111,25 +112,28 @@ PyObject *miniMapScaleDown(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapGetInfo(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScrrenX;
+    float fScrrenX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScrrenX))
         return Py_BuildException();
 
-    float fScrrenY;
+    float fScrrenY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fScrrenY))
         return Py_BuildException();
 
     std::string aString;
-    float fPosX, fPosY;
-    DWORD dwTextColor;
-    bool bFind =
+    float fPosX = NAN;
+    float fPosY = NAN;
+    DWORD dwTextColor = 0;
+    bool const bFind =
         CPythonMiniMap::Instance().GetPickedInstanceInfo(fScrrenX, fScrrenY, aString, &fPosX, &fPosY, &dwTextColor);
-    int iPosX, iPosY;
+    int iPosX = 0;
+    int iPosY = 0;
     PR_FLOAT_TO_INT(fPosX, iPosX);
     PR_FLOAT_TO_INT(fPosY, iPosY);
     iPosX /= 100;
     iPosY /= 100;
-    return Py_BuildValue("isiil", (int)bFind, aString.c_str(), iPosX, iPosY, (signed)dwTextColor);
+    return Py_BuildValue("isiil", static_cast<int>(bFind), aString.c_str(), iPosX, iPosY,
+                         static_cast<signed>(dwTextColor));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -149,11 +153,11 @@ PyObject *miniMapUpdateAtlas(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapRenderAtlas(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScrrenX;
+    float fScrrenX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScrrenX))
         return Py_BuildException();
 
-    float fScrrenY;
+    float fScrrenY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fScrrenY))
         return Py_BuildException();
 
@@ -175,44 +179,47 @@ PyObject *miniMapHideAtlas(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapisShowAtlas(PyObject *poSelf, PyObject *poArgs)
 {
-    bool bShow = CPythonMiniMap::Instance().CanShowAtlas();
+    bool const bShow = CPythonMiniMap::Instance().CanShowAtlas();
     return Py_BuildValue("b", bShow);
 }
 
 PyObject *miniMapIsAtlas(PyObject *poSelf, PyObject *poArgs)
 {
-    bool isData = CPythonMiniMap::Instance().IsAtlas();
+    bool const isData = CPythonMiniMap::Instance().IsAtlas();
     return Py_BuildValue("b", isData);
 }
 
 PyObject *miniMapGetAtlasInfo(PyObject *poSelf, PyObject *poArgs)
 {
-    float fScrrenX;
+    float fScrrenX = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fScrrenX))
         return Py_BuildException();
-    float fScrrenY;
+    float fScrrenY = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fScrrenY))
         return Py_BuildException();
 
-    std::string aString = "";
+    std::string aString;
     float fPosX = 0.0f;
     float fPosY = 0.0f;
     DWORD dwTextColor = 0;
     DWORD dwGuildID = 0;
-    bool bFind =
+    bool const bFind =
         CPythonMiniMap::Instance().GetAtlasInfo(fScrrenX, fScrrenY, aString, &fPosX, &fPosY, &dwTextColor, &dwGuildID);
-    int iPosX, iPosY;
+    int iPosX = 0;
+    int iPosY = 0;
     PR_FLOAT_TO_INT(fPosX, iPosX);
     PR_FLOAT_TO_INT(fPosY, iPosY);
     iPosX /= 100;
     iPosY /= 100;
-    return Py_BuildValue("isiili", (int)bFind, aString.c_str(), iPosX, iPosY, (signed)dwTextColor, dwGuildID);
+    return Py_BuildValue("isiili", static_cast<int>(bFind), aString.c_str(), iPosX, iPosY,
+                         static_cast<signed>(dwTextColor), dwGuildID);
 }
 
 PyObject *miniMapGetAtlasSize(PyObject *poSelf, PyObject *poArgs)
 {
-    float fSizeX, fSizeY;
-    bool bGet = CPythonMiniMap::Instance().GetAtlasSize(&fSizeX, &fSizeY);
+    float fSizeX = NAN;
+    float fSizeY = NAN;
+    bool const bGet = CPythonMiniMap::Instance().GetAtlasSize(&fSizeX, &fSizeY);
 
     /*
         float fSizeXoo256 = fSizeX / 256.0f;
@@ -230,50 +237,51 @@ PyObject *miniMapGetAtlasSize(PyObject *poSelf, PyObject *poArgs)
         }
     */
 
-    int iSizeX, iSizeY;
+    int iSizeX = 0;
+    int iSizeY = 0;
     PR_FLOAT_TO_INT(fSizeX, iSizeX);
     PR_FLOAT_TO_INT(fSizeY, iSizeY);
 
-    return Py_BuildValue("bii", (int)bGet, iSizeX, iSizeY);
+    return Py_BuildValue("bii", static_cast<int>(bGet), iSizeX, iSizeY);
 }
 
 PyObject *miniMapAddWayPoint(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
-    float fX;
+    float fX = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fX))
         return Py_BuildException();
 
-    float fY;
+    float fY = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fY))
         return Py_BuildException();
 
-    char *buf;
+    char *buf = nullptr;
     if (!PyTuple_GetString(poArgs, 3, &buf))
         return Py_BuildException();
 
-    CPythonMiniMap::Instance().AddWayPoint(CPythonMiniMap::TYPE_WAYPOINT, (DWORD)iID, fX, fY, buf);
+    CPythonMiniMap::Instance().AddWayPoint(CPythonMiniMap::TYPE_WAYPOINT, static_cast<DWORD>(iID), fX, fY, buf);
 
     return Py_BuildNone();
 }
 
 PyObject *miniMapRemoveWayPoint(PyObject *poSelf, PyObject *poArgs)
 {
-    int iID;
+    int iID = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iID))
         return Py_BuildException();
 
-    CPythonMiniMap::Instance().RemoveWayPoint((DWORD)iID);
+    CPythonMiniMap::Instance().RemoveWayPoint(static_cast<DWORD>(iID));
 
     return Py_BuildNone();
 }
 
 PyObject *miniMapRegisterAtlasWindow(PyObject *poSelf, PyObject *poArgs)
 {
-    PyObject *poHandler;
+    PyObject *poHandler = nullptr;
     if (!PyTuple_GetObject(poArgs, 0, &poHandler))
         return Py_BuildException();
     CPythonMiniMap::Instance().RegisterAtlasWindow(poHandler);
@@ -288,14 +296,14 @@ PyObject *miniMapUnregisterAtlasWindow(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *miniMapGetGuildAreaID(PyObject *poSelf, PyObject *poArgs)
 {
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 0, &fx))
         return Py_BuildException();
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fy))
         return Py_BuildException();
 
-    DWORD dwGuildID = CPythonMiniMap::Instance().GetGuildAreaID(fx, fy);
+    DWORD const dwGuildID = CPythonMiniMap::Instance().GetGuildAreaID(fx, fy);
     return Py_BuildValue("i", dwGuildID);
 }
 
@@ -339,7 +347,7 @@ void initMiniMap()
 
         {"GetGuildAreaID", miniMapGetGuildAreaID, METH_VARARGS},
 
-        {NULL, NULL},
+        {nullptr, nullptr},
     };
 
     PyObject *poModule = Py_InitModule("miniMap", s_methods);

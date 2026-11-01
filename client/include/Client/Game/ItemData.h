@@ -64,14 +64,14 @@ class CItemData
 
     enum EWeaponSubTypes
     {
-        WEAPON_SWORD,
-        WEAPON_DAGGER, // 이도류
-        WEAPON_BOW,
-        WEAPON_TWO_HANDED,
-        WEAPON_BELL,
-        WEAPON_FAN,
-        WEAPON_ARROW,
-        WEAPON_NUM_TYPES,
+        WEAPON_SWORD = 0,
+        WEAPON_DAGGER = 1, // 이도류
+        WEAPON_BOW = 2,
+        WEAPON_TWO_HANDED = 3,
+        WEAPON_BELL = 4,
+        WEAPON_FAN = 5,
+        WEAPON_ARROW = 6,
+        WEAPON_NUM_TYPES = 7,
 
         WEAPON_NONE = WEAPON_NUM_TYPES + 1,
     };
@@ -145,12 +145,12 @@ class CItemData
 
     enum EDragonSoulSubType
     {
-        DS_SLOT1,
-        DS_SLOT2,
-        DS_SLOT3,
-        DS_SLOT4,
-        DS_SLOT5,
-        DS_SLOT6,
+        DS_SLOT1 = 0,
+        DS_SLOT2 = 1,
+        DS_SLOT3 = 2,
+        DS_SLOT4 = 3,
+        DS_SLOT5 = 4,
+        DS_SLOT6 = 5,
         DS_SLOT_NUM_TYPES = 6,
     };
 
@@ -373,19 +373,19 @@ class CItemData
 
 #pragma pack(push)
 #pragma pack(1)
-    typedef struct SItemLimit
+    using TItemLimit = struct SItemLimit
     {
         BYTE bType;
         LONG lValue;
-    } TItemLimit;
+    };
 
-    typedef struct SItemApply
+    using TItemApply = struct SItemApply
     {
         BYTE bType;
         LONG lValue;
-    } TItemApply;
+    };
 
-    typedef struct SItemTable
+    using TItemTable = struct SItemTable
     {
         DWORD dwVnum;
         DWORD dwVnumRange;
@@ -414,7 +414,7 @@ class CItemData
         BYTE bAlterToMagicItemPct;
         BYTE bSpecular;
         BYTE bGainSocketPct;
-    } TItemTable;
+    };
 
 //		typedef struct SItemTable
 //		{
@@ -438,7 +438,6 @@ class CItemData
 //		} TItemTable;
 #pragma pack(pop)
 
-  public:
     CItemData();
     virtual ~CItemData();
 
@@ -495,14 +494,13 @@ class CItemData
     /////
 
     // BOOL LoadItemData(const char * c_szFileName);
-    void SetDefaultItemData(const char *c_szIconFileName, const char *c_szModelFileName = NULL);
+    void SetDefaultItemData(const char *c_szIconFileName, const char *c_szModelFileName = nullptr);
     void SetItemTableData(TItemTable *pItemTable);
 
   protected:
     void __LoadFiles();
     void __SetIconImage(const char *c_szFileName);
 
-  protected:
     std::string m_strModelFileName;
     std::string m_strSubModelFileName;
     std::string m_strDropModelFileName;
@@ -511,15 +509,15 @@ class CItemData
     std::string m_strSummary;
     std::vector<std::string> m_strLODModelFileNameVector;
 
-    CGraphicThing *m_pModelThing;
-    CGraphicThing *m_pSubModelThing;
-    CGraphicThing *m_pDropModelThing;
-    CGraphicSubImage *m_pIconImage;
+    CGraphicThing *m_pModelThing = nullptr;
+    CGraphicThing *m_pSubModelThing = nullptr;
+    CGraphicThing *m_pDropModelThing = nullptr;
+    CGraphicSubImage *m_pIconImage = nullptr;
     std::vector<CGraphicThing *> m_pLODModelThingVector;
 
     NRaceData::TAttachingDataVector m_AttachingDataVector;
-    DWORD m_dwVnum;
-    TItemTable m_ItemTable;
+    DWORD m_dwVnum = 0U;
+    TItemTable m_ItemTable{};
 
   public:
     static void DestroySystem();

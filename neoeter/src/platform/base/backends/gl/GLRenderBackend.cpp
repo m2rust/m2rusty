@@ -5,7 +5,7 @@
 // application follows src/Direct3DDevice9Compat.cpp's previous SetupGLState(),
 // vertex-array setup and draw order verbatim so Linux output is unchanged.
 
-#if defined(OPENMT2_RENDERER_GL)
+#ifdef OPENMT2_RENDERER_GL
 
 #include "GLRenderBackend.h"
 
@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <utility>
 
 #ifndef GL_COMPRESSED_RGB_S3TC_DXT1_EXT
 #define GL_COMPRESSED_RGB_S3TC_DXT1_EXT 0x83F0
@@ -74,9 +75,7 @@
 #define GL_SUBTRACT 0x84E7
 #endif
 
-namespace eterbase
-{
-namespace gl
+namespace eterbase::gl
 {
 namespace
 {
@@ -332,7 +331,10 @@ void SetStageAlphaCombine(DWORD op, DWORD arg1, DWORD arg2)
 // for stable world-space texture coordinates on the terrain).
 void ApplyCameraSpacePositionTexGen(const D3DXMATRIX *pTexMatrix, bool bProjected)
 {
-    GLfloat s[4], t[4], r[4], q[4];
+    GLfloat s[4];
+    GLfloat t[4];
+    GLfloat r[4];
+    GLfloat q[4];
     if (pTexMatrix)
     {
         s[0] = pTexMatrix->_11;
@@ -407,7 +409,7 @@ void ApplyCameraSpacePositionTexGen(const D3DXMATRIX *pTexMatrix, bool bProjecte
 
 void SetupVertexArrays(const BYTE *vbData, UINT stride, DWORD fvf, const GLfloat *primaryColor)
 {
-    DWORD posType = fvf & D3DFVF_POSITION_MASK;
+    DWORD const posType = fvf & D3DFVF_POSITION_MASK;
     size_t offset = 0;
 
     glEnableClientState(GL_VERTEX_ARRAY);
@@ -454,7 +456,7 @@ void SetupVertexArrays(const BYTE *vbData, UINT stride, DWORD fvf, const GLfloat
         offset += 4;
     }
 
-    UINT numTex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
+    UINT const numTex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
     if (numTex >= 1)
     {
         glClientActiveTexture(GL_TEXTURE0);
@@ -490,7 +492,7 @@ void TeardownVertexArrays(DWORD fvf)
         glDisableClientState(GL_NORMAL_ARRAY);
     if (fvf & D3DFVF_DIFFUSE)
         glDisableClientState(GL_COLOR_ARRAY);
-    UINT numTex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
+    UINT const numTex = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
     if (numTex >= 1)
     {
         glClientActiveTexture(GL_TEXTURE0);
@@ -516,18 +518,18 @@ GLRenderBackend::~GLRenderBackend()
             continue;
         if (slot.kind == ResourceKind::Texture)
         {
-            GLuint name = slot.glName;
+            GLuint const name = slot.glName;
             glDeleteTextures(1, &name);
         }
         else
         {
-            GLuint name = slot.glName;
+            GLuint const name = slot.glName;
             glDeleteRenderbuffers(1, &name);
         }
     }
     if (m_framebuffer)
     {
-        GLuint fbo = m_framebuffer;
+        GLuint const fbo = m_framebuffer;
         glDeleteFramebuffers(1, &fbo);
         m_framebuffer = 0;
     }
@@ -547,8 +549,7 @@ void GLRenderBackend::EnsureCaps() const
 
     GLint maxTexture = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTexture);
-    if (maxTexture < 0)
-        maxTexture = 0;
+    maxTexture = std::max(maxTexture, 0);
 
     const GLubyte *extensions = glGetString(GL_EXTENSIONS);
     const char *ext = extensions ? reinterpret_cast<const char *>(extensions) : "";
@@ -585,7 +586,7 @@ RenderHandle GLRenderBackend::CreateTexture()
     slot.kind = ResourceKind::Texture;
     slot.glName = 0;
     ++slot.generation;
-    return RenderHandle{index + 1, slot.generation};
+    return RenderHandle{.id = index + 1, .generation = slot.generation};
 }
 
 RenderHandle GLRenderBackend::CreateDepthStencil(uint32_t width, uint32_t height)
@@ -608,7 +609,7 @@ RenderHandle GLRenderBackend::CreateDepthStencil(uint32_t width, uint32_t height
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     slot.glName = name;
 
-    return RenderHandle{index + 1, slot.generation};
+    return RenderHandle{.id = index + 1, .generation = slot.generation};
 }
 
 void GLRenderBackend::Destroy(RenderHandle handle)
@@ -623,12 +624,12 @@ void GLRenderBackend::Destroy(RenderHandle handle)
     {
         if (slot.kind == ResourceKind::Texture)
         {
-            GLuint name = slot.glName;
+            GLuint const name = slot.glName;
             glDeleteTextures(1, &name);
         }
         else
         {
-            GLuint name = slot.glName;
+            GLuint const name = slot.glName;
             glDeleteRenderbuffers(1, &name);
         }
     }
@@ -656,36 +657,36 @@ void GLRenderBackend::UploadTextureLevel(RenderHandle texture, uint32_t level, u
 
     const GLsizei mipW = static_cast<GLsizei>(std::max(1u, width));
     const GLsizei mipH = static_cast<GLsizei>(std::max(1u, height));
-    const D3DFORMAT fmt = static_cast<D3DFORMAT>(format);
+    const auto fmt = static_cast<D3DFORMAT>(format);
 
     if (fmt == D3DFMT_DXT1)
     {
-        GLsizei size = (GLsizei)(std::max(1, (mipW + 3) / 4) * std::max(1, (mipH + 3) / 4) * 8);
-        if ((size_t)size > dataSize)
-            size = (GLsizei)dataSize;
+        GLsizei size = static_cast<GLsizei>(std::max(1, (mipW + 3) / 4) * std::max(1, (mipH + 3) / 4) * 8);
+        if (static_cast<size_t>(size) > dataSize)
+            size = static_cast<GLsizei>(dataSize);
         glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, mipW, mipH, 0, size, data);
     }
     else if (fmt == D3DFMT_DXT3)
     {
-        GLsizei size = (GLsizei)(std::max(1, (mipW + 3) / 4) * std::max(1, (mipH + 3) / 4) * 16);
-        if ((size_t)size > dataSize)
-            size = (GLsizei)dataSize;
+        GLsizei size = static_cast<GLsizei>(std::max(1, (mipW + 3) / 4) * std::max(1, (mipH + 3) / 4) * 16);
+        if (static_cast<size_t>(size) > dataSize)
+            size = static_cast<GLsizei>(dataSize);
         glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, mipW, mipH, 0, size, data);
     }
     else if (fmt == D3DFMT_DXT5)
     {
-        GLsizei size = (GLsizei)(std::max(1, (mipW + 3) / 4) * std::max(1, (mipH + 3) / 4) * 16);
-        if ((size_t)size > dataSize)
-            size = (GLsizei)dataSize;
+        GLsizei size = static_cast<GLsizei>(std::max(1, (mipW + 3) / 4) * std::max(1, (mipH + 3) / 4) * 16);
+        if (static_cast<size_t>(size) > dataSize)
+            size = static_cast<GLsizei>(dataSize);
         glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, mipW, mipH, 0, size, data);
     }
     else if (fmt == D3DFMT_A4R4G4B4)
     {
-        std::vector<uint32_t> rgba((size_t)mipW * mipH);
-        const uint16_t *src = (const uint16_t *)data;
+        std::vector<uint32_t> rgba(static_cast<size_t>(mipW) * mipH);
+        const auto *src = static_cast<const uint16_t *>(data);
         for (size_t i = 0; i < rgba.size(); ++i)
         {
-            uint16_t val = src[i];
+            uint16_t const val = src[i];
             uint8_t a = (val >> 12) & 0xF;
             a = (a << 4) | a;
             uint8_t r = (val >> 8) & 0xF;
@@ -703,36 +704,37 @@ void GLRenderBackend::UploadTextureLevel(RenderHandle texture, uint32_t level, u
         // 16 bit 5-6-5: must be expanded explicitly. Passing the 2-byte
         // source to a GL_BGRA 32-bit upload reads out of bounds and produces
         // garbage (this is the character shadow map format).
-        std::vector<uint32_t> rgba((size_t)mipW * mipH);
-        const uint16_t *src = (const uint16_t *)data;
+        std::vector<uint32_t> rgba(static_cast<size_t>(mipW) * mipH);
+        const auto *src = static_cast<const uint16_t *>(data);
         for (size_t i = 0; i < rgba.size(); ++i)
         {
-            uint16_t val = src[i];
+            uint16_t const val = src[i];
             uint8_t r = (val >> 11) & 0x1F;
             r = (r << 3) | (r >> 2);
             uint8_t g = (val >> 5) & 0x3F;
             g = (g << 2) | (g >> 4);
             uint8_t b = val & 0x1F;
             b = (b << 3) | (b >> 2);
-            rgba[i] = (0xFFu << 24) | ((uint32_t)b << 16) | ((uint32_t)g << 8) | r;
+            rgba[i] = (0xFFu << 24) | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | r;
         }
         glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, mipW, mipH, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
     }
     else if (fmt == D3DFMT_A1R5G5B5)
     {
-        std::vector<uint32_t> rgba((size_t)mipW * mipH);
-        const uint16_t *src = (const uint16_t *)data;
+        std::vector<uint32_t> rgba(static_cast<size_t>(mipW) * mipH);
+        const auto *src = static_cast<const uint16_t *>(data);
         for (size_t i = 0; i < rgba.size(); ++i)
         {
-            uint16_t val = src[i];
-            uint8_t a = (val & 0x8000) ? 0xFF : 0x00;
+            uint16_t const val = src[i];
+            uint8_t const a = (val & 0x8000) ? 0xFF : 0x00;
             uint8_t r = (val >> 10) & 0x1F;
             r = (r << 3) | (r >> 2);
             uint8_t g = (val >> 5) & 0x1F;
             g = (g << 3) | (g >> 2);
             uint8_t b = val & 0x1F;
             b = (b << 3) | (b >> 2);
-            rgba[i] = ((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)g << 8) | r;
+            rgba[i] = (static_cast<uint32_t>(a) << 24) | (static_cast<uint32_t>(b) << 16) |
+                      (static_cast<uint32_t>(g) << 8) | r;
         }
         glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, mipW, mipH, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
     }
@@ -749,7 +751,7 @@ void GLRenderBackend::FinalizeTexture(RenderHandle texture, uint32_t maxLevel)
         return;
 
     glBindTexture(GL_TEXTURE_2D, slot->glName);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, (GLint)maxLevel);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(maxLevel));
     if (maxLevel > 0)
     {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -801,7 +803,7 @@ void GLRenderBackend::BindDepthStencil(RenderHandle depthStencil)
 
 void GLRenderBackend::SetViewport(int32_t x, int32_t y, uint32_t width, uint32_t height)
 {
-    glViewport(x, y, (GLsizei)width, (GLsizei)height);
+    glViewport(x, y, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
 }
 
 void GLRenderBackend::Clear(uint32_t flags, uint32_t color, float z, uint32_t stencil)
@@ -809,10 +811,10 @@ void GLRenderBackend::Clear(uint32_t flags, uint32_t color, float z, uint32_t st
     GLbitfield mask = 0;
     if (flags & D3DCLEAR_TARGET)
     {
-        float a = ((color >> 24) & 0xFF) / 255.0f;
-        float r = ((color >> 16) & 0xFF) / 255.0f;
-        float g = ((color >> 8) & 0xFF) / 255.0f;
-        float b = (color & 0xFF) / 255.0f;
+        float const a = ((color >> 24) & 0xFF) / 255.0f;
+        float const r = ((color >> 16) & 0xFF) / 255.0f;
+        float const g = ((color >> 8) & 0xFF) / 255.0f;
+        float const b = (color & 0xFF) / 255.0f;
         glClearColor(r, g, b, a);
         mask |= GL_COLOR_BUFFER_BIT;
     }
@@ -824,7 +826,7 @@ void GLRenderBackend::Clear(uint32_t flags, uint32_t color, float z, uint32_t st
     }
     if (flags & D3DCLEAR_STENCIL)
     {
-        glClearStencil((GLint)stencil);
+        glClearStencil(static_cast<GLint>(stencil));
         mask |= GL_STENCIL_BUFFER_BIT;
     }
     if (mask)
@@ -886,14 +888,15 @@ void GLRenderBackend::ApplyState(const RenderState &state)
         proj[13] = -proj[13];
         glLoadMatrixf(proj);
     };
-    DWORD posType = state.fvf & D3DFVF_POSITION_MASK;
+    DWORD const posType = state.fvf & D3DFVF_POSITION_MASK;
     bool isPerspective = false;
     if (posType == D3DFVF_XYZRHW)
     {
         // Pre-transformed 2D screen vertices
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        glOrtho(0.0, (double)state.viewportWidth, (double)state.viewportHeight, 0.0, -1000.0, 1000.0);
+        glOrtho(0.0, static_cast<double>(state.viewportWidth), static_cast<double>(state.viewportHeight), 0.0, -1000.0,
+                1000.0);
         applyClipYFlip();
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -918,7 +921,8 @@ void GLRenderBackend::ApplyState(const RenderState &state)
         {
             // 2D Orthographic Pipeline (UI with half-pixel texel offset)
             glLoadIdentity();
-            glOrtho(-0.5, (double)state.viewportWidth - 0.5, (double)state.viewportHeight - 0.5, -0.5, -1000.0, 1000.0);
+            glOrtho(-0.5, static_cast<double>(state.viewportWidth) - 0.5,
+                    static_cast<double>(state.viewportHeight) - 0.5, -0.5, -1000.0, 1000.0);
         }
         applyClipYFlip();
         glMatrixMode(GL_MODELVIEW);
@@ -953,7 +957,7 @@ void GLRenderBackend::ApplyState(const RenderState &state)
     if (state.alphaTestEnable)
     {
         glEnable(GL_ALPHA_TEST);
-        glAlphaFunc(ToGLCmpFunc(state.alphaFunc), (GLclampf)(state.alphaRef / 255.0f));
+        glAlphaFunc(ToGLCmpFunc(state.alphaFunc), static_cast<GLclampf>(state.alphaRef / 255.0f));
     }
     else
     {
@@ -1101,17 +1105,18 @@ void GLRenderBackend::ApplyState(const RenderState &state)
             glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border);
         }
 
-        GLint mag = (sampler.magFilter == D3DTEXF_POINT) ? GL_NEAREST : GL_LINEAR;
+        GLint const mag = (sampler.magFilter == D3DTEXF_POINT) ? GL_NEAREST : GL_LINEAR;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag);
 
         if (hasMips)
         {
-            GLint min = (sampler.minFilter == D3DTEXF_POINT) ? GL_NEAREST_MIPMAP_NEAREST : GL_LINEAR_MIPMAP_LINEAR;
+            GLint const min =
+                (sampler.minFilter == D3DTEXF_POINT) ? GL_NEAREST_MIPMAP_NEAREST : GL_LINEAR_MIPMAP_LINEAR;
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min);
         }
         else
         {
-            GLint min = (sampler.minFilter == D3DTEXF_POINT) ? GL_NEAREST : GL_LINEAR;
+            GLint const min = (sampler.minFilter == D3DTEXF_POINT) ? GL_NEAREST : GL_LINEAR;
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min);
         }
 
@@ -1134,16 +1139,20 @@ void GLRenderBackend::ApplyState(const RenderState &state)
             glLoadIdentity();
             glMatrixMode(GL_MODELVIEW);
         }
-        else if (tciMode == D3DTSS_TCI_PASSTHRU && stage >= (int)numTex)
+        else if (tciMode == D3DTSS_TCI_PASSTHRU && stage >= static_cast<int>(numTex))
         {
             // No per-vertex texture coordinates for this stage: preserve the
             // legacy eye-linear behaviour applied through the texture matrix.
             ApplyCameraSpacePositionTexGen(nullptr, false);
             glMatrixMode(GL_TEXTURE);
             if (pTexMatrix)
-                glLoadMatrixf((const GLfloat *)pTexMatrix);
+            {
+                glLoadMatrixf(reinterpret_cast<const GLfloat *>(pTexMatrix));
+            }
             else
+            {
                 glLoadIdentity();
+            }
             glMatrixMode(GL_MODELVIEW);
         }
         else
@@ -1152,9 +1161,13 @@ void GLRenderBackend::ApplyState(const RenderState &state)
             glDisable(GL_TEXTURE_GEN_T);
             glMatrixMode(GL_TEXTURE);
             if (pTexMatrix)
-                glLoadMatrixf((const GLfloat *)pTexMatrix);
+            {
+                glLoadMatrixf(reinterpret_cast<const GLfloat *>(pTexMatrix));
+            }
             else
+            {
                 glLoadIdentity();
+            }
             glMatrixMode(GL_MODELVIEW);
         }
     }
@@ -1168,15 +1181,15 @@ void GLRenderBackend::Draw(const DrawCall &call)
     const BYTE *vbData = static_cast<const BYTE *>(call.vertexData);
     SetupVertexArrays(vbData, call.stride, call.fvf, call.primaryColor);
 
-    const GLenum mode = ToGLPrimitive((D3DPRIMITIVETYPE)call.primitiveType);
+    const GLenum mode = ToGLPrimitive(static_cast<D3DPRIMITIVETYPE>(call.primitiveType));
     if (call.indexData)
     {
         const GLenum indexType = call.index32 ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT;
-        glDrawElements(mode, (GLsizei)call.indexCount, indexType, call.indexData);
+        glDrawElements(mode, static_cast<GLsizei>(call.indexCount), indexType, call.indexData);
     }
     else
     {
-        glDrawArrays(mode, (GLint)call.startVertex, (GLsizei)call.vertexCount);
+        glDrawArrays(mode, static_cast<GLint>(call.startVertex), static_cast<GLsizei>(call.vertexCount));
     }
 
     TeardownVertexArrays(call.fvf);
@@ -1187,11 +1200,11 @@ bool GLRenderBackend::Readback(uint32_t x, uint32_t y, uint32_t width, uint32_t 
     if (!outArgb || !width || !height)
         return false;
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels((GLint)x, (GLint)y, (GLsizei)width, (GLsizei)height, GL_BGRA, GL_UNSIGNED_BYTE, outArgb);
+    glReadPixels(static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width),
+                 static_cast<GLsizei>(height), GL_BGRA, GL_UNSIGNED_BYTE, outArgb);
     return glGetError() == GL_NO_ERROR;
 }
 
-} // namespace gl
-} // namespace eterbase
+} // namespace eterbase::gl
 
 #endif // OPENMT2_RENDERER_GL

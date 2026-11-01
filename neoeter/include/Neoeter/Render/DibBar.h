@@ -27,10 +27,9 @@ class CDibBar
     {
     }
 
-  protected:
     CGraphicDib m_dib;
     std::vector<CBlockTexture *> m_kVec_pkBlockTexture;
 
-    DWORD m_dwWidth;
-    DWORD m_dwHeight;
+    DWORD m_dwWidth = 0U;
+    DWORD m_dwHeight = 0U;
 };

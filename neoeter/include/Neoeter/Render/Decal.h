@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_DECAL_H__E3D27DFC_30CB_4995_B9B9_396B5E8A5F02__INCLUDED_)
+#ifndef AFX_DECAL_H__E3D27DFC_30CB_4995_B9B9_396B5E8A5F02__INCLUDED_
 #define AFX_DECAL_H__E3D27DFC_30CB_4995_B9B9_396B5E8A5F02__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -43,8 +43,8 @@ class CDecal
     D3DXPLANE m_v4BackPlane;
 
     // 개수
-    DWORD m_dwVertexCount;
-    DWORD m_dwPrimitiveCount;
+    DWORD m_dwVertexCount = 0U;
+    DWORD m_dwPrimitiveCount = 0U;
 
     // 버택스 버퍼와 인댁스 버퍼
     //	CGraphicVertexBuffer	m_GraphicVertexBuffer;
@@ -63,11 +63,10 @@ class CDecal
     std::vector<TTRIANGLEFANSTRUCT> m_TriangleFanStructVector;
 
     TPDTVertex m_Vertices[MAX_DECAL_VERTICES];
-    WORD m_Indices[MAX_DECAL_VERTICES];
+    WORD m_Indices[MAX_DECAL_VERTICES]{};
 
-    const float m_cfDecalEpsilon;
+    const float m_cfDecalEpsilon = 0.25f;
 
-  protected:
     bool AddPolygon(DWORD dwAddCount, const D3DXVECTOR3 *c_pv3Vertex, const D3DXVECTOR3 *c_pv3Normal);
     void ClipMesh(DWORD dwPrimitiveCount, const D3DXVECTOR3 *c_pv3Vertex, const D3DXVECTOR3 *c_pv3Normal);
     DWORD

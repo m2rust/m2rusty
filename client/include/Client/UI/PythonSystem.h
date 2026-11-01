@@ -26,7 +26,7 @@ class CPythonSystem : public CSingleton<CPythonSystem>
         RESOLUTION_MAX_NUM = 100
     };
 
-    typedef struct SResolution
+    using TResolution = struct SResolution
     {
         DWORD width;
         DWORD height;
@@ -34,9 +34,9 @@ class CPythonSystem : public CSingleton<CPythonSystem>
 
         DWORD frequency[20];
         BYTE frequency_count;
-    } TResolution;
+    };
 
-    typedef struct SWindowStatus
+    using TWindowStatus = struct SWindowStatus
     {
         int isVisible;
         int isMinimized;
@@ -44,9 +44,9 @@ class CPythonSystem : public CSingleton<CPythonSystem>
         int ixPosition;
         int iyPosition;
         int iHeight;
-    } TWindowStatus;
+    };
 
-    typedef struct SConfig
+    using TConfig = struct SConfig
     {
         DWORD width;
         DWORD height;
@@ -75,11 +75,10 @@ class CPythonSystem : public CSingleton<CPythonSystem>
         bool bAlwaysShowName;
         bool bShowDamage;
         bool bShowSalesText;
-    } TConfig;
+    };
 
-  public:
     CPythonSystem();
-    virtual ~CPythonSystem();
+    ~CPythonSystem() override;
 
     void Clear();
     void SetInterfaceHandler(PyObject *poHandler);
@@ -90,30 +89,30 @@ class CPythonSystem : public CSingleton<CPythonSystem>
     bool LoadConfig();
     bool SaveConfig();
     void ApplyConfig();
-    void SetConfig(TConfig *set_config);
+    void SetConfig(TConfig *pNewConfig);
     TConfig *GetConfig();
-    void ChangeSystem();
+    void ChangeSystem() const;
 
     // Interface
     bool LoadInterfaceStatus();
     void SaveInterfaceStatus();
-    bool isInterfaceConfig();
+    bool isInterfaceConfig() const;
     const TWindowStatus &GetWindowStatusReference(int iIndex);
 
-    DWORD GetWidth();
-    DWORD GetHeight();
-    DWORD GetBPP();
-    DWORD GetFrequency();
-    bool IsSoftwareCursor();
-    bool IsWindowed();
-    bool IsViewChat();
-    bool IsAlwaysShowName();
-    bool IsShowDamage();
-    bool IsShowSalesText();
-    bool IsUseDefaultIME();
-    bool IsNoSoundCard();
-    bool IsAutoTiling();
-    bool IsSoftwareTiling();
+    DWORD GetWidth() const;
+    DWORD GetHeight() const;
+    DWORD GetBPP() const;
+    DWORD GetFrequency() const;
+    bool IsSoftwareCursor() const;
+    bool IsWindowed() const;
+    bool IsViewChat() const;
+    bool IsAlwaysShowName() const;
+    bool IsShowDamage() const;
+    bool IsShowSalesText() const;
+    bool IsUseDefaultIME() const;
+    bool IsNoSoundCard() const;
+    bool IsAutoTiling() const;
+    bool IsSoftwareTiling() const;
     void SetSoftwareTiling(bool isEnable);
     void SetViewChatFlag(int iFlag);
     void SetAlwaysShowNameFlag(int iFlag);
@@ -124,39 +123,39 @@ class CPythonSystem : public CSingleton<CPythonSystem>
     void SaveWindowStatus(int iIndex, int iVisible, int iMinimized, int ix, int iy, int iHeight);
 
     // SaveID
-    int IsSaveID();
+    int IsSaveID() const;
     const char *GetSaveID();
     void SetSaveID(int iValue, const char *c_szSaveID);
 
     /// Display
     void GetDisplaySettings();
 
-    int GetResolutionCount();
+    int GetResolutionCount() const;
     int GetFrequencyCount(int index);
     bool GetResolution(int index, OUT DWORD *width, OUT DWORD *height, OUT DWORD *bpp);
     bool GetFrequency(int index, int freq_index, OUT DWORD *frequncy);
-    int GetResolutionIndex(DWORD width, DWORD height, DWORD bpp);
+    int GetResolutionIndex(DWORD width, DWORD height, DWORD bit);
     int GetFrequencyIndex(int res_index, DWORD frequency);
-    bool isViewCulling();
+    bool isViewCulling() const;
 
     // Sound
-    float GetMusicVolume();
-    int GetSoundVolume();
+    float GetMusicVolume() const;
+    int GetSoundVolume() const;
     void SetMusicVolume(float fVolume);
     void SetSoundVolumef(float fVolume);
 
-    int GetDistance();
-    int GetShadowLevel();
+    int GetDistance() const;
+    int GetShadowLevel() const;
     void SetShadowLevel(unsigned int level);
 
   protected:
-    TResolution m_ResolutionList[RESOLUTION_MAX_NUM];
-    int m_ResolutionCount;
+    TResolution m_ResolutionList[RESOLUTION_MAX_NUM]{};
+    int m_ResolutionCount = 0;
 
-    TConfig m_Config;
-    TConfig m_OldConfig;
+    TConfig m_Config{};
+    TConfig m_OldConfig{};
 
     bool m_isInterfaceConfig;
     PyObject *m_poInterfaceHandler;
-    TWindowStatus m_WindowStatus[WINDOW_MAX_NUM];
+    TWindowStatus m_WindowStatus[WINDOW_MAX_NUM]{};
 };

@@ -40,7 +40,7 @@ void CActorInstance::__Push(int x, int y)
 
     if (!IsUsingSkill())
     {
-        int len = sqrt(c_v3Delta.x * c_v3Delta.x + c_v3Delta.y * c_v3Delta.y);
+        int const len = sqrt((c_v3Delta.x * c_v3Delta.x) + (c_v3Delta.y * c_v3Delta.y));
         if (len > 150.0f)
         {
             InterceptOnceMotion(CRaceMotionData::NAME_DAMAGE_FLYING);

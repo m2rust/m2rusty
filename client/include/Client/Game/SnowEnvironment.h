@@ -8,7 +8,7 @@ class CSnowEnvironment : public CScreen
 {
   public:
     CSnowEnvironment();
-    virtual ~CSnowEnvironment();
+    ~CSnowEnvironment() override;
 
     bool Create();
     void Destroy();
@@ -27,29 +27,28 @@ class CSnowEnvironment : public CScreen
     void __BeginBlur();
     void __ApplyBlur();
 
-  protected:
-    LPDIRECT3DSURFACE9 m_lpOldSurface;
-    LPDIRECT3DSURFACE9 m_lpOldDepthStencilSurface;
+    LPDIRECT3DSURFACE9 m_lpOldSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpOldDepthStencilSurface = nullptr;
 
-    LPDIRECT3DTEXTURE9 m_lpSnowTexture;
-    LPDIRECT3DSURFACE9 m_lpSnowRenderTargetSurface;
-    LPDIRECT3DSURFACE9 m_lpSnowDepthSurface;
+    LPDIRECT3DTEXTURE9 m_lpSnowTexture = nullptr;
+    LPDIRECT3DSURFACE9 m_lpSnowRenderTargetSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpSnowDepthSurface = nullptr;
 
-    LPDIRECT3DTEXTURE9 m_lpAccumTexture;
-    LPDIRECT3DSURFACE9 m_lpAccumRenderTargetSurface;
-    LPDIRECT3DSURFACE9 m_lpAccumDepthSurface;
+    LPDIRECT3DTEXTURE9 m_lpAccumTexture = nullptr;
+    LPDIRECT3DSURFACE9 m_lpAccumRenderTargetSurface = nullptr;
+    LPDIRECT3DSURFACE9 m_lpAccumDepthSurface = nullptr;
 
-    LPDIRECT3DVERTEXBUFFER9 m_pVB;
-    LPDIRECT3DINDEXBUFFER9 m_pIB;
+    LPDIRECT3DVERTEXBUFFER9 m_pVB = nullptr;
+    LPDIRECT3DINDEXBUFFER9 m_pIB = nullptr;
 
     D3DXVECTOR3 m_v3Center;
 
     WORD m_wBlurTextureSize;
-    CGraphicImageInstance *m_pImageInstance;
+    CGraphicImageInstance *m_pImageInstance = nullptr;
     std::vector<CSnowParticle *> m_kVct_pkParticleSnow;
 
     DWORD m_dwParticleMaxNum;
     BOOL m_bBlurEnable;
 
-    BOOL m_bSnowEnable;
+    BOOL m_bSnowEnable = 0;
 };

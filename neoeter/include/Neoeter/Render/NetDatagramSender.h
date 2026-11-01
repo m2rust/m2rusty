@@ -8,7 +8,7 @@ class CNetDatagramSender
     CNetDatagramSender();
     virtual ~CNetDatagramSender();
 
-    BOOL isSocket();
+    BOOL isSocket() const;
 
     BOOL SetSocket(const char *c_szIP, WORD wPortIndex);
     BOOL SetSocket(DWORD dwAddress, WORD wPortIndex);
@@ -21,7 +21,7 @@ class CNetDatagramSender
     WORD m_wPortIndex;
 
     SOCKET m_Socket;
-    SOCKADDR_IN m_SockAddr;
+    SOCKADDR_IN m_SockAddr{};
 };
 
 #endif

@@ -1,10 +1,11 @@
 #include <Client/UI/StdAfx.h>
 #include <Neoeter/Effect/EffectManager.h>
 #include <Client/UI/PythonCharacterManager.h>
+#include <math.h>
 
 PyObject *effectRegisterEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szFileName;
+    char *szFileName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szFileName))
         return Py_BuildException();
 
@@ -26,21 +27,22 @@ PyObject *effectRender(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *effectCreateEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szEffectName;
+    char *szEffectName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szEffectName))
         return Py_BuildException();
 
     CInstanceBase *pInstance = CPythonCharacterManager::Instance().GetSelectedInstancePtr();
     TPixelPosition PixelPosition;
     pInstance->NEW_GetPixelPosition(&PixelPosition);
-    int iIndex = CEffectManager::Instance().CreateEffect(szEffectName, PixelPosition, D3DXVECTOR3(0.0f, 0.0f, 0.0f));
+    int const iIndex =
+        CEffectManager::Instance().CreateEffect(szEffectName, PixelPosition, D3DXVECTOR3(0.0f, 0.0f, 0.0f));
 
     return Py_BuildValue("i", iIndex);
 }
 
 PyObject *effectDeleteEffect(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BuildException();
 
@@ -51,16 +53,16 @@ PyObject *effectDeleteEffect(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *effectSetPosition(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BuildException();
-    float fx;
+    float fx = NAN;
     if (!PyTuple_GetFloat(poArgs, 1, &fx))
         return Py_BuildException();
-    float fy;
+    float fy = NAN;
     if (!PyTuple_GetFloat(poArgs, 2, &fy))
         return Py_BuildException();
-    float fz;
+    float fz = NAN;
     if (!PyTuple_GetFloat(poArgs, 3, &fz))
         return Py_BuildException();
 
@@ -72,13 +74,13 @@ PyObject *effectSetPosition(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *effectRegisterIndexedFlyData(PyObject *poSelf, PyObject *poArgs)
 {
-    int iIndex;
+    int iIndex = 0;
     if (!PyTuple_GetInteger(poArgs, 0, &iIndex))
         return Py_BuildException();
-    int iType;
+    int iType = 0;
     if (!PyTuple_GetInteger(poArgs, 1, &iType))
         return Py_BuildException();
-    char *szFlyDataName;
+    char *szFlyDataName = nullptr;
     if (!PyTuple_GetString(poArgs, 2, &szFlyDataName))
         return Py_BuildException();
 
@@ -100,7 +102,7 @@ void initeffect()
         {"Update", effectUpdate, METH_VARARGS},
         {"Render", effectRender, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     PyObject *poModule = Py_InitModule("effect", s_methods);

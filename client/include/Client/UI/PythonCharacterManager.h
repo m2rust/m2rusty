@@ -10,16 +10,15 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
 {
   public:
     // Character List
-    typedef std::list<CInstanceBase *> TCharacterInstanceList;
-    typedef std::map<DWORD, CInstanceBase *> TCharacterInstanceMap;
+    using TCharacterInstanceList = std::list<CInstanceBase *>;
+    using TCharacterInstanceMap = std::map<DWORD, CInstanceBase *>;
 
     class CharacterIterator;
 
-  public:
     CPythonCharacterManager();
-    virtual ~CPythonCharacterManager();
+    ~CPythonCharacterManager() override;
 
-    virtual void AdjustCollisionWithOtherObjects(CActorInstance *pInst);
+    void AdjustCollisionWithOtherObjects(CActorInstance *pInst) override;
 
     void EnableSortRendering(bool isEnable);
 
@@ -44,14 +43,14 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
     bool SetMainInstance(DWORD dwVID);
     CInstanceBase *GetMainInstancePtr();
 
-    void SCRIPT_SetAffect(DWORD dwVID, DWORD eAffect, BOOL isVisible);
-    void SetEmoticon(DWORD dwVID, DWORD eEmoticon);
+    void SCRIPT_SetAffect(DWORD dwVID, DWORD eState, BOOL isVisible);
+    void SetEmoticon(DWORD dwVID, DWORD eState);
     bool IsPossibleEmoticon(DWORD dwVID);
-    void ShowPointEffect(DWORD dwVID, DWORD ePoint);
+    void ShowPointEffect(DWORD ePoint, DWORD dwVID);
     bool RegisterPointEffect(DWORD ePoint, const char *c_szFileName);
 
     // System
-    void Destroy();
+    void Destroy() override;
 
     void DeleteAllInstances();
 
@@ -69,18 +68,18 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
     CInstanceBase *CreateInstance(const CInstanceBase::SCreateData &c_rkCreateData);
     CInstanceBase *RegisterInstance(DWORD VirtualID);
 
-    void DeleteInstance(DWORD VirtualID);
-    void DeleteInstanceByFade(DWORD VirtualID);
+    void DeleteInstance(DWORD dwDelVID);
+    void DeleteInstanceByFade(DWORD dwVID);
     void DeleteVehicleInstance(DWORD VirtualID);
 
     void DestroyAliveInstanceMap();
     void DestroyDeadInstanceList();
 
-    inline CharacterIterator CharacterInstanceBegin()
+    CharacterIterator CharacterInstanceBegin()
     {
         return CharacterIterator(m_kAliveInstMap.begin());
     }
-    inline CharacterIterator CharacterInstanceEnd()
+    CharacterIterator CharacterInstanceEnd()
     {
         return CharacterIterator(m_kAliveInstMap.end());
     }
@@ -89,7 +88,7 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
     void SelectInstance(DWORD VirtualID);
     CInstanceBase *GetSelectedInstancePtr();
 
-    CInstanceBase *GetInstancePtr(DWORD VirtualID);
+    CInstanceBase *GetInstancePtr(DWORD VirtualID) override;
     CInstanceBase *GetInstancePtrByName(const char *name);
 
     // Pick
@@ -104,7 +103,6 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
     void UpdateTransform();
     void UpdateDeleting();
 
-  protected:
     void __Initialize();
 
     void __DeleteBlendOutInstance(CInstanceBase *pkInstDel);
@@ -119,10 +117,9 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
     void __RenderSortedAliveActorList();
     void __RenderSortedDeadActorList();
 
-  protected:
-    CInstanceBase *m_pkInstMain;
-    CInstanceBase *m_pkInstPick;
-    CInstanceBase *m_pkInstBind;
+    CInstanceBase *m_pkInstMain = nullptr;
+    CInstanceBase *m_pkInstPick = nullptr;
+    CInstanceBase *m_pkInstBind = nullptr;
     D3DXVECTOR2 m_v2PickedInstProjPos;
 
     TCharacterInstanceMap m_kAliveInstMap;
@@ -130,49 +127,43 @@ class CPythonCharacterManager : public CSingleton<CPythonCharacterManager>,
 
     std::vector<CInstanceBase *> m_kVct_pkInstPicked;
 
-    DWORD m_adwPointEffect[POINT_MAX_NUM];
+    DWORD m_adwPointEffect[POINT_MAX_NUM]{};
 
   public:
     class CharacterIterator
     {
       public:
-        CharacterIterator()
-        {
-        }
+        CharacterIterator() = default;
         CharacterIterator(const TCharacterInstanceMap::iterator &it) : m_it(it)
         {
         }
 
-        inline CInstanceBase *operator*()
+        CInstanceBase *operator*()
         {
             return m_it->second;
         }
 
-        inline CharacterIterator &operator++()
+        CharacterIterator &operator++()
         {
             ++m_it;
             return *this;
         }
 
-        inline CharacterIterator operator++(int)
+        CharacterIterator operator++(int)
         {
-            CharacterIterator new_it = *this;
+            CharacterIterator const new_it = *this;
             ++(*this);
             return new_it;
         }
 
-        inline CharacterIterator &operator=(const CharacterIterator &rhs)
-        {
-            m_it = rhs.m_it;
-            return (*this);
-        }
+        CharacterIterator &operator=(const CharacterIterator &rhs) = default;
 
-        inline bool operator==(const CharacterIterator &rhs) const
+        bool operator==(const CharacterIterator &rhs) const
         {
             return m_it == rhs.m_it;
         }
 
-        inline bool operator!=(const CharacterIterator &rhs) const
+        bool operator!=(const CharacterIterator &rhs) const
         {
             return m_it != rhs.m_it;
         }

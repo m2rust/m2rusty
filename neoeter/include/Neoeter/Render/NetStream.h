@@ -12,7 +12,7 @@ class CNetworkStream
     void SetRecvBufferSize(int recvBufSize);
     void SetSendBufferSize(int sendBufSize);
 
-    int GetRecvBufferSize();
+    int GetRecvBufferSize() const;
 
     void Clear();
     void ClearRecvBuffer();
@@ -24,11 +24,11 @@ class CNetworkStream
     bool Connect(DWORD dwAddr, int port, int limitSec = 3);
     void Disconnect();
 
-    bool Peek(int len);
-    bool Peek(int len, char *pDestBuf);
-    bool Recv(int len);
-    bool Recv(int len, char *pDestBuf);
-    bool Send(int len, const char *pSrcBuf);
+    bool Peek(int size);
+    bool Peek(int size, char *pDestBuf);
+    bool Recv(int size);
+    bool Recv(int size, char *pDestBuf);
+    bool Send(int size, const char *pSrcBuf);
 
     bool Peek(int len, void *pDestBuf);
     bool Recv(int len, void *pDestBuf);
@@ -36,7 +36,7 @@ class CNetworkStream
     bool Send(int len, const void *pSrcBuf);
     bool SendFlush(int len, const void *pSrcBuf);
 
-    bool IsOnline();
+    bool IsOnline() const;
 
     void SetPacketSequenceMode(bool isOn);
     bool SendSequence();
@@ -53,7 +53,7 @@ class CNetworkStream
 
     void __PopSendBuffer();
 
-    int __GetSendBufferSize();
+    int __GetSendBufferSize() const;
 
   private:
     time_t m_connectLimitTime;
@@ -73,7 +73,7 @@ class CNetworkStream
     int m_sendBufOutputPos;
 
     char *m_sendTEABuf;
-    int m_sendTEABufSize;
+    int m_sendTEABufSize = 0;
     int m_sendTEABufInputPos;
 
     bool m_isOnline;

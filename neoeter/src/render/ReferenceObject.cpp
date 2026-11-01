@@ -1,13 +1,11 @@
 #include <Neoeter/Render/StdAfx.h>
 #include <Neoeter/Render/ReferenceObject.h>
 
-CReferenceObject::CReferenceObject() : m_refCount(0), m_destructed(false)
+CReferenceObject::CReferenceObject()
 {
 }
 
-CReferenceObject::~CReferenceObject()
-{
-}
+CReferenceObject::~CReferenceObject() = default;
 
 void CReferenceObject::AddReference()
 {
@@ -17,7 +15,7 @@ void CReferenceObject::AddReference()
     ++m_refCount;
 }
 
-int CReferenceObject::GetReferenceCount()
+int CReferenceObject::GetReferenceCount() const
 {
     return m_refCount;
 }
@@ -52,10 +50,7 @@ void CReferenceObject::OnSelfDestruct()
     delete this;
 }
 
-bool CReferenceObject::canDestroy()
+bool CReferenceObject::canDestroy() const
 {
-    if (m_refCount > 0)
-        return false;
-
-    return true;
+    return m_refCount <= 0;
 }

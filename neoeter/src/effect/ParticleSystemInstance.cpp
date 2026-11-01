@@ -4,6 +4,11 @@
 #include <Neoeter/Effect/ParticleSystemData.h>
 #include <Neoeter/Effect/ParticleSystemInstance.h>
 #include <Neoeter/Effect/ParticleInstance.h>
+#include <math.h>
+
+#include <algorithm>
+
+#include <utility>
 
 CDynamicPool<CParticleSystemInstance> CParticleSystemInstance::ms_kPool;
 
@@ -28,23 +33,23 @@ void CParticleSystemInstance::Delete(CParticleSystemInstance *pkPSInst)
     ms_kPool.Free(pkPSInst);
 }
 
-DWORD CParticleSystemInstance::GetEmissionCount()
+DWORD CParticleSystemInstance::GetEmissionCount() const
 {
     return m_dwCurrentEmissionCount;
 }
 
 void CParticleSystemInstance::CreateParticles(float fElapsedTime)
 {
-    float fEmissionCount;
+    float fEmissionCount = NAN;
     m_pEmitterProperty->GetEmissionCountPerSecond(m_fLocalTime, &fEmissionCount);
 
-    float fCreatingValue = fEmissionCount * (fElapsedTime / 1.0f) + m_fEmissionResidue;
-    int iCreatingCount = int(fCreatingValue);
+    float const fCreatingValue = (fEmissionCount * (fElapsedTime / 1.0f)) + m_fEmissionResidue;
+    int iCreatingCount = static_cast<int>(fCreatingValue);
     m_fEmissionResidue = fCreatingValue - iCreatingCount;
 
-    int icurEmissionCount = GetEmissionCount();
-    int iMaxEmissionCount = int(m_pEmitterProperty->GetMaxEmissionCount());
-    int iNextEmissionCount = int(icurEmissionCount + iCreatingCount);
+    int const icurEmissionCount = GetEmissionCount();
+    int const iMaxEmissionCount = static_cast<int>(m_pEmitterProperty->GetMaxEmissionCount());
+    int const iNextEmissionCount = (icurEmissionCount + iCreatingCount);
     iCreatingCount -= max(0, iNextEmissionCount - iMaxEmissionCount);
 
     float fLifeTime = 0.0f;
@@ -77,19 +82,19 @@ void CParticleSystemInstance::CreateParticles(float fElapsedTime)
 
         if (BILLBOARD_TYPE_LIE == m_pParticleProperty->m_byBillboardType && mc_pmatLocal)
         {
-            float fsx = mc_pmatLocal->_32;
-            float fcx = sqrtf(1.0f - fsx * fsx);
+            float const fsx = mc_pmatLocal->_32;
+            float const fcx = sqrtf(1.0f - (fsx * fsx));
 
             if (fcx >= 0.00001f)
                 fLieRotation = D3DXToDegree(atan2f(-mc_pmatLocal->_12, mc_pmatLocal->_22));
         }
     }
 
-    CParticleInstance *pFirstInstance = 0;
+    CParticleInstance *pFirstInstance = nullptr;
 
     for (int i = 0; i < iCreatingCount; ++i)
     {
-        CParticleInstance *pInstance;
+        CParticleInstance *pInstance = nullptr;
 
         pInstance = CParticleInstance::New();
         pInstance->m_pParticleProperty = m_pParticleProperty;
@@ -203,17 +208,23 @@ void CParticleSystemInstance::CreateParticles(float fElapsedTime)
 
         pInstance->m_v3Velocity += v3Velocity;
         if (m_pEmitterProperty->m_v3EmittingDirection.x > 0.0f)
+        {
             pInstance->m_v3Velocity.x += frandom(-m_pEmitterProperty->m_v3EmittingDirection.x / 2.0f,
                                                  m_pEmitterProperty->m_v3EmittingDirection.x / 2.0f) *
                                          1000.0f;
+        }
         if (m_pEmitterProperty->m_v3EmittingDirection.y > 0.0f)
+        {
             pInstance->m_v3Velocity.y += frandom(-m_pEmitterProperty->m_v3EmittingDirection.y / 2.0f,
                                                  m_pEmitterProperty->m_v3EmittingDirection.y / 2.0f) *
                                          1000.0f;
+        }
         if (m_pEmitterProperty->m_v3EmittingDirection.z > 0.0f)
+        {
             pInstance->m_v3Velocity.z += frandom(-m_pEmitterProperty->m_v3EmittingDirection.z / 2.0f,
                                                  m_pEmitterProperty->m_v3EmittingDirection.z / 2.0f) *
                                          1000.0f;
+        }
 
         pInstance->m_v3Velocity *= fVelocity;
 
@@ -299,8 +310,7 @@ bool CParticleSystemInstance::OnUpdate(float fElapsedTime)
     {
         if (m_pEmitterProperty->isCycleLoop() && --m_iLoopCount != 0)
         {
-            if (m_iLoopCount < 0)
-                m_iLoopCount = 0;
+            m_iLoopCount = std::max(m_iLoopCount, 0);
             m_fLocalTime = m_fLocalTime - m_pEmitterProperty->GetCycleLength();
         }
         else
@@ -314,10 +324,10 @@ bool CParticleSystemInstance::OnUpdate(float fElapsedTime)
 
     /////
 
-    int dwFrameIndex;
-    int dwFrameCount = m_pParticleProperty->GetTextureAnimationFrameCount();
+    int dwFrameIndex = 0;
+    int const dwFrameCount = m_pParticleProperty->GetTextureAnimationFrameCount();
 
-    float fAngularVelocity;
+    float fAngularVelocity = NAN;
     m_pEmitterProperty->GetEmittingAngularVelocity(m_fLocalTime, &fAngularVelocity);
 
     if (fAngularVelocity && !m_pParticleProperty->m_bAttachFlag)
@@ -327,7 +337,7 @@ bool CParticleSystemInstance::OnUpdate(float fElapsedTime)
 
     for (dwFrameIndex = 0; dwFrameIndex < dwFrameCount; dwFrameIndex++)
     {
-        TParticleInstanceList::iterator itor = m_ParticleInstanceListVector[dwFrameIndex].begin();
+        auto itor = m_ParticleInstanceListVector[dwFrameIndex].begin();
         for (; itor != m_ParticleInstanceListVector[dwFrameIndex].end();)
         {
             CParticleInstance *pInstance = *itor;
@@ -347,7 +357,9 @@ bool CParticleSystemInstance::OnUpdate(float fElapsedTime)
                     itor = m_ParticleInstanceListVector[dwFrameIndex].erase(itor);
                 }
                 else
+                {
                     ++itor;
+                }
             }
         }
     }
@@ -369,11 +381,11 @@ namespace NParticleRenderer
 struct TwoSideRenderer
 {
     const D3DXMATRIX *pmat;
-    TwoSideRenderer(const D3DXMATRIX *pmat = NULL) : pmat(pmat)
+    TwoSideRenderer(const D3DXMATRIX *pmat = nullptr) : pmat(pmat)
     {
     }
 
-    inline void operator()(CParticleInstance *pInstance)
+    void operator()(CParticleInstance *pInstance) const
     {
         pInstance->Transform(pmat, D3DXToRadian(-30.0f));
         STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, pInstance->GetParticleMeshPointer(), sizeof(TPTVertex));
@@ -386,11 +398,11 @@ struct TwoSideRenderer
 struct ThreeSideRenderer
 {
     const D3DXMATRIX *pmat;
-    ThreeSideRenderer(const D3DXMATRIX *pmat = NULL) : pmat(pmat)
+    ThreeSideRenderer(const D3DXMATRIX *pmat = nullptr) : pmat(pmat)
     {
     }
 
-    inline void operator()(CParticleInstance *pInstance)
+    void operator()(CParticleInstance *pInstance) const
     {
         pInstance->Transform(pmat);
         STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, pInstance->GetParticleMeshPointer(), sizeof(TPTVertex));
@@ -403,7 +415,7 @@ struct ThreeSideRenderer
 
 struct NormalRenderer
 {
-    inline void operator()(CParticleInstance *pInstance)
+    void operator()(CParticleInstance *pInstance)
     {
         pInstance->Transform();
         STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, pInstance->GetParticleMeshPointer(), sizeof(TPTVertex));
@@ -416,7 +428,7 @@ struct AttachRenderer
     {
     }
 
-    inline void operator()(CParticleInstance *pInstance)
+    void operator()(CParticleInstance *pInstance) const
     {
         pInstance->Transform(pmat);
         STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, pInstance->GetParticleMeshPointer(), sizeof(TPTVertex));
@@ -473,16 +485,14 @@ void CParticleSystemInstance::OnSetDataPointer(CEffectElementBase *pElement)
     m_pParticleProperty = m_pData->GetParticlePropertyPointer();
     m_pEmitterProperty = m_pData->GetEmitterPropertyPointer();
     m_iLoopCount = m_pEmitterProperty->GetLoopCount();
-    m_ParticleInstanceListVector.resize(m_pParticleProperty->GetTextureAnimationFrameCount() * 2 + 2);
+    m_ParticleInstanceListVector.resize((m_pParticleProperty->GetTextureAnimationFrameCount() * 2) + 2);
 
     /////
 
     assert(m_kVct_pkImgInst.empty());
     m_kVct_pkImgInst.reserve(m_pParticleProperty->m_ImageVector.size());
-    for (DWORD i = 0; i < m_pParticleProperty->m_ImageVector.size(); ++i)
+    for (auto *pImage : m_pParticleProperty->m_ImageVector)
     {
-        CGraphicImage *pImage = m_pParticleProperty->m_ImageVector[i];
-
         CGraphicImageInstance *pkImgInstNew = CGraphicImageInstance::New();
         pkImgInstNew->SetImagePointer(pImage);
         m_kVct_pkImgInst.push_back(pkImgInstNew);
@@ -515,7 +525,7 @@ void CParticleSystemInstance::OnDestroy()
     }
     m_ParticleInstanceListVector.clear();
 
-    std::for_each(m_kVct_pkImgInst.begin(), m_kVct_pkImgInst.end(), CGraphicImageInstance::Delete);
+    std::ranges::for_each(m_kVct_pkImgInst, CGraphicImageInstance::Delete);
     m_kVct_pkImgInst.clear();
 }
 

@@ -7,37 +7,36 @@ class CWindow;
 class CWindowManager : public CSingleton<CWindowManager>
 {
   public:
-    typedef std::map<std::string, CWindow *> TLayerContainer;
-    typedef std::list<CWindow *> TWindowContainer;
-    typedef std::map<int, CWindow *> TKeyCaptureWindowMap;
+    using TLayerContainer = std::map<std::string, CWindow *>;
+    using TWindowContainer = std::list<CWindow *>;
+    using TKeyCaptureWindowMap = std::map<int, CWindow *>;
 
-  public:
     CWindowManager();
-    virtual ~CWindowManager();
+    ~CWindowManager() override;
 
     void Destroy();
 
-    float GetAspect();
+    float GetAspect() const;
     void SetScreenSize(long lWidth, long lHeight);
     void SetResolution(int hres, int vres);
 
-    void GetResolution(long &rx, long &ry)
+    void GetResolution(long &rx, long &ry) const
     {
         rx = m_iHres;
         ry = m_iVres;
     }
 
     void SetMouseHandler(PyObject *poMouseHandler);
-    long GetScreenWidth()
+    long GetScreenWidth() const
     {
         return m_lWidth;
     }
-    long GetScreenHeight()
+    long GetScreenHeight() const
     {
         return m_lHeight;
     }
-    void GetMousePosition(long &rx, long &ry);
-    BOOL IsDragging();
+    void GetMousePosition(long &rx, long &ry) const;
+    BOOL IsDragging() const;
 
     CWindow *GetLockWindow()
     {
@@ -104,11 +103,11 @@ class CWindowManager : public CSingleton<CWindowManager>
     void NotifyDestroyWindow(CWindow *pWindow);
 
     // Attaching Icon
-    BOOL IsAttaching();
-    DWORD GetAttachingType();
-    DWORD GetAttachingIndex();
-    DWORD GetAttachingSlotNumber();
-    void GetAttachingIconSize(BYTE *pbyWidth, BYTE *pbyHeight);
+    BOOL IsAttaching() const;
+    DWORD GetAttachingType() const;
+    DWORD GetAttachingIndex() const;
+    DWORD GetAttachingSlotNumber() const;
+    void GetAttachingIconSize(BYTE *pbyWidth, BYTE *pbyHeight) const;
     void AttachIcon(DWORD dwType, DWORD dwIndex, DWORD dwSlotNumber, BYTE byWidth, BYTE byHeight);
     void DeattachIcon();
     void SetAttachingFlag(BOOL bFlag);
@@ -160,28 +159,27 @@ class CWindowManager : public CSingleton<CWindowManager>
     CWindow *__NewWindow(PyObject *po, DWORD dwWndType);
     void __ClearReserveDeleteWindowList();
 
-  private:
-    long m_lWidth;
-    long m_lHeight;
+    long m_lWidth = 0L;
+    long m_lHeight = 0L;
 
-    int m_iVres;
-    int m_iHres;
+    int m_iVres = 0;
+    int m_iHres = 0;
 
-    long m_lMouseX, m_lMouseY;
-    long m_lDragX, m_lDragY;
-    long m_lPickedX, m_lPickedY;
+    long m_lMouseX = 0L, m_lMouseY = 0L;
+    long m_lDragX = 0L, m_lDragY = 0L;
+    long m_lPickedX = 0L, m_lPickedY = 0L;
 
-    BOOL m_bOnceIgnoreMouseLeftButtonUpEventFlag;
-    int m_iIgnoreEndTime;
+    BOOL m_bOnceIgnoreMouseLeftButtonUpEventFlag = FALSE;
+    int m_iIgnoreEndTime = 0;
 
     // Attaching Icon
     PyObject *m_poMouseHandler;
-    BOOL m_bAttachingFlag;
-    DWORD m_dwAttachingType;
-    DWORD m_dwAttachingIndex;
-    DWORD m_dwAttachingSlotNumber;
-    BYTE m_byAttachingIconWidth;
-    BYTE m_byAttachingIconHeight;
+    BOOL m_bAttachingFlag = FALSE;
+    DWORD m_dwAttachingType = 0;
+    DWORD m_dwAttachingIndex = 0;
+    DWORD m_dwAttachingSlotNumber = 0;
+    BYTE m_byAttachingIconWidth = 0U;
+    BYTE m_byAttachingIconHeight = 0U;
     // Attaching Icon
 
     CWindow *m_pActiveWindow;

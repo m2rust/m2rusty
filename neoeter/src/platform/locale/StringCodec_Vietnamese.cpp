@@ -64,7 +64,8 @@ static bool IsTone(wchar_t tone)
 
 static wchar_t ComposeTone(wchar_t prev, wchar_t tone)
 {
-    int col, row;
+    int col = 0;
+    int row = 0;
 
     switch (tone)
     {
@@ -171,7 +172,7 @@ static wchar_t ComposeTone(wchar_t prev, wchar_t tone)
 int EL_String_Decode_Vietnamese(const char *multi, int multiLen, wchar_t *wide, int wideLen)
 {
     if (multiLen < 0)
-        multiLen = (int)strlen(multi) + 1;
+        multiLen = static_cast<int>(strlen(multi)) + 1;
 
     int src = 0;
     int dest = 0;
@@ -179,11 +180,11 @@ int EL_String_Decode_Vietnamese(const char *multi, int multiLen, wchar_t *wide, 
     if (multiLen > 0)
     {
         /* 첫글자는 무조건 변경 */
-        wchar_t prev = cp1258_to_unicode[(BYTE)multi[src++]];
+        wchar_t prev = cp1258_to_unicode[static_cast<BYTE>(multi[src++])];
 
         while (src < multiLen)
         {
-            wchar_t unicode = cp1258_to_unicode[(BYTE)multi[src]];
+            wchar_t const unicode = cp1258_to_unicode[static_cast<BYTE>(multi[src])];
 
             /* 다음 문자가 Tone 인가? */
             if (IsTone(unicode))
@@ -231,193 +232,193 @@ static bool DecomposeLetter(wchar_t input, char *letter)
     case 0x1eb2: // L'Ẳ'
     case 0x1eb4: // L'Ẵ'
     case 0x1eb6: // L'Ặ'
-        *letter = (char)0xc3;
+        *letter = static_cast<char>(0xc3);
         return true;
     case 0x1eaf: // L'ắ'
     case 0x1eb1: // L'ằ'
     case 0x1eb3: // L'ẳ'
     case 0x1eb5: // L'ẵ'
     case 0x1eb7: // L'ặ'
-        *letter = (char)0xe3;
+        *letter = static_cast<char>(0xe3);
         return true;
     case 0x1ea4: // L'Ấ'
     case 0x1ea6: // L'Ầ'
     case 0x1ea8: // L'Ẩ'
     case 0x1eaa: // L'Ẫ'
     case 0x1eac: // L'Ậ'
-        *letter = (char)0xc2;
+        *letter = static_cast<char>(0xc2);
         return true;
     case 0x1ea5: // L'ấ'
     case 0x1ea7: // L'ầ'
     case 0x1ea9: // L'ẩ'
     case 0x1eab: // L'ẫ'
     case 0x1ead: // L'ậ'
-        *letter = (char)0xe2;
+        *letter = static_cast<char>(0xe2);
         return true;
     case 0x00c9: // L'É'
     case 0x00c8: // L'È'
     case 0x1eba: // L'Ẻ'
     case 0x1ebc: // L'Ẽ'
     case 0x1eb8: // L'Ẹ'
-        *letter = (char)'E';
+        *letter = 'E';
         return true;
     case 0x00e9: // L'é'
     case 0x00e8: // L'è'
     case 0x1ebb: // L'ẻ'
     case 0x1ebd: // L'ẽ'
     case 0x1eb9: // L'ẹ'
-        *letter = (char)'e';
+        *letter = 'e';
         return true;
     case 0x1ebe: // L'Ế'
     case 0x1ec0: // L'Ề'
     case 0x1ec2: // L'Ể'
     case 0x1ec4: // L'Ễ'
     case 0x1ec6: // L'Ệ'
-        *letter = (char)0xca;
+        *letter = static_cast<char>(0xca);
         return true;
     case 0x1ebf: // L'ế'
     case 0x1ec1: // L'ề'
     case 0x1ec3: // L'ể'
     case 0x1ec5: // L'ễ'
     case 0x1ec7: // L'ệ'
-        *letter = (char)0xea;
+        *letter = static_cast<char>(0xea);
         return true;
     case 0x00cd: // L'Í'
     case 0x00cc: // L'Ì'
     case 0x1ec8: // L'Ỉ'
     case 0x0128: // L'Ĩ'
     case 0x1eca: // L'Ị'
-        *letter = (char)'I';
+        *letter = 'I';
         return true;
     case 0x00ed: // L'í'
     case 0x00ec: // L'ì'
     case 0x1ec9: // L'ỉ'
     case 0x0129: // L'ĩ'
     case 0x1ecb: // L'ị'
-        *letter = (char)'i';
+        *letter = 'i';
         return true;
     case 0x00d3: // L'Ó'
     case 0x00d2: // L'Ò'
     case 0x1ece: // L'Ỏ'
     case 0x00d5: // L'Õ'
     case 0x1ecc: // L'Ọ'
-        *letter = (char)'O';
+        *letter = 'O';
         return true;
     case 0x00f3: // L'ó'
     case 0x00f2: // L'ò'
     case 0x1ecf: // L'ỏ'
     case 0x00f5: // L'õ'
     case 0x1ecd: // L'ọ'
-        *letter = (char)'o';
+        *letter = 'o';
         return true;
     case 0x1ed0: // L'Ố'
     case 0x1ed2: // L'Ồ'
     case 0x1ed4: // L'Ổ'
     case 0x1ed6: // L'Ỗ'
     case 0x1ed8: // L'Ộ'
-        *letter = (char)0xd4;
+        *letter = static_cast<char>(0xd4);
         return true;
     case 0x1ed1: // L'ố'
     case 0x1ed3: // L'ồ'
     case 0x1ed5: // L'ổ'
     case 0x1ed7: // L'ỗ'
     case 0x1ed9: // L'ộ'
-        *letter = (char)0xf4;
+        *letter = static_cast<char>(0xf4);
         return true;
     case 0x1eda: // L'Ớ'
     case 0x1edc: // L'Ờ'
     case 0x1ede: // L'Ở'
     case 0x1ee0: // L'Ỡ'
     case 0x1ee2: // L'Ợ'
-        *letter = (char)0xd5;
+        *letter = static_cast<char>(0xd5);
         return true;
     case 0x1edb: // L'ớ'
     case 0x1edd: // L'ờ'
     case 0x1edf: // L'ở'
     case 0x1ee1: // L'ỡ'
     case 0x1ee3: // L'ợ'
-        *letter = (char)0xf5;
+        *letter = static_cast<char>(0xf5);
         return true;
     case 0x00da: // L'Ú'
     case 0x00d9: // L'Ù'
     case 0x1ee6: // L'Ủ'
     case 0x0168: // L'Ũ'
     case 0x1ee4: // L'Ụ'
-        *letter = (char)'U';
+        *letter = 'U';
         return true;
     case 0x00fa: // L'ú'
     case 0x00f9: // L'ù'
     case 0x1ee7: // L'ủ'
     case 0x0169: // L'ũ'
     case 0x1ee5: // L'ụ'
-        *letter = (char)'u';
+        *letter = 'u';
         return true;
     case 0x1ee8: // L'Ứ'
     case 0x1eea: // L'Ừ'
     case 0x1eec: // L'Ử'
     case 0x1eee: // L'Ữ'
     case 0x1ef0: // L'Ự'
-        *letter = (char)0xdd;
+        *letter = static_cast<char>(0xdd);
         return true;
     case 0x1ee9: // L'ứ'
     case 0x1eeb: // L'ừ'
     case 0x1eed: // L'ử'
     case 0x1eef: // L'ữ'
     case 0x1ef1: // L'ự'
-        *letter = (char)0xfd;
+        *letter = static_cast<char>(0xfd);
         return true;
     case 0x1ef2: // L'Ỳ'
     case 0x00dd: // L'Ý'
     case 0x1ef6: // L'Ỷ'
     case 0x1ef8: // L'Ỹ'
     case 0x1ef4: // L'Ỵ'
-        *letter = (char)'Y';
+        *letter = 'Y';
         return true;
     case 0x1ef3: // L'ỳ'
     case 0x00fd: // L'ý'
     case 0x1ef7: // L'ỷ'
     case 0x1ef9: // L'ỹ'
     case 0x1ef5: // L'ỵ'
-        *letter = (char)'y';
+        *letter = 'y';
         return true;
     case 0x0102: // L'Ă'
-        *letter = (char)0xc3;
+        *letter = static_cast<char>(0xc3);
         return true;
     case 0x0103: // L'ă'
-        *letter = (char)0xe3;
+        *letter = static_cast<char>(0xe3);
         return true;
     case 0x0110: // L'Đ'
-        *letter = (char)0xd0;
+        *letter = static_cast<char>(0xd0);
         return true;
     case 0x0111: // L'đ'
-        *letter = (char)0xf0;
+        *letter = static_cast<char>(0xf0);
         return true;
     case 0x01a0: // L'Ơ'
-        *letter = (char)0xd5;
+        *letter = static_cast<char>(0xd5);
         return true;
     case 0x01a1: // L'ơ'
-        *letter = (char)0xf5;
+        *letter = static_cast<char>(0xf5);
         return true;
     case 0x01af: // L'Ư'
-        *letter = (char)0xdd;
+        *letter = static_cast<char>(0xdd);
         return true;
     case 0x01b0: // L'ư'
-        *letter = (char)0xfd;
+        *letter = static_cast<char>(0xfd);
         return true;
     case 0x20ab: // L'₫'
-        *letter = (char)0xfe;
+        *letter = static_cast<char>(0xfe);
         return true;
     case 0x201c: // L'“'
-        *letter = (char)'"';
+        *letter = '"';
         return true;
     case 0x201d: // L'”'
-        *letter = (char)'"';
+        *letter = '"';
         return true;
     }
 
     if (input < 256)
     {
-        *letter = (char)input;
+        *letter = static_cast<char>(input);
         return true;
     }
     return false;
@@ -451,7 +452,7 @@ static bool DecomposeTone(wchar_t input, char *tone)
     case 0x1ee9: // L'ứ'
     case 0x00dd: // L'Ý'
     case 0x00fd: // L'ý'
-        *tone = (char)0xec;
+        *tone = static_cast<char>(0xec);
         return true;
     case 0x00c0: // L'À'
     case 0x00e0: // L'à'
@@ -477,7 +478,7 @@ static bool DecomposeTone(wchar_t input, char *tone)
     case 0x1eeb: // L'ừ'
     case 0x1ef2: // L'Ỳ'
     case 0x1ef3: // L'ỳ'
-        *tone = (char)0xcc;
+        *tone = static_cast<char>(0xcc);
         return true;
     case 0x1ea2: // L'Ả'
     case 0x1ea3: // L'ả'
@@ -503,7 +504,7 @@ static bool DecomposeTone(wchar_t input, char *tone)
     case 0x1eed: // L'ử'
     case 0x1ef6: // L'Ỷ'
     case 0x1ef7: // L'ỷ'
-        *tone = (char)0xd2;
+        *tone = static_cast<char>(0xd2);
         return true;
     case 0x00c3: // L'Ã'
     case 0x00e3: // L'ã'
@@ -529,7 +530,7 @@ static bool DecomposeTone(wchar_t input, char *tone)
     case 0x1eef: // L'ữ'
     case 0x1ef8: // L'Ỹ'
     case 0x1ef9: // L'ỹ'
-        *tone = (char)0xde;
+        *tone = static_cast<char>(0xde);
         return true;
     case 0x1ea0: // L'Ạ'
     case 0x1ea1: // L'ạ'
@@ -555,7 +556,7 @@ static bool DecomposeTone(wchar_t input, char *tone)
     case 0x1ef1: // L'ự'
     case 0x1ef4: // L'Ỵ'
     case 0x1ef5: // L'ỵ'
-        *tone = (char)0xf2;
+        *tone = static_cast<char>(0xf2);
         return true;
     }
 
@@ -565,7 +566,7 @@ static bool DecomposeTone(wchar_t input, char *tone)
 int EL_String_Encode_Vietnamese(const wchar_t *wide, int wideLen, char *multi, int multiLen)
 {
     if (wideLen < 0)
-        wideLen = (int)wcslen(wide) + 1;
+        wideLen = static_cast<int>(wcslen(wide)) + 1;
 
     int src = 0;
     int dest = 0;
@@ -574,13 +575,13 @@ int EL_String_Encode_Vietnamese(const wchar_t *wide, int wideLen, char *multi, i
     {
         while (src < wideLen && dest < multiLen)
         {
-            char letter;
+            char letter = 0;
             if (DecomposeLetter(wide[src], &letter))
             {
                 multi[dest++] = letter;
             }
 
-            char tone;
+            char tone = 0;
             if (DecomposeTone(wide[src], &tone) && dest < multiLen)
             {
                 multi[dest++] = tone;

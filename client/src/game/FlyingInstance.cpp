@@ -11,6 +11,8 @@
 #include <Client/Game/FlyTarget.h>
 #include <Client/Game/FlyHandler.h>
 
+#include <numbers>
+
 CDynamicPool<CFlyingInstance> CFlyingInstance::ms_kPool;
 
 CFlyingInstance::CFlyingInstance()
@@ -28,9 +30,9 @@ void CFlyingInstance::__Initialize()
     m_qAttachRotation = m_qRot = D3DXQUATERNION(0.0f, 0.0f, 0.0f, 0.0f);
     m_v3Accel = m_v3LocalVelocity = m_v3Velocity = m_v3Position = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
 
-    m_pHandler = NULL;
-    m_pData = NULL;
-    m_pOwner = NULL;
+    m_pHandler = nullptr;
+    m_pData = nullptr;
+    m_pOwner = nullptr;
 
     m_bAlive = false;
     m_canAttack = false;
@@ -64,7 +66,7 @@ void CFlyingInstance::BuildAttachInstance()
 {
     for (int i = 0; i < m_pData->GetAttachDataCount(); i++)
     {
-        CFlyingData::TFlyingAttachData &rfad = m_pData->GetAttachDataReference(i);
+        CFlyingData::TFlyingAttachData const &rfad = m_pData->GetAttachDataReference(i);
 
         switch (rfad.iType)
         {
@@ -75,14 +77,14 @@ void CFlyingInstance::BuildAttachInstance()
             break;
         case CFlyingData::FLY_ATTACH_EFFECT: {
             CEffectManager &rem = CEffectManager::Instance();
-            TAttachEffectInstance aei;
+            TAttachEffectInstance aei{};
 
-            DWORD dwCRC = GetCaseCRC32(rfad.strFilename.c_str(), rfad.strFilename.size());
+            DWORD const dwCRC = GetCaseCRC32(rfad.strFilename.c_str(), rfad.strFilename.size());
 
             aei.iAttachIndex = i;
             aei.dwEffectInstanceIndex = rem.GetEmptyIndex();
 
-            aei.pFlyTrace = NULL;
+            aei.pFlyTrace = nullptr;
             if (rfad.bHasTail)
             {
                 aei.pFlyTrace = CFlyTrace::New();
@@ -163,8 +165,8 @@ void CFlyingInstance::AdjustDirectionForHoming(const D3DXVECTOR3 &v3TargetPositi
         return;
     }
 
-    float c = cosf(D3DXToRadian(m_pData->m_fHomingMaxAngle));
-    float s = sinf(D3DXToRadian(m_pData->m_fHomingMaxAngle));
+    float const c = cosf(D3DXToRadian(m_pData->m_fHomingMaxAngle));
+    float const s = sinf(D3DXToRadian(m_pData->m_fHomingMaxAngle));
 
     if (q.w <= -1.0f + 0.0001f)
     {
@@ -175,7 +177,7 @@ void CFlyingInstance::AdjustDirectionForHoming(const D3DXVECTOR3 &v3TargetPositi
     }
     else if (q.w <= c && q.w <= 1.0f - 0.0001f)
     {
-        float factor = s / sqrtf(1.0f - q.w * q.w);
+        float const factor = s / sqrtf(1.0f - (q.w * q.w));
         q.x *= factor;
         q.y *= factor;
         q.z *= factor;
@@ -204,7 +206,7 @@ void CFlyingInstance::UpdateAttachInstance()
     TAttachEffectInstanceVector::iterator it;
     for (it = m_vecAttachEffectInstance.begin(); it != m_vecAttachEffectInstance.end(); ++it)
     {
-        CFlyingData::TFlyingAttachData &rfad = m_pData->GetAttachDataReference(it->iAttachIndex);
+        CFlyingData::TFlyingAttachData const &rfad = m_pData->GetAttachDataReference(it->iAttachIndex);
         assert(rfad.iType == CFlyingData::FLY_ATTACH_EFFECT);
         rem.SelectEffectInstance(it->dwEffectInstanceIndex);
         D3DXMATRIX m;
@@ -232,8 +234,8 @@ void CFlyingInstance::UpdateAttachInstance()
         break;
         case CFlyingData::FLY_ATTACH_TYPE_SINE: {
             // Tracenf("%f",CTimer::Instance().GetCurrentSecond());
-            float angle =
-                (CTimer::Instance().GetCurrentSecond() - m_fStartTime) * 2 * 3.1415926535897931f / rfad.fPeriod;
+            float const angle =
+                (CTimer::Instance().GetCurrentSecond() - m_fStartTime) * 2 * std::numbers::pi_v<float> / rfad.fPeriod;
             D3DXVECTOR3 p(-sinf(D3DXToRadian(rfad.fRoll)) * rfad.fAmplitude * sinf(angle), 0.0f,
                           -cosf(D3DXToRadian(rfad.fRoll)) * rfad.fAmplitude * sinf(angle));
             Vec3TransformQuaternionSafe(&p, &p, &q);
@@ -248,8 +250,8 @@ void CFlyingInstance::UpdateAttachInstance()
         }
         break;
         case CFlyingData::FLY_ATTACH_TYPE_EXP: {
-            float dt = CTimer::Instance().GetCurrentSecond() - m_fStartTime;
-            float angle = dt / rfad.fPeriod;
+            float const dt = CTimer::Instance().GetCurrentSecond() - m_fStartTime;
+            float const angle = dt / rfad.fPeriod;
             D3DXVECTOR3 p(-sinf(D3DXToRadian(rfad.fRoll)) * rfad.fAmplitude * exp(-angle) * angle, 0.0f,
                           -cosf(D3DXToRadian(rfad.fRoll)) * rfad.fAmplitude * exp(-angle) * angle);
             // Vec3TransformQuaternionSafe(&p,&p,&m_qRot);
@@ -273,12 +275,11 @@ struct FCheckBackgroundDuringFlying
 {
     CDynamicSphereInstance s;
     bool bHit;
-    FCheckBackgroundDuringFlying(const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2)
+    FCheckBackgroundDuringFlying(const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2) : bHit(false)
     {
         s.fRadius = 1.0f;
         s.v3LastPosition = v1;
         s.v3Position = v2;
-        bHit = false;
     }
     void operator()(CGraphicObjectInstance *p)
     {
@@ -293,7 +294,7 @@ struct FCheckBackgroundDuringFlying
             }
         }
     }
-    bool IsHitted()
+    bool IsHitted() const
     {
         return bHit;
     }
@@ -305,12 +306,11 @@ struct FCheckAnotherMonsterDuringFlying
     CGraphicObjectInstance *pInst;
     const IActorInstance *pOwner;
     FCheckAnotherMonsterDuringFlying(const IActorInstance *pOwner, const D3DXVECTOR3 &v1, const D3DXVECTOR3 &v2)
-        : pOwner(pOwner)
+        : pInst(nullptr), pOwner(pOwner)
     {
         s.fRadius = 10.0f;
         s.v3LastPosition = v1;
         s.v3Position = v2;
-        pInst = 0;
     }
     void operator()(CGraphicObjectInstance *p)
     {
@@ -319,18 +319,18 @@ struct FCheckAnotherMonsterDuringFlying
 
         if (!pInst && p->GetType() == ACTOR_OBJECT)
         {
-            IActorInstance *pa = (IActorInstance *)p;
+            auto *pa = (IActorInstance *)p;
             if (pa != pOwner && pa->TestCollisionWithDynamicSphere(s))
             {
                 pInst = p;
             }
         }
     }
-    bool IsHitted()
+    bool IsHitted() const
     {
-        return pInst != 0;
+        return pInst != nullptr;
     }
-    CGraphicObjectInstance *GetHittedObject()
+    CGraphicObjectInstance *GetHittedObject() const
     {
         return pInst;
     }
@@ -347,13 +347,13 @@ bool CFlyingInstance::Update()
             AdjustDirectionForHoming(m_FlyTarget.GetFlyTargetPosition());
     }
 
-    D3DXVECTOR3 v3LastPosition = m_v3Position;
+    D3DXVECTOR3 const v3LastPosition = m_v3Position;
 
     m_v3Velocity += m_v3Accel * CTimer::Instance().GetElapsedSecond();
     m_v3Velocity.z += m_pData->m_fGravity * CTimer::Instance().GetElapsedSecond();
     D3DXVECTOR3 v3Movement = m_v3Velocity * CTimer::Instance().GetElapsedSecond();
-    float _fMoveDistance = D3DXVec3Length(&v3Movement);
-    float fCollisionSphereRadius = max(_fMoveDistance * 2, m_pData->m_fCollisionSphereRadius);
+    float const _fMoveDistance = D3DXVec3Length(&v3Movement);
+    float const fCollisionSphereRadius = max(_fMoveDistance * 2, m_pData->m_fCollisionSphereRadius);
     m_fRemainRange -= _fMoveDistance;
     m_v3Position += v3Movement;
 
@@ -418,7 +418,8 @@ bool CFlyingInstance::Update()
         }
     }
 
-    Vector3d vecStart, vecDir;
+    Vector3d vecStart;
+    Vector3d vecDir;
     vecStart.Set(v3LastPosition.x, v3LastPosition.y, v3LastPosition.z);
     vecDir.Set(v3Movement.x, v3Movement.y, v3Movement.z);
 
@@ -430,8 +431,8 @@ bool CFlyingInstance::Update()
         rkCullingMgr.ForInRange(vecStart, fCollisionSphereRadius, &kCheckAnotherMonsterDuringFlying);
         if (kCheckAnotherMonsterDuringFlying.IsHitted())
         {
-            IActorInstance *pHittedInstance = (IActorInstance *)kCheckAnotherMonsterDuringFlying.GetHittedObject();
-            if (m_HittedObjectSet.end() == m_HittedObjectSet.find(pHittedInstance))
+            auto *pHittedInstance = (IActorInstance *)kCheckAnotherMonsterDuringFlying.GetHittedObject();
+            if (!m_HittedObjectSet.contains(pHittedInstance))
             {
                 m_HittedObjectSet.insert(pHittedInstance);
 
@@ -462,7 +463,7 @@ bool CFlyingInstance::Update()
 
         if (CFlyingManager::Instance().GetMapManagerPtr())
         {
-            float fGroundHeight =
+            float const fGroundHeight =
                 CFlyingManager::Instance().GetMapManagerPtr()->GetTerrainHeight(m_v3Position.x, -m_v3Position.y);
             if (fGroundHeight > m_v3Position.z)
             {
@@ -506,7 +507,7 @@ void CFlyingInstance::ClearAttachInstance()
 
         i->iAttachIndex = 0;
         i->dwEffectInstanceIndex = 0;
-        i->pFlyTrace = NULL;
+        i->pFlyTrace = nullptr;
     }
     m_vecAttachEffectInstance.clear();
 }
@@ -528,7 +529,7 @@ void CFlyingInstance::__Bomb()
     if (!m_pData->m_dwBombEffectID)
         return;
 
-    DWORD dwEmptyIndex = rkEftMgr.GetEmptyIndex();
+    DWORD const dwEmptyIndex = rkEftMgr.GetEmptyIndex();
     rkEftMgr.CreateEffectInstance(dwEmptyIndex, m_pData->m_dwBombEffectID);
 
     D3DXMATRIX m;
@@ -575,11 +576,13 @@ void CFlyingInstance::__SetDataPointer(CFlyingData *pData, const D3DXVECTOR3 &v3
                                        D3DXToRadian(pData->m_fConeAngle));
     if (pData->m_bSpreading)
     {
-        D3DXQUATERNION q1, q2;
+        D3DXQUATERNION q1;
+        D3DXQUATERNION q2;
         D3DXQuaternionRotationAxis(&q2, &D3DXVECTOR3(0.0f, 0.0f, 1.0f),
-                                   (frandom(-3.141592f / 3, +3.141592f / 3) + frandom(-3.141592f / 3, +3.141592f / 3)) /
+                                   (frandom(-std::numbers::pi_v<float> / 3, +std::numbers::pi_v<float> / 3) +
+                                    frandom(-std::numbers::pi_v<float> / 3, +std::numbers::pi_v<float> / 3)) /
                                        2);
-        D3DXQuaternionRotationAxis(&q1, &D3DXVECTOR3(0.0f, -1.0f, 0.0f), frandom(0, 2 * 3.1415926535897931f));
+        D3DXQuaternionRotationAxis(&q1, &D3DXVECTOR3(0.0f, -1.0f, 0.0f), frandom(0, 2 * std::numbers::pi_v<float>));
         D3DXQuaternionMultiply(&q1, &q2, &q1);
         D3DXQuaternionMultiply(&m_qRot, &q1, &m_qRot);
     }

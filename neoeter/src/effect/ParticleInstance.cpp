@@ -5,6 +5,7 @@
 #include <Neoeter/Platform/Base/Random.h>
 #include <Neoeter/Render/Camera.h>
 #include <Neoeter/Render/StateManager.h>
+#include <math.h>
 
 CDynamicPool<CParticleInstance> CParticleInstance::ms_kPool;
 
@@ -53,9 +54,9 @@ void CRayParticleInstance::DeleteThis()
 */
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-float CParticleInstance::GetRadiusApproximation()
+float CParticleInstance::GetRadiusApproximation() const
 {
-    return m_v2HalfSize.y * m_v2Scale.y + m_v2HalfSize.x * m_v2Scale.x;
+    return (m_v2HalfSize.y * m_v2Scale.y) + (m_v2HalfSize.x * m_v2Scale.x);
 }
 /*
 D3DXVECTOR3 CBaseParticleInstance::GetCenterApproximation()
@@ -73,7 +74,7 @@ BOOL CParticleInstance::Update(float fElapsedTime, float fAngle)
     if (m_fLastLifeTime < 0.0f)
         return FALSE;
 
-    float fLifePercentage = (m_fLifeTime - m_fLastLifeTime) / m_fLifeTime;
+    float const fLifePercentage = (m_fLifeTime - m_fLastLifeTime) / m_fLifeTime;
 
     m_pDecorator->Excute(CDecoratorData(fLifePercentage, fElapsedTime, this));
 
@@ -84,20 +85,22 @@ BOOL CParticleInstance::Update(float fElapsedTime, float fAngle)
     {
         if (m_pParticleProperty->m_bAttachFlag)
         {
-            float fCos, fSin;
+            float fCos = NAN;
+            float fSin = NAN;
             fAngle = D3DXToRadian(fAngle);
             fCos = cos(fAngle);
             fSin = sin(fAngle);
 
-            float rx = m_v3Position.x - m_v3StartPosition.x;
-            float ry = m_v3Position.y - m_v3StartPosition.y;
+            float const rx = m_v3Position.x - m_v3StartPosition.x;
+            float const ry = m_v3Position.y - m_v3StartPosition.y;
 
-            m_v3Position.x = fCos * rx + fSin * ry + m_v3StartPosition.x;
-            m_v3Position.y = -fSin * rx + fCos * ry + m_v3StartPosition.y;
+            m_v3Position.x = (fCos * rx) + (fSin * ry) + m_v3StartPosition.x;
+            m_v3Position.y = (-fSin * rx) + (fCos * ry) + m_v3StartPosition.y;
         }
         else
         {
-            D3DXQUATERNION q, qc;
+            D3DXQUATERNION q;
+            D3DXQUATERNION qc;
             D3DXQuaternionRotationAxis(&q, &m_pParticleProperty->m_v3ZAxis, D3DXToRadian(fAngle));
             D3DXQuaternionConjugate(&qc, &q);
 
@@ -136,12 +139,13 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal)
         const D3DXVECTOR3 &c_rv3Up = pCurrentCamera->GetUp();
         const D3DXVECTOR3 &c_rv3Cross = pCurrentCamera->GetCross();
 
-        D3DXVECTOR3 v3Rotation;
+        D3DXVECTOR3 const v3Rotation;
 
         switch (m_pParticleProperty->m_byBillboardType)
         {
         case BILLBOARD_TYPE_LIE: {
-            float fCos = cosf(D3DXToRadian(m_fRotation)), fSin = sinf(D3DXToRadian(m_fRotation));
+            float const fCos = cosf(D3DXToRadian(m_fRotation));
+            float const fSin = sinf(D3DXToRadian(m_fRotation));
             v3Up.x = fCos;
             v3Up.y = -fSin;
             v3Up.z = 0;
@@ -158,17 +162,17 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal)
             // v3Up =
             // D3DXVECTOR3(cosf(D3DXToRadian(m_fRotation)),0.0f,-sinf(D3DXToRadian(m_fRotation)));
             const D3DXVECTOR3 &c_rv3View = pCurrentCamera->GetView();
-            if (v3Up.x * c_rv3View.y - v3Up.y * c_rv3View.x < 0)
+            if ((v3Up.x * c_rv3View.y) - (v3Up.y * c_rv3View.x) < 0)
                 v3Up *= -1;
             D3DXVec3Cross(&v3Cross, &v3Up, &D3DXVECTOR3(c_rv3View.x, c_rv3View.y, 0));
             D3DXVec3Normalize(&v3Cross, &v3Cross);
 
             if (m_fRotation)
             {
-                float fCos = -sinf(D3DXToRadian(m_fRotation)); // + 90
-                float fSin = cosf(D3DXToRadian(m_fRotation));
+                float const fCos = -sinf(D3DXToRadian(m_fRotation)); // + 90
+                float const fSin = cosf(D3DXToRadian(m_fRotation));
 
-                D3DXVECTOR3 v3Temp = v3Up * fCos - v3Cross * fSin;
+                D3DXVECTOR3 const v3Temp = v3Up * fCos - v3Cross * fSin;
                 v3Cross = v3Cross * fCos + v3Up * fSin;
                 v3Up = v3Temp;
             }
@@ -191,7 +195,8 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal)
             else
             {
                 const D3DXVECTOR3 &c_rv3View = pCurrentCamera->GetView();
-                D3DXQUATERNION q, qc;
+                D3DXQUATERNION q;
+                D3DXQUATERNION qc;
                 D3DXQuaternionRotationAxis(&q, &c_rv3View, D3DXToRadian(m_fRotation));
                 D3DXQuaternionConjugate(&qc, &q);
 
@@ -234,13 +239,15 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal)
         }
 
         // NOTE: 속도가 길이에 주는 영향 : log(velocity)만큼 늘어난다.
-        float length = D3DXVec3Length(&v3Up);
+        float const length = D3DXVec3Length(&v3Up);
         if (length == 0.0f)
         {
             v3Up = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
         }
         else
+        {
             v3Up *= (1 + log(1 + length)) / length;
+        }
 
         CCamera *pCurrentCamera = CCameraManager::Instance().GetCurrentCamera();
         const D3DXVECTOR3 &c_rv3View = pCurrentCamera->GetView();
@@ -288,12 +295,13 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal, const float c_fZ
         const D3DXVECTOR3 &c_rv3Up = pCurrentCamera->GetUp();
         const D3DXVECTOR3 &c_rv3Cross = pCurrentCamera->GetCross();
 
-        D3DXVECTOR3 v3Rotation;
+        D3DXVECTOR3 const v3Rotation;
 
         switch (m_pParticleProperty->m_byBillboardType)
         {
         case BILLBOARD_TYPE_LIE: {
-            float fCos = cosf(D3DXToRadian(m_fRotation)), fSin = sinf(D3DXToRadian(m_fRotation));
+            float const fCos = cosf(D3DXToRadian(m_fRotation));
+            float const fSin = sinf(D3DXToRadian(m_fRotation));
             v3Up.x = fCos;
             v3Up.y = -fSin;
             v3Up.z = 0;
@@ -311,17 +319,17 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal, const float c_fZ
             // v3Up =
             // D3DXVECTOR3(cosf(D3DXToRadian(m_fRotation)),0.0f,-sinf(D3DXToRadian(m_fRotation)));
             const D3DXVECTOR3 &c_rv3View = pCurrentCamera->GetView();
-            if (v3Up.x * c_rv3View.y - v3Up.y * c_rv3View.x < 0)
+            if ((v3Up.x * c_rv3View.y) - (v3Up.y * c_rv3View.x) < 0)
                 v3Up *= -1;
             D3DXVec3Cross(&v3Cross, &v3Up, &D3DXVECTOR3(c_rv3View.x, c_rv3View.y, 0));
             D3DXVec3Normalize(&v3Cross, &v3Cross);
 
             if (m_fRotation)
             {
-                float fCos = -sinf(D3DXToRadian(m_fRotation)); // + 90
-                float fSin = cosf(D3DXToRadian(m_fRotation));
+                float const fCos = -sinf(D3DXToRadian(m_fRotation)); // + 90
+                float const fSin = cosf(D3DXToRadian(m_fRotation));
 
-                D3DXVECTOR3 v3Temp = v3Up * fCos - v3Cross * fSin;
+                D3DXVECTOR3 const v3Temp = v3Up * fCos - v3Cross * fSin;
                 v3Cross = v3Cross * fCos + v3Up * fSin;
                 v3Up = v3Temp;
             }
@@ -365,13 +373,15 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal, const float c_fZ
         }
 
         // NOTE: 속도가 길이에 주는 영향 : log(velocity)만큼 늘어난다.
-        float length = D3DXVec3Length(&v3Up);
+        float const length = D3DXVec3Length(&v3Up);
         if (length == 0.0f)
         {
             v3Up = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
         }
         else
+        {
             v3Up *= (1 + log(1 + length)) / length;
+        }
         // D3DXVec3Normalize(&v3Up,&v3Up);
         // v3Up *= 1+log(1+length);
 
@@ -383,19 +393,20 @@ void CParticleInstance::Transform(const D3DXMATRIX *c_matLocal, const float c_fZ
 
     if (c_fZRotation)
     {
-        float x, y;
-        float fCos = cosf(c_fZRotation);
-        float fSin = sinf(c_fZRotation);
+        float x = NAN;
+        float y = NAN;
+        float const fCos = cosf(c_fZRotation);
+        float const fSin = sinf(c_fZRotation);
 
         x = v3Up.x;
         y = v3Up.y;
-        v3Up.x = x * fCos - y * fSin;
-        v3Up.y = y * fCos + x * fSin;
+        v3Up.x = (x * fCos) - (y * fSin);
+        v3Up.y = (y * fCos) + (x * fSin);
 
         x = v3Cross.x;
         y = v3Cross.y;
-        v3Cross.x = x * fCos - y * fSin;
-        v3Cross.y = y * fCos + x * fSin;
+        v3Cross.x = (x * fCos) - (y * fSin);
+        v3Cross.y = (y * fCos) + (x * fSin);
     }
 
     v3Cross = -(m_v2HalfSize.x * m_v2Scale.x) * v3Cross;
@@ -430,7 +441,7 @@ void CParticleInstance::Destroy()
 void CParticleInstance::__Initialize()
 {
     //*
-    m_pDecorator = NULL;
+    m_pDecorator = nullptr;
 
     m_v3Position = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
     m_v3LastPosition = m_v3Position;

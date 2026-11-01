@@ -3,7 +3,7 @@
 
 PyObject *profilerPush(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
@@ -12,7 +12,7 @@ PyObject *profilerPush(PyObject *poSelf, PyObject *poArgs)
 
 PyObject *profilerPop(PyObject *poSelf, PyObject *poArgs)
 {
-    char *szName;
+    char *szName = nullptr;
     if (!PyTuple_GetString(poArgs, 0, &szName))
         return Py_BuildException();
 
@@ -25,7 +25,7 @@ void initProfiler()
         {"Push", profilerPush, METH_VARARGS},
         {"Pop", profilerPop, METH_VARARGS},
 
-        {NULL, NULL, NULL},
+        {nullptr, nullptr, NULL},
     };
 
     Py_InitModule("profiler", s_methods);

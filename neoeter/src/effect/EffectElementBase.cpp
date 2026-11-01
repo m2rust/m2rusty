@@ -1,6 +1,8 @@
 #include <Neoeter/Effect/StdAfx.h>
 #include <Neoeter/Effect/EffectElementBase.h>
 
+#include <algorithm>
+
 void CEffectElementBase::GetPosition(float fTime, D3DXVECTOR3 &rPosition)
 {
     if (m_TimeEventTablePosition.empty())
@@ -24,11 +26,11 @@ void CEffectElementBase::GetPosition(float fTime, D3DXVECTOR3 &rPosition)
         return;
     }
 
-    typedef TTimeEventTablePosition::iterator iterator;
-    iterator result = std::lower_bound(m_TimeEventTablePosition.begin(), m_TimeEventTablePosition.end(), fTime);
+    using iterator = TTimeEventTablePosition::iterator;
+    iterator const result = std::lower_bound(m_TimeEventTablePosition.begin(), m_TimeEventTablePosition.end(), fTime);
 
-    TEffectPosition &rEffectPosition = *result;
-    iterator rPrev = result;
+    TEffectPosition const &rEffectPosition = *result;
+    auto rPrev = result;
     if (m_TimeEventTablePosition.begin() != result)
     {
         rPrev = result - 1;
@@ -38,20 +40,21 @@ void CEffectElementBase::GetPosition(float fTime, D3DXVECTOR3 &rPosition)
         rPosition = result->m_vecPosition;
         return;
     }
-    TEffectPosition &rPrevEffectPosition = *rPrev;
-    int iMovingType = rPrevEffectPosition.m_iMovingType;
+    TEffectPosition const &rPrevEffectPosition = *rPrev;
+    int const iMovingType = rPrevEffectPosition.m_iMovingType;
 
     if (MOVING_TYPE_DIRECT == iMovingType)
     {
-        float Head =
+        float const Head =
             fabs(rEffectPosition.m_fTime - fTime) / fabs(rEffectPosition.m_fTime - rPrevEffectPosition.m_fTime);
-        float Tail =
-            1.0f - fabs(rEffectPosition.m_fTime - fTime) / fabs(rEffectPosition.m_fTime - rPrevEffectPosition.m_fTime);
+        float const Tail = 1.0f - (fabs(rEffectPosition.m_fTime - fTime) /
+                                   fabs(rEffectPosition.m_fTime - rPrevEffectPosition.m_fTime));
         rPosition = (rPrevEffectPosition.m_vecPosition * Head) + (rEffectPosition.m_vecPosition * Tail);
     }
     else if (MOVING_TYPE_BEZIER_CURVE == iMovingType)
     {
-        float ft = (fTime - rPrevEffectPosition.m_fTime) / (rEffectPosition.m_fTime - rPrevEffectPosition.m_fTime);
+        float const ft =
+            (fTime - rPrevEffectPosition.m_fTime) / (rEffectPosition.m_fTime - rPrevEffectPosition.m_fTime);
 
         rPosition = rPrevEffectPosition.m_vecPosition * (1.0f - ft) * (1.0f - ft) +
                     (rPrevEffectPosition.m_vecPosition + rPrevEffectPosition.m_vecControlPoint) * (1.0f - ft) * ft * 2 +
@@ -105,7 +108,7 @@ void CEffectElementBase::Clear()
 
 BOOL CEffectElementBase::LoadScript(CTextFileLoader &rTextFileLoader)
 {
-    CTokenVector *pTokenVector;
+    CTokenVector *pTokenVector = nullptr;
     if (!rTextFileLoader.GetTokenFloat("starttime", &m_fStartTime))
     {
         m_fStartTime = 0.0f;
@@ -157,15 +160,12 @@ BOOL CEffectElementBase::LoadScript(CTextFileLoader &rTextFileLoader)
     return OnLoadScript(rTextFileLoader);
 }
 
-float CEffectElementBase::GetStartTime()
+float CEffectElementBase::GetStartTime() const
 {
     return m_fStartTime;
 }
 
-CEffectElementBase::CEffectElementBase()
-{
-    m_fStartTime = 0.0f;
-}
-CEffectElementBase::~CEffectElementBase()
+CEffectElementBase::CEffectElementBase() : m_fStartTime(0.0f)
 {
 }
+CEffectElementBase::~CEffectElementBase() = default;

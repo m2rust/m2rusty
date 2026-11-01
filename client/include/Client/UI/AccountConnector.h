@@ -13,13 +13,12 @@ class CAccountConnector : public CNetworkStream, public CSingleton<CAccountConne
         STATE_AUTH,
     };
 
-  public:
     CAccountConnector();
-    virtual ~CAccountConnector();
+    ~CAccountConnector() override;
 
     void SetHandler(PyObject *poHandler);
     void SetLoginInfo(const char *c_szName, const char *c_szPwd);
-    void ClearLoginInfo(void);
+    void ClearLoginInfo();
 
     bool SendChinaMatrixCardPacket(const char *c_szMatrixCardString);
     bool SendRunupMatrixCardPacket(const char *c_szMatrixCardString);
@@ -30,12 +29,11 @@ class CAccountConnector : public CNetworkStream, public CSingleton<CAccountConne
     void Process();
 
   protected:
-    void OnConnectFailure();
-    void OnConnectSuccess();
-    void OnRemoteDisconnect();
-    void OnDisconnect();
+    void OnConnectFailure() override;
+    void OnConnectSuccess() override;
+    void OnRemoteDisconnect() override;
+    void OnDisconnect() override;
 
-  protected:
     void __Inialize();
     bool __StateProcess();
 
@@ -65,14 +63,13 @@ class CAccountConnector : public CNetworkStream, public CSingleton<CAccountConne
     // 제대로 하려면  Packet System Refactoring해야 한다.
     bool __AnalyzeVarSizePacket(UINT uHeader, bool (CAccountConnector::*pfnDispatchPacket)(int));
 
-  protected:
-    UINT m_eState;
+    UINT m_eState = 0U;
     std::string m_strID;
     std::string m_strPassword;
 
     std::string m_strAddr;
     int m_iPort;
-    BOOL m_isWaitKey;
+    BOOL m_isWaitKey = 0;
 
     PyObject *m_poHandler;
 

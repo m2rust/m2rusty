@@ -7,7 +7,7 @@ class CGuildMarkDownloader : public CNetworkStream, public CSingleton<CGuildMark
 {
   public:
     CGuildMarkDownloader();
-    virtual ~CGuildMarkDownloader();
+    ~CGuildMarkDownloader() override;
 
     bool Connect(const CNetworkAddress &c_rkNetAddr, DWORD dwHandle, DWORD dwRandomKey);
     bool ConnectToRecvSymbol(const CNetworkAddress &c_rkNetAddr, DWORD dwHandle, DWORD dwRandomKey,
@@ -30,11 +30,10 @@ class CGuildMarkDownloader : public CNetworkStream, public CSingleton<CGuildMark
         TODO_RECV_SYMBOL,
     };
 
-  private:
-    void OnConnectFailure();
-    void OnConnectSuccess();
-    void OnRemoteDisconnect();
-    void OnDisconnect();
+    void OnConnectFailure() override;
+    void OnConnectSuccess() override;
+    void OnRemoteDisconnect() override;
+    void OnDisconnect() override;
 
     void __Initialize();
     bool __StateProcess();
@@ -57,20 +56,19 @@ class CGuildMarkDownloader : public CNetworkStream, public CSingleton<CGuildMark
     bool __SendMarkCRCList();
     bool __SendSymbolCRCList();
 
-  private:
-    DWORD m_dwHandle;
-    DWORD m_dwRandomKey;
-    DWORD m_dwTodo;
+    DWORD m_dwHandle = 0U;
+    DWORD m_dwRandomKey = 0U;
+    DWORD m_dwTodo = 0U;
 
     std::vector<DWORD> m_kVec_dwGuildID;
 
-    UINT m_eState;
+    UINT m_eState = 0U;
 
-    BYTE m_currentRequestingImageIndex;
+    BYTE m_currentRequestingImageIndex = 0U;
 
-    CGuildMarkManager *m_pkMarkMgr;
+    CGuildMarkManager *m_pkMarkMgr = nullptr;
 
-    DWORD m_dwBlockIndex;
-    DWORD m_dwBlockDataSize;
-    DWORD m_dwBlockDataPos;
+    DWORD m_dwBlockIndex = 0U;
+    DWORD m_dwBlockDataSize = 0U;
+    DWORD m_dwBlockDataPos = 0U;
 };

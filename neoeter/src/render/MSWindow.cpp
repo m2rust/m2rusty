@@ -11,16 +11,16 @@
 #define GL_LOWER_LEFT 0x8CA1
 #endif
 
-SDL_Window *CMSWindow::ms_pSDLWindow = NULL;
-SDL_Renderer *CMSWindow::ms_pSDLRenderer = NULL;
-SDL_GLContext CMSWindow::ms_pGLContext = NULL;
+SDL_Window *CMSWindow::ms_pSDLWindow = nullptr;
+SDL_Renderer *CMSWindow::ms_pSDLRenderer = nullptr;
+SDL_GLContext CMSWindow::ms_pGLContext = nullptr;
 
 static void *SDLGetProcAddress(const char *name)
 {
-    return (void *)SDL_GL_GetProcAddress(name);
+    return SDL_GL_GetProcAddress(name);
 }
 
-HINSTANCE CMSWindow::ms_hInstance = NULL;
+HINSTANCE CMSWindow::ms_hInstance = nullptr;
 
 LRESULT
 CMSWindow::WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam)
@@ -64,20 +64,20 @@ void CMSWindow::Destroy()
     if (ms_pGLContext)
     {
         SDL_GL_DeleteContext(ms_pGLContext);
-        ms_pGLContext = NULL;
+        ms_pGLContext = nullptr;
     }
     if (ms_pSDLRenderer)
     {
         SDL_DestroyRenderer(ms_pSDLRenderer);
-        ms_pSDLRenderer = NULL;
+        ms_pSDLRenderer = nullptr;
     }
     if (ms_pSDLWindow)
     {
         SDL_DestroyWindow(ms_pSDLWindow);
-        ms_pSDLWindow = NULL;
+        ms_pSDLWindow = nullptr;
     }
 
-    m_hWnd = NULL;
+    m_hWnd = nullptr;
     m_isVisible = false;
 }
 
@@ -106,7 +106,7 @@ bool CMSWindow::Create(const char *c_szName, int /*brush*/, DWORD /*cs*/, DWORD 
 
     Uint32 windowFlags = SDL_WINDOW_SHOWN;
 
-#if defined(OPENMT2_RENDERER_GL)
+#ifdef OPENMT2_RENDERER_GL
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
@@ -132,7 +132,7 @@ bool CMSWindow::Create(const char *c_szName, int /*brush*/, DWORD /*cs*/, DWORD 
     SDL_SetWindowSize(ms_pSDLWindow, width, height);
     SDL_SetWindowPosition(ms_pSDLWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
-#if defined(OPENMT2_RENDERER_GL)
+#ifdef OPENMT2_RENDERER_GL
     ms_pGLContext = SDL_GL_CreateContext(ms_pSDLWindow);
     if (!ms_pGLContext)
     {
@@ -149,8 +149,8 @@ bool CMSWindow::Create(const char *c_szName, int /*brush*/, DWORD /*cs*/, DWORD 
                        "entry points\n");
         }
 
-        typedef void (*PFNGLCLIPCONTROLPROC)(GLenum origin, GLenum depth);
-        PFNGLCLIPCONTROLPROC pfnClipControl = (PFNGLCLIPCONTROLPROC)SDL_GL_GetProcAddress("glClipControl");
+        using PFNGLCLIPCONTROLPROC = void (*)(GLenum origin, GLenum depth);
+        auto pfnClipControl = reinterpret_cast<PFNGLCLIPCONTROLPROC>(SDL_GL_GetProcAddress("glClipControl"));
         if (pfnClipControl)
         {
             // Direct3D 9 depth range [0, 1] natively handled by OpenGL clipping
@@ -190,9 +190,13 @@ void CMSWindow::SetVisibleMode(bool isVisible)
     if (ms_pSDLWindow)
     {
         if (isVisible)
+        {
             SDL_ShowWindow(ms_pSDLWindow);
+        }
         else
+        {
             SDL_HideWindow(ms_pSDLWindow);
+        }
     }
 }
 
@@ -210,12 +214,12 @@ void CMSWindow::Hide()
         SDL_HideWindow(ms_pSDLWindow);
 }
 
-bool CMSWindow::IsVisible()
+bool CMSWindow::IsVisible() const
 {
     return m_isVisible;
 }
 
-bool CMSWindow::IsActive()
+bool CMSWindow::IsActive() const
 {
     return m_isActive;
 }
@@ -250,7 +254,10 @@ void CMSWindow::GetWindowRect(RECT *prc)
 {
     if (ms_pSDLWindow && prc)
     {
-        int x = 0, y = 0, w = 0, h = 0;
+        int x = 0;
+        int y = 0;
+        int w = 0;
+        int h = 0;
         SDL_GetWindowPosition(ms_pSDLWindow, &x, &y);
         SDL_GetWindowSize(ms_pSDLWindow, &w, &h);
         prc->left = x;
@@ -264,7 +271,8 @@ void CMSWindow::GetClientRect(RECT *prc)
 {
     if (ms_pSDLWindow && prc)
     {
-        int w = 0, h = 0;
+        int w = 0;
+        int h = 0;
         SDL_GetWindowSize(ms_pSDLWindow, &w, &h);
         prc->left = 0;
         prc->top = 0;
@@ -277,7 +285,8 @@ void CMSWindow::GetMousePosition(POINT *ppt)
 {
     if (ppt)
     {
-        int x = 0, y = 0;
+        int x = 0;
+        int y = 0;
         SDL_GetMouseState(&x, &y);
         ppt->x = x;
         ppt->y = y;
@@ -296,8 +305,8 @@ void CMSWindow::SetCenterPosition()
 
     GetClientRect(&rc);
 
-    int windowWidth = rc.right - rc.left;
-    int windowHeight = rc.bottom - rc.top;
+    int const windowWidth = rc.right - rc.left;
+    int const windowHeight = rc.bottom - rc.top;
 
     SetPosition((GetScreenWidth() - windowWidth) / 2, (GetScreenHeight() - windowHeight) / 2);
 }
@@ -336,13 +345,8 @@ void CMSWindow::SetSize(int width, int height)
     SetRect(&m_rect, 0, 0, width, height);
 }
 
-CMSWindow::CMSWindow()
+CMSWindow::CMSWindow() : m_hWnd(nullptr), m_isActive(true), m_isVisible(false)
 {
-    m_hWnd = NULL;
-    m_isVisible = false;
-    m_isActive = true;
 }
 
-CMSWindow::~CMSWindow()
-{
-}
+CMSWindow::~CMSWindow() = default;

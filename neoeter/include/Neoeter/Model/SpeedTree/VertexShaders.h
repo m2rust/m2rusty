@@ -10,9 +10,9 @@ static DWORD D3DFVF_SPEEDTREE_BRANCH_VERTEX =
 struct SFVFBranchVertex
 {
     D3DXVECTOR3 m_vPosition;
-    DWORD m_dwDiffuseColor;
-    FLOAT m_fTexCoords[2];
-    FLOAT m_fShadowCoords[2];
+    DWORD m_dwDiffuseColor = 0U;
+    FLOAT m_fTexCoords[2]{};
+    FLOAT m_fShadowCoords[2]{};
 };
 
 static const char g_achSimpleVertexProgram[] = {"vs.1.1\n"
@@ -39,7 +39,7 @@ static const char g_achSimpleVertexProgram[] = {"vs.1.1\n"
 inline LPDIRECT3DVERTEXSHADER9 LoadBranchShader(LPDIRECT3DDEVICE9 pDx)
 {
     UNREFERENCED_PARAMETER(pDx);
-    return NULL;
+    return nullptr;
 }
 
 static DWORD D3DFVF_SPEEDTREE_LEAF_VERTEX = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEXCOORDSIZE2(0) |
@@ -48,8 +48,8 @@ static DWORD D3DFVF_SPEEDTREE_LEAF_VERTEX = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF
 struct SFVFLeafVertex
 {
     D3DXVECTOR3 m_vPosition;
-    DWORD m_dwDiffuseColor;
-    FLOAT m_fTexCoords[2];
+    DWORD m_dwDiffuseColor = 0U;
+    FLOAT m_fTexCoords[2]{};
 };
 
 static const char g_achLeafVertexProgram[] = {"vs.1.1\n"
@@ -73,7 +73,7 @@ static const char g_achLeafVertexProgram[] = {"vs.1.1\n"
 
 inline LPDIRECT3DVERTEXSHADER9 LoadLeafShader(LPDIRECT3DDEVICE9 pDx)
 {
-    LPDIRECT3DVERTEXSHADER9 dwShader = NULL;
+    LPDIRECT3DVERTEXSHADER9 dwShader = nullptr;
     return dwShader;
 }
 static DWORD D3DFVF_SPEEDTREE_BILLBOARD_VERTEX = D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1;

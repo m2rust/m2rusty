@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <utility>
 
 #if __has_include(<Neoeter/Platform/Base/MappedFile.h>)
 #include <Neoeter/Platform/Base/Debug.h>
@@ -41,21 +42,21 @@
 #endif
 
 #pragma pack(push, 1)
-typedef struct _DDCOLORKEY_COMPAT
+using DDCOLORKEY_COMPAT = struct _DDCOLORKEY_COMPAT
 {
     DWORD dwColorSpaceLowValue;
     DWORD dwColorSpaceHighValue;
-} DDCOLORKEY_COMPAT;
+};
 
-typedef struct _DDSCAPS2_COMPAT
+using DDSCAPS2_COMPAT = struct _DDSCAPS2_COMPAT
 {
     DWORD dwCaps;
     DWORD dwCaps2;
     DWORD dwCaps3;
     DWORD dwCaps4;
-} DDSCAPS2_COMPAT;
+};
 
-typedef struct _DDSURFACEDESC2_COMPAT
+using DDSURFACEDESC2 = struct _DDSURFACEDESC2_COMPAT
 {
     DWORD dwSize;
     DWORD dwFlags;
@@ -83,7 +84,7 @@ typedef struct _DDSURFACEDESC2_COMPAT
     XDDPIXELFORMAT ddpfPixelFormat;
     DDSCAPS2_COMPAT ddsCaps;
     DWORD dwTextureStage;
-} DDSURFACEDESC2;
+};
 #pragma pack(pop)
 
 static_assert(sizeof(DDSURFACEDESC2) == 124, "DDSURFACEDESC2 must be exactly 124 bytes to match on-disk DDS "
@@ -139,23 +140,21 @@ CDXTCImage::CDXTCImage()
     Initialize();
 }
 
-CDXTCImage::~CDXTCImage()
-{
-}
+CDXTCImage::~CDXTCImage() = default;
 
 void CDXTCImage::Initialize()
 {
     m_nWidth = 0;
     m_nHeight = 0;
 
-    for (int i = 0; i < MAX_MIPLEVELS; ++i)
-        m_pbCompBufferByLevels[i] = NULL;
+    for (auto &m_pbCompBufferByLevel : m_pbCompBufferByLevels)
+        m_pbCompBufferByLevel = nullptr;
 }
 
 void CDXTCImage::Clear()
 {
-    for (int i = 0; i < MAX_MIPLEVELS; ++i)
-        m_bCompVector[i].clear();
+    for (auto &i : m_bCompVector)
+        i.clear();
 
     Initialize();
 }
@@ -165,7 +164,7 @@ bool CDXTCImage::LoadHeaderFromMemory(const BYTE *c_pbMap, int iSize)
     //////////////////////////////////////
     // start reading the file
     // from Microsoft's mssdk D3DIM example "Compress"
-    DWORD dwMagic;
+    DWORD dwMagic = 0;
 
     // Read magic number
     if (iSize < static_cast<int>(sizeof(DWORD)))
@@ -248,8 +247,10 @@ bool CDXTCImage::LoadHeaderFromMemory(const BYTE *c_pbMap, int iSize)
 bool CDXTCImage::Copy(int miplevel, BYTE *pbDest, long lDestPitch)
 {
     if (!(m_dwFlags & DDSD_MIPMAPCOUNT))
+    {
         if (miplevel)
             return false;
+    }
 
     memcpy(pbDest, m_pbCompBufferByLevels[miplevel], m_lPitch >> (miplevel * 2));
     pbDest += lDestPitch;
@@ -261,14 +262,14 @@ void CDXTCImage::Unextract(BYTE *pbDest, int /*iWidth*/, int /*iHeight*/, int iP
     if (!m_pbCompBufferByLevels[0])
         return;
 
-    DXTColBlock *pBlock;
-    BYTE *pPos = (BYTE *)&m_pbCompBufferByLevels[0][0];
-    int xblocks = m_nWidth / 4;
-    int yblocks = (m_nHeight / 4) * ((iPitch / m_nWidth) / 2);
+    DXTColBlock *pBlock = nullptr;
+    BYTE *pPos = const_cast<BYTE *>(&m_pbCompBufferByLevels[0][0]);
+    int const xblocks = m_nWidth / 4;
+    int const yblocks = (m_nHeight / 4) * ((iPitch / m_nWidth) / 2);
 
     for (int y = 0; y < yblocks; ++y)
     {
-        pBlock = (DXTColBlock *)(pPos + y * xblocks * 8);
+        pBlock = reinterpret_cast<DXTColBlock *>(pPos + (y * xblocks * 8));
 
         memcpy(pbDest, pBlock, xblocks * 8);
         pbDest += xblocks * 8;
@@ -304,7 +305,7 @@ void CDXTCImage::Decompress(int miplevel, DWORD *pdwDest)
 
 inline DWORD Color8888ToDWORD(const Color8888 &col)
 {
-    DWORD dw;
+    DWORD dw = 0;
     memcpy(&dw, &col, sizeof(DWORD));
     return dw;
 }
@@ -312,42 +313,43 @@ inline DWORD Color8888ToDWORD(const Color8888 &col)
 inline void GetColorBlockColors(DXTColBlock *pBlock, Color8888 *col_0, Color8888 *col_1, Color8888 *col_2,
                                 Color8888 *col_3, WORD &wrd)
 {
-    WORD rawCol0, rawCol1;
+    WORD rawCol0 = 0;
+    WORD rawCol1 = 0;
     memcpy(&rawCol0, &pBlock->col0, sizeof(WORD));
     memcpy(&rawCol1, &pBlock->col1, sizeof(WORD));
 
     col_0->a = 0xff;
-    col_0->r = (BYTE)(((rawCol0 >> 11) & 0x1f) << 3); // shift to full precision
-    col_0->g = (BYTE)(((rawCol0 >> 5) & 0x3f) << 2);
-    col_0->b = (BYTE)((rawCol0 & 0x1f) << 3);
+    col_0->r = static_cast<BYTE>(((rawCol0 >> 11) & 0x1f) << 3); // shift to full precision
+    col_0->g = static_cast<BYTE>(((rawCol0 >> 5) & 0x3f) << 2);
+    col_0->b = static_cast<BYTE>((rawCol0 & 0x1f) << 3);
 
     col_1->a = 0xff;
-    col_1->r = (BYTE)(((rawCol1 >> 11) & 0x1f) << 3); // shift to full precision
-    col_1->g = (BYTE)(((rawCol1 >> 5) & 0x3f) << 2);
-    col_1->b = (BYTE)((rawCol1 & 0x1f) << 3);
+    col_1->r = static_cast<BYTE>(((rawCol1 >> 11) & 0x1f) << 3); // shift to full precision
+    col_1->g = static_cast<BYTE>(((rawCol1 >> 5) & 0x3f) << 2);
+    col_1->b = static_cast<BYTE>((rawCol1 & 0x1f) << 3);
 
     if (rawCol0 > rawCol1)
     {
         // Four-color block: derive the other two colors.
         // 00 = color_0, 01 = color_1, 10 = color_2, 11 = color_3
-        wrd = (WORD)(((WORD)col_0->r * 2 + (WORD)col_1->r) / 3);
-        col_2->r = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->r) * 2 + static_cast<WORD>(col_1->r)) / 3);
+        col_2->r = static_cast<BYTE>(wrd);
 
-        wrd = (WORD)(((WORD)col_0->g * 2 + (WORD)col_1->g) / 3);
-        col_2->g = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->g) * 2 + static_cast<WORD>(col_1->g)) / 3);
+        col_2->g = static_cast<BYTE>(wrd);
 
-        wrd = (WORD)(((WORD)col_0->b * 2 + (WORD)col_1->b) / 3);
-        col_2->b = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->b) * 2 + static_cast<WORD>(col_1->b)) / 3);
+        col_2->b = static_cast<BYTE>(wrd);
         col_2->a = 0xff;
 
-        wrd = (WORD)(((WORD)col_0->r + (WORD)col_1->r * 2) / 3);
-        col_3->r = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->r) + static_cast<WORD>(col_1->r) * 2) / 3);
+        col_3->r = static_cast<BYTE>(wrd);
 
-        wrd = (WORD)(((WORD)col_0->g + (WORD)col_1->g * 2) / 3);
-        col_3->g = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->g) + static_cast<WORD>(col_1->g) * 2) / 3);
+        col_3->g = static_cast<BYTE>(wrd);
 
-        wrd = (WORD)(((WORD)col_0->b + (WORD)col_1->b * 2) / 3);
-        col_3->b = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->b) + static_cast<WORD>(col_1->b) * 2) / 3);
+        col_3->b = static_cast<BYTE>(wrd);
         col_3->a = 0xff;
     }
     else
@@ -355,12 +357,12 @@ inline void GetColorBlockColors(DXTColBlock *pBlock, Color8888 *col_0, Color8888
         // Three-color block: derive the other color.
         // 00 = color_0,  01 = color_1,  10 = color_2,
         // 11 = transparent.
-        wrd = (WORD)(((WORD)col_0->r + (WORD)col_1->r) / 2);
-        col_2->r = (BYTE)wrd;
-        wrd = (WORD)(((WORD)col_0->g + (WORD)col_1->g) / 2);
-        col_2->g = (BYTE)wrd;
-        wrd = (WORD)(((WORD)col_0->b + (WORD)col_1->b) / 2);
-        col_2->b = (BYTE)wrd;
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->r) + static_cast<WORD>(col_1->r)) / 2);
+        col_2->r = static_cast<BYTE>(wrd);
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->g) + static_cast<WORD>(col_1->g)) / 2);
+        col_2->g = static_cast<BYTE>(wrd);
+        wrd = static_cast<WORD>((static_cast<WORD>(col_0->b) + static_cast<WORD>(col_1->b)) / 2);
+        col_2->b = static_cast<BYTE>(wrd);
         col_2->a = 0xff;
 
         col_3->r = 0x00; // random color to indicate alpha
@@ -374,10 +376,14 @@ inline void DecodeColorBlock(DWORD *pImPos, DXTColBlock *pColorBlock, int width,
                              DWORD *col_2, DWORD *col_3)
 {
     // width is width of image in pixels
-    DWORD bits;
-    int y, n;
+    DWORD bits = 0;
+    int y = 0;
+    int n = 0;
 
-    DWORD c0, c1, c2, c3;
+    DWORD c0 = 0;
+    DWORD c1 = 0;
+    DWORD c2 = 0;
+    DWORD c3 = 0;
     memcpy(&c0, col_0, sizeof(DWORD));
     memcpy(&c1, col_1, sizeof(DWORD));
     memcpy(&c2, col_2, sizeof(DWORD));
@@ -430,11 +436,12 @@ inline void DecodeColorBlock(DWORD *pImPos, DXTColBlock *pColorBlock, int width,
 inline void DecodeAlphaExplicit(DWORD *pImPos, DXTAlphaBlockExplicit *pAlphaBlock, int width, DWORD alphazero)
 {
     // decodes to 32 bit format only
-    int row, pix;
+    int row = 0;
+    int pix = 0;
 
-    WORD wrd;
+    WORD wrd = 0;
 
-    Color8888 col;
+    Color8888 col{};
     col.r = col.g = col.b = 0;
 
     for (row = 0; row < 4; row++, pImPos += width - 4)
@@ -446,8 +453,8 @@ inline void DecodeAlphaExplicit(DWORD *pImPos, DXTAlphaBlockExplicit *pAlphaBloc
             // zero the alpha bits of image pixel
             *pImPos &= alphazero;
 
-            col.a = (BYTE)(wrd & 0x000f);         // get only low 4 bits
-            col.a = (BYTE)(col.a | (col.a << 4)); // This allows max 4 bit alpha to be 0xff alpha
+            col.a = static_cast<BYTE>(wrd & 0x000f);         // get only low 4 bits
+            col.a = static_cast<BYTE>(col.a | (col.a << 4)); // This allows max 4 bit alpha to be 0xff alpha
 
             *pImPos |= Color8888ToDWORD(col); // or the bits into the prev. nulled alpha
 
@@ -472,23 +479,23 @@ inline void DecodeAlpha3BitLinear(DWORD *pImPos, DXTAlphaBlock3BitLinear *pAlpha
     {
         // 8-alpha block:  derive the other 6 alphas.
         // 000 = alpha_0, 001 = alpha_1, others are interpolated
-        gAlphas[2] = (WORD)((6 * gAlphas[0] + gAlphas[1]) / 7);     // Bit code 010
-        gAlphas[3] = (WORD)((5 * gAlphas[0] + 2 * gAlphas[1]) / 7); // Bit code 011
-        gAlphas[4] = (WORD)((4 * gAlphas[0] + 3 * gAlphas[1]) / 7); // Bit code 100
-        gAlphas[5] = (WORD)((3 * gAlphas[0] + 4 * gAlphas[1]) / 7); // Bit code 101
-        gAlphas[6] = (WORD)((2 * gAlphas[0] + 5 * gAlphas[1]) / 7); // Bit code 110
-        gAlphas[7] = (WORD)((gAlphas[0] + 6 * gAlphas[1]) / 7);     // Bit code 111
+        gAlphas[2] = static_cast<WORD>((6 * gAlphas[0] + gAlphas[1]) / 7);     // Bit code 010
+        gAlphas[3] = static_cast<WORD>((5 * gAlphas[0] + 2 * gAlphas[1]) / 7); // Bit code 011
+        gAlphas[4] = static_cast<WORD>((4 * gAlphas[0] + 3 * gAlphas[1]) / 7); // Bit code 100
+        gAlphas[5] = static_cast<WORD>((3 * gAlphas[0] + 4 * gAlphas[1]) / 7); // Bit code 101
+        gAlphas[6] = static_cast<WORD>((2 * gAlphas[0] + 5 * gAlphas[1]) / 7); // Bit code 110
+        gAlphas[7] = static_cast<WORD>((gAlphas[0] + 6 * gAlphas[1]) / 7);     // Bit code 111
     }
     else
     {
         // 6-alpha block:  derive the other alphas.
         // 000 = alpha_0, 001 = alpha_1, others are interpolated
-        gAlphas[2] = (WORD)((4 * gAlphas[0] + gAlphas[1]) / 5);     // Bit code 010
-        gAlphas[3] = (WORD)((3 * gAlphas[0] + 2 * gAlphas[1]) / 5); // Bit code 011
-        gAlphas[4] = (WORD)((2 * gAlphas[0] + 3 * gAlphas[1]) / 5); // Bit code 100
-        gAlphas[5] = (WORD)((gAlphas[0] + 4 * gAlphas[1]) / 5);     // Bit code 101
-        gAlphas[6] = 0;                                             // Bit code 110
-        gAlphas[7] = 255;                                           // Bit code 111
+        gAlphas[2] = static_cast<WORD>((4 * gAlphas[0] + gAlphas[1]) / 5);     // Bit code 010
+        gAlphas[3] = static_cast<WORD>((3 * gAlphas[0] + 2 * gAlphas[1]) / 5); // Bit code 011
+        gAlphas[4] = static_cast<WORD>((2 * gAlphas[0] + 3 * gAlphas[1]) / 5); // Bit code 100
+        gAlphas[5] = static_cast<WORD>((gAlphas[0] + 4 * gAlphas[1]) / 5);     // Bit code 101
+        gAlphas[6] = 0;                                                        // Bit code 110
+        gAlphas[7] = 255;                                                      // Bit code 111
     }
 
     // Decode 3-bit fields into array of 16 BYTES with same value
@@ -496,50 +503,51 @@ inline void DecodeAlpha3BitLinear(DWORD *pImPos, DXTAlphaBlock3BitLinear *pAlpha
     DWORD bits = 0;
     memcpy(&bits, &(pAlphaBlock->stuff[0]), 3);
 
-    gBits[0][0] = (BYTE)(bits & mask);
+    gBits[0][0] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[0][1] = (BYTE)(bits & mask);
+    gBits[0][1] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[0][2] = (BYTE)(bits & mask);
+    gBits[0][2] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[0][3] = (BYTE)(bits & mask);
+    gBits[0][3] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[1][0] = (BYTE)(bits & mask);
+    gBits[1][0] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[1][1] = (BYTE)(bits & mask);
+    gBits[1][1] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[1][2] = (BYTE)(bits & mask);
+    gBits[1][2] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[1][3] = (BYTE)(bits & mask);
+    gBits[1][3] = static_cast<BYTE>(bits & mask);
 
     // now for last two rows:
     bits = 0;
     memcpy(&bits, &(pAlphaBlock->stuff[3]), 3); // last 3 bytes
 
-    gBits[2][0] = (BYTE)(bits & mask);
+    gBits[2][0] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[2][1] = (BYTE)(bits & mask);
+    gBits[2][1] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[2][2] = (BYTE)(bits & mask);
+    gBits[2][2] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[2][3] = (BYTE)(bits & mask);
+    gBits[2][3] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[3][0] = (BYTE)(bits & mask);
+    gBits[3][0] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[3][1] = (BYTE)(bits & mask);
+    gBits[3][1] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[3][2] = (BYTE)(bits & mask);
+    gBits[3][2] = static_cast<BYTE>(bits & mask);
     bits >>= 3;
-    gBits[3][3] = (BYTE)(bits & mask);
+    gBits[3][3] = static_cast<BYTE>(bits & mask);
 
     // decode the codes into alpha values
-    int row, pix;
+    int row = 0;
+    int pix = 0;
 
     for (row = 0; row < 4; ++row)
     {
         for (pix = 0; pix < 4; ++pix)
         {
-            gACol[row][pix].a = (BYTE)gAlphas[gBits[row][pix]];
+            gACol[row][pix].a = static_cast<BYTE>(gAlphas[gBits[row][pix]]);
 
             assert(gACol[row][pix].r == 0);
             assert(gACol[row][pix].g == 0);
@@ -562,83 +570,95 @@ inline void DecodeAlpha3BitLinear(DWORD *pImPos, DXTAlphaBlock3BitLinear *pAlpha
 
 void CDXTCImage::DecompressDXT1(int miplevel, DWORD *pdwDest)
 {
-    int xblocks, yblocks;
-    UINT nWidth = m_nWidth >> miplevel;
-    UINT nHeight = m_nHeight >> miplevel;
+    int xblocks = 0;
+    int yblocks = 0;
+    UINT const nWidth = m_nWidth >> miplevel;
+    UINT const nHeight = m_nHeight >> miplevel;
 
     xblocks = nWidth / 4;
     yblocks = nHeight / 4;
 
-    int x, y;
-    DWORD *pBase = (DWORD *)pdwDest;
-    WORD *pPos = (WORD *)&m_bCompVector[miplevel][0]; // pos in compressed data
-    DWORD *pImPos;
+    int x = 0;
+    int y = 0;
+    auto *pBase = pdwDest;
+    WORD *pPos = reinterpret_cast<WORD *>(m_bCompVector[miplevel].data()); // pos in compressed data
+    DWORD *pImPos = nullptr;
 
-    DXTColBlock *pBlock;
+    DXTColBlock *pBlock = nullptr;
 
-    Color8888 col_0, col_1, col_2, col_3;
-    WORD wrd;
+    Color8888 col_0{};
+    Color8888 col_1{};
+    Color8888 col_2{};
+    Color8888 col_3{};
+    WORD wrd = 0;
 
     for (y = 0; y < yblocks; ++y)
     {
         // 8 bytes per block
-        pBlock = (DXTColBlock *)((uintptr_t)pPos + y * xblocks * 8);
+        pBlock = (DXTColBlock *)((uintptr_t)pPos + (y * xblocks * 8));
 
         for (x = 0; x < xblocks; ++x, ++pBlock)
         {
             GetColorBlockColors(pBlock, &col_0, &col_1, &col_2, &col_3, wrd);
 
-            pImPos = (DWORD *)((uintptr_t)pBase + x * 16 + (y * 4) * nWidth * 4);
-            DecodeColorBlock(pImPos, pBlock, nWidth, (DWORD *)&col_0, (DWORD *)&col_1, (DWORD *)&col_2,
-                             (DWORD *)&col_3);
+            pImPos = (DWORD *)((uintptr_t)pBase + (x * 16) + ((y * 4) * nWidth * 4));
+            DecodeColorBlock(pImPos, pBlock, nWidth, reinterpret_cast<DWORD *>(&col_0),
+                             reinterpret_cast<DWORD *>(&col_1), reinterpret_cast<DWORD *>(&col_2),
+                             reinterpret_cast<DWORD *>(&col_3));
         }
     }
 }
 
 void CDXTCImage::DecompressDXT3(int miplevel, DWORD *pdwDest)
 {
-    int xblocks, yblocks;
-    UINT nWidth = m_nWidth >> miplevel;
-    UINT nHeight = m_nHeight >> miplevel;
+    int xblocks = 0;
+    int yblocks = 0;
+    UINT const nWidth = m_nWidth >> miplevel;
+    UINT const nHeight = m_nHeight >> miplevel;
 
     xblocks = nWidth / 4;
     yblocks = nHeight / 4;
 
-    int x, y;
-    DWORD *pBase = (DWORD *)pdwDest;
-    WORD *pPos = (WORD *)&m_bCompVector[miplevel][0]; // pos in compressed data
-    DWORD *pImPos;                                    // pos in decompressed data
+    int x = 0;
+    int y = 0;
+    auto *pBase = pdwDest;
+    WORD *pPos = reinterpret_cast<WORD *>(m_bCompVector[miplevel].data()); // pos in compressed data
+    DWORD *pImPos = nullptr;                                               // pos in decompressed data
 
-    DXTColBlock *pBlock;
-    DXTAlphaBlockExplicit *pAlphaBlock;
+    DXTColBlock *pBlock = nullptr;
+    DXTAlphaBlockExplicit *pAlphaBlock = nullptr;
 
-    Color8888 col_0, col_1, col_2, col_3;
-    WORD wrd;
+    Color8888 col_0{};
+    Color8888 col_1{};
+    Color8888 col_2{};
+    Color8888 col_3{};
+    WORD wrd = 0;
 
     col_0.a = 0;
     col_0.r = col_0.g = col_0.b = 0xff;
 
-    DWORD alphazero = Color8888ToDWORD(col_0);
+    DWORD const alphazero = Color8888ToDWORD(col_0);
 
     for (y = 0; y < yblocks; ++y)
     {
         // 16 bytes per block (8 alpha + 8 color)
-        pBlock = (DXTColBlock *)((uintptr_t)(pPos + y * xblocks * 8));
+        pBlock = (DXTColBlock *)((uintptr_t)(pPos + (y * xblocks * 8)));
 
         for (x = 0; x < xblocks; ++x, ++pBlock)
         {
             // Get alpha block
-            pAlphaBlock = (DXTAlphaBlockExplicit *)pBlock;
+            pAlphaBlock = reinterpret_cast<DXTAlphaBlockExplicit *>(pBlock);
 
             // Get color block & colors
             pBlock++;
             GetColorBlockColors(pBlock, &col_0, &col_1, &col_2, &col_3, wrd);
 
             // Decode the color block into the bitmap bits
-            pImPos = (DWORD *)((uintptr_t)pBase + x * 16 + (y * 4) * nWidth * 4);
+            pImPos = (DWORD *)((uintptr_t)pBase + (x * 16) + ((y * 4) * nWidth * 4));
 
-            DecodeColorBlock(pImPos, pBlock, nWidth, (DWORD *)&col_0, (DWORD *)&col_1, (DWORD *)&col_2,
-                             (DWORD *)&col_3);
+            DecodeColorBlock(pImPos, pBlock, nWidth, reinterpret_cast<DWORD *>(&col_0),
+                             reinterpret_cast<DWORD *>(&col_1), reinterpret_cast<DWORD *>(&col_2),
+                             reinterpret_cast<DWORD *>(&col_3));
 
             // Overwrite the previous alpha bits with the alpha block info
             DecodeAlphaExplicit(pImPos, pAlphaBlock, nWidth, alphazero);
@@ -648,38 +668,43 @@ void CDXTCImage::DecompressDXT3(int miplevel, DWORD *pdwDest)
 
 void CDXTCImage::DecompressDXT5(int level, DWORD *pdwDest)
 {
-    int xblocks, yblocks;
-    UINT nWidth = m_nWidth >> level;
-    UINT nHeight = m_nHeight >> level;
+    int xblocks = 0;
+    int yblocks = 0;
+    UINT const nWidth = m_nWidth >> level;
+    UINT const nHeight = m_nHeight >> level;
 
     xblocks = nWidth / 4;
     yblocks = nHeight / 4;
 
-    int x, y;
+    int x = 0;
+    int y = 0;
 
-    DWORD *pBase = (DWORD *)pdwDest;
-    WORD *pPos = (WORD *)&m_bCompVector[level][0]; // pos in compressed data
-    DWORD *pImPos;                                 // pos in decompressed data
+    auto *pBase = pdwDest;
+    WORD *pPos = reinterpret_cast<WORD *>(m_bCompVector[level].data()); // pos in compressed data
+    DWORD *pImPos = nullptr;                                            // pos in decompressed data
 
-    DXTColBlock *pBlock;
-    DXTAlphaBlock3BitLinear *pAlphaBlock;
+    DXTColBlock *pBlock = nullptr;
+    DXTAlphaBlock3BitLinear *pAlphaBlock = nullptr;
 
-    Color8888 col_0, col_1, col_2, col_3;
-    WORD wrd;
+    Color8888 col_0{};
+    Color8888 col_1{};
+    Color8888 col_2{};
+    Color8888 col_3{};
+    WORD wrd = 0;
 
     col_0.a = 0;
     col_0.r = col_0.g = col_0.b = 0xff;
-    DWORD alphazero = Color8888ToDWORD(col_0);
+    DWORD const alphazero = Color8888ToDWORD(col_0);
 
     for (y = 0; y < yblocks; ++y)
     {
         // 16 bytes per block (8 alpha + 8 color)
-        pBlock = (DXTColBlock *)((uintptr_t)(pPos + y * xblocks * 8));
+        pBlock = (DXTColBlock *)((uintptr_t)(pPos + (y * xblocks * 8)));
 
         for (x = 0; x < xblocks; ++x, ++pBlock)
         {
             // Get alpha block
-            pAlphaBlock = (DXTAlphaBlock3BitLinear *)pBlock;
+            pAlphaBlock = reinterpret_cast<DXTAlphaBlock3BitLinear *>(pBlock);
 
             // Get color block & colors
             pBlock++;
@@ -687,10 +712,11 @@ void CDXTCImage::DecompressDXT5(int level, DWORD *pdwDest)
             GetColorBlockColors(pBlock, &col_0, &col_1, &col_2, &col_3, wrd);
 
             // Decode the color block into the bitmap bits
-            pImPos = (DWORD *)((uintptr_t)pBase + x * 16 + (y * 4) * nWidth * 4);
+            pImPos = (DWORD *)((uintptr_t)pBase + (x * 16) + ((y * 4) * nWidth * 4));
 
-            DecodeColorBlock(pImPos, pBlock, nWidth, (DWORD *)&col_0, (DWORD *)&col_1, (DWORD *)&col_2,
-                             (DWORD *)&col_3);
+            DecodeColorBlock(pImPos, pBlock, nWidth, reinterpret_cast<DWORD *>(&col_0),
+                             reinterpret_cast<DWORD *>(&col_1), reinterpret_cast<DWORD *>(&col_2),
+                             reinterpret_cast<DWORD *>(&col_3));
 
             // Overwrite the previous alpha bits with the alpha block info
             DecodeAlpha3BitLinear(pImPos, pAlphaBlock, nWidth, alphazero);
@@ -700,13 +726,13 @@ void CDXTCImage::DecompressDXT5(int level, DWORD *pdwDest)
 
 void CDXTCImage::DecompressARGB(int level, DWORD *pdwDest)
 {
-    UINT lPitch = m_lPitch >> (level * 2);
-    memcpy(pdwDest, &m_bCompVector[level][0], lPitch);
+    UINT const lPitch = m_lPitch >> (level * 2);
+    memcpy(pdwDest, m_bCompVector[level].data(), lPitch);
 }
 
 static WORD GetNumberOfBits(DWORD dwMask)
 {
-    WORD wBits;
+    WORD wBits = 0;
     for (wBits = 0; dwMask; wBits++)
         dwMask = (dwMask & (dwMask - 1));
 
@@ -719,10 +745,10 @@ VOID CDXTCImage::DecodePixelFormat(CHAR *strPixelFormat, XDDPIXELFORMAT *pxddpf)
     {
     case 0: {
         // This dds texture isn't compressed so write out ARGB format
-        WORD a = GetNumberOfBits(pxddpf->dwRGBAlphaBitMask);
-        WORD r = GetNumberOfBits(pxddpf->dwRBitMask);
-        WORD g = GetNumberOfBits(pxddpf->dwGBitMask);
-        WORD b = GetNumberOfBits(pxddpf->dwBBitMask);
+        WORD const a = GetNumberOfBits(pxddpf->dwRGBAlphaBitMask);
+        WORD const r = GetNumberOfBits(pxddpf->dwRBitMask);
+        WORD const g = GetNumberOfBits(pxddpf->dwGBitMask);
+        WORD const b = GetNumberOfBits(pxddpf->dwBBitMask);
 
         _snprintf(strPixelFormat, 31, "ARGB-%d%d%d%d%s", a, r, g, b,
                   pxddpf->dwBBitMask & DDPF_ALPHAPREMULT ? "-premul" : "");

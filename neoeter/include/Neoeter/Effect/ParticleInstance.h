@@ -20,7 +20,7 @@ class CParticleInstance
     CParticleInstance();
     ~CParticleInstance();
 
-    float GetRadiusApproximation();
+    float GetRadiusApproximation() const;
 
     // Read-only state accessors (used by deterministic effect tests and
     // debug tooling; the simulation still owns the data).
@@ -63,35 +63,35 @@ class CParticleInstance
     D3DXVECTOR2 m_v2HalfSize;
     D3DXVECTOR2 m_v2Scale;
 
-    float m_fRotation;
+    float m_fRotation = 0.0F;
 #ifdef WORLD_EDITOR
     D3DXCOLOR m_Color;
 #else
-    DWORDCOLOR m_dcColor;
+    DWORDCOLOR m_dcColor{};
 #endif
 
-    BYTE m_byTextureAnimationType;
-    float m_fLastFrameTime;
-    BYTE m_byFrameIndex;
+    BYTE m_byTextureAnimationType = 0U;
+    float m_fLastFrameTime = 0.0F;
+    BYTE m_byFrameIndex = 0U;
 
-    float m_fLifeTime;
-    float m_fLastLifeTime;
+    float m_fLifeTime = 0.0F;
+    float m_fLastLifeTime = 0.0F;
 
-    CParticleProperty *m_pParticleProperty;
-    CEmitterProperty *m_pEmitterProperty;
+    CParticleProperty *m_pParticleProperty = nullptr;
+    CEmitterProperty *m_pEmitterProperty = nullptr;
 
-    float m_fAirResistance;
-    float m_fRotationSpeed;
-    float m_fGravity;
+    float m_fAirResistance = 0.0F;
+    float m_fRotationSpeed = 0.0F;
+    float m_fGravity = 0.0F;
 
-    NEffectUpdateDecorator::CBaseDecorator *m_pDecorator;
+    NEffectUpdateDecorator::CBaseDecorator *m_pDecorator = nullptr;
 
   public:
     static CParticleInstance *New();
     static void DestroySystem();
 
-    void Transform(const D3DXMATRIX *c_matLocal = NULL);
-    void Transform(const D3DXMATRIX *c_matLocal, const float c_fZRotation);
+    void Transform(const D3DXMATRIX *c_matLocal = nullptr);
+    void Transform(const D3DXMATRIX *c_matLocal, float c_fZRotation);
 
     TPTVertex *GetParticleMeshPointer();
 

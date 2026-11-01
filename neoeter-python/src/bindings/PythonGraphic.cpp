@@ -3,6 +3,8 @@
 #include <Neoeter/Render/JpegFile.h>
 #include <Neoeter/Python/Bindings/PythonGraphic.h>
 
+#include <algorithm>
+
 bool g_isScreenShotKey = false;
 
 void CPythonGraphic::Destroy()
@@ -14,7 +16,7 @@ LPDIRECT3D9 CPythonGraphic::GetD3D()
     return ms_lpd3d;
 }
 
-float CPythonGraphic::GetOrthoDepth()
+float CPythonGraphic::GetOrthoDepth() const
 {
     return m_fOrthoDepth;
 }
@@ -121,7 +123,8 @@ void CPythonGraphic::SetGamma(float fGammaFactor)
 {
     D3DCAPS9 d3dCaps;
     D3DGAMMARAMP NewRamp;
-    int ui, val;
+    int ui = 0;
+    int val = 0;
 
     ms_lpd3dDevice->GetDeviceCaps(&d3dCaps);
 
@@ -130,7 +133,7 @@ void CPythonGraphic::SetGamma(float fGammaFactor)
 
     for (int i = 0; i < 256; ++i)
     {
-        val = (int)(i * fGammaFactor * 255.0f);
+        val = static_cast<int>(i * fGammaFactor * 255.0f);
         ui = 0;
 
         if (val > 32767)
@@ -139,12 +142,11 @@ void CPythonGraphic::SetGamma(float fGammaFactor)
             ui = 1;
         }
 
-        if (val > 32767)
-            val = 32767;
+        val = std::min(val, 32767);
 
-        NewRamp.red[i] = (WORD)(val | (32768 * ui));
-        NewRamp.green[i] = (WORD)(val | (32768 * ui));
-        NewRamp.blue[i] = (WORD)(val | (32768 * ui));
+        NewRamp.red[i] = static_cast<WORD>(val | (32768 * ui));
+        NewRamp.green[i] = static_cast<WORD>(val | (32768 * ui));
+        NewRamp.blue[i] = static_cast<WORD>(val | (32768 * ui));
     }
 
     ms_lpd3dDevice->SetGammaRamp(0, D3DSGR_NO_CALIBRATION, &NewRamp);
@@ -167,8 +169,8 @@ bool CPythonGraphic::SaveJPEG(const char *pszFileName, LPBYTE pbyBuffer, UINT uW
 
 bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
 {
-    HRESULT hr;
-    LPDIRECT3DSURFACE9 lpSurface;
+    HRESULT hr = 0;
+    LPDIRECT3DSURFACE9 lpSurface = nullptr;
     D3DSURFACE_DESC stSurfaceDesc;
 
     if (FAILED(hr = ms_lpd3dDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &lpSurface)))
@@ -184,8 +186,8 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
         return false;
     }
 
-    UINT uWidth = stSurfaceDesc.Width;
-    UINT uHeight = stSurfaceDesc.Height;
+    UINT const uWidth = stSurfaceDesc.Width;
+    UINT const uHeight = stSurfaceDesc.Height;
 
     switch (stSurfaceDesc.Format)
     {
@@ -209,8 +211,8 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
     }
 
     D3DLOCKED_RECT lockRect;
-    if (FAILED(
-            hr = lpSurface->LockRect(&lockRect, NULL, D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK)))
+    if (FAILED(hr = lpSurface->LockRect(&lockRect, nullptr,
+                                        D3DLOCK_NO_DIRTY_UPDATE | D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK)))
     {
         TraceError("Failed to lock the surface (0x%08x)", hr);
         SAFE_RELEASE(lpSurface);
@@ -218,16 +220,16 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
     }
 
     BYTE *pbyBuffer = new BYTE[uWidth * uHeight * 3];
-    if (pbyBuffer == NULL)
+    if (pbyBuffer == nullptr)
     {
         lpSurface->UnlockRect();
         lpSurface->Release();
-        lpSurface = NULL;
+        lpSurface = nullptr;
         TraceError("Failed to allocate screenshot buffer");
         return false;
     }
-    BYTE *pbySource = (BYTE *)lockRect.pBits;
-    BYTE *pbyDestination = (BYTE *)pbyBuffer;
+    BYTE *pbySource = static_cast<BYTE *>(lockRect.pBits);
+    BYTE *pbyDestination = pbyBuffer;
     for (UINT y = 0; y < uHeight; ++y)
     {
         BYTE *pRow = pbySource;
@@ -256,10 +258,10 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
         case D3DFMT_R5G6B5: {
             for (UINT x = 0; x < uWidth; ++x)
             {
-                UINT uColor = *((UINT *)pRow);
-                BYTE byBlue = (uColor >> 11) & 0x1F;
-                BYTE byGreen = (uColor >> 5) & 0x3F;
-                BYTE byRed = uColor & 0x1F;
+                UINT const uColor = *(reinterpret_cast<UINT *>(pRow));
+                BYTE const byBlue = (uColor >> 11) & 0x1F;
+                BYTE const byGreen = (uColor >> 5) & 0x3F;
+                BYTE const byRed = uColor & 0x1F;
 
                 *pbyDestination++ = (byBlue << 3) | (byBlue >> 2);   // Blue
                 *pbyDestination++ = (byGreen << 2) | (byGreen >> 2); // Green
@@ -272,10 +274,10 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
         case D3DFMT_A1R5G5B5: {
             for (UINT x = 0; x < uWidth; ++x)
             {
-                UINT uColor = *((UINT *)pRow);
-                BYTE byBlue = (uColor >> 10) & 0x1F;
-                BYTE byGreen = (uColor >> 5) & 0x1F;
-                BYTE byRed = uColor & 0x1F;
+                UINT const uColor = *(reinterpret_cast<UINT *>(pRow));
+                BYTE const byBlue = (uColor >> 10) & 0x1F;
+                BYTE const byGreen = (uColor >> 5) & 0x1F;
+                BYTE const byRed = uColor & 0x1F;
 
                 *pbyDestination++ = (byBlue << 3) | (byBlue >> 2);   // Blue
                 *pbyDestination++ = (byGreen << 3) | (byGreen >> 2); // Green
@@ -294,18 +296,18 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
     {
         lpSurface->UnlockRect();
         lpSurface->Release();
-        lpSurface = NULL;
+        lpSurface = nullptr;
     }
 
-    bool bSaved = SaveJPEG(c_pszFileName, pbyBuffer, uWidth, uHeight);
+    bool const bSaved = SaveJPEG(c_pszFileName, pbyBuffer, uWidth, uHeight);
 
     if (pbyBuffer)
     {
         delete[] pbyBuffer;
-        pbyBuffer = NULL;
+        pbyBuffer = nullptr;
     }
 
-    if (bSaved == false)
+    if (!bSaved)
     {
         TraceError("Failed to save JPEG file. (%s, %d, %d)", c_pszFileName, uWidth, uHeight);
         return false;
@@ -317,12 +319,12 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
         if (srcFilePtr)
         {
             fseek(srcFilePtr, 0, SEEK_END);
-            size_t fileSize = ftell(srcFilePtr);
+            size_t const fileSize = ftell(srcFilePtr);
             fseek(srcFilePtr, 0, SEEK_SET);
 
             char head[21];
-            size_t tailSize = fileSize - sizeof(head);
-            char *tail = (char *)malloc(tailSize);
+            size_t const tailSize = fileSize - sizeof(head);
+            char *tail = static_cast<char *>(malloc(tailSize));
 
             fread(head, sizeof(head), 1, srcFilePtr);
             fread(tail, tailSize, 1, srcFilePtr);
@@ -331,7 +333,7 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
             char imgDesc[64];
             GenScreenShotTag(c_pszFileName, GetCRC32(tail, tailSize), imgDesc, sizeof(imgDesc));
 
-            int imgDescLen = strlen(imgDesc) + 1;
+            int const imgDescLen = strlen(imgDesc) + 1;
 
             unsigned char exifHeader[] = {
                 0xe1,
@@ -357,10 +359,10 @@ bool CPythonGraphic::SaveScreenShot(const char *c_pszFileName)
                 0x1,
                 0x2,
                 0x0,
-                (BYTE)imgDescLen, // textLen[0],
-                0,                // textLen[1],
-                0,                // textLen[2],
-                0,                // textLen[3],
+                static_cast<BYTE>(imgDescLen), // textLen[0],
+                0,                             // textLen[1],
+                0,                             // textLen[2],
+                0,                             // textLen[3],
                 0x1a,
                 0x0,
                 0x0,
@@ -412,7 +414,7 @@ void CPythonGraphic::PopState()
         return;
     }
 
-    TState &rState = m_stateStack.top();
+    TState const &rState = m_stateStack.top();
 
     // STATEMANAGER.RestoreTransform(D3DTS_WORLD);
     ms_matProj = rState.matProj;
@@ -426,13 +428,13 @@ void CPythonGraphic::PopState()
 
 void CPythonGraphic::RenderImage(CGraphicImageInstance *pImageInstance, float x, float y)
 {
-    assert(pImageInstance != NULL);
+    assert(pImageInstance != nullptr);
 
     // SetColorRenderState();
     const CGraphicTexture *c_pTexture = pImageInstance->GetTexturePointer();
 
-    float width = (float)pImageInstance->GetWidth();
-    float height = (float)pImageInstance->GetHeight();
+    auto width = static_cast<float>(pImageInstance->GetWidth());
+    auto height = static_cast<float>(pImageInstance->GetHeight());
 
     c_pTexture->SetTextureStage(0);
 
@@ -443,28 +445,28 @@ void CPythonGraphic::RenderImage(CGraphicImageInstance *pImageInstance, float x,
 void CPythonGraphic::RenderAlphaImage(CGraphicImageInstance *pImageInstance, float x, float y, float aLeft,
                                       float aRight)
 {
-    assert(pImageInstance != NULL);
+    assert(pImageInstance != nullptr);
 
-    D3DXCOLOR DiffuseColor1 = D3DXCOLOR(1.0f, 1.0f, 1.0f, aLeft);
-    D3DXCOLOR DiffuseColor2 = D3DXCOLOR(1.0f, 1.0f, 1.0f, aRight);
+    D3DXCOLOR const DiffuseColor1 = D3DXCOLOR(1.0f, 1.0f, 1.0f, aLeft);
+    D3DXCOLOR const DiffuseColor2 = D3DXCOLOR(1.0f, 1.0f, 1.0f, aRight);
 
     const CGraphicTexture *c_pTexture = pImageInstance->GetTexturePointer();
 
-    float width = (float)pImageInstance->GetWidth();
-    float height = (float)pImageInstance->GetHeight();
+    auto width = static_cast<float>(pImageInstance->GetWidth());
+    auto height = static_cast<float>(pImageInstance->GetHeight());
 
     c_pTexture->SetTextureStage(0);
 
-    float sx = x;
-    float sy = y;
-    float ex = x + width;
-    float ey = y + height;
-    float z = 0.0f;
+    float const sx = x;
+    float const sy = y;
+    float const ex = x + width;
+    float const ey = y + height;
+    float const z = 0.0f;
 
-    float su = 0.0f;
-    float sv = 0.0f;
-    float eu = 1.0f;
-    float ev = 1.0f;
+    float const su = 0.0f;
+    float const sv = 0.0f;
+    float const eu = 1.0f;
+    float const ev = 1.0f;
 
     TPDTVertex vertices[4];
     vertices[0].position = TPosition(sx, sy, z);
@@ -497,15 +499,15 @@ void CPythonGraphic::RenderCoolTimeBox(float fxCenter, float fyCenter, float fRa
 
     fTime = max(0.0f, fTime);
 
-    static D3DXCOLOR color = D3DXCOLOR(0.0f, 0.0f, 0.0f, 0.5f);
-    static WORD s_wBoxIndicies[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    static D3DXCOLOR const color = D3DXCOLOR(0.0f, 0.0f, 0.0f, 0.5f);
+    static WORD const s_wBoxIndicies[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     static D3DXVECTOR2 s_v2BoxPos[8] = {
         D3DXVECTOR2(-1.0f, -1.0f), D3DXVECTOR2(-1.0f, 0.0f), D3DXVECTOR2(-1.0f, +1.0f), D3DXVECTOR2(0.0f, +1.0f),
         D3DXVECTOR2(+1.0f, +1.0f), D3DXVECTOR2(+1.0f, 0.0f), D3DXVECTOR2(+1.0f, -1.0f), D3DXVECTOR2(0.0f, -1.0f),
     };
 
-    int iTriCount = int(8 - 8.0f * fTime);
-    float fLastPercentage = (8 - 8.0f * fTime) - iTriCount;
+    int iTriCount = static_cast<int>(8 - (8.0f * fTime));
+    float const fLastPercentage = (8 - 8.0f * fTime) - iTriCount;
 
     std::vector<TPDTVertex> vertices;
     TPDTVertex vertex;
@@ -526,23 +528,23 @@ void CPythonGraphic::RenderCoolTimeBox(float fxCenter, float fyCenter, float fRa
 
     for (int j = 0; j < iTriCount; ++j)
     {
-        vertex.position.x = fxCenter + s_v2BoxPos[j].x * fRadius;
-        vertex.position.y = fyCenter + s_v2BoxPos[j].y * fRadius;
+        vertex.position.x = fxCenter + (s_v2BoxPos[j].x * fRadius);
+        vertex.position.y = fyCenter + (s_v2BoxPos[j].y * fRadius);
         vertices.push_back(vertex);
     }
 
     if (fLastPercentage > 0.0f)
     {
-        D3DXVECTOR2 *pv2Pos;
-        D3DXVECTOR2 *pv2LastPos;
+        D3DXVECTOR2 *pv2Pos = nullptr;
+        D3DXVECTOR2 *pv2LastPos = nullptr;
 
         assert((iTriCount - 1 + 8) % 8 >= 0 && (iTriCount - 1 + 8) % 8 < 8);
         assert((iTriCount + 8) % 8 >= 0 && (iTriCount + 8) % 8 < 8);
         pv2LastPos = &s_v2BoxPos[(iTriCount - 1 + 8) % 8];
         pv2Pos = &s_v2BoxPos[(iTriCount + 8) % 8];
 
-        vertex.position.x = fxCenter + ((pv2Pos->x - pv2LastPos->x) * fLastPercentage + pv2LastPos->x) * fRadius;
-        vertex.position.y = fyCenter + ((pv2Pos->y - pv2LastPos->y) * fLastPercentage + pv2LastPos->y) * fRadius;
+        vertex.position.x = fxCenter + (((pv2Pos->x - pv2LastPos->x) * fLastPercentage + pv2LastPos->x) * fRadius);
+        vertex.position.y = fyCenter + (((pv2Pos->y - pv2LastPos->y) * fLastPercentage + pv2LastPos->y) * fRadius);
         vertices.push_back(vertex);
         ++iTriCount;
     }
@@ -550,14 +552,14 @@ void CPythonGraphic::RenderCoolTimeBox(float fxCenter, float fyCenter, float fRa
     if (vertices.empty())
         return;
 
-    if (SetPDTStream(&vertices[0], vertices.size()))
+    if (SetPDTStream(vertices.data(), vertices.size()))
     {
         STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
         STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
         STATEMANAGER.SaveTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
         STATEMANAGER.SaveTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-        STATEMANAGER.SetTexture(0, NULL);
-        STATEMANAGER.SetTexture(1, NULL);
+        STATEMANAGER.SetTexture(0, nullptr);
+        STATEMANAGER.SetTexture(1, nullptr);
         STATEMANAGER.SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
         STATEMANAGER.DrawPrimitive(D3DPT_TRIANGLEFAN, 0, iTriCount);
         STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLORARG1);
@@ -604,13 +606,10 @@ DWORD CPythonGraphic::GetAvailableMemory()
 }
 
 CPythonGraphic::CPythonGraphic()
+    : m_lightColor(GetColor(1.0f, 1.0f, 1.0f)), m_darkColor(GetColor(0.0f, 0.0f, 0.0f)), m_fOrthoDepth(1000.0f)
 {
-    m_lightColor = GetColor(1.0f, 1.0f, 1.0f);
-    m_darkColor = GetColor(0.0f, 0.0f, 0.0f);
 
     memset(&m_backupViewport, 0, sizeof(D3DVIEWPORT9));
-
-    m_fOrthoDepth = 1000.0f;
 }
 
 CPythonGraphic::~CPythonGraphic()

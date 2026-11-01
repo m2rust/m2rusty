@@ -14,12 +14,8 @@
 template <typename T> class CTransitor
 {
   public:
-    CTransitor()
-    {
-    }
-    ~CTransitor()
-    {
-    }
+    CTransitor() = default;
+    ~CTransitor() = default;
 
     void SetActive(BOOL bActive = TRUE)
     {
@@ -67,25 +63,25 @@ template <typename T> class CTransitor
         if (fcurTime <= m_fStartTime)
             return FALSE;
 
-        float fPercentage = (fcurTime - m_fStartTime) / (m_fEndTime - m_fStartTime);
-        *pValue = m_SourceValue + (m_TargetValue - m_SourceValue) * fPercentage;
+        float const fPercentage = (fcurTime - m_fStartTime) / (m_fEndTime - m_fStartTime);
+        *pValue = m_SourceValue + ((m_TargetValue - m_SourceValue) * fPercentage);
         return TRUE;
     }
 
   protected:
-    DWORD m_dwID; // Public Transitor ID
+    DWORD m_dwID = 0U; // Public Transitor ID
 
-    BOOL m_bActivated; // Have been started to blend?
-    float m_fStartTime;
-    float m_fEndTime;
+    BOOL m_bActivated = 0; // Have been started to blend?
+    float m_fStartTime = 0.0F;
+    float m_fEndTime = 0.0F;
 
     T m_SourceValue;
     T m_TargetValue;
 };
 
-typedef CTransitor<float> TTransitorFloat;
-typedef CTransitor<D3DXVECTOR3> TTransitorVector3;
-typedef CTransitor<D3DXCOLOR> TTransitorColor;
+using TTransitorFloat = CTransitor<float>;
+using TTransitorVector3 = CTransitor<D3DXVECTOR3>;
+using TTransitorColor = CTransitor<D3DXCOLOR>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
