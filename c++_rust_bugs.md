@@ -95,6 +95,8 @@ Real bugs where mirroring would be wrong or impossible.
 | N33 | `utf8` / client locale table | `gs_stLocaleData` declares the Czech locale as CP1252, but `locale/cz/*.txt` only reads correctly as CP1250 ("Přejete si použít kámen ducha?"); as CP1252 it is garbage | `utf8::locale_code_page("cz")` and `SHIPPED_LOCALES` use 1250 |
 | N34 | `net` | `CNetworkPacketHeaderMap` | Announces fewer bytes than the handler reads for four headers: `PLAYER_DELETE_SUCCESS` (read as 2 bytes), `SAFEBOX_SET` and `MALL_SET` (read as `ItemSet2`), and `WHISPER` (mapped static but carries a `wSize` and text tail). In C++ the handler's `Recv` fails and the whole buffer is dropped if the rest has not arrived yet | Rust waits for the handler's size (`handler_size_override`) instead |
 | N35 | `net` | `time_t` packet fields | `TPlayerSkill::tNextRead` and `TPacketGCTime::time` are `time_t`: 8 bytes in the 64-bit Linux build, possibly 4 in the original Win32 client | Rust uses `i64` (Linux build). Which size the target server speaks is open |
+| N36 | `net` | `CAccountConnector::__AnalyzePacket` chain | A header the current state has no handler for is never consumed: every later packet queues behind it and the account connection stalls until it times out | `m2_net::auth` frames it with the header map, drops it and reports `AuthEvent::Unhandled` |
+| N37 | `net` | `CAccountConnector::__AuthState_Process` | Latent: `HEADER_GC_LOGIN_FAILURE` is peeked with `sizeof(TPacketGCAuthSuccess)` (6 bytes) but read with `sizeof(TPacketGCLoginFailure)`; if only part of the packet has arrived, the `Recv` fails and the connection is dropped | Framed with the header map's `LOGIN_FAILURE` size |
 
 ## 3. Reference-platform choices (not bugs)
 

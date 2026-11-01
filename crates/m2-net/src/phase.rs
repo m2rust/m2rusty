@@ -39,6 +39,8 @@ pub mod phase_id {
     pub const LOADING: u8 = 4;
     pub const GAME: u8 = 5;
     pub const DEAD: u8 = 6;
+    /// The account server's login phase (`CAccountConnector`, [`crate::auth`]).
+    pub const AUTH: u8 = 10;
 }
 
 /// `CActorInstance::EType` values the actor handlers compare with.

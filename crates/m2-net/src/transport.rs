@@ -2,7 +2,9 @@
 //! provides a [`Transport`]: `std::net` ([`tcp`], feature `tcp`), a WebSocket on wasm
 //! later, or the in-memory pair used by the tests.
 
+use crate::auth::{AuthEvent, AuthMachine};
 use crate::phase::{NetEvent, NetMachine};
+use crate::stream::NetStream;
 use std::io;
 
 /// Connection state, as `CNetworkStream::IsOnline()` plus the connecting interval.
@@ -25,10 +27,46 @@ pub trait Transport {
     fn close(&mut self);
 }
 
+/// A state machine over a [`NetStream`] that [`pump`] can drive: the game stream
+/// ([`NetMachine`]) or the account connection ([`AuthMachine`]).
+pub trait Machine {
+    type Event;
+    fn stream(&mut self) -> &mut NetStream;
+    /// Dispatches every complete packet.
+    fn poll(&mut self, now_ms: u32) -> Vec<Self::Event>;
+    fn on_disconnect(&mut self);
+}
+
+impl Machine for NetMachine {
+    type Event = NetEvent;
+    fn stream(&mut self) -> &mut NetStream {
+        &mut self.stream
+    }
+    fn poll(&mut self, now_ms: u32) -> Vec<NetEvent> {
+        NetMachine::poll(self, now_ms)
+    }
+    fn on_disconnect(&mut self) {
+        NetMachine::on_disconnect(self)
+    }
+}
+
+impl Machine for AuthMachine {
+    type Event = AuthEvent;
+    fn stream(&mut self) -> &mut NetStream {
+        &mut self.stream
+    }
+    fn poll(&mut self, _now_ms: u32) -> Vec<AuthEvent> {
+        AuthMachine::poll(self)
+    }
+    fn on_disconnect(&mut self) {
+        AuthMachine::on_disconnect(self)
+    }
+}
+
 /// `CNetworkStream::Process` for one machine: reads into the machine, dispatches its
 /// packets and writes its queued output. Returns the events and whether the transport
 /// closed (the machine is then `Offline`, like `OnRemoteDisconnect` + `Clear`).
-pub fn pump<T: Transport>(machine: &mut NetMachine, transport: &mut T, now_ms: u32) -> (Vec<NetEvent>, bool) {
+pub fn pump<M: Machine, T: Transport>(machine: &mut M, transport: &mut T, now_ms: u32) -> (Vec<M::Event>, bool) {
     let mut closed = false;
     if transport.state() == ConnState::Closed {
         closed = true;
@@ -40,7 +78,7 @@ pub fn pump<T: Transport>(machine: &mut NetMachine, transport: &mut T, now_ms: u
                 Ok(n) => {
                     let mut off = 0;
                     while off < n {
-                        let taken = machine.feed(&buf[off..n]);
+                        let taken = machine.stream().feed(&buf[off..n]);
                         if taken == 0 {
                             // Receive buffer full: dispatch what we have first.
                             break;
@@ -62,7 +100,7 @@ pub fn pump<T: Transport>(machine: &mut NetMachine, transport: &mut T, now_ms: u
     let events = machine.poll(now_ms);
     if !closed && transport.state() == ConnState::Online {
         loop {
-            let out = machine.take_output(8192);
+            let out = machine.stream().take_output(8192);
             if out.is_empty() {
                 break;
             }
@@ -71,7 +109,7 @@ pub fn pump<T: Transport>(machine: &mut NetMachine, transport: &mut T, now_ms: u
                 Ok(n) => {
                     // Partial write: push the remainder back to the front is not possible, so
                     // keep it simple and write the rest in the next call.
-                    machine.stream.requeue_front(&out[n..]);
+                    machine.stream().requeue_front(&out[n..]);
                     break;
                 }
                 Err(_) => {
