@@ -136,6 +136,36 @@ fn read_token(s: &[u32]) -> u32 {
     if n == 9999 { CP_UTF8 } else { n }
 }
 
+/// Longest byte sequence any code page in [`m2_formats::utf8`] uses.
+const MAX_SEQUENCE: usize = 4;
+
+/// `Ymir_MultiByteToWideChar` as the client calls it (`MultiByteToWideChar` in
+/// `StringCodec.cpp`): valid bytes of `code_page` become characters, and every
+/// byte of an invalid or incomplete sequence is dropped one at a time, as that
+/// loop does when `iconv` reports `EILSEQ`/`EINVAL`. Nothing becomes U+FFFD, so
+/// the bytes after a lead byte that started an invalid sequence are decoded
+/// again on their own and can form a character of their own
+/// (`e2 82 ac` in CP949 is `U+AD97`, not two replacements).
+fn decode_like_cpp(code_page: u32, bytes: &[u8]) -> Vec<u32> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let max = MAX_SEQUENCE.min(bytes.len() - i);
+        let mut step = 0;
+        for n in 1..=max {
+            let Some(s) = m2_formats::utf8::decode_strict(code_page, &bytes[i..i + n]) else { continue };
+            let mut chars = s.chars();
+            if let (Some(ch), None) = (chars.next(), chars.next()) {
+                out.push(ch as u32);
+                step = n;
+                break;
+            }
+        }
+        i += if step == 0 { 1 } else { step };
+    }
+    out
+}
+
 impl TextInstance {
     pub fn new() -> Self {
         Self::default()
@@ -193,10 +223,7 @@ impl TextInstance {
         while begin < end {
             let wide: Vec<u32> = bytes.iter().map(|&b| b as u32).collect();
             let token = find_token(&wide, begin);
-            let chars: Vec<u32> = m2_formats::utf8::decode(cp, &bytes[begin..token])
-                .chars()
-                .map(u32::from)
-                .collect();
+            let chars = decode_like_cpp(cp, &bytes[begin..token]);
             text.push_str(&from_wide(&chars));
             segments.push((cp, chars));
             if token < end {
@@ -409,5 +436,47 @@ impl TextInstance {
             cur_x += p.glyph.advance;
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_switches_code_page_for_the_rest_of_the_text() {
+        // "||[Sword]|Hx|Hx@0949€": the token is CP949, and the UTF-8 euro sign
+        // then decodes as CP949 (invalid `e2 82`, then `82 ac` = U+AD97).
+        let mut ti = TextInstance::new();
+        ti.set_value_bytes(b"||[Sword]|Hx|Hx@0949\xe2\x82\xac", Some(CP_UTF8));
+        let segments = &ti.segments;
+        assert_eq!(segments.len(), 2);
+        assert_eq!(segments[0].0, CP_UTF8);
+        assert_eq!(from_wide(&segments[0].1), "||[Sword]|Hx|Hx");
+        assert_eq!(segments[1].0, 949);
+        assert_eq!(segments[1].1, vec![0xad97]);
+    }
+
+    #[test]
+    fn invalid_bytes_are_dropped_one_at_a_time() {
+        // As `iconv` does in `MultiByteToWideChar`: no U+FFFD, resynchronise.
+        assert_eq!(decode_like_cpp(949, b"A\xe2\x82\xacB"), vec![0x41, 0xad97, 0x42]);
+        // The euro sign's UTF-8 bytes under CP1252 are three characters.
+        assert_eq!(decode_like_cpp(1252, b"\xe2\x82\xac"), vec![0xe2, 0x201a, 0xac]);
+        assert_eq!(decode_like_cpp(CP_UTF8, b"\xe2\x82\xac"), vec![0x20ac]);
+    }
+
+    #[test]
+    fn token_needs_four_digits_and_five_bytes_left() {
+        // `@094` and a token without a following byte are plain text (C++'s
+        // `FindToken` wants `end - begin > 5`).
+        let mut ti = TextInstance::new();
+        ti.set_value_bytes(b"a@0949", Some(CP_UTF8));
+        assert_eq!(ti.segments.len(), 1);
+        assert_eq!(from_wide(&ti.segments[0].1), "a@0949");
+        let mut ti = TextInstance::new();
+        ti.set_value_bytes(b"a@09492", Some(CP_UTF8));
+        assert_eq!(ti.segments.len(), 2);
+        assert_eq!(ti.segments[1], (949, vec![0x32]));
     }
 }

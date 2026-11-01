@@ -37,6 +37,8 @@ fn scratch(name: &str, contents: &str) -> PathBuf {
 const DUMP_PREFIXES: &[&str] = &[
     "w ", " w ", "mgr ", "slotwin ", "s ", "> ", "ev ", "text ", "t ", "textpos ", "pickwin ", "picktop ",
     "mgrpick ", "out ", "q ", "!!",
+    // `text` mode prints these with a leading space, one set per corpus string.
+    " out ", " tags ", " ipos ", " fe ", " fs ", " L1600 ", " L60 ", " S25 ",
 ];
 
 fn is_dump_line(line: &str) -> bool {
