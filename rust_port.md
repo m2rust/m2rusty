@@ -14,8 +14,8 @@ Last updated: 2026-11-01.
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
 | 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming belong to the game-world integration |
-| 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
-| 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
+| 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen and lists the account's characters. Character select, entering the game and the bot gate remain |
+| 5. UI in Rust (D17; was "Python bridge and UI") | **started**: `m2-ui` crate with the login screen (logs in to a real server, lists the characters). The Python bridge is dropped; layouts come from the original `uiscript` data files (roadmap §8) |
 | 6. Parity and cut-over | not started |
 
 ### Phase 1 format families (`crates/m2-formats`)
@@ -50,19 +50,34 @@ random scenarios). The effect viewer was checked by screenshot on
 
 - **Cargo workspace** at the repo root (`Cargo.toml`, `crates/*`). Bevy is
   pinned to `=0.20.1`. Dev builds optimise dependencies (`opt-level = 3`).
-- **`crates/m2-script`**: `build.rs` builds `neoeter_python_abi` (shared C
+- **`crates/m2-script`** (superseded by D17, no longer used by the client): `build.rs` builds `neoeter_python_abi` (shared C
   library over the CPython 2.7 host) with the repo's CMake and links it. A safe
   `PythonHost` wrapper (one per process, main thread only). `cargo test -p
   m2-script` boots the interpreter headless and runs `dbg`/`time`/`math`.
-- **`crates/m2-client`**: minimal Bevy window with the Python host running
-  beside it. Runs; not yet the real client.
+- **`crates/m2-client`**: the Bevy app; it composes `m2_game::net::NetPlugin` and
+  `m2_ui::M2UiPlugin`. No Python and no C++ build step (D17). `m2-client --login
+  admin admin --screenshot out.png` logs in unattended and captures the result;
+  `--host`/`--auth-port` override the shipped `serverinfo.py` defaults.
+- **`crates/m2-ui`**: the game UI in Rust (D17). So far the login screen
+  (`login.rs`, egui): ID, password, channel, the original failure messages, and
+  the account's characters after `LoginSuccess`. `bevy_ui` is the long-term toolkit.
+- **`crates/m2-game`**: the game-side Bevy library shared by the client and the
+  viewer. `render::{model, tree, effect, terrain, sky, cloud}` draw with the
+  client's render states; `world::prepare_map` loads a map (`m2_world::load_map`
+  plus the ground texture array and effect instances) off the main thread and
+  `world::MapScene` spawns and runs it. Everything spawns under a caller-owned
+  root; the scene camera carries `m2_game::SceneCamera`. `net::NetPlugin` is the
+  server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
+  `PreUpdate`, driven by `LoginRequest` and reported as `NetMessage`s; the open
+  game connection is `Net::game`. `m2-world` stays
+  free of Bevy (D3), so loading is there and spawning here.
 - **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
   D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,
   inspector shell and the texture, Granny model/motion, SpeedTree and effect
   viewers. The 12-scene golden-image suite passes on the current machine.
   The effect viewer and the map effects share one Bevy adapter
-  (`m2-viewer::effect_draw`): `m2-effect` produces quads/meshes, the adapter
+  (`m2_game::render::effect`): `m2-effect` produces quads/meshes, the adapter
   translates blend, texture-stage and depth state and keeps one entity per
   batch alive across frames.
 - **Viewer CLI:** `m2-viewer [client dir] [--index file] [--motion <vpath>]
@@ -78,10 +93,10 @@ random scenarios). The effect viewer was checked by screenshot on
   patch meshes, splats, lighting and area placement. `m2-effect` ports particle,
   mesh and light simulation with a C++ differential harness, and is drawn by
   Bevy through the shared effect adapter (map effects and the `.mse` viewer).
-  `m2-world` is drawn through the map viewer:
+  `m2-world` is drawn through `m2-game` (see above), as in the map viewer:
   `m2-viewer --map metin2_map_a1 --screenshot-only /tmp/a1.png` loads a map on
   `AsyncComputeTaskPool` and spawns one mesh per terrain patch (LOD 0, UVs from
-  `m2_world::lighting`, splat layers blended in `terrain.wesl`, animated water,
+  `m2_world::lighting`, splat layers blended in `m2-game`'s `terrain.wesl`, animated water,
   buildings, trees and the placed effects). The map's `.msenv` environment is
   ported (`m2_formats::map::environment`, differential-tested on all 57 files);
   its linear or density fog is applied to terrain, water, objects, trees and
@@ -95,11 +110,15 @@ random scenarios). The effect viewer was checked by screenshot on
   is deliberately a preview: LOD 1/2, quadtree culling and 3×3 streaming belong
   to the game-world integration, not to `m2-viewer`.
 - **Networking:** `m2-net` contains packet structs/codecs, packet framing,
-  sequence handling, transport abstractions and a login phase machine. It is
-  not yet connected to `m2-client` or game entities.
-- **UI and Python modules:** `m2-ui-core` contains window, slot, text and edit
-  logic; `m2-modgen` extracts module specs and generates Rust/C++ glue. The
-  generated shims are not yet wired into the Python ABI or the Bevy app.
+  sequence handling, transport abstractions, the game phase machine and
+  `auth` (a port of `CAccountConnector`: handshake, `CG_LOGIN3`, login key).
+  `transport::pump` drives either machine. `cargo run -p m2-net --example login`
+  is a headless login (auth, then channel) against a real server. It drives the
+  `m2-client` login; game entities are not connected yet.
+- **UI core and Python modules:** `m2-ui-core` ports the C++ window, slot, text
+  and edit logic (no Bevy, no Python; its `UiHost` events stood in for the Python
+  handlers) and is reusable by `m2-ui`. `m2-modgen` generates the Python module
+  shims; with D17 it has no consumer.
 - **`crates/m2-formats`**: pure Rust, no Bevy dependency. Binary format APIs
   stay byte-oriented; `utf8` provides the `encoding_rs` display boundary and
   `locale` keeps its glibc reference behind the optional `glibc-tables` feature.
@@ -143,6 +162,7 @@ switch token** in `C++` (`GrpTextInstance.cpp:88-116`, five characters,
 
 ### Architecture
 1. **Python owns the main loop, so Bevy must run inside `app.Loop`.**
+   *(Superseded by D17: the port runs no Python, so Bevy owns the loop.)*
    `system.py` ends with `RunMainScript("prototype.py")`; `RunApp()` there calls
    `app.Create(...)`, `mainStream.Create()`, `SetLogoPhase()`, `app.Loop()`,
    then `mainStream.Destroy()`. `app.Loop` is a plain C call that returns only
@@ -186,8 +206,8 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | Python 2.7 and the 38 module shims stay in C++ | PyO3 does not support 2.7; this was the brief |
-| D2 | `m2-script` links one shared library (`neoeter_python_abi`) | Avoids Rust having to link the engine's static archives and their system deps |
+| D1 | *(Superseded by D17)* Python 2.7 and the 38 module shims stay in C++ | PyO3 does not support 2.7; this was the brief |
+| D2 | *(Superseded by D17)* `m2-script` links one shared library (`neoeter_python_abi`) | Avoids Rust having to link the engine's static archives and their system deps |
 | D3 | Pin Bevy `=0.20.1` | Avoid churn mid-phase; keep Bevy dependencies in the asset/render/viewer crates |
 | D4 | Rust ports must match C++ *byte for byte on real data*, proven by differential tests | The only way to port 100k+ lines of binary/text format code without regressions |
 | D5 | Phase 1 names and contents stay `&[u8]`/`Vec<u8>`; new display APIs decode to UTF-8 | Preserve byte-exact format behavior while exposing UTF-8 to the rest of the client |
@@ -195,12 +215,13 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 | D7 | Malformed input returns an error, never panics; C++ undefined behaviour is *not* mirrored | Several C++ readers over-read or divide by zero on corrupt files; deviations are documented per module |
 | D8 | Real C++ bugs are mirrored when they affect output on real data, with a comment | e.g. Arabic shaping skips one index after LAM-ALEF; CP1255/CP1258 decoder loses its held character at end of input |
 | D9 | Dependencies pinned per crate, exact versions in `crates/m2-formats/Cargo.toml`; `zip` uses `deflate-flate2-zlib-rs` (pure Rust) | Keep the format crate free of C builds |
-| D10 | Bevy runs inside `app.Loop` (§3.1) | Keeps `prototype.py` unmodified |
+| D10 | *(Superseded by D17)* Bevy runs inside `app.Loop` (§3.1) | Keeps `prototype.py` unmodified |
 | D11 | Differential dumpers live in `tools/differential/` (opt-in `M2_BUILD_DIFF_TOOLS`), not in the engine tree | Keeps test tooling out of the C++ libraries |
 | D12 | Parallel module ports run as subagents in git worktrees, one module each, merged by hand | Modules are independent once `script` exists |
 | D13 | Not ported: `parser.cpp` (`script::Group`), skill icon images, the Vietnamese weapon-vnum conversion, the LZO compressor, CRC32 (no loader uses it), `Arabic_ConvEnglishModeSymbol` | Unused or only in other builds |
 | D14 | **UTF-8 everywhere it is possible** (user decision, 2026-11-01). New Rust APIs (Phase 2 onwards) expose text as `String`/`&str`. Legacy code pages are converted to UTF-8 once, at the file boundary; other encodings are not a goal and are not preserved on output | The user does not care about non-UTF-8 encodings. Phase 1 modules stay byte-oriented because they are proven byte-identical to C++; a UTF-8 façade is added on top, not a rewrite |
 | D15 | C++ bugs that are replicated or deliberately not replicated are tracked in [c++_rust_bugs.md](c++_rust_bugs.md) | One ledger, stable IDs, referenced from Rust comments |
+| D17 | **The UI is reimplemented in Rust; the port runs no Python** (user decision, 2026-11-01). Supersedes D1, D2 and D10 and the Python-bridge plan of Phase 5. Screens live in `m2-ui` on top of `m2-game` state; the original `uiscript`/`locale/*/ui` layout files are read as data | Removes CPython 2.7, the C ABI, the generated shims and the main-loop inversion; the client becomes pure Rust (one toolchain, and wasm/mobile are reachable). The 350 layout files are pure data (dict literals and simple expressions, no `def`/`class`/loops), so the original look survives without an interpreter |
 | D16 | **Reuse reputable Rust crates instead of reimplementing formats and codecs, but only if they work on every target platform: desktop (Linux/Windows/macOS), wasm32, Android and iOS.** In practice: pure Rust, no C/C++ build step or system library, maintained and widely used. Where a crate would change output on valid real data compared with C++, the differential test decides and own code is used (or the difference is accepted explicitly by the user) | User policy, 2026-11-01. Less code to own, and the port keeps the option of non-desktop targets |
 
 ## 5. Known deviations from C++ (all on malformed input or C++ UB)
@@ -230,15 +251,26 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 ## 6. Open items and risks
 
 - **Phase 2 gate:** closed. The golden-image suite passes, the texture,
-  model/motion, SpeedTree and effect viewers are registered, the character
-  skinning walkthrough passes, and `.mse` effects simulate and draw (checked by
-  screenshot on `critical.mse` and `success.mse`).
-- **Phase 3 gate remains open:** world and effect Rust logic is not yet fully
-  drawn by Bevy systems; sky/fog, LOD 1/2, quadtree culling, streaming, audio
-  and gameplay entities remain (terrain, splats, water and map effects are in).
-- **Phase 4/5 gates remain open:** networking is not integrated with a game
-  state, and the generated module glue/UI are not yet connected to the real
-  Python scripts.
+  model/motion, SpeedTree and effect viewers are registered, and `.mse` effects
+  simulate.
+- **Model and effect viewer screenshots are empty (found 2026-11-01, not yet
+  investigated).** `m2-viewer --motion "d:/ymir work/pc/assassin/general/wait.msa"
+  --screenshot "d:/ymir work/pc/assassin/assassin.gr2" out.png` and
+  `--screenshot "d:/ymir work/effect/hit/critical.mse" out.png` show only the
+  ground grid, while the inspector reports the model loaded and animating (or 2
+  live particles). It is identical at `7336ab7`, before the `m2-game`
+  extraction, so it predates it; the skinning walkthrough and the effect checks
+  claimed above need re-checking. Maps and SpeedTrees draw. The model's
+  `assassin_lord1/2.dds` textures are not in the packs (named by the `.gr2`).
+- **Phase 3 gate remains open:** LOD 1/2, quadtree culling, 3×3 streaming,
+  textured sky boxes, audio and gameplay entities remain. Terrain, splats,
+  water, objects, map effects, fog, sky and clouds are drawn (`m2-game`).
+- **Phase 4 gate remains open:** login works against a real server; character
+  select, entering the game, actors and the headless bot remain.
+- **Superseded by D17, still in the tree:** `m2-script`, `m2-modgen`, the C ABI
+  (`neoeter_python_abi`, CMake option `M2_BUILD_PYTHON_ABI`) and the module
+  specs in `modules/`. Nothing in the client uses them any more; remove them
+  when the user confirms.
 - **No `rustfmt.toml`:** `cargo fmt` would reformat every module. Agents format
   their own files with `max_width = 120, use_small_heuristics = "Max"`. Add that
   as a config before the next big merge.
@@ -247,42 +279,86 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
   (`m2diff_locale tables`) from a Windows reference.
 - **Assets are not in the repo:** every differential gate needs the client in
   `bin/` (git-ignored). CI needs a way to mount it.
-- **Windows/MinGW cross-build** of the Rust client and Python 2.7 linking is
-  unverified (plan §7).
+- **Windows build** of the Rust client is unverified. Without Python (D17) it is
+  a plain Rust target (`x86_64-pc-windows-gnu` or `-msvc`).
 - **First Bevy compile is slow** (~11 min); later builds are incremental.
-- **Python's Ctrl+C handler** pre-empts Bevy's; revisit in Phase 5.
 - **Differential suite location:** it needs `build/differential` in the
   checkout it runs from; agents' worktrees each build their own copy.
+- **Never share one `target/` between two checkouts of the workspace.** Cargo
+  names path-dependency artifacts by their workspace-relative path, so a second
+  checkout overwrites the first one's crates with older code that still looks
+  fresh. Use a separate `CARGO_TARGET_DIR` per worktree.
 
 ## 7. How to run things
 
 ```bash
 nix-shell                                  # everything below runs inside it
-cargo test -p m2-script                    # boots the Python host headless
 cargo test -p m2-formats                   # unit + fixture tests
 cargo clippy -p m2-formats --all-targets
 scripts/differential.sh                    # Rust vs C++ on bin/ (slow: ~1 min per suite)
 scripts/differential.sh bin gr2            # one suite
-cargo run -p m2-client                     # Bevy window + Python host
+cargo run -p m2-net --example login        # headless login: 127.0.0.1 11000 13000 admin admin
+cargo run -p m2-client                     # the client: login screen
+cargo run -p m2-client -- --login admin admin --screenshot /tmp/login.png
+cargo run -p m2-viewer -- bin --map metin2_map_a1
 ```
 
-## 8. Next steps
+The local test server is `serverinfo.py`'s default: account server
+127.0.0.1:11000, CH1-CH4 on 13000/13010/13020/13030, account `admin`/`admin`.
 
-1. ~~Run the differential suites for the merged networking, world, effects and
-   UI code~~ — done, see the results table above; the `@NNNN` code-page token
-   now matches C++ and `m2-ui-core` passes in full.
-2. ~~Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
-   then run the character skinning walkthrough~~ — done; the effect (`.mse`)
-   viewer is in and shares its draw adapter with the map effects.
-3. Connect world/effect outputs to the game client and build the fly-camera map
-   parity gate. Terrain (LOD 0), splats, water, map effects, environment fog,
-   the gradient sky and clouds are drawn in the viewer; LOD 1/2, quadtree
-   culling and 3×3 streaming belong to the game-world integration, not the
-   preview viewer.
-4. Connect `m2-net` to the client state and implement the headless login/play
-   bot gate.
-5. Wire `m2-modgen` output to the C ABI and `m2-ui-core` to Bevy, then reach
-   login and in-game with the unmodified Python scripts.
+## 8. Roadmap
+
+Done so far:
+
+1. ~~Differential suites for networking, world, effects and UI core~~ (see §1).
+2. ~~Phase 2 viewers~~ (texture, model/motion, SpeedTree, effect, map).
+3. ~~**Milestone 0, prerequisites**~~ (2026-11-01): the `m2-assets` real-data
+   tests check the real bind-pose invariant; drawing and map loading moved out of
+   the viewer into `m2-game` and `m2_world::load_map`.
+4. ~~**Milestone 1, connect and log in**~~ (2026-11-01): `m2_net::auth`
+   (`CAccountConnector`), `m2_game::net::NetPlugin`, `m2-ui`'s login screen. The
+   client logs in to the local server and lists the account's characters.
+
+Next, in order. Each milestone ends with something visible against the server.
+
+5. **Milestone 2, character select and entering the game.**
+   - `m2-ui`: select screen (characters with their stats, empire choice for a
+     new account, create and delete), still egui.
+   - `m2-game`: `send_select_character`/`send_enter_game`, the Loading phase,
+     `MainCharacter`: find the map from the position (`AtlasInfo.txt` +
+     `m2_world`), `prepare_map`, spawn the player's race model (`.msm` → body,
+     hair and armor parts) at its position, a third-person camera.
+   - Visible result: standing in the map where the server put the character.
+6. **Milestone 3, the living world.**
+   - Actors from `ActorAppend`/`Update`/`Move`/`Remove`/`Sync`: NPCs, monsters
+     and players with their motions (`.msa` wait/run/attack, blending).
+   - Click-to-move and keyboard movement with `send_move`; terrain height and
+     attributes from `m2_world::OutdoorMap`.
+   - Game-world rendering the viewer left out: 3×3 terrain streaming around the
+     player, LOD 1/2, quadtree culling, warps between maps.
+   - Visible result: walking around a1 with monsters and other players moving.
+7. **Milestone 4, the UI system (the original look, from the original data).**
+   - `m2-formats::uiscript`: evaluate the layout dialect of `uiscript/*.py` and
+     `locale/*/ui/*.py` (dict/tuple/list literals, numbers and strings,
+     arithmetic, `float()`/`int()`, `SCREEN_WIDTH`/`SCREEN_HEIGHT`, constants
+     such as `uiScriptLocale.*` and `localeInfo.*` from the locale text files).
+     All 350 files are data: no `def`, `class` or loops. Differential-check the
+     evaluated trees against CPython on every file.
+   - `m2-ui`: a window tree on `bevy_ui` built from those layouts (image,
+     expanded/ani image, board/thinboard, title bar, button/toggle/radio, text,
+     edit line, scroll bar, slot/grid slot, list box), `.sub` sprite sheets, the
+     client fonts, focus, drag and drop, tooltips. Reuse `m2-ui-core` for text
+     layout, edit and slot logic.
+   - Rebuild login and select on it. Visible result: they look like the
+     original, from the same layout files.
+8. **Milestone 5, in-game windows**, in dependency order: task bar, chat, target,
+   character and inventory (items from `item_proto`), skills and quick slots,
+   minimap, shops, exchange and safebox, quest letters and dialogs (`SCRIPT`
+   packets), party, guild, messenger, and the rest.
+9. **Milestone 6, parity and cut-over.** The headless bot gate (log in, select,
+   walk, attack, driven from Rust), frame-time budget against the C++ client,
+   then remove the C++ client and the Python host from the build and package the
+   Rust binary with Nix.
 
 ## 9. UTF-8 policy (D14): what it means for the code
 
@@ -299,10 +375,9 @@ cargo run -p m2-client                     # Bevy window + Python host
   reversible canonical mapping before the game or viewer needs those files.
 - **Decode proto and locale display text on load.** Keep raw bytes for keys and
   differential comparisons; expose the decoded form to UI and game code.
-- **Open question for Phase 5:** Python 2.7 `str` is bytes. The scripts and
-  the C++ modules pass text in the client's code page. The shim layer converts
-  to and from UTF-8 at the boundary; which source encoding the shipped
-  `bin/pack/root/*.py` files use has not been checked yet.
+- **Layout files:** the `uiscript` layouts are read as data (D17), so their
+  string literals (window names, image paths, locale keys) are decoded to UTF-8
+  when they are loaded, like every other legacy text file.
 
 ## 10. Crate-reuse policy (D16): what it means for the code
 
@@ -330,11 +405,10 @@ Candidates to revisit under D16 (each needs a differential check, none is urgent
   they stay as own code.
 - `image`: evaluated, see below. BMP is the one case where a crate matched on all real files but own code was kept; switch to the `image` crate if you want strict D16.
 
-Platform limits the policy cannot remove: the Python 2.7 host in
-`neoeter-python` is C and C++ code linked through `m2-script`, so the Rust client
-as a whole will not build for wasm32 or iOS while that bridge is in. The
-format and game crates (`m2-formats`, later `m2-assets` and `m2-game`) must
-stay free of it so they can.
+With D17 the client no longer links the Python 2.7 host (`neoeter-python`, C and
+C++ through `m2-script`), so nothing in the client stops wasm32 or iOS except the
+`std::net` transport, which `m2-net` keeps behind its `tcp` feature (a WebSocket
+`Transport` would replace it on wasm).
 
 ### Crate evaluation for `image` (D16, measured)
 

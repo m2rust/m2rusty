@@ -1,7 +1,9 @@
 # Porting m2rusty to Bevy (Rust)
 
-Status: active migration. Phases 0–2 are complete. Foundations for phases 3–5
-have been merged; their integration and acceptance gates remain open. See
+Status: active migration. Phases 0–2 are complete; the client logs in to a real
+server (phase 4). **Since 2026-11-01 the UI is reimplemented in Rust and the port
+runs no Python (decision D17 in `rust_port.md`)**; the sections below are updated
+for that. The milestone roadmap is `rust_port.md` §8. See
 [`rust_port.md`](../rust_port.md) for current implementation status and findings.
 
 ## 1. What we are porting
@@ -18,81 +20,48 @@ have been merged; their integration and acceptance gates remain open. See
 | `neoeter/src/effect` | particles, effect meshes, lights | 5.1k | Rust: `m2-effect` (ECS) |
 | `client/src/game` | actors, motion, races, items, maps, flying objects, weapon trace | 25.7k | Rust: `m2-game` |
 | `client/src/ui` (non-module) | `CPythonApplication`, net phases, player, chr manager, managers | ~41k | Rust: `m2-client`, `m2-net`, `m2-game` |
-| `client/src/ui/*Module.cpp` + `neoeter-python/src/bindings/*Module.cpp` | 38 Python modules, ~1,013 methods | 17.3k | **stays C++**, shrunk to argument marshalling |
-| `neoeter-python/src/host` | CPython 2.7 interpreter | 2.3k | **stays C++** |
-| `neoeter-python/src/bindings` (non-module) | window tree (`wndMgr`, slots, text) | ~6k | Rust (window tree + UI rendering) |
+| `client/src/ui/*Module.cpp` + `neoeter-python/src/bindings/*Module.cpp` | 38 Python modules, ~1,013 methods | 17.3k | **dropped** (D17): the UI calls Rust game state directly |
+| `neoeter-python/src/host` | CPython 2.7 interpreter | 2.3k | **dropped** (D17) |
+| `neoeter-python/src/bindings` (non-module) | window tree (`wndMgr`, slots, text) | ~6k | Rust: `m2-ui-core` (logic) + `m2-ui` (Bevy) |
+| `bin/pack/root/*.py`, `uiscript/*.py`, `locale/*/ui/*.py` | UI behaviour and layouts in Python | — | behaviour reimplemented in `m2-ui`; the 350 layout files are read as data |
 
-What stays C++: the CPython 2.7 host and a thin marshalling layer for the 38
-modules. PyO3 does not support Python 2.7, and `rust-cpython` is unmaintained,
-so the Python C API stays on the C++ side, as requested.
-
-The game content (`bin/root/*.py`, packs) does not change. The new client has
-to run the same scripts.
+Nothing stays C++. The first plan kept CPython 2.7 and a generated marshalling
+layer so the unmodified scripts could run; D17 replaced that with a Rust UI. The
+packs do not change: the layout scripts are pure data (dict literals and simple
+expressions), so `m2-ui` reads them instead of running them.
 
 ## 2. Target architecture
 
 ```
-                 ┌───────────────────────────────────────────────┐
-  Rust (Bevy)    │ m2-client (bin): App, plugins, runner         │
-                 │  ├ m2-ui      window tree, UI render, input   │
-                 │  ├ m2-game    actors, player, items, skills…  │
-                 │  ├ m2-net     TCP stream, phases, packets     │
-                 │  ├ m2-world   terrain, map areas, water, sky  │
-                 │  ├ m2-effect  particles / effect meshes       │
-                 │  ├ m2-render  D3D9-style materials, shaders   │
-                 │  ├ m2-assets  Bevy AssetReader/Loaders        │
-                 │  └ m2-formats pack, gr2, spt, msa/msm, protos │  (no Bevy dependency)
-                 │ m2-script    extern "C" API + callback table  │
-                 └──────────────────────▲────────────────────────┘
-                                        │  C ABI (cbindgen header)
-                 ┌──────────────────────┴────────────────────────┐
-  C++            │ neoeter-python/host   Py_Initialize, RunFile  │
-                 │ py-modules            38 PyMethodDef tables → │
-                 │                       call m2_* functions     │
-                 └───────────────────────────────────────────────┘
+  Rust (Bevy)   m2-client (bin): the App; composes the plugins below
+                 ├ m2-ui       screens and windows (login, select, in-game);
+                 │             layouts read from the original uiscript files
+                 ├ m2-ui-core  window tree, text layout, edit and slot logic (no Bevy)
+                 ├ m2-game     net plugin, actors, player, world scene, drawing
+                 ├ m2-net      packets, framing, phases, account login (no Bevy)
+                 ├ m2-world    terrain, map areas, map loading (no Bevy)
+                 ├ m2-effect   particles / effect meshes (no Bevy)
+                 ├ m2-render   D3D9-style materials, shaders
+                 ├ m2-assets   Bevy AssetReader/Loaders
+                 └ m2-formats  pack, gr2, spt, msa/msm, protos, uiscript (no Bevy)
 ```
 
 Rules:
 
-- `m2-formats` is pure Rust with no Bevy dependency, so it can be tested and
-  fuzzed headless (as `io/tests/fuzz_pack.cpp` does today).
-- Only `m2-script` knows the C ABI. The game crates expose ordinary Rust APIs,
-  and `m2-script` wraps them.
-- The C++ side never touches engine objects. It converts `PyObject*` to and
-  from C types and calls `m2_*`. Rust calls back into Python through a
-  function-pointer table the host registers at startup (`m2py_call_method`,
-  `m2py_incref`/`decref`, …). That covers the ~254
-  `PyCallClassMemberFunc` sites in today's game code (net phase handlers,
-  window events, …).
-- That boundary follows the rules already in `neoeter/docs/abi.md` (opaque
-  handles, POD structs, UTF-8 strings, `neoeter_result`, main thread only), so
-  the planned C# host can use it too.
+- `m2-formats`, `m2-net`, `m2-world`, `m2-effect` and `m2-ui-core` are pure Rust
+  with no Bevy dependency, so they can be tested, fuzzed and differential-tested
+  headless.
+- Bevy code lives in `m2-assets`, `m2-render`, `m2-game`, `m2-ui` and the
+  binaries (`m2-client`, `m2-viewer`). `m2-viewer` is a preview tool built from
+  the same `m2-game` pieces as the client.
+- No C or C++ in the client build, and no system libraries beyond what Bevy
+  needs, so wasm, Android and iOS stay reachable (D16, D17).
 
-### The main loop inversion
+### The main loop (superseded)
 
-Today Python owns the loop: the boot script calls `app.Create()` and then
-`app.Loop()`, which blocks inside `CPythonApplication::Loop`. In Bevy, the app
-owns the loop through winit.
-
-Phase 0 finding: the boot entry is `system.py` (`UserInterface.cpp`).
-`app.Loop` is a plain C call (`PythonApplicationModule.cpp:422`) that returns
-only when the game exits. `system.py` ends with `RunMainScript("prototype.py")`,
-and `prototype.py`'s `RunApp()` does `app.Create(...)`, `mainStream.Create()`,
-`SetLogoPhase()`, `app.Loop()` and then `mainStream.Destroy()`. That teardown
-would never run if `Loop` returned early. So **Bevy runs inside `app.Loop`**:
-
-1. `m2-client` builds the Bevy `App` (not yet run) and starts the Python host
-   on the main thread.
-2. It runs `system.py`. `app.Create` configures the Bevy window.
-3. `app.Loop` calls back into Rust, which runs the Bevy runner to completion.
-   The script's frame sits on the stack the whole time, as it does in the C++
-   client today. Per-frame Python work (the current `Process()` → Python
-   callbacks) runs in an exclusive main-thread system.
-4. When the window closes, the runner returns, `app.Loop` returns, the
-   script's teardown runs, and `Py_Finalize` follows.
-
-This keeps the scripts unmodified. Confirmed against `bin/pack/root/`
-(`system.py:295`, `prototype.py:17-61`).
+The first plan ran Bevy *inside* Python's `app.Loop`, because `prototype.py`
+owns the loop in the C++ client. With D17 there is no Python: Bevy owns the loop
+and the login/select/game flow is Rust state driven by the server's phases.
 
 ## 3. Rendering approach
 
@@ -114,11 +83,11 @@ linear fog, blend modes, and multipass terrain splatting. Bevy's
 - The existing golden images (`neoeter/src/render/tests/golden/render/*.png`:
   alpha test, fog, blending, culling, depth) become the material conformance
   suite. A headless Bevy render of each scene must match within tolerance.
-- The UI is drawn by `m2-ui` with a 2D camera on top. The **window tree stays
-  retained and script-driven**: Python creates and moves windows by handle. It
-  is not ported to `bevy_ui` layout. Each window maps to an entity with a
-  sprite/mesh, and text goes through `bevy_text` with Metin2 text tags
-  (`|cFF…|h`, `|H…|h`) parsed in Rust.
+- The UI is drawn by `m2-ui` on top of the scene. Windows are built from the
+  original layout files (D17) as a retained tree of `bevy_ui` nodes with the
+  client's absolute positions and sprites, not a reflowing layout; text goes
+  through `bevy_text` with Metin2 text tags (`|cFF…|h`, `|H…|h`) parsed in Rust
+  (`m2-ui-core`).
 
 ## 4. Phases
 
@@ -180,7 +149,7 @@ headless boot test `cargo test -p m2-script`. Run everything from
 - **Gate:** fly-camera through every map in the client data, at parity with
   the C++ renderer in side-by-side screenshots.
 
-### Phase 4: Game logic and networking, no Python yet (6–10 weeks)
+### Phase 4: Game logic and networking (6–10 weeks)
 - `m2-net`: non-blocking TCP (`std::net` polled each frame, or a background
   thread with channels), packet header map, packet structs (`zerocopy` /
   `bytemuck`, `#[repr(C, packed)]` checked against `test_packet.cpp`), the
@@ -192,38 +161,38 @@ headless boot test `cargo test -p m2-script`. Run everything from
 - Input: keyboard/mouse picking (`PythonPlayerInput*`) using Bevy input and
   ray casts. The camera procedure ports too.
 - **Gate:** a scripted headless bot logs in to a test server, selects a
-  character, walks and attacks, all driven from Rust with stub UI.
+  character, walks and attacks, all driven from Rust with stub UI. *(Progress:
+  `m2-client` and `cargo run -p m2-net --example login` log in to a real server
+  through the account server; see `rust_port.md` §1.)*
 
-### Phase 5: Python bridge and UI (6–10 weeks)
-- `m2-script`: `extern "C"` API generated by cbindgen, plus the callback
-  table. **Generate the C++ marshalling instead of hand-writing it.** One
-  declarative spec (for example `modules/player.toml`:
-  `GetStatus(int) -> int`) generates (a) the C++ `PyMethodDef` + argument
-  parsing and (b) a Rust trait that `m2-script` implements. That replaces most
-  of today's ~17k hand-written lines.
-- The existing API-surface snapshots (`golden/api.sha256`,
-  `test_python_client_api.cpp`) become the conformance check: the generated
-  modules must expose the same names and signatures.
-- `m2-ui`: the window tree (`PythonWindow`, `WindowManager`, slot/grid-slot,
-  text, image, expanded/ratio images, mark images), focus, capture, drag and
-  drop, tooltips, cursors, and IME (Bevy `Ime` events in place of `IME_Sdl`).
-- Port order follows the dependency chain: `dbg`/`time`/`math` → `app`,
-  `systemSetting`, `pack`, `snd` → `wndMgr`, `grp*`, `wnd*` → `net` → `player`,
-  `chr`, `chrmgr` → `item`, `skill`, `nonplayer` → the rest (`quest`, `guild`,
-  `shop`, `safebox`, `exchange`, `messenger`, `miniMap`, `textTail`, `effect`,
-  `fly`, `event`, `eventMgr`, `background`, `chat`, `ime`, `profiler`,
-  `ServerStateChecker`).
-- **Gate:** the unmodified `root/*.py` reaches the login screen, then
-  character select, then in-game.
+### Phase 5: UI in Rust (8–12 weeks)
+Replaces the first plan's "Python bridge and UI" (D17). Milestones 4 and 5 of
+the roadmap in `rust_port.md` §8.
+- `m2-formats::uiscript`: evaluate the layout files (`uiscript/*.py`,
+  `locale/*/ui/*.py`): dict/tuple/list literals, numbers, strings, arithmetic,
+  `float()`/`int()`, `SCREEN_WIDTH`/`SCREEN_HEIGHT` and the `uiScriptLocale`/
+  `localeInfo` constants from the locale text files. All 350 files are data (no
+  `def`, `class` or loops). Differential-check against CPython on every file.
+- `m2-ui`: the window tree on `bevy_ui` built from those layouts (image,
+  expanded and animated images, boards, title bars, buttons, text, edit lines,
+  scroll bars, slots and grid slots, list boxes), `.sub` sprite sheets, fonts,
+  focus, capture, drag and drop, tooltips, cursors, and IME (Bevy `Ime` events).
+  `m2-ui-core` provides the ported text layout, edit and slot logic.
+- Screen behaviour (what `root/*.py` does) is written in Rust against
+  `m2-game` state, screen by screen: login and select first, then the in-game
+  windows in dependency order (task bar, chat, character/inventory, skills and
+  quick slots, minimap, shops/exchange/safebox, quests, party, guild,
+  messenger, …).
+- **Gate:** login, character select and in-game look like the original (same
+  layout files) and work against the server.
 
 ### Phase 6: Parity and cut-over (4+ weeks)
 - Test every UI window and gameplay system (inventory, shops, exchange,
   safebox, guild marks upload/download, quests, minimap, chat, messenger).
 - Performance budget: frame time ≤ the C++ client on the same map with the
   same entity count.
-- Remove the C++ engine/game from the build. Keep `neoeter-python/host` and
-  the generated module shims only, and update the Nix package to build the
-  Rust binary.
+- Remove the C++ engine, game and Python host from the build, and update the
+  Nix package to build the Rust binary.
 
 Rough total: 7–11 months for one experienced developer; less with parallel
 tracks after phase 1. Phases 2/3 (rendering) and phase 4 (net/game) are
@@ -233,25 +202,25 @@ independent once `m2-formats` exists.
 
 | C++ | Rust / Bevy |
 |---|---|
-| `CSingleton<T>` managers | `Resource` (or `NonSend` if touched by Python) |
+| `CSingleton<T>` managers | `Resource` |
 | `CGraphicThingInstance`, `CActorInstance` | entity + components (`Transform`, `Actor`, `MotionState`, `Attachments`, …) |
 | `CStateManager` / D3D9 render states | material specialisation keys / pipeline descriptors |
 | `CResourceManager`, `CResource` refcount | `AssetServer`, `Handle<T>` |
 | `CFileLoaderThread`, `AreaLoaderThread` | Bevy async asset loading / `AsyncComputeTaskPool` |
-| `ELTimer_GetMSec` | `Res<Time>` (keep a ms clock resource for the scripts) |
+| `ELTimer_GetMSec` | `Res<Time>` (the net plugin keeps its own ms clock for the protocol) |
 | `CNetworkStream` phases | `State<NetPhase>` + systems per phase |
-| `CPythonEventManager` | Bevy events/messages + Python callbacks |
+| `CPythonEventManager` | Bevy events/messages (`NetMessage`, UI messages) |
 | Miles / miniaudio | `bevy_kira_audio` |
 | `IME_Sdl`, `Input.cpp` | `ButtonInput<KeyCode>`, `Ime` events, `CursorMoved` |
 | FreeType `GrpFontTexture` | `bevy_text` (cosmic-text) |
 
 ## 6. Risks
 
-- **Python owns control flow.** The main-loop inversion (§2) and re-entrancy:
-  Python calling `m2_*`, which calls back into Python, which calls `m2_*`
-  again. All of it has to stay on the main thread in one exclusive system,
-  with no ECS borrows held across a Python call. Design `m2-script` around a
-  command queue plus `&mut World` access.
+- **UI behaviour is rewritten, not ported.** Without Python (D17), every
+  screen's logic in `root/*.py` (~40k lines in `bin/pack/root`) is reimplemented in Rust. The
+  layouts come from the original files, but behaviour can drift: compare each
+  screen with the C++ client side by side, and treat the server protocol as the
+  source of truth.
 - **Fixed-function fidelity.** Subtle differences in fog, alpha test and
   blending show up immediately. The golden images help, but terrain splatting
   and SpeedTree need their own screenshot comparisons.
@@ -267,11 +236,9 @@ independent once `m2-formats` exists.
 
 ## 7. Open decisions
 
-1. Keep `neoeter-python` building as a CMake static library linked through the
-   `cmake` crate, or move it to a `cc` build in `build.rs`? (Recommend the
-   `cmake` crate first, since it reuses the existing setup.)
-2. Codegen spec format for the module shims (TOML vs a Rust proc-macro that
-   emits C++). Recommend TOML plus a small Rust generator, which keeps the C++
-   side dumb.
-3. Windows/MinGW: the C++ client cross-builds today. Confirm the Rust target
-   (`x86_64-pc-windows-gnu`) and Python 2.7 linking before phase 5.
+1. UI toolkit: the first screens use egui (`bevy_egui`); the original-look UI
+   (phase 5) is planned on `bevy_ui`. Confirm before the widget tree is built.
+2. When to delete the superseded Python pieces (`m2-script`, `m2-modgen`,
+   `modules/*.toml`, `neoeter_python_abi`): nothing uses them since D17.
+3. Windows: confirm the Rust target (`x86_64-pc-windows-gnu` or `-msvc`); with
+   no Python there is nothing else to link.

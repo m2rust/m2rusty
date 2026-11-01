@@ -11,5 +11,6 @@ bevy.workspace = true
 m2-assets.workspace = true
 m2-effect.workspace = true
 m2-formats.workspace = true
+m2-net.workspace = true
 m2-render.workspace = true
 m2-world.workspace = true

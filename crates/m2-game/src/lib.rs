@@ -3,6 +3,8 @@
 //!
 //! - [`render`]: models, SpeedTrees, effects, terrain, sky and clouds drawn
 //!   with the client's fixed-function render states (`m2-render`).
+//! - [`net`]: the server connection ([`net::NetPlugin`]): login through the
+//!   account server, then the game connection, as messages.
 //! - [`world`]: an outdoor map loaded by [`m2_world::load_map`], prepared off
 //!   the main thread ([`world::prepare_map`]) and spawned as one scene
 //!   ([`world::MapScene`]).
@@ -12,6 +14,7 @@
 //! carries [`SceneCamera`]: tree leaves face it, clouds follow it, effects
 //! billboard towards it and the sky is installed on it.
 
+pub mod net;
 pub mod render;
 pub mod world;
 

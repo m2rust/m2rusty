@@ -8,4 +8,6 @@ publish.workspace = true
 
 [dependencies]
 bevy.workspace = true
-m2-script.workspace = true
+bevy_egui = { version = "0.43.1", default-features = false, features = ["render", "default_fonts"] }
+m2-game.workspace = true
+m2-ui.workspace = true
