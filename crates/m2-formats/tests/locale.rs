@@ -1,3 +1,4 @@
+#![cfg(feature = "glibc-tables")]
 //! Port of `neoeter/src/platform/locale/tests/test_locale_codecs.cpp`, plus
 //! the glibc behaviours the Rust codec reproduces.
 

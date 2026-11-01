@@ -48,14 +48,15 @@ pub fn encoding(code_page: u32) -> Option<&'static Encoding> {
 }
 
 /// The code page of a locale pack name (`locale/<name>/`), as the client's
-/// `gs_stLocaleData` (`client/src/ui/Locale.cpp`) lists them. `gr` is the
+/// `gs_stLocaleData` (`client/src/ui/Locale.cpp`) lists them, except `cz`: the client says 1252 but the
+/// shipped Czech pack is CP1250 (see `tests/utf8_corpus.rs`). `gr` is the
 /// shipped Greek pack, which the client calls `tr` with 1253.
 pub fn locale_code_page(locale: &str) -> Option<u32> {
     Some(match locale {
-        "de" | "en" | "us" | "es" | "it" | "fr" | "pt" | "dk" | "mx" | "nl" | "cz" | "ca" | "sg" | "br" => {
+        "de" | "en" | "us" | "es" | "it" | "fr" | "pt" | "dk" | "mx" | "nl" | "ca" | "sg" | "br" => {
             code_page::LATIN
         }
-        "pl" | "hu" | "ro" => code_page::EASTEUROPE,
+        "pl" | "hu" | "ro" | "cz" => code_page::EASTEUROPE,
         "tr" => code_page::TURKISH,
         "gr" => code_page::GREEK,
         "ru" => code_page::CYRILLIC,
@@ -70,7 +71,7 @@ pub fn locale_code_page(locale: &str) -> Option<u32> {
 
 /// The locale packs in `bin/pack` and their code pages.
 pub const SHIPPED_LOCALES: [(&str, u32); 15] = [
-    ("cz", code_page::LATIN),
+    ("cz", code_page::EASTEUROPE),
     ("de", code_page::LATIN),
     ("dk", code_page::LATIN),
     ("en", code_page::LATIN),
@@ -141,23 +142,36 @@ pub enum NameSource {
     Utf8,
     /// Not valid UTF-8: decoded from the legacy code page.
     Legacy,
+    /// Valid UTF-8 whose characters are all Latin-1 (U+0080..=U+00FF): the
+    /// zip layer shows a CP949 entry name this way (each byte as one
+    /// character, `libzip` guess in C++). The bytes were recovered and
+    /// decoded from the legacy code page.
+    Mojibake,
 }
 
 /// A pack virtual name as text. Names are lowercase ASCII paths except for a
-/// few that are legacy-code-page bytes.
+/// few that are legacy-code-page names.
 ///
-/// Valid UTF-8 is kept (`NameSource::Utf8`); anything else is decoded with
-/// `legacy_code_page` (CP949 for the shipped packs,
-/// [`DEFAULT_NAME_CODE_PAGE`]) and reported as `NameSource::Legacy`.
+/// Valid UTF-8 is kept (`NameSource::Utf8`) unless it is Latin-1 mojibake of
+/// legacy bytes that decode cleanly in `legacy_code_page` (CP949 for the
+/// shipped packs, [`DEFAULT_NAME_CODE_PAGE`]); invalid UTF-8 is decoded with
+/// `legacy_code_page`.
 pub fn virtual_name(name: &[u8], legacy_code_page: u32) -> (Cow<'_, str>, NameSource) {
-    match std::str::from_utf8(name) {
-        Ok(s) => (Cow::Borrowed(s), NameSource::Utf8),
-        Err(_) => (decode(legacy_code_page, name), NameSource::Legacy),
+    let Ok(s) = std::str::from_utf8(name) else {
+        return (decode(legacy_code_page, name), NameSource::Legacy);
+    };
+    if !s.is_ascii() && s.chars().all(|c| (c as u32) <= 0xff) {
+        let raw: Vec<u8> = s.chars().map(|c| c as u32 as u8).collect();
+        if let Some(text) = decode_strict(legacy_code_page, &raw) {
+            // Real Latin-1 text that is not valid in the code page stays as is.
+            return (Cow::Owned(text.into_owned()), NameSource::Mojibake);
+        }
     }
+    (Cow::Borrowed(s), NameSource::Utf8)
 }
 
 /// [`virtual_name`] over all names; returns the UTF-8 names, and the
-/// indexes (into the input order) of those that were legacy bytes.
+/// indexes (into the input order) of those that were not plain UTF-8.
 pub fn virtual_names<'a>(
     names: impl IntoIterator<Item = &'a [u8]>,
     legacy_code_page: u32,
@@ -166,7 +180,7 @@ pub fn virtual_names<'a>(
     let mut legacy = Vec::new();
     for (i, name) in names.into_iter().enumerate() {
         let (s, source) = virtual_name(name, legacy_code_page);
-        if source == NameSource::Legacy {
+        if source != NameSource::Utf8 {
             legacy.push(i);
         }
         out.push(s);
@@ -332,6 +346,12 @@ mod tests {
         assert_eq!((s.as_ref(), src), ("d:/ymir work/a.gr2", NameSource::Utf8));
         let (s, src) = virtual_name(b"icon/\xb0\xa1.tga", 949);
         assert_eq!((s.as_ref(), src), ("icon/\u{ac00}.tga", NameSource::Legacy));
+        // CP949 bytes B0 A1 shown as two Latin-1 characters.
+        let (s, src) = virtual_name("icon/\u{b0}\u{a1}.tga".as_bytes(), 949);
+        assert_eq!((s.as_ref(), src), ("icon/\u{ac00}.tga", NameSource::Mojibake));
+        // Latin-1 text that is not a valid CP949 sequence stays.
+        let (s, src) = virtual_name("caf\u{e9}".as_bytes(), 949);
+        assert_eq!((s.as_ref(), src), ("caf\u{e9}", NameSource::Utf8));
         let (all, legacy) = virtual_names([b"a".as_slice(), b"\xb0\xa1", b"b"], 949);
         assert_eq!((all.len(), legacy), (3, vec![1]));
     }

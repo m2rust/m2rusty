@@ -27,3 +27,8 @@ tempfile.workspace = true
 crc32fast = "1.5.3"
 # Enables `glibc-tables` for `cargo test` and the dump binaries it builds.
 m2-formats = { path = ".", features = ["glibc-tables"] }
+
+[[bin]]
+name = "m2-locale-dump"
+path = "src/bin/m2-locale-dump.rs"
+required-features = ["glibc-tables"]

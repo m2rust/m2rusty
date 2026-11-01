@@ -1,3 +1,4 @@
+#![cfg(feature = "glibc-tables")]
 //! Differential tests: the Rust locale codecs against `neoeter/src/platform/locale`
 //! (and so glibc iconv). `m2diff_locale` and `m2-locale-dump` print the same
 //! dumps, which must be identical:
