@@ -91,7 +91,7 @@ static inline PyObject *m2_shim_fail(m2_result r)
 fn fail_expr(on_bad: &str) -> &'static str {
     match on_bad {
         "bad_argument" => "Py_BadArgument()",
-        "parse_tuple" | "null" => "nullptr",
+        "parse_tuple" | "parse_tuple_anon" | "null" => "nullptr",
         _ => "Py_BuildException(nullptr)",
     }
 }
@@ -247,7 +247,8 @@ fn overload_body(module: &str, f: &Function, ov: &Ov, ret: &Ty, ind: &str) -> St
     let fail = fail_expr(&f.on_bad_arg);
     let mut o = String::new();
     let n = ov.params.len();
-    let parse_tuple = f.on_bad_arg == "parse_tuple";
+    let parse_tuple = f.on_bad_arg.starts_with("parse_tuple");
+    let anon = f.on_bad_arg == "parse_tuple_anon";
     for (i, p) in ov.params.iter().enumerate() {
         let _ = writeln!(o, "{ind}{}", tmp_decl(&p.ty, &format!("t{i}")));
     }
@@ -262,7 +263,8 @@ fn overload_body(module: &str, f: &Function, ov: &Ov, ret: &Ty, ind: &str) -> St
             fmt.push(parse_char(&p.ty));
         }
         let ptrs: Vec<String> = (0..n).map(|i| format!("&t{i}")).collect();
-        let _ = writeln!(o, "{ind}if (!PyArg_ParseTuple(poArgs, \"{fmt}:{}\"{}{}))\n{ind}    return nullptr;", f.name, if n > 0 { ", " } else { "" }, ptrs.join(", "));
+        let suffix = if anon { String::new() } else { format!(":{}", f.name) };
+        let _ = writeln!(o, "{ind}if (!PyArg_ParseTuple(poArgs, \"{fmt}{suffix}\"{}{}))\n{ind}    return nullptr;", if n > 0 { ", " } else { "" }, ptrs.join(", "));
         for (i, p) in ov.params.iter().enumerate() {
             if p.optional {
                 let _ = writeln!(o, "{ind}const bool h{i} = PyTuple_Size(poArgs) > {i};");

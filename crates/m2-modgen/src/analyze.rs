@@ -358,6 +358,7 @@ pub fn analyze(toks: &[Tok], args_name: &str, noargs: bool) -> Analysis {
     let mut gets: Vec<Get> = Vec::new();
     let mut handled_args_refs: BTreeSet<usize> = BTreeSet::new();
     let mut parse_tuple = false;
+    let mut parse_named = true;
     for i in 0..n {
         if !toks[i].is_ident() || !toks.get(i + 1).is_some_and(|t| t.is("(")) {
             continue;
@@ -426,6 +427,7 @@ pub fn analyze(toks: &[Tok], args_name: &str, noargs: bool) -> Analysis {
                 continue;
             }
             let fmt = toks[parts[1].0].text.clone();
+            parse_named &= fmt.contains(':');
             let fmt = fmt.split(':').next().unwrap_or("").split(';').next().unwrap_or("").to_string();
             let mut optional = false;
             let mut k = 0;
@@ -517,7 +519,7 @@ pub fn analyze(toks: &[Tok], args_name: &str, noargs: bool) -> Analysis {
         if !gets.is_empty() {
             a.unclassified.push("args: mixes PyArg_ParseTuple and PyTuple_Get*".into());
         }
-        a.on_bad_arg = "parse_tuple".into();
+        a.on_bad_arg = if parse_named { "parse_tuple" } else { "parse_tuple_anon" }.into();
     } else if noargs {
         a.overloads.push(vec![]);
     } else {

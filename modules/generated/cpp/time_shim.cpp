@@ -20,7 +20,7 @@ static PyObject *m2gen_py_time_localtime(PyObject *poSelf, PyObject *poArgs)
 static PyObject *m2gen_py_time_sleep(PyObject *poSelf, PyObject *poArgs)
 {
     double t0 = 0;
-    if (!PyArg_ParseTuple(poArgs, "d:sleep", &t0))
+    if (!PyArg_ParseTuple(poArgs, "d", &t0))
         return nullptr;
     const m2_result r = m2_time_sleep((double)t0);
     if (r.kind != M2_OK)
@@ -32,7 +32,7 @@ static PyObject *m2gen_py_time_strftime(PyObject *poSelf, PyObject *poArgs)
 {
     char *t0 = nullptr;
     PyObject *t1 = nullptr;
-    if (!PyArg_ParseTuple(poArgs, "s|O:strftime", &t0, &t1))
+    if (!PyArg_ParseTuple(poArgs, "s|O", &t0, &t1))
         return nullptr;
     const bool h1 = PyTuple_Size(poArgs) > 1;
     const char *o0 = nullptr;

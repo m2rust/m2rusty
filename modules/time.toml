@@ -19,7 +19,7 @@ file = "neoeter-python/src/host/PythonLauncher.cpp"
 line = 51
 flags = "varargs"
 status = "unclassified"
-on_bad_arg = "parse_tuple"
+on_bad_arg = "parse_tuple_anon"
 overloads = [["dt: double"]]
 returns = "tuple[int, int, int, int, int, int, int, int, int]"
 unclassified = ["args: `args` used directly (if(args &&)", "returns: PyErr_SetFromErrno(PyExc_ValueError)"]
@@ -31,7 +31,7 @@ file = "neoeter-python/src/host/PythonLauncher.cpp"
 line = 34
 flags = "varargs"
 status = "classified"
-on_bad_arg = "parse_tuple"
+on_bad_arg = "parse_tuple_anon"
 overloads = [["secs: double"]]
 returns = "none"
 
@@ -42,7 +42,7 @@ file = "neoeter-python/src/host/PythonLauncher.cpp"
 line = 73
 flags = "varargs"
 status = "classified"
-on_bad_arg = "parse_tuple"
+on_bad_arg = "parse_tuple_anon"
 overloads = [["fmt: str", "tup: object?"]]
 returns = "str"
 
