@@ -23,7 +23,7 @@ use m2_assets::M2AssetsPlugin;
 use m2_render::M2RenderPlugin;
 
 /// Parsed command line: `m2-viewer [client dir] [--index <file>]
-/// [--motion <vpath>] [--map <name>] [--screenshot <vpath> <out.png>]
+/// [--motion <vpath>] [--map <name>] [--fog] [--screenshot <vpath> <out.png>]
 /// [--screenshot-only <out.png>]`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Args {
@@ -33,6 +33,9 @@ pub struct Args {
     pub motion: Option<String>,
     /// Outdoor map to open on startup, e.g. `metin2_map_a1`.
     pub map: Option<String>,
+    /// Apply the map environment's fog (`--fog`). Off for the overview camera,
+    /// which sits far outside the map's fog range.
+    pub fog: bool,
     pub screenshot: Option<(String, PathBuf)>,
     /// Capture a screenshot without a client file to open (used with `--map`,
     /// which has no browser entry of its own).
@@ -45,6 +48,7 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String
         index: "pack/Index.dev".into(),
         motion: None,
         map: None,
+        fog: false,
         screenshot: None,
         screenshot_only: None,
     };
@@ -64,6 +68,7 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String
                 let name = it.next().ok_or("--map needs a map name (e.g. metin2_map_a1)")?;
                 a.map = Some(m2_assets::paths::canonical_game_path(&name));
             }
+            "--fog" => a.fog = true,
             "--index" => a.index = it.next().ok_or("--index needs a file")?,
             s if s.starts_with("--") => return Err(format!("unknown option {s}")),
             _ => a.client_dir = s.into(),
@@ -100,7 +105,9 @@ pub fn build_app(args: &Args) -> App {
     // `--map` has no browser entry, so its screenshot may omit the virtual
     // path; the map load itself queues the shell's `PendingOpen`.
     if let Some(map) = &args.map {
-        app.world_mut().resource_mut::<map::MapPreload>().map = Some(map.clone());
+        let mut preload = app.world_mut().resource_mut::<map::MapPreload>();
+        preload.map = Some(map.clone());
+        preload.fog = args.fog;
     }
     let out = args.screenshot_only.clone().or_else(|| args.screenshot.as_ref().map(|(_, out)| out.clone()));
     if let Some(out) = out {
@@ -131,6 +138,8 @@ mod tests {
         let a = p(&["--map", "Metin2_Map_A1"]).unwrap();
         assert_eq!(a.map.as_deref(), Some("metin2_map_a1"));
         assert!(p(&["--map"]).is_err());
+        let a = p(&["--fog"]).unwrap();
+        assert!(a.fog);
         let a = p(&["--screenshot-only", "o.png"]).unwrap();
         assert_eq!(a.screenshot_only, Some(PathBuf::from("o.png")));
         assert!(p(&["--screenshot-only"]).is_err());

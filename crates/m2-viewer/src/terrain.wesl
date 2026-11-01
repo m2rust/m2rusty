@@ -1,12 +1,18 @@
 import bevy_pbr::render::{
     mesh_functions,
     forward_io::{Vertex, decompress_vertex},
+    mesh_view_bindings::view,
     view_transformations::position_world_to_clip,
 };
 struct TerrainUniform {
     transforms: array<vec4<f32>, 256>,
     layers: array<vec4<u32>, 64>,
     count: vec4<u32>,
+    fog_color: vec4<f32>,
+    // x = fog start, y = fog end, z = density.
+    fog_params: vec4<f32>,
+    // x = fog mode (0 off, 1 linear, 2 exp, 3 exp2).
+    fog_mode: vec4<u32>,
 }
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> terrain: TerrainUniform;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var ground: texture_2d_array<f32>;
@@ -18,6 +24,8 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
     @location(1) alpha_uv: vec2<f32>,
     @location(2) light: vec3<f32>,
+    // Distance along the view axis, the fog coordinate of the GL reference.
+    @location(3) view_depth: f32,
 }
 @vertex
 fn vertex(input: Vertex) -> VertexOutput {
@@ -27,6 +35,7 @@ fn vertex(input: Vertex) -> VertexOutput {
     let normal = mesh_functions::mesh_normal_local_to_world(v.normal, input.instance_index);
     var out: VertexOutput;
     out.position = position_world_to_clip(position.xyz);
+    out.view_depth = -(view.view_from_world * position).z;
     out.uv = v.uv;
     out.alpha_uv = v.uv_b;
     let intensity = max(dot(normalize(normal), -normalize(vec3<f32>(0.35, -0.85, 0.4))), 0.0);
@@ -44,5 +53,20 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         // First used texture is the opaque base, just as in the original terrain pass.
         color = mix(color, texel, select(mask, 1.0, i == 0u));
     }
-    return vec4<f32>(color * in.light, 1.0);
+    color *= in.light;
+    // Fog on the view-axis distance, exactly as fixed_function.wesl does it.
+    var fog_factor = 1.0;
+    switch terrain.fog_mode.x {
+        case 1u: { fog_factor = (terrain.fog_params.y - in.view_depth) / (terrain.fog_params.y - terrain.fog_params.x); }
+        case 2u: { fog_factor = exp(-terrain.fog_params.z * in.view_depth); }
+        case 3u: {
+            let d = terrain.fog_params.z * in.view_depth;
+            fog_factor = exp(-d * d);
+        }
+        default: {}
+    }
+    if terrain.fog_mode.x != 0u {
+        color = mix(terrain.fog_color.rgb, color, clamp(fog_factor, 0.0, 1.0));
+    }
+    return vec4<f32>(color, 1.0);
 }

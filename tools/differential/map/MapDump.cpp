@@ -1,6 +1,6 @@
 // Reference dump for the Rust map readers (crates/m2-formats/src/map).
 //
-//   m2diff_map <client dir> <index file> <props|maps|textures|atlas>
+//   m2diff_map <client dir> <index file> <props|maps|textures|atlas|env>
 //
 // Registers packs like m2diff_script, then:
 //
@@ -30,6 +30,9 @@
 //   textures: for every registered textureset/*.txt: T/TT as above.
 //   atlas:    for every registered */atlasinfo.txt: F <file>, then
 //               I <name> <bx> <by> <sx> <sy> <ex> <ey>
+//   env:      for every registered *.msenv: E and the L/M/F/X/W/S/LF/R
+//             blocks documented at DumpEnvironment (real Environment_Init +
+//             Environment_Load from client/src/game/MapUtil.cpp).
 //
 // Fields are tab separated, floats are the hex of their bits, TH fields are
 // FNV-1a 64 hashes of the arrays' bytes.
@@ -71,6 +74,7 @@
 #include <Client/Game/Area.h>
 #include <Client/Game/AreaTerrain.h>
 #include <Client/Game/MapManager.h>
+#include <Client/Game/MapUtil.h>
 #include <Client/Game/PropertyManager.h>
 #include <Neoeter/IO/EterPackManager.h>
 #include <Neoeter/Platform/Base/FileLoader.h>
@@ -436,13 +440,126 @@ std::string BaseName(const std::string &name)
     return slash == std::string::npos ? name : name.substr(slash + 1);
 }
 
+template <typename Color>
+void PutColor(const Color &c)
+{
+    PutF(c.r);
+    PutF(c.g);
+    PutF(c.b);
+    PutF(c.a);
+}
+
+void PutVec3(const D3DXVECTOR3 &v)
+{
+    PutF(v.x);
+    PutF(v.y);
+    PutF(v.z);
+}
+
+void PutVec2(const D3DXVECTOR2 &v)
+{
+    PutF(v.x);
+    PutF(v.y);
+}
+
+// `Environment_Init` + `Environment_Load`, as CMapManager::RegisterEnvironmentData
+// runs them. One file per block:
+//   E  <name> <ok>
+//   L  <i> <enable> <direction xyz> <diffuse rgba> <ambient rgba>
+//   M  <diffuse rgba> <ambient rgba> <emissive rgba>
+//   F  <enable> <density> <near> <far> <color rgba>
+//   X  <enable> <color rgba> <alpha src> <alpha dest>
+//   W  <strength> <random>
+//   S  <texture mode> <scale xyz> <upper> <lower> <6 face names>
+//      <cloud scale xy> <cloud height> <cloud texture scale xy> <cloud speed xy>
+//      <cloud texture> <cloud first rgba> <cloud second rgba>
+//      <gradient count> <gradient first rgba> <gradient second rgba> ...
+//   LF <enable> <brightness rgba> <max> <main enable> <main texture> <main size>
+//   R  <reserve>
+void DumpEnvironment(const std::string &name)
+{
+    SEnvironmentData env;
+    Environment_Init(env);
+    bool const ok = Environment_Load(env, name.c_str());
+
+    std::fputs("E\t", g_out);
+    Put(name);
+    std::fprintf(g_out, "\t%d\n", int(ok));
+    if (!ok)
+        return;
+
+    for (int i = 0; i < ENV_DIRLIGHT_NUM; ++i)
+    {
+        std::fprintf(g_out, "L\t%d\t%d", i, int(env.bDirLightsEnable[i]));
+        PutVec3(env.DirLights[i].Direction);
+        PutColor(env.DirLights[i].Diffuse);
+        PutColor(env.DirLights[i].Ambient);
+        std::fputc('\n', g_out);
+    }
+
+    std::fputs("M", g_out);
+    PutColor(env.Material.Diffuse);
+    PutColor(env.Material.Ambient);
+    PutColor(env.Material.Emissive);
+    std::fputc('\n', g_out);
+
+    std::fprintf(g_out, "F\t%d\t%d", int(env.bFogEnable), int(env.bDensityFog));
+    PutF(env.m_fFogNearDistance);
+    PutF(env.m_fFogFarDistance);
+    PutColor(env.FogColor);
+    std::fputc('\n', g_out);
+
+    std::fprintf(g_out, "X\t%d", int(env.bFilteringEnable));
+    PutColor(env.FilteringColor);
+    std::fprintf(g_out, "\t%u\t%u\n", unsigned(env.byFilteringAlphaSrc), unsigned(env.byFilteringAlphaDest));
+
+    std::fprintf(g_out, "W");
+    PutF(env.fWindStrength);
+    PutF(env.fWindRandom);
+    std::fputc('\n', g_out);
+
+    std::fprintf(g_out, "S\t%d", int(env.bSkyBoxTextureRenderMode));
+    PutVec3(env.v3SkyBoxScale);
+    std::fprintf(g_out, "\t%u\t%u", unsigned(env.bySkyBoxGradientLevelUpper), unsigned(env.bySkyBoxGradientLevelLower));
+    for (auto const &face : env.strSkyBoxFaceFileName)
+    {
+        std::fputc('\t', g_out);
+        Put(face);
+    }
+    PutVec2(env.v2CloudScale);
+    PutF(env.fCloudHeight);
+    PutVec2(env.v2CloudTextureScale);
+    PutVec2(env.v2CloudSpeed);
+    std::fputc('\t', g_out);
+    Put(env.strCloudTextureFileName);
+    PutColor(env.CloudGradientColor.m_FirstColor);
+    PutColor(env.CloudGradientColor.m_SecondColor);
+    std::fprintf(g_out, "\t%zu", env.SkyBoxGradientColorVector.size());
+    for (auto const &gradient : env.SkyBoxGradientColorVector)
+    {
+        PutColor(gradient.m_FirstColor);
+        PutColor(gradient.m_SecondColor);
+    }
+    std::fputc('\n', g_out);
+
+    std::fprintf(g_out, "LF\t%d", int(env.bLensFlareEnable));
+    PutColor(env.LensFlareBrightnessColor);
+    PutF(env.fLensFlareMaxBrightness);
+    std::fprintf(g_out, "\t%d\t", int(env.bMainFlareEnable));
+    Put(env.strMainFlareTextureFileName);
+    PutF(env.fMainFlareSize);
+    std::fputc('\n', g_out);
+
+    std::fprintf(g_out, "R\t%d\n", int(env.bReserve));
+}
+
 } // namespace
 
 int main(int argc, char **argv)
 {
     if (argc < 4)
     {
-        std::fprintf(stderr, "usage: %s <client dir> <index file> <props|maps|textures|atlas>\n", argv[0]);
+        std::fprintf(stderr, "usage: %s <client dir> <index file> <props|maps|textures|atlas|env>\n", argv[0]);
         return 2;
     }
 
@@ -497,6 +614,14 @@ int main(int argc, char **argv)
             bool const ok = set.Load(name.c_str(), 1.0f / static_cast<float>(CTerrainImpl::PATCH_XSIZE *
                                                                               CTerrainImpl::CELLSCALE));
             DumpTextureSet(set, ok);
+        }
+    }
+    else if (mode == "env")
+    {
+        for (auto const &name : files)
+        {
+            if (name.ends_with(".msenv"))
+                DumpEnvironment(name);
         }
     }
     else if (mode == "atlas")

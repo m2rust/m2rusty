@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, Extent3d, ShaderType, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension};
 use bevy::shader::ShaderRef;
 use m2_formats::{map::{Terrain, TerrainTexture}, pack::PackManager};
+use m2_render::{Fog, FogMode};
 
 const MAX_LAYERS: usize = 256;
 
@@ -15,6 +16,11 @@ pub(crate) struct TerrainUniform {
     pub transforms: [Vec4; MAX_LAYERS],
     pub layers: [UVec4; MAX_LAYERS / 4],
     pub count: UVec4,
+    pub fog_color: Vec4,
+    /// x = fog start, y = fog end, z = density.
+    pub fog_params: Vec4,
+    /// x = fog mode (0 off, 1 linear, 2 exp, 3 exp2).
+    pub fog_mode: UVec4,
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
@@ -45,7 +51,14 @@ impl Plugin for MapRenderPlugin {
 }
 
 pub(crate) fn patch_uniform(textures: &[TerrainTexture], counts: &[u32; 256]) -> TerrainUniform {
-    let mut params = TerrainUniform { transforms: [Vec4::ZERO; MAX_LAYERS], layers: [UVec4::ZERO; MAX_LAYERS / 4], count: UVec4::ZERO };
+    let mut params = TerrainUniform {
+        transforms: [Vec4::ZERO; MAX_LAYERS],
+        layers: [UVec4::ZERO; MAX_LAYERS / 4],
+        count: UVec4::ZERO,
+        fog_color: Vec4::ZERO,
+        fog_params: Vec4::ZERO,
+        fog_mode: UVec4::ZERO,
+    };
     for (id, texture) in textures.iter().take(MAX_LAYERS).enumerate().skip(1) {
         params.transforms[id] = Vec4::new(texture.u_scale * 0.2, texture.v_scale * 0.2, texture.u_offset, -texture.v_offset);
         if counts[id] > 0 && !texture.file_name.is_empty() {
@@ -57,6 +70,30 @@ pub(crate) fn patch_uniform(textures: &[TerrainTexture], counts: &[u32; 256]) ->
     // Slice zero is an explicit fallback for terrain with no texture data.
     params.count.x = params.count.x.max(1);
     params
+}
+
+/// `D3DRS_FOG*` for the terrain pass. The shader mirrors the fixed-function
+/// material's per-fragment fog exactly.
+pub(crate) fn set_fog(params: &mut TerrainUniform, fog: Option<Fog>) {
+    let Some(fog) = fog.filter(|f| f.is_active()) else {
+        params.fog_mode = UVec4::ZERO;
+        return;
+    };
+    params.fog_color = fog.color;
+    params.fog_mode = match fog.mode {
+        FogMode::Linear { start, end } => {
+            params.fog_params = Vec4::new(start, end, 0.0, 0.0);
+            UVec4::new(1, 0, 0, 0)
+        }
+        FogMode::Exp { density } => {
+            params.fog_params = Vec4::new(0.0, 0.0, density, 0.0);
+            UVec4::new(2, 0, 0, 0)
+        }
+        FogMode::Exp2 { density } => {
+            params.fog_params = Vec4::new(0.0, 0.0, density, 0.0);
+            UVec4::new(3, 0, 0, 0)
+        }
+    };
 }
 
 pub(crate) fn masks(terrain: &Terrain, texture_count: usize) -> Image {

@@ -16,7 +16,7 @@ use m2_formats::{
     pack::PackManager,
 };
 use m2_render::{
-    Blend, BlendFactor, CullMode, DepthState, FixedFunctionMaterial, TextureArg, TextureOp, TextureStage, d3d_color,
+    Blend, BlendFactor, CullMode, DepthState, FixedFunctionMaterial, Fog, TextureArg, TextureOp, TextureStage, d3d_color,
 };
 use std::{collections::HashMap, sync::Arc};
 
@@ -61,6 +61,8 @@ pub(crate) fn load_instance(packs: &PackManager, file: &[u8], matrix: [f32; 16])
 #[derive(Default)]
 pub(crate) struct EffectRenderer {
     pub instances: Vec<EffectInstance>,
+    /// The map environment's fog, when these are map effects.
+    pub fog: Option<Fog>,
     rng: GlibcRandom,
     draws: Vec<(Entity, Handle<Mesh>, Handle<FixedFunctionMaterial>)>,
     textures: HashMap<Vec<u8>, Handle<Image>>,
@@ -139,6 +141,7 @@ impl EffectRenderer {
                 });
             }
         }
+        let fog = self.fog;
         let count = jobs.len();
         for (index, job) in jobs.into_iter().enumerate() {
             let texture = job.texture.map(|name| {
@@ -163,6 +166,9 @@ impl EffectRenderer {
                     alpha_arg2: TextureArg::TEXTURE,
                 });
             material.blend = job.blend.map(|(src, dst)| Blend::new(blend_factor(src), blend_factor(dst)));
+            if let Some(fog) = fog {
+                material = material.fog(fog);
+            }
             let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, job.positions);
             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, job.uvs);

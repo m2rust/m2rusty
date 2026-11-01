@@ -26,6 +26,7 @@
 
 mod area;
 mod atlas;
+mod environment;
 mod monster;
 mod setting;
 mod terrain;
@@ -33,6 +34,11 @@ mod texture_set;
 
 pub use area::{Area, AreaFileError, ObjectData, PORTAL_ID_MAX_NUM, parse_area_ambience_data, parse_area_data};
 pub use atlas::{AtlasEntry, parse_atlas_info};
+pub use environment::{
+    DirectionalLight, ENV_DIRLIGHT_BACKGROUND, ENV_DIRLIGHT_CHARACTER, ENV_DIRLIGHT_NUM, EnvironmentData,
+    EnvironmentError, EnvironmentMaterial, Filter, Fog, GradientColor, LensFlare, SkyBox, load_environment,
+    parse_environment,
+};
 pub use monster::{MonsterArea, MonsterAreaKind, parse_monster_areas};
 pub use setting::{
     ENVIRONMENT_ROOT, MapProperty, MapSetting, MapType, PropertyError, SettingError, splat_alpha_matrix,

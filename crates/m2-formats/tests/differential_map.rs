@@ -332,3 +332,103 @@ fn real_atlas_info_matches_cpp() {
     eprintln!("atlas: {} files, {entries} entries, {lines} lines identical", names.len());
     assert!(entries > 0);
 }
+
+fn put_color(out: &mut Vec<u8>, c: &[f32; 4]) {
+    c.iter().for_each(|&f| put_f(out, f));
+}
+
+fn put_vec3(out: &mut Vec<u8>, v: &[f32; 3]) {
+    v.iter().for_each(|&f| put_f(out, f));
+}
+
+fn put_vec2(out: &mut Vec<u8>, v: &[f32; 2]) {
+    v.iter().for_each(|&f| put_f(out, f));
+}
+
+/// One `.msenv` block, in the format documented at `DumpEnvironment`.
+fn dump_environment(out: &mut Vec<u8>, name: &[u8], env: Option<&m2_formats::map::EnvironmentData>) {
+    line(out, "E\t", name);
+    out.pop();
+    writeln!(out, "\t{}", u8::from(env.is_some())).unwrap();
+    let Some(env) = env else { return };
+
+    for (i, light) in env.lights.iter().enumerate() {
+        write!(out, "L\t{i}\t{}", u8::from(light.enable)).unwrap();
+        put_vec3(out, &light.direction);
+        put_color(out, &light.diffuse);
+        put_color(out, &light.ambient);
+        out.push(b'\n');
+    }
+
+    out.push(b'M');
+    put_color(out, &env.material.diffuse);
+    put_color(out, &env.material.ambient);
+    put_color(out, &env.material.emissive);
+    out.push(b'\n');
+
+    write!(out, "F\t{}\t{}", u8::from(env.fog.enable), u8::from(env.fog.density)).unwrap();
+    put_f(out, env.fog.near_distance);
+    put_f(out, env.fog.far_distance);
+    put_color(out, &env.fog.color);
+    out.push(b'\n');
+
+    write!(out, "X\t{}", u8::from(env.filter.enable)).unwrap();
+    put_color(out, &env.filter.color);
+    writeln!(out, "\t{}\t{}", env.filter.alpha_src, env.filter.alpha_dest).unwrap();
+
+    out.push(b'W');
+    put_f(out, env.wind_strength);
+    put_f(out, env.wind_random);
+    out.push(b'\n');
+
+    write!(out, "S\t{}", u8::from(env.sky_box.texture_render_mode)).unwrap();
+    put_vec3(out, &env.sky_box.scale);
+    write!(out, "\t{}\t{}", env.sky_box.gradient_level_upper, env.sky_box.gradient_level_lower).unwrap();
+    for face in &env.sky_box.face_file_names {
+        out.push(b'\t');
+        out.extend_from_slice(face.as_bytes());
+    }
+    put_vec2(out, &env.sky_box.cloud_scale);
+    put_f(out, env.sky_box.cloud_height);
+    put_vec2(out, &env.sky_box.cloud_texture_scale);
+    put_vec2(out, &env.sky_box.cloud_speed);
+    out.push(b'\t');
+    out.extend_from_slice(env.sky_box.cloud_texture_file_name.as_bytes());
+    put_color(out, &env.sky_box.cloud_color.first);
+    put_color(out, &env.sky_box.cloud_color.second);
+    write!(out, "\t{}", env.sky_box.gradient.len()).unwrap();
+    for gradient in &env.sky_box.gradient {
+        put_color(out, &gradient.first);
+        put_color(out, &gradient.second);
+    }
+    out.push(b'\n');
+
+    write!(out, "LF\t{}", u8::from(env.lens_flare.enable)).unwrap();
+    put_color(out, &env.lens_flare.brightness_color);
+    put_f(out, env.lens_flare.max_brightness);
+    write!(out, "\t{}\t", u8::from(env.lens_flare.main_enable)).unwrap();
+    out.extend_from_slice(env.lens_flare.main_texture_file_name.as_bytes());
+    put_f(out, env.lens_flare.main_size);
+    out.push(b'\n');
+
+    writeln!(out, "R\t{}", u8::from(env.reserve)).unwrap();
+}
+
+#[test]
+#[ignore = "differential: run scripts/differential.sh"]
+fn real_environments_match_cpp() {
+    let client = client_dir();
+    let manager = manager(&client);
+    let mut names: Vec<&[u8]> = manager.file_names().filter(|n| n.ends_with(b".msenv")).collect();
+    names.sort_unstable();
+    let mut out = Vec::new();
+    let mut loaded = 0;
+    for name in &names {
+        let env = m2_formats::map::load_environment(&manager, name).ok();
+        loaded += usize::from(env.is_some());
+        dump_environment(&mut out, name, env.as_ref());
+    }
+    let lines = assert_same_lines(&cpp(&client, "env"), &out);
+    eprintln!("environments: {} files, {loaded} loaded, {lines} lines identical", names.len());
+    assert!(loaded > 0);
+}

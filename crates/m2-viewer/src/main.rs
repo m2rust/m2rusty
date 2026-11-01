@@ -5,8 +5,8 @@ fn main() {
         }
         Err(e) => {
             eprintln!(
-                "m2-viewer: {e}\nusage: m2-viewer [client dir] [--index file] [--motion <virtual path>] \
-                 [--screenshot <virtual path> <out.png>]"
+                "m2-viewer: {e}\nusage: m2-viewer [client dir] [--index file] [--motion <virtual path>] [--map <name>] \
+                 [--fog] [--screenshot <virtual path> <out.png>] [--screenshot-only <out.png>]"
             );
             std::process::exit(2);
         }

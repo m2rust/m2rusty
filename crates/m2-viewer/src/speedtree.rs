@@ -11,7 +11,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use m2_assets::paths;
 use m2_assets::spt::{SptPart, SptTree};
-use m2_render::{CullMode, FixedFunctionMaterial};
+use m2_render::{CullMode, FixedFunctionMaterial, Fog};
 
 use crate::viewer::{ContentViewer, MainCamera, OpenFile, ViewerEntity};
 use m2_render::{MipFilter, SamplerState};
@@ -36,6 +36,8 @@ pub struct SpeedTreeViewer {
     leaf_camera: Option<Vec3>,
     error: Option<String>,
     fit_camera: bool,
+    /// The map environment's fog, when this tree is a map object.
+    fog: Option<Fog>,
 }
 
 impl ContentViewer for SpeedTreeViewer {
@@ -135,8 +137,9 @@ fn present(yes: bool) -> &'static str {
 }
 
 impl SpeedTreeViewer {
-    pub(crate) fn placed(world: &mut World, tree: SptTree, transform: Transform) -> Self {
+    pub(crate) fn placed(world: &mut World, tree: SptTree, transform: Transform, fog: Option<Fog>) -> Self {
         let mut viewer = Self::default();
+        viewer.fog = fog;
         // Each instance needs its own mutable billboard mesh.
         let mut tree = tree;
         if let Some(mesh) = tree.leaf_mesh.as_ref().and_then(|h| world.resource::<Assets<Mesh>>().get(h)).cloned() {
@@ -175,11 +178,13 @@ impl SpeedTreeViewer {
         }
 
         if let Some(leaf_mesh) = &tree.leaf_mesh {
-            let material = match composite {
-                Some(texture) => alpha_tested(FixedFunctionMaterial::opaque(texture).sampler(leaf_sampler()), tree.leaf_alpha_test),
+            let base = match composite {
+                Some(texture) => FixedFunctionMaterial::opaque(texture).sampler(leaf_sampler()),
                 // Vertex colours only, as when a tree ships no atlas.
-                None => alpha_tested(FixedFunctionMaterial::untextured(), tree.leaf_alpha_test),
+                None => FixedFunctionMaterial::untextured(),
             };
+            let base = if let Some(fog) = self.fog { base.fog(fog) } else { base };
+            let material = alpha_tested(base, tree.leaf_alpha_test);
             let material = world.resource_mut::<Assets<FixedFunctionMaterial>>().add(material);
             world.spawn((
                 ViewerEntity,
@@ -205,6 +210,7 @@ impl SpeedTreeViewer {
             Some(texture) => FixedFunctionMaterial::opaque(texture),
             None => FixedFunctionMaterial::untextured().diffuse(Vec4::new(0.42, 0.36, 0.24, 1.0)),
         };
+        let base = if let Some(fog) = self.fog { base.fog(fog) } else { base };
         let material = world.resource_mut::<Assets<FixedFunctionMaterial>>().add(alpha_tested(base, part.alpha_test));
         world.spawn((
             ViewerEntity,

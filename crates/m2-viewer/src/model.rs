@@ -14,7 +14,7 @@ use m2_assets::gr2::{self, Gr2Model};
 use m2_assets::paths;
 use m2_assets::race::RaceMotionAsset;
 use m2_assets::M2Packs;
-use m2_render::{Blend, CullMode, FixedFunctionMaterial, TextureArg, TextureOp, TextureStage};
+use m2_render::{Blend, CullMode, FixedFunctionMaterial, Fog, TextureArg, TextureOp, TextureStage};
 
 use crate::viewer::{ContentViewer, MainCamera, OpenFile, ViewerEntity};
 
@@ -53,7 +53,7 @@ impl Plugin for ModelViewerPlugin {
     }
 }
 
-pub(crate) fn spawn_model(world: &mut World, model: &Gr2Model) -> (Entity, Vec<Entity>) {
+pub(crate) fn spawn_model(world: &mut World, model: &Gr2Model, fog: Option<Fog>) -> (Entity, Vec<Entity>) {
     let root = world
         .spawn((ViewerEntity, Name::new(model.name.clone()), Transform::IDENTITY, Visibility::Visible, AnimationPlayer::default()))
         .id();
@@ -127,6 +127,9 @@ pub(crate) fn spawn_model(world: &mut World, model: &Gr2Model) -> (Entity, Vec<E
             }
             if mesh.two_sided {
                 material = material.cull(CullMode::None);
+            }
+            if let Some(fog) = fog {
+                material = material.fog(fog);
             }
             let material = world.resource_mut::<Assets<FixedFunctionMaterial>>().add(material);
             let mut components = world.spawn((
@@ -223,7 +226,7 @@ impl ContentViewer for Gr2Viewer {
                     let ready_meshes = parts.iter().filter(|part| world.resource::<Assets<Mesh>>().get(&part.mesh).is_some()).count();
                     info!("loaded {}: {} mesh group(s), {}/{} mesh parts ready, {} bone(s), bounds {:?}..{:?}",
                         self.path, model.meshes.len(), ready_meshes, parts.len(), model.skeleton.as_ref().map_or(0, |s| s.bones.len()), model.bounds.0, model.bounds.1);
-                    let (root, bones) = spawn_model(world, &model);
+                    let (root, bones) = spawn_model(world, &model, None);
                     fit_camera(world, &model);
                     self.root = Some(root);
                     self.bones = bones;

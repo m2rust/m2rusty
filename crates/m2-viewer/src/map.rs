@@ -19,14 +19,12 @@ use m2_assets::coords;
 use m2_assets::paths;
 use m2_assets::{gr2::Gr2Model, spt::SptTree};
 use m2_formats::map::{
-    AreaPropertyError, MapProperty, MapSetting, PropertyError, SettingError, TERRAIN_TEX_COORD_BASE, Terrain,
-    TerrainTexture, TextureSet, splat_alpha_matrix,
+    AreaPropertyError, EnvironmentData, MapProperty, MapSetting, PropertyError, SettingError, TERRAIN_TEX_COORD_BASE,
+    Terrain, TerrainTexture, TextureSet, load_environment, splat_alpha_matrix,
 };
 use m2_formats::pack::PackManager;
 use m2_formats::property::PropertyManager;
-use m2_render::{
-    Blend, DepthState, FixedFunctionMaterial, TextureArg, TextureOp, TextureStage,
-};
+use m2_render::{Blend, DepthState, FixedFunctionMaterial, Fog, TextureArg, TextureOp, TextureStage};
 use m2_world::area::{PlacedKind, PlacedObject, place_object, rotation_yaw_pitch_roll};
 use m2_world::mesh::{DEFAULT_OPAQUE_WATER_DEPTH, build_index_buffers, build_terrain_patches};
 use m2_world::{TERRAIN_WORLD, TerrainCell};
@@ -52,6 +50,8 @@ pub struct LoadedMap {
     pub ground_image: Image,
     pub objects: Vec<PlacedObject>,
     pub effects: Vec<m2_effect::EffectInstance>,
+    pub environment: Option<EnvironmentData>,
+    pub environment_error: Option<String>,
     pub object_errors: Vec<String>,
     pub terrains: Vec<TerrainCell>,
     pub property_error: Option<String>,
@@ -64,6 +64,8 @@ pub struct LoadedMap {
 #[derive(Resource, Default)]
 pub struct MapPreload {
     pub map: Option<String>,
+    /// `--fog`: apply the environment fog from the start.
+    pub fog: bool,
     task: Option<Task<Result<Arc<LoadedMap>, String>>>,
     loaded: Option<Arc<LoadedMap>>,
     error: Option<String>,
@@ -158,6 +160,11 @@ fn load_map(packs: Arc<PackManager>, name: String) -> Result<LoadedMap, String> 
 
     let mut setting = MapSetting::load(&packs, &data_directory);
     let setting_error = setting.error.take().map(|e| describe_setting_error(&e));
+    let environment_name = setting.environment_file_name(&map_name, &data_directory, |n| packs.exists(n));
+    let (environment, environment_error) = match load_environment(&packs, &environment_name) {
+        Ok(environment) => (Some(environment), None),
+        Err(error) => (None, Some(format!("Environment {}: {error}", String::from_utf8_lossy(&environment_name)))),
+    };
     let (count_x, count_y) = setting.terrain_count;
     if count_x <= 0 || count_y <= 0 {
         return Err(setting_error.unwrap_or_else(|| format!("{name}: MapSize is {}x{count_y}", count_x)));
@@ -228,6 +235,8 @@ fn load_map(packs: Arc<PackManager>, name: String) -> Result<LoadedMap, String> 
         ground_image,
         objects,
         effects,
+        environment,
+        environment_error,
         object_errors,
         terrains,
         property_error,
@@ -282,6 +291,10 @@ pub struct MapViewer {
     trees: Vec<crate::speedtree::SpeedTreeViewer>,
     objects_loaded: usize,
     effects: crate::effect_draw::EffectRenderer,
+    fog: Option<Fog>,
+    /// Apply the environment fog. Off for the overview camera, which sits far
+    /// outside the map's fog range; on when the view is near the ground.
+    fog_enabled: bool,
     water: Option<Handle<FixedFunctionMaterial>>,
     water_frames: Vec<Handle<Image>>,
     object_errors: Vec<String>,
@@ -298,6 +311,7 @@ impl ContentViewer for MapViewer {
 
     fn open(&mut self, world: &mut World, file: &OpenFile) {
         *self = Self::default();
+        self.fog_enabled = world.resource::<MapPreload>().fog;
         self.path = paths::canonical_game_path(paths::parent(&file.name));
         let (loaded, error) = {
             let mut preload = world.resource_mut::<MapPreload>();
@@ -359,11 +373,34 @@ impl ContentViewer for MapViewer {
             }
             return;
         };
+        let mut refog = false;
         if let Some(error) = &map.property_error {
             ui.colored_label(egui::Color32::YELLOW, error);
         }
         if let Some(error) = &map.setting_error {
             ui.colored_label(egui::Color32::YELLOW, error);
+        }
+        match &map.environment {
+            Some(environment) if environment.fog.enable => {
+                let fog = &environment.fog;
+                ui.label(format!(
+                    "Fog: {} · {:.0}–{:.0}",
+                    if fog.density { "exp" } else { "linear" },
+                    fog.near_distance,
+                    fog.far_distance
+                ));
+            }
+            Some(_) => {
+                ui.label("Fog: off");
+            }
+            None => {
+                if let Some(error) = &map.environment_error {
+                    ui.colored_label(egui::Color32::YELLOW, error);
+                }
+            }
+        }
+        if map.environment.is_some() {
+            refog = ui.checkbox(&mut self.fog_enabled, "Environment fog").changed();
         }
         ui.label(format!("Map size: {} × {} terrains", map.terrain_count.0, map.terrain_count.1));
         ui.label(format!("Loaded terrains: {} ({} failed)", map.terrain_loaded, map.terrain_failed));
@@ -386,8 +423,24 @@ impl ContentViewer for MapViewer {
         if ui.button("Fit map").clicked() {
             self.fit_camera = true;
         }
-        let _ = world;
         ui.label("Orbit: drag · pan: right/middle drag · zoom: wheel");
+        if refog {
+            self.rebuild(world);
+        }
+    }
+}
+
+impl MapViewer {
+    /// Rebuilds the scene after a render-state change (the fog toggle).
+    fn rebuild(&mut self, world: &mut World) {
+        let Some(map) = self.map.clone() else { return };
+        crate::viewer::despawn_viewer_entities(world);
+        self.pending_objects.clear();
+        self.trees.clear();
+        self.water = None;
+        self.effects = Default::default();
+        self.stats = Default::default();
+        self.spawn(world, map);
     }
 }
 
@@ -396,6 +449,10 @@ impl MapViewer {
         // The map is 25 600 world units per terrain: a few terrain sides away
         // from the default camera's far plane is already clipped.
         set_far_plane(world, 400_000.0);
+        let fog = map.environment.as_ref().filter(|_| self.fog_enabled).and_then(map_fog);
+        if let Some(environment) = &map.environment {
+            set_clear_color(world, environment.fog.color);
+        }
 
         let root =
             world.spawn((ViewerEntity, Name::new(map.name.clone()), Transform::IDENTITY, Visibility::Visible)).id();
@@ -418,6 +475,7 @@ impl MapViewer {
                 alpha_arg1: TextureArg::DIFFUSE,
                 alpha_arg2: TextureArg::DIFFUSE,
             });
+        let water = if let Some(fog) = fog { water.fog(fog) } else { water };
         self.water = Some(world.resource_mut::<Assets<FixedFunctionMaterial>>().add(water));
         let splat_alpha = splat_alpha_matrix();
         let indices = strip_to_triangles(&build_index_buffers()[0]);
@@ -467,9 +525,10 @@ impl MapViewer {
                     patch.vertices.iter().map(|v| coords::vec3(v.position).to_array()).collect();
                 let normals: Vec<[f32; 3]> = patch.vertices.iter().map(|v| coords::vec3(v.normal).to_array()).collect();
                 stats.patches += 1;
+                let mut params = crate::map_render::patch_uniform(&map.textures, &cell.terrain.patch_tile_count[index]);
+                crate::map_render::set_fog(&mut params, fog);
                 let material = world.resource_mut::<Assets<crate::map_render::TerrainMaterial>>().add(crate::map_render::TerrainMaterial {
-                    params: crate::map_render::patch_uniform(&map.textures, &cell.terrain.patch_tile_count[index]),
-                    ground: ground.clone(), masks: masks.clone(),
+                    params, ground: ground.clone(), masks: masks.clone(),
                 });
                     let uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(
                         &patch.vertices,
@@ -531,6 +590,8 @@ impl MapViewer {
             self.pending_objects.push((object.clone(), asset));
         }
         self.effects.instances = map.effects.clone();
+        self.effects.fog = fog;
+        self.fog = fog;
         self.stats = stats;
         self.map = Some(map);
         fit_camera(world, self.map.as_ref().unwrap());
@@ -562,6 +623,27 @@ fn strip_to_triangles(strip: &[u16]) -> Vec<u32> {
     }
     coords::flip_winding(&mut out);
     out
+}
+
+/// `CMapManager::SetEnvironmentData`'s fog state as the fixed-function fog of
+/// `m2-render`. Density fog is exponential at the client's fixed 0.00015.
+fn map_fog(environment: &EnvironmentData) -> Option<Fog> {
+    let fog = environment.fog;
+    if !fog.enable {
+        return None;
+    }
+    let [r, g, b, a] = fog.color;
+    let color = Vec4::new(r, g, b, a);
+    Some(if fog.density { Fog::exp(color, 0.00015) } else { Fog::linear(color, fog.near_distance, fog.far_distance) })
+}
+
+/// The clear colour stands in for the sky the viewer does not draw yet: the
+/// fog colour keeps the horizon seamless.
+fn set_clear_color(world: &mut World, color: [f32; 4]) {
+    let mut query = world.query_filtered::<&mut Camera, With<MainCamera>>();
+    if let Ok(mut camera) = query.single_mut(world) {
+        camera.clear_color = ClearColorConfig::Custom(Color::srgb(color[0], color[1], color[2]));
+    }
 }
 
 fn set_far_plane(world: &mut World, far: f32) {
@@ -651,6 +733,11 @@ mod tests {
         assert!(map.objects.iter().any(|o| matches!(o.kind, PlacedKind::Building { .. })));
         assert!(map.objects.iter().any(|o| matches!(o.kind, PlacedKind::Tree { .. })));
         assert!(!map.effects.is_empty());
+        let environment = map.environment.as_ref().expect("a1 has an environment");
+        assert!(environment.fog.enable);
+        assert!(environment.fog.far_distance > environment.fog.near_distance);
+        assert!(map.environment_error.is_none(), "{:?}", map.environment_error);
+        assert!(map_fog(environment).is_some());
         for texture in map.textures.iter().skip(1) {
             assert!(packs.exists(&texture.file_name), "{:?}", texture.file_name);
         }
@@ -659,6 +746,19 @@ mod tests {
                 .iter()
                 .any(|cell| { m2_world::splat::generate_splats(&cell.terrain, map.textures.len()).len() > 1 })
         );
+    }
+
+    #[test]
+    fn environment_fog_becomes_fixed_function_fog() {
+        use m2_render::FogMode;
+        let mut environment = EnvironmentData::default();
+        assert!(map_fog(&environment).is_none());
+        environment.fog.enable = true;
+        environment.fog.near_distance = 10.0;
+        environment.fog.far_distance = 20.0;
+        assert_eq!(map_fog(&environment).unwrap().mode, FogMode::Linear { start: 10.0, end: 20.0 });
+        environment.fog.density = true;
+        assert_eq!(map_fog(&environment).unwrap().mode, FogMode::Exp { density: 0.00015 });
     }
 
     #[test]
@@ -715,7 +815,7 @@ impl MapViewer {
                     let model = world.resource::<Assets<Gr2Model>>().get(handle).cloned();
                     let ready = model.is_some();
                     if let Some(model) = model {
-                        let (root, _) = crate::model::spawn_model(world, &model);
+                        let (root, _) = crate::model::spawn_model(world, &model, self.fog);
                         world.entity_mut(root).insert(transform);
                     }
                     (ready, handle.id().untyped())
@@ -724,7 +824,7 @@ impl MapViewer {
                     let tree = world.resource::<Assets<SptTree>>().get(handle).cloned();
                     let ready = tree.is_some();
                     if let Some(tree) = tree {
-                        self.trees.push(crate::speedtree::SpeedTreeViewer::placed(world, tree, transform));
+                        self.trees.push(crate::speedtree::SpeedTreeViewer::placed(world, tree, transform, self.fog));
                     }
                     (ready, handle.id().untyped())
                 }

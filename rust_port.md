@@ -13,7 +13,7 @@ Last updated: 2026-11-01.
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
-| 3. World | **partial**: world queries/meshes and effect simulation crates merged; `m2-viewer --map` draws whole outdoor maps (LOD 0, splat layers, animated water, buildings/trees, map effects). Sky/fog, LOD 1/2, quadtree culling and 3×3 streaming remain |
+| 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, skybox data) are merged; `m2-viewer --map` draws whole outdoor maps (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog). Sky rendering, LOD 1/2, quadtree culling and 3×3 streaming remain |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
 | 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
 | 6. Parity and cut-over | not started |
@@ -32,6 +32,7 @@ Last updated: 2026-11-01.
 | `race` | `.msm` race data, `.msa` motions, `.mss` | 2,877 `.msm` + 6,027 `.msa` (all load; 98.6k lines) | merged |
 | `property` | `Property*.cpp` (`.prb .prt .prd .pre .pra`), reserved CRCs | 1,835 files (1,342 properties, 69 reserved CRCs) | merged |
 | `map` | `setting.txt`, area, terrain, texture sets, monster areas, atlas | 88 maps, 1,189 terrains, 51,344 area objects (66k lines) | merged |
+| `map::environment` | `Environment_Init`/`Environment_Load` (`MapUtil.cpp`, `.msenv`) | all 57 `.msenv`, 570 dump lines | merged (Phase 3) |
 | `effect` | `.mse`, particles, `.mde` meshes, flying data `.msf` | 1,148 `.mse`, 98 `.msf`, 112 `.mde` (1.57 M lines) | merged |
 | `image` | DXT/DDS, TGA, stb JPEG/BMP/PNG loaders, `CImage` | 7,445 dds, 4,022 tga, 471 jpg, 8 bmp (81.9k lines; 516 files pixel-for-pixel); 44 synthetic files | merged |
 
@@ -65,7 +66,8 @@ random scenarios). The effect viewer was checked by screenshot on
   translates blend, texture-stage and depth state and keeps one entity per
   batch alive across frames.
 - **Viewer CLI:** `m2-viewer [client dir] [--index file] [--motion <vpath>]
-  [--map <name>] [--screenshot <vpath> <out.png>] [--screenshot-only <out.png>]`.
+  [--map <name>] [--fog] [--screenshot <vpath> <out.png>]
+  [--screenshot-only <out.png>]`.
   `--motion` starts a `.msa`/motion-only `.gr2` on the opened model, which is
   what makes the skinning walkthrough checkable from the command line. A `.mse`
   screenshot (`--screenshot "d:/ymir work/effect/…/x.mse" out.png`) is the
@@ -80,8 +82,13 @@ random scenarios). The effect viewer was checked by screenshot on
   `m2-viewer --map metin2_map_a1 --screenshot-only /tmp/a1.png` loads a map on
   `AsyncComputeTaskPool` and spawns one mesh per terrain patch (LOD 0, UVs from
   `m2_world::lighting`, splat layers blended in `terrain.wesl`, animated water,
-  buildings, trees and the placed effects). Sky, fog, LOD 1/2, quadtree
-  culling and 3×3 streaming are still missing.
+  buildings, trees and the placed effects). The map's `.msenv` environment is
+  ported (`m2_formats::map::environment`, differential-tested on all 57 files);
+  its linear or density fog is applied to terrain, water, objects, trees and
+  effects, and its fog colour is the clear colour. `--fog` (or the inspector
+  checkbox) turns fog on; the default overview camera is far outside the map's
+  fog range, so fog is opt-in. Sky rendering, LOD 1/2, quadtree culling and
+  3×3 streaming are still missing.
 - **Networking:** `m2-net` contains packet structs/codecs, packet framing,
   sequence handling, transport abstractions and a login phase machine. It is
   not yet connected to `m2-client` or game entities.
@@ -112,7 +119,7 @@ just the format readers. On the local `bin/` (2026-11-01):
 
 | Crate | Tests | Result |
 |---|---|---|
-| `m2-formats` (11 files) | 38 | pass (`gr2` 71 s, `image` 28 s, `proto` 20 s, rest fast) |
+| `m2-formats` (11 files) | 39 | pass (`gr2` 71 s, `image` 28 s, `proto` 20 s, rest fast; `env` 57 `.msenv`, 570 lines) |
 | `m2-net` | 6 | pass (structs, offsets, headers, sequence, framing) |
 | `m2-world` | 1 | pass (88 maps, 156 080 dump lines, 43 s) |
 | `m2-effect` | 2 | pass (1 148 effects, 734 720 frames) |
@@ -263,8 +270,9 @@ cargo run -p m2-client                     # Bevy window + Python host
    then run the character skinning walkthrough~~ — done; the effect (`.mse`)
    viewer is in and shares its draw adapter with the map effects.
 3. Connect world/effect outputs to Bevy rendering and build the fly-camera map
-   parity gate. Terrain (LOD 0), splats and map effects are already drawn; next
-   are LOD 1/2, quadtree culling, water detail, sky/fog and 3×3 streaming.
+   parity gate. Terrain (LOD 0), splats, water, map effects and environment fog
+   are drawn; next are sky rendering (skybox/clouds), LOD 1/2, quadtree culling
+   and 3×3 streaming.
 4. Connect `m2-net` to the client state and implement the headless login/play
    bot gate.
 5. Wire `m2-modgen` output to the C ABI and `m2-ui-core` to Bevy, then reach
