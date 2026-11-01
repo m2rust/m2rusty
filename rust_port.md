@@ -13,7 +13,7 @@ Last updated: 2026-11-01.
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
-| 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming remain |
+| 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming belong to the game-world integration |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
 | 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
 | 6. Parity and cut-over | not started |
@@ -91,8 +91,9 @@ random scenarios). The effect viewer was checked by screenshot on
   `SkyBoxGradientColorVector` into a cubemap on the camera (`Skybox`), which
   Bevy draws as a background; the scrolling cloud layer is a large quad with
   the client's `MODULATEINVALPHA_ADDCOLOR` and `ONE`/`INVSRCCOLOR` state.
-  Textured sky boxes (`SkyBoxTextureRenderMode`) are still missing, as are
-  LOD 1/2, quadtree culling and 3×3 streaming.
+  Textured sky boxes (`SkyBoxTextureRenderMode`) are still missing. The viewer
+  is deliberately a preview: LOD 1/2, quadtree culling and 3×3 streaming belong
+  to the game-world integration, not to `m2-viewer`.
 - **Networking:** `m2-net` contains packet structs/codecs, packet framing,
   sequence handling, transport abstractions and a login phase machine. It is
   not yet connected to `m2-client` or game entities.
@@ -273,10 +274,11 @@ cargo run -p m2-client                     # Bevy window + Python host
 2. ~~Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
    then run the character skinning walkthrough~~ — done; the effect (`.mse`)
    viewer is in and shares its draw adapter with the map effects.
-3. Connect world/effect outputs to Bevy rendering and build the fly-camera map
+3. Connect world/effect outputs to the game client and build the fly-camera map
    parity gate. Terrain (LOD 0), splats, water, map effects, environment fog,
-   the gradient sky and clouds are drawn; next are LOD 1/2, quadtree culling and
-   3×3 streaming.
+   the gradient sky and clouds are drawn in the viewer; LOD 1/2, quadtree
+   culling and 3×3 streaming belong to the game-world integration, not the
+   preview viewer.
 4. Connect `m2-net` to the client state and implement the headless login/play
    bot gate.
 5. Wire `m2-modgen` output to the C ABI and `m2-ui-core` to Bevy, then reach
