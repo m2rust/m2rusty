@@ -660,7 +660,16 @@ fn build_overloads(gets: &[Get], switches: &[Switch], unclassified: &mut Vec<Str
         let mut out = Vec::new();
         for ar in arities {
             let mut by_pos: Vec<(usize, Get)> = Vec::new();
+            let mut seen_pos = BTreeSet::new();
             for g in gets {
+                if g.ctx == Ctx::Case(sw.id, ar) {
+                    if let Some(p) = g.pos {
+                        if !seen_pos.insert(p) {
+                            unclassified.push(format!("args: `case {ar}` reads position {p} twice"));
+                            quirks.push(format!("C++ bug: `case {ar}` reads argument {p} twice"));
+                        }
+                    }
+                }
                 match g.ctx {
                     Ctx::None | Ctx::IfSize => merge_get(&mut by_pos, g, unclassified),
                     Ctx::Case(id, a2) if id == sw.id && a2 == ar => merge_get(&mut by_pos, g, unclassified),

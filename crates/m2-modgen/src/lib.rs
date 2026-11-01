@@ -1,5 +1,6 @@
 //! Spec extractor and generators for the Python bridge (docs/bevy-port-plan.md, phase 5).
 
+pub mod abi;
 pub mod analyze;
 pub mod conformance;
 pub mod extract;

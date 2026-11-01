@@ -1022,7 +1022,7 @@ cfunc = "playerIsValuableItem"
 file = "client/src/ui/PythonPlayerModule.cpp"
 line = 1333
 flags = "varargs"
-status = "classified"
+status = "partial"
 on_bad_arg = "none"
 overloads = [
   ["cell: int"],
@@ -1031,7 +1031,8 @@ overloads = [
 returns = "int"
 errors = ["RuntimeError: Can't find item data"]
 owners = ["CItemManager", "CPythonPlayer"]
-quirks = ["`case 2` reads 1 arguments"]
+quirks = ["C++ bug: `case 2` reads argument 0 twice", "`case 2` reads 1 arguments"]
+unclassified = ["args: `case 2` reads position 0 twice"]
 
 [[function]]
 name = "LocalQuickSlotIndexToGlobalQuickSlotIndex"
