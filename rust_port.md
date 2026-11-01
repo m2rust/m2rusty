@@ -91,6 +91,28 @@ executed in this run.
   and Bevy's runtime libraries (vulkan-loader, wayland, libxkbcommon, X11,
   udev, alsa). Everything runs from `nix-shell`.
 
+### Differential suites: current results
+
+`scripts/differential.sh` runs every `crates/*/tests/differential*.rs` now, not
+just the format readers. On the local `bin/` (2026-11-01):
+
+| Crate | Tests | Result |
+|---|---|---|
+| `m2-formats` (11 files) | 38 | pass (`gr2` 71 s, `image` 28 s, `proto` 20 s, rest fast) |
+| `m2-net` | 6 | pass (structs, offsets, headers, sequence, framing) |
+| `m2-world` | 1 | pass (88 maps, 156 080 dump lines, 43 s) |
+| `m2-effect` | 2 | pass (1 148 effects, 734 720 frames) |
+| `m2-ui-core` | 3 | 1 fails: 3 of 30 random seeds |
+
+The UI dumper used to fail for reasons that were not Rust bugs, all fixed:
+`RECT` fields went through `%ld` as 32-bit `LONG` (variadic UB, so `-163`
+printed as `4294967133`), engine `Tracef` lines were compared as dump lines,
+and an empty text measured the stub font's space glyph (height 16) instead of
+the fake metrics. What remains is real: `@NNNN` is a **code-page switch token**
+in `C++` (`GrpTextInstance.cpp:88-116`, five characters, `@9999` = UTF-8) and
+the Rust text layout does not consume it identically, so text such as
+`||[Sword]|Hx|Hx@0949€` lays out 11 glyphs instead of 9.
+
 ## 3. Findings
 
 ### Architecture
@@ -218,10 +240,13 @@ cargo run -p m2-client                     # Bevy window + Python host
 
 ## 8. Next steps
 
-1. Run the differential suites for the merged networking, world, effects and UI
-   code against the local client data; resolve any failures.
-2. Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
-   then run the character skinning walkthrough.
+1. ~~Run the differential suites for the merged networking, world, effects and
+   UI code~~ — done, see the results table above. Remaining: the `@NNNN`
+   code-page token in `m2-ui-core` (3 of 30 random seeds).
+2. ~~Finish Phase 2 by registering model, motion, SpeedTree and effect viewers,
+   then run the character skinning walkthrough~~ — model/motion and SpeedTree
+   are in and the skinning walkthrough passes; the effect (`.mse`) viewer is
+   still missing.
 3. Connect world/effect outputs to Bevy rendering and build the fly-camera map
    parity gate.
 4. Connect `m2-net` to the client state and implement the headless login/play
