@@ -15,6 +15,7 @@ m2-formats.workspace = true
 m2-assets.workspace = true
 m2-render.workspace = true
 m2-world.workspace = true
+m2-effect = { path = "../m2-effect" }
 
 [features]
 # Faster iterative links after the first Bevy dylib build. Release packagers

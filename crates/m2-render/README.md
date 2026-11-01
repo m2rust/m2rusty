@@ -22,7 +22,7 @@ Sources: `neoeter/include/Platform/RenderBackend.h` (the `RenderState` snapshot)
 | Args | TEXTURE, DIFFUSE, CURRENT, TFACTOR; SPECULAR mapped to primary colour; TEMP to previous; CONSTANT to TFACTOR; COMPLEMENT, ALPHAREPLICATE (colour only) | same (`TextureArg`) |
 | Texture factor | `D3DRS_TEXTUREFACTOR` as `GL_TEXTURE_ENV_COLOR` | `texture_factor` |
 | Stage without texture | stage disabled, output = primary colour (alpha too) | same: a stage with no texture is skipped. Flat TFACTOR draws need a 1x1 white texture |
-| TCI / texture matrix | CAMERASPACEPOSITION via `GL_EYE_LINEAR`, per-stage texture matrices | **not supported** (terrain/shadow/water, later phases). Both stages use UV0 |
+| TCI / texture matrix | CAMERASPACEPOSITION via `GL_EYE_LINEAR`, per-stage texture matrices | Generated on the CPU for terrain and water. Stage 0 uses UV0; stage 1 uses UV1 when present, otherwise UV0 |
 | Sampler min/mag | POINT or LINEAR; with mips POINT min gives NEAREST_MIPMAP_NEAREST else LINEAR_MIPMAP_LINEAR (mip filter ignored) | `Filter` min/mag + explicit `MipFilter` (None/Point/Linear) |
 | Address | WRAP, CLAMP, BORDER (`GL_CLAMP_TO_BORDER`); MIRROR/MIRRORONCE fall back to REPEAT | Wrap, Clamp, **Mirror** (extension). BORDER not supported (needs a wgpu feature absent on WebGPU/GLES) |
 | Anisotropy | not applied | not supported |
@@ -65,7 +65,8 @@ Bevy `Mesh` attributes, triangle lists:
 |---|---|---|
 | `ATTRIBUTE_POSITION` | Float32x3 | required |
 | `ATTRIBUTE_NORMAL` | Float32x3 | only for `.lit()` |
-| `ATTRIBUTE_UV_0` | Float32x2 | both texture stages (D3D v-down convention, no flip) |
+| `ATTRIBUTE_UV_0` | Float32x2 | stage 0, and stage 1 when UV1 is absent (D3D v-down convention, no flip) |
+| `ATTRIBUTE_UV_1` | Float32x2 | optional stage 1 coordinates, used for terrain splat masks |
 | `ATTRIBUTE_COLOR` | Float32x4 | gamma-space `D3DFVF_DIFFUSE / 255`; omit to use `material.diffuse` |
 | `ATTRIBUTE_JOINT_INDEX` / `ATTRIBUTE_JOINT_WEIGHT` | Uint16x4 / Float32x4 | with Bevy's `SkinnedMesh` component; GPU skinning through Bevy's skin buffers |
 

@@ -8,11 +8,7 @@
 
 use std::sync::Arc;
 
-use bevy::asset::{AssetServer, Assets, RenderAssetUsages, LoadState};
-use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use m2_assets::{gr2::Gr2Model, spt::SptTree};
-use m2_formats::property::PropertyManager;
-use m2_world::area::{PlacedObject, PlacedKind, place_object, rotation_yaw_pitch_roll};
+use bevy::asset::{AssetServer, Assets, LoadState, RenderAssetUsages};
 use bevy::ecs::hierarchy::ChildOf;
 use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::prelude::*;
@@ -21,12 +17,17 @@ use bevy_egui::egui;
 use m2_assets::M2Packs;
 use m2_assets::coords;
 use m2_assets::paths;
+use m2_assets::{gr2::Gr2Model, spt::SptTree};
 use m2_formats::map::{
     AreaPropertyError, MapProperty, MapSetting, PropertyError, SettingError, TERRAIN_TEX_COORD_BASE, Terrain,
     TerrainTexture, TextureSet, splat_alpha_matrix,
 };
 use m2_formats::pack::PackManager;
-use m2_render::{FixedFunctionMaterial, Lighting, Blend, DepthState, SamplerState, TextureStage, TextureArg, TextureOp};
+use m2_formats::property::PropertyManager;
+use m2_render::{
+    Blend, DepthState, FixedFunctionMaterial, TextureArg, TextureOp, TextureStage,
+};
+use m2_world::area::{PlacedKind, PlacedObject, place_object, rotation_yaw_pitch_roll};
 use m2_world::mesh::{DEFAULT_OPAQUE_WATER_DEPTH, build_index_buffers, build_terrain_patches};
 use m2_world::{TERRAIN_WORLD, TerrainCell};
 
@@ -48,7 +49,9 @@ pub struct LoadedMap {
     pub height_scale: f32,
     pub texture_set_len: usize,
     pub textures: Vec<TerrainTexture>,
+    pub ground_image: Image,
     pub objects: Vec<PlacedObject>,
+    pub effects: Vec<m2_effect::EffectInstance>,
     pub object_errors: Vec<String>,
     pub terrains: Vec<TerrainCell>,
     pub property_error: Option<String>,
@@ -72,14 +75,17 @@ pub struct MapViewerPlugin;
 
 impl Plugin for MapViewerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<MapPreload>()
+        app.add_plugins(crate::map_render::MapRenderPlugin)
+            .init_resource::<MapPreload>()
             .add_systems(Startup, start_preload)
             .add_systems(Update, poll_preload);
     }
 }
 
 fn start_preload(mut preload: ResMut<MapPreload>, packs: Res<M2Packs>) {
-    let Some(name) = preload.map.clone() else { return };
+    let Some(name) = preload.map.clone() else {
+        return;
+    };
     let packs = Arc::clone(&packs.packs);
     preload.task = Some(AsyncComputeTaskPool::get().spawn(async move { load_map(packs, name).map(Arc::new) }));
 }
@@ -88,8 +94,12 @@ fn poll_preload(mut preload: ResMut<MapPreload>, mut pending: ResMut<PendingOpen
     if preload.opened {
         return;
     }
-    let Some(task) = &mut preload.task else { return };
-    let Some(result) = check_ready(task) else { return };
+    let Some(task) = &mut preload.task else {
+        return;
+    };
+    let Some(result) = check_ready(task) else {
+        return;
+    };
     preload.task = None;
     let name = preload.map.clone().unwrap_or_default();
     match result {
@@ -189,7 +199,23 @@ fn load_map(packs: Arc<PackManager>, name: String) -> Result<LoadedMap, String> 
         return Err(terrain_error.unwrap_or_else(|| format!("{name}: no terrain loaded")));
     }
 
+    let mut effects = Vec::new();
+    for object in &objects {
+        if let PlacedKind::Effect { file, matrix, .. } = &object.kind {
+            match crate::map_effects::load(&packs, file, *matrix) {
+                Ok(effect) => effects.push(effect),
+                Err(error) => object_errors.push(error),
+            }
+        }
+    }
     let TextureSet { textures, .. } = setting.texture_set;
+    for texture in &textures {
+        if !texture.file_name.is_empty() && !packs.exists(&texture.file_name) {
+            object_errors.push(format!("Missing terrain texture: {}", String::from_utf8_lossy(&texture.file_name)));
+        }
+    }
+    let (ground_image, texture_errors) = crate::map_render::ground(&packs, &textures);
+    object_errors.extend(texture_errors);
     Ok(LoadedMap {
         name,
         terrain_count: (count_x, count_y),
@@ -199,7 +225,9 @@ fn load_map(packs: Arc<PackManager>, name: String) -> Result<LoadedMap, String> 
         height_scale: setting.height_scale,
         texture_set_len: textures.len(),
         textures,
+        ground_image,
         objects,
+        effects,
         object_errors,
         terrains,
         property_error,
@@ -253,6 +281,9 @@ pub struct MapViewer {
     pending_objects: Vec<(PlacedObject, ObjectAsset)>,
     trees: Vec<crate::speedtree::SpeedTreeViewer>,
     objects_loaded: usize,
+    effects: crate::map_effects::MapEffects,
+    water: Option<Handle<FixedFunctionMaterial>>,
+    water_frames: Vec<Handle<Image>>,
     object_errors: Vec<String>,
 }
 
@@ -287,7 +318,9 @@ impl ContentViewer for MapViewer {
     fn update(&mut self, world: &mut World) {
         if self.map.is_none() {
             let Some(task) = &mut self.task else { return };
-            let Some(result) = check_ready(task) else { return };
+            let Some(result) = check_ready(task) else {
+                return;
+            };
             self.task = None;
             match result {
                 Ok(map) => self.spawn(world, map),
@@ -295,7 +328,15 @@ impl ContentViewer for MapViewer {
             }
         }
         self.update_objects(world);
-        for tree in &mut self.trees { tree.update(world); }
+        self.effects.update(world);
+        if let Some(water) = &self.water {
+            let frame = (world.resource::<Time>().elapsed_secs() / 0.07) as usize % self.water_frames.len();
+            world.resource_mut::<Assets<FixedFunctionMaterial>>().get_mut(water).unwrap().textures[0] =
+                Some(self.water_frames[frame].clone());
+        }
+        for tree in &mut self.trees {
+            tree.update(world);
+        }
         if self.fit_camera {
             if let Some(map) = &self.map {
                 fit_camera(world, map);
@@ -332,6 +373,8 @@ impl ContentViewer for MapViewer {
         ui.label(format!("Height scale: {}", map.height_scale));
         ui.label(format!("Texture set: {} entries", map.texture_set_len));
         ui.label(format!("Objects: {} loaded · {} pending", self.objects_loaded, self.pending_objects.len()));
+        ui.label(format!("Effects: {}", self.effects.instances.len()));
+        ui.label(format!("Load errors: {}", map.object_errors.len() + self.object_errors.len()));
         for error in map.object_errors.iter().chain(&self.object_errors).take(12) {
             ui.colored_label(egui::Color32::YELLOW, error);
         }
@@ -339,7 +382,7 @@ impl ContentViewer for MapViewer {
             "Patches: {} · {} vertices · {} triangles",
             self.stats.patches, self.stats.vertices, self.stats.triangles
         ));
-        ui.label("Terrain LOD 0 with texture splats; water is not drawn yet.");
+        ui.label("Terrain LOD 0 · texture splats · animated water");
         if ui.button("Fit map").clicked() {
             self.fit_camera = true;
         }
@@ -354,81 +397,120 @@ impl MapViewer {
         // from the default camera's far plane is already clipped.
         set_far_plane(world, 400_000.0);
 
-        let lighting = Lighting::directional(
-            Vec3::new(0.35, -0.85, 0.4).normalize(),
-            Vec4::new(0.95, 0.93, 0.88, 1.0),
-            Vec4::splat(0.35),
-        );
-
-
         let root =
             world.spawn((ViewerEntity, Name::new(map.name.clone()), Transform::IDENTITY, Visibility::Visible)).id();
+        self.water_frames = (1..=30)
+            .map(|frame| {
+                world
+                    .resource::<AssetServer>()
+                    .load(paths::asset_source_uri(&format!("d:/ymir work/special/water/{frame:02}.dds")))
+            })
+            .collect();
+        let water = FixedFunctionMaterial::opaque(self.water_frames[0].clone())
+            .blend(Blend::ALPHA)
+            .cull(m2_render::CullMode::None)
+            .depth(DepthState { write: false, ..Default::default() })
+            .stage0(TextureStage {
+                color_op: TextureOp::SelectArg1,
+                color_arg1: TextureArg::TEXTURE,
+                color_arg2: TextureArg::TEXTURE,
+                alpha_op: TextureOp::SelectArg1,
+                alpha_arg1: TextureArg::DIFFUSE,
+                alpha_arg2: TextureArg::DIFFUSE,
+            });
+        self.water = Some(world.resource_mut::<Assets<FixedFunctionMaterial>>().add(water));
         let splat_alpha = splat_alpha_matrix();
         let indices = strip_to_triangles(&build_index_buffers()[0]);
+        let ground = world.resource_mut::<Assets<Image>>().add(map.ground_image.clone());
         let mut stats = SpawnStats::default();
         for cell in &map.terrains {
-            let mut layers = Vec::new();
-            for splat in m2_world::splat::generate_splats(&cell.terrain, map.textures.len()) {
-                let texture = &map.textures[splat.texture];
-                if texture.file_name.is_empty() { continue; }
-                let path = String::from_utf8_lossy(&texture.file_name);
-                let image = world.resource::<AssetServer>().load(paths::asset_source_uri(&path));
-                let mut material = FixedFunctionMaterial::opaque(image).lit(lighting);
-                if !layers.is_empty() {
-                    let rgba: Vec<u8> = splat.alpha.iter().flat_map(|&a| [255,255,255,a]).collect();
-                    let alpha = Image::new(Extent3d { width: 256, height: 256, depth_or_array_layers: 1 }, TextureDimension::D2, rgba, TextureFormat::Rgba8Unorm, RenderAssetUsages::default());
-                    let alpha = world.resource_mut::<Assets<Image>>().add(alpha);
-                    material = material.stage1(alpha, TextureStage {
-                        color_op: TextureOp::SelectArg1, color_arg1: TextureArg::CURRENT, color_arg2: TextureArg::CURRENT,
-                        alpha_op: TextureOp::SelectArg1, alpha_arg1: TextureArg::TEXTURE, alpha_arg2: TextureArg::TEXTURE,
-                    }, SamplerState::default().clamped()).blend(Blend::ALPHA)
-                        .depth(DepthState { write: false, ..Default::default() }).depth_bias(splat.texture as f32);
-                }
-                layers.push((texture.clone(), world.resource_mut::<Assets<FixedFunctionMaterial>>().add(material)));
-            }
-            if layers.is_empty() {
-                layers.push((TerrainTexture::default(), world.resource_mut::<Assets<FixedFunctionMaterial>>().add(FixedFunctionMaterial::untextured().diffuse(Vec4::new(0.42,0.46,0.32,1.0)).lit(lighting))));
-            }
+            let masks = world.resource_mut::<Assets<Image>>().add(crate::map_render::masks(&cell.terrain, map.textures.len()));
             let patches = build_terrain_patches(&cell.terrain, cell.x, cell.y, DEFAULT_OPAQUE_WATER_DEPTH);
             for (index, patch) in patches.iter().enumerate() {
+                if !patch.water_vertices.is_empty() {
+                    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
+                    mesh.insert_attribute(
+                        Mesh::ATTRIBUTE_POSITION,
+                        patch.water_vertices.iter().map(|v| coords::vec3(v.position).to_array()).collect::<Vec<_>>(),
+                    );
+                    mesh.insert_attribute(
+                        Mesh::ATTRIBUTE_COLOR,
+                        patch
+                            .water_vertices
+                            .iter()
+                            .map(|v| m2_render::d3d_color(v.diffuse).to_array())
+                            .collect::<Vec<_>>(),
+                    );
+                    mesh.insert_attribute(
+                        Mesh::ATTRIBUTE_UV_0,
+                        patch
+                            .water_vertices
+                            .iter()
+                            .map(|v| [v.position[0] / 800.0, -v.position[1] / 800.0])
+                            .collect::<Vec<_>>(),
+                    );
+                    let mut water_indices: Vec<u32> = (0..patch.water_vertices.len() as u32).collect();
+                    coords::flip_winding(&mut water_indices);
+                    mesh.insert_indices(Indices::U32(water_indices));
+                    let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+                    world.spawn((
+                        ViewerEntity,
+                        Name::new("Water"),
+                        Mesh3d(mesh),
+                        MeshMaterial3d(self.water.as_ref().unwrap().clone()),
+                        Transform::IDENTITY,
+                        Visibility::Visible,
+                        ChildOf(root),
+                    ));
+                }
                 let positions: Vec<[f32; 3]> =
                     patch.vertices.iter().map(|v| coords::vec3(v.position).to_array()).collect();
                 let normals: Vec<[f32; 3]> = patch.vertices.iter().map(|v| coords::vec3(v.normal).to_array()).collect();
-                for (texture, material) in &layers {
-                let (u_scale,v_scale,u_offset,v_offset) = (texture.u_scale,texture.v_scale,texture.u_offset,texture.v_offset);
-                let uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(
-                    &patch.vertices,
-                    u32::from(cell.x),
-                    u32::from(cell.y),
-                    TERRAIN_TEX_COORD_BASE,
-                    &splat_alpha,
-                )
-                .iter()
-                .map(|uv| tile_uv(uv.tile, u_scale, v_scale, u_offset, v_offset))
-                .collect();
-
-                let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
-                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions.clone());
-                mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
-                mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-                let alpha_uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(&patch.vertices, u32::from(cell.x), u32::from(cell.y), TERRAIN_TEX_COORD_BASE, &splat_alpha).iter().map(|uv| uv.alpha).collect();
-                mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, alpha_uvs);
-                mesh.insert_indices(Indices::U32(indices.clone()));
-                let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
-
                 stats.patches += 1;
-                stats.vertices += patch.vertices.len();
-                stats.triangles += indices.len() / 3;
-                world.spawn((
-                    ViewerEntity,
-                    Name::new(format!("patch {:03}{:03} #{}", cell.x, cell.y, index)),
-                    Mesh3d(mesh),
-                    MeshMaterial3d(material.clone()),
-                    Transform::IDENTITY,
-                    Visibility::Visible,
-                    ChildOf(root),
-                ));
-                }
+                let material = world.resource_mut::<Assets<crate::map_render::TerrainMaterial>>().add(crate::map_render::TerrainMaterial {
+                    params: crate::map_render::patch_uniform(&map.textures, &cell.terrain.patch_tile_count[index]),
+                    ground: ground.clone(), masks: masks.clone(),
+                });
+                    let uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(
+                        &patch.vertices,
+                        u32::from(cell.x),
+                        u32::from(cell.y),
+                        TERRAIN_TEX_COORD_BASE,
+                        &splat_alpha,
+                    )
+                    .iter()
+                    .map(|uv| uv.tile)
+                    .collect();
+
+                    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
+                    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions.clone());
+                    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals.clone());
+                    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+                    let alpha_uvs: Vec<[f32; 2]> = m2_world::lighting::vertex_uvs(
+                        &patch.vertices,
+                        u32::from(cell.x),
+                        u32::from(cell.y),
+                        TERRAIN_TEX_COORD_BASE,
+                        &splat_alpha,
+                    )
+                    .iter()
+                    .map(|uv| uv.alpha)
+                    .collect();
+                    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, alpha_uvs);
+                    mesh.insert_indices(Indices::U32(indices.clone()));
+                    let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+
+                    stats.vertices += patch.vertices.len();
+                    stats.triangles += indices.len() / 3;
+                    world.spawn((
+                        ViewerEntity,
+                        Name::new(format!("patch {:03}{:03} #{}", cell.x, cell.y, index)),
+                        Mesh3d(mesh),
+                        MeshMaterial3d(material.clone()),
+                        Transform::IDENTITY,
+                        Visibility::Visible,
+                        ChildOf(root),
+                    ));
             }
         }
         info!(
@@ -437,13 +519,18 @@ impl MapViewer {
         );
         for object in &map.objects {
             let asset = match &object.kind {
-                PlacedKind::Building { file, .. } | PlacedKind::DungeonBlock { file, .. } => ObjectAsset::Model(world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(file)))),
-                PlacedKind::Tree { file } => ObjectAsset::Tree(world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(file)))),
-                PlacedKind::Effect { file, .. } => { self.object_errors.push(format!("Effect rendering unavailable: {}", String::from_utf8_lossy(file))); continue; }
+                PlacedKind::Building { file, .. } | PlacedKind::DungeonBlock { file, .. } => ObjectAsset::Model(
+                    world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(file))),
+                ),
+                PlacedKind::Tree { file } => ObjectAsset::Tree(
+                    world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(file))),
+                ),
+                PlacedKind::Effect { .. } => continue,
                 PlacedKind::Ambience { .. } => continue,
             };
             self.pending_objects.push((object.clone(), asset));
         }
+        self.effects.instances = map.effects.clone();
         self.stats = stats;
         self.map = Some(map);
         fit_camera(world, self.map.as_ref().unwrap());
@@ -452,6 +539,7 @@ impl MapViewer {
 
 /// Terrain UV of `1/640` per unit (5 repeats per 3200-unit patch) scaled by
 /// the texture set entry, whose scale is relative to that 5-repeat default.
+#[cfg(test)]
 fn tile_uv(tile: [f32; 2], u_scale: f32, v_scale: f32, u_offset: f32, v_offset: f32) -> [f32; 2] {
     [tile[0] * u_scale * 0.2 + u_offset, tile[1] * v_scale * 0.2 - v_offset]
 }
@@ -528,6 +616,52 @@ mod tests {
     use super::*;
 
     #[test]
+    fn area_property_places_building_with_height_bias_and_rotation() {
+        let property = m2_formats::property::Property::read_from_memory(
+            b"property/house.prb",
+            b"YPRT\n123\nPropertyName house\nPropertyType Building\nBuildingFile \"d:/ymir work/house.gr2\"\n",
+        )
+        .unwrap();
+        let mut props = PropertyManager::default();
+        props.by_crc.insert(123, property);
+        let objects = m2_formats::map::parse_area_data(
+            b"AreaDataFile\nObjectCount 1\nStart Object000\n100 -200 300\n123\n0.000000#0.000000#90.000000\n25\nEnd Object\n",
+            |_| true,
+        ).unwrap();
+        let placed = place_object(&objects[0], &props, &|_| false).unwrap();
+        let transform = object_transform(&placed);
+        assert_eq!(transform.translation, Vec3::new(100.0, 325.0, -200.0));
+        assert!((transform.rotation * Vec3::X - Vec3::Z).length() < 1e-5);
+        assert!(matches!(placed.kind, PlacedKind::Building { ref file, .. } if file == b"d:/ymir work/house.gr2"));
+    }
+
+    #[test]
+    #[ignore = "requires the bundled client packs under bin/"]
+    fn bundled_a1_loads_textures_objects_and_effects() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin");
+        let mut packs = PackManager::new(root);
+        m2_formats::pack::load_index(&mut packs, "pack", "pack/Index.dev").unwrap();
+        let packs = Arc::new(packs);
+        let map = load_map(packs.clone(), "metin2_map_a1".into()).unwrap();
+        assert_eq!(map.terrain_loaded, 20);
+        assert_eq!(map.terrain_failed, 0);
+        assert!(map.property_error.is_none(), "{:?}", map.property_error);
+        assert!(map.setting_error.is_none(), "{:?}", map.setting_error);
+        assert!(map.object_errors.is_empty(), "{:?}", map.object_errors);
+        assert!(map.objects.iter().any(|o| matches!(o.kind, PlacedKind::Building { .. })));
+        assert!(map.objects.iter().any(|o| matches!(o.kind, PlacedKind::Tree { .. })));
+        assert!(!map.effects.is_empty());
+        for texture in map.textures.iter().skip(1) {
+            assert!(packs.exists(&texture.file_name), "{:?}", texture.file_name);
+        }
+        assert!(
+            map.terrains
+                .iter()
+                .any(|cell| { m2_world::splat::generate_splats(&cell.terrain, map.textures.len()).len() > 1 })
+        );
+    }
+
+    #[test]
     fn strip_becomes_a_list_with_flipped_winding() {
         // Two strip triangles, the second one reversed by the strip itself.
         let tris = strip_to_triangles(&[0, 1, 2, 3]);
@@ -556,7 +690,6 @@ mod tests {
         assert_eq!(tile_uv(tile, 5.0, 5.0, 0.25, 0.5), [1.25, -1.5]);
     }
 }
-
 
 enum ObjectAsset {
     Model(Handle<Gr2Model>),

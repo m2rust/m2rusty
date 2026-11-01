@@ -4,6 +4,8 @@
 pub mod camera;
 pub mod index;
 pub mod map;
+mod map_effects;
+mod map_render;
 pub mod model;
 pub mod speedtree;
 pub mod texture;

@@ -3969,6 +3969,7 @@ dependencies = [
  "bevy",
  "bevy_egui",
  "m2-assets",
+ "m2-effect",
  "m2-formats",
  "m2-render",
  "m2-world",
