@@ -17,3 +17,4 @@ pub mod race;
 pub mod script;
 pub mod spt;
 pub mod text;
+pub mod utf8;
