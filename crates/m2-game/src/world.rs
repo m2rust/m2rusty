@@ -24,7 +24,8 @@ use m2_world::area::{PlacedKind, PlacedObject, rotation_yaw_pitch_roll};
 use m2_world::mesh::{DEFAULT_OPAQUE_WATER_DEPTH, build_index_buffers, build_terrain_patches};
 
 use crate::render::effect::{EffectRenderer, load_instance};
-use crate::render::terrain::{TerrainMaterial, ground, masks, patch_uniform, set_fog};
+use crate::render::lighting::{self, MapLighting};
+use crate::render::terrain::{TerrainMaterial, ground, masks, patch_uniform, set_fog, set_light};
 use crate::render::tree::Tree;
 use crate::render::{cloud, environment_fog, model, sky};
 
@@ -139,6 +140,12 @@ impl MapScene {
     pub fn spawn_with_fog(world: &mut World, map: Arc<PreparedMap>, fog: Option<Fog>) -> Self {
         let loaded = &map.map;
         let root = world.spawn((Name::new(loaded.name.clone()), Transform::IDENTITY, Visibility::Visible)).id();
+        // `CMapManager::SetEnvironmentDataPtr` + `BeginEnvironment`: the map's
+        // lights and material own the next frame's lighting. The Bevy lights
+        // hang off the map root, so despawning the map removes them; the
+        // resource is replaced by the next map (or by the neutral fallback
+        // when there is no environment).
+        lighting::install(world, loaded.environment.as_ref(), root);
         if let Some(environment) = &loaded.environment {
             sky::install_sky(world, environment);
             cloud::spawn_cloud(world, environment, Some(root));
@@ -271,6 +278,9 @@ fn spawn_terrain(
     fog: Option<Fog>,
 ) -> SpawnStats {
     let splat_alpha = splat_alpha_matrix();
+    // `CMapManager::BeginEnvironment` sets the background light for the map
+    // pass; the terrain bakes it into its vertex lighting.
+    let map_lighting = *world.resource::<MapLighting>();
     let indices = strip_to_triangles(&build_index_buffers()[0]);
     let ground = world.resource_mut::<Assets<Image>>().add(ground_image.clone());
     let mut stats = SpawnStats::default();
@@ -313,6 +323,7 @@ fn spawn_terrain(
             let normals: Vec<[f32; 3]> = patch.vertices.iter().map(|v| coords::vec3(v.normal).to_array()).collect();
             let mut params = patch_uniform(&map.textures, &cell.terrain.patch_tile_count[index]);
             set_fog(&mut params, fog);
+            set_light(&mut params, &map_lighting.background);
             let material = world.resource_mut::<Assets<TerrainMaterial>>().add(TerrainMaterial {
                 params,
                 ground: ground.clone(),

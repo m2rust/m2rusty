@@ -24,6 +24,8 @@ use m2_assets::paths;
 use m2_assets::race::RaceSkin;
 use m2_render::{Blend, CullMode, FixedFunctionMaterial, Fog, TextureArg, TextureOp, TextureStage};
 
+use crate::render::lighting::MapLighting;
+
 /// Resolves the texture paths of a model: skins first, then whether the file exists.
 pub struct Textures<'a> {
     asset_server: AssetServer,
@@ -87,13 +89,29 @@ pub fn part_material(textures: &Textures, mesh: &Gr2Mesh, part: &Gr2MeshPart, fo
 
 /// One material handle per mesh part, in `(mesh, part)` order.
 fn materials(world: &mut World, model: &Gr2Model, skins: &[RaceSkin], fog: Option<Fog>) -> Vec<Handle<FixedFunctionMaterial>> {
+    // `CPythonBackground::SetCharacterDirLight` puts the environment's
+    // character light on actor passes. Every `.gr2` model goes through this
+    // path (placed buildings too); a map's two lights share their direction
+    // and differ only in ambient, so the character light is the close enough
+    // and more important one. The environment material replaces the primary
+    // colour of textured parts, as `STATEMANAGER.SetMaterial` does.
+    let lighting = world.get_resource::<MapLighting>().map(|lighting| lighting.character);
     let built: Vec<FixedFunctionMaterial> = {
         let textures = Textures::new(world, skins);
         model
             .meshes
             .iter()
             .flat_map(|mesh| mesh.parts.iter().map(move |part| (mesh, part)))
-            .map(|(mesh, part)| part_material(&textures, mesh, part, fog))
+            .map(|(mesh, part)| {
+                let mut material = part_material(&textures, mesh, part, fog);
+                if let Some(lighting) = lighting {
+                    if material.textures[0].is_some() {
+                        material.diffuse = lighting.material_diffuse;
+                    }
+                    material = material.lit(lighting.fixed_function());
+                }
+                material
+            })
             .collect()
     };
     let mut assets = world.resource_mut::<Assets<FixedFunctionMaterial>>();
@@ -128,6 +146,42 @@ pub fn attach_model(world: &mut World, model: &Gr2Model, body: &Gr2Spawn, skins:
     let mut commands = Commands::new(&mut queue, world);
     let mut next = materials.into_iter();
     let parts = spawn_gr2_meshes(&mut commands, model, body.root, &body.bone_by_name, body.root, |entity, _, _| {
+        if let Some(material) = next.next() {
+            entity.insert(MeshMaterial3d(material));
+        }
+    });
+    queue.apply(world);
+    parts
+}
+
+/// Spawns `model`'s meshes skinned to one bone of `body`, which is how
+/// `CActorInstance::AttachWeapon` hangs a weapon on `PART_WEAPON` /
+/// `PART_WEAPON_LEFT`: the weapon's own skeleton has no bones in the body, so
+/// all of its joints collapse to `bone` and its inverse bind pose places it
+/// relative to that hand. A model whose skeleton names a bone the body also has
+/// keeps that bone (hair-like attachments).
+pub fn attach_model_to_bone(
+    world: &mut World,
+    model: &Gr2Model,
+    body: &Gr2Spawn,
+    bone: &str,
+    skins: &[RaceSkin],
+    fog: Option<Fog>,
+) -> Vec<Entity> {
+    let lowered = bone.to_ascii_lowercase();
+    let Some(&target) = body
+        .bone_by_name
+        .get(bone)
+        .or_else(|| body.bone_by_name.iter().find(|(name, _)| name.to_ascii_lowercase() == lowered).map(|(_, e)| e))
+    else {
+        warn!("model {}: body has no attachment bone {bone}", model.name);
+        return Vec::new();
+    };
+    let materials = materials(world, model, skins, fog);
+    let mut queue = CommandQueue::default();
+    let mut commands = Commands::new(&mut queue, world);
+    let mut next = materials.into_iter();
+    let parts = spawn_gr2_meshes(&mut commands, model, body.root, &body.bone_by_name, target, |entity, _, _| {
         if let Some(material) = next.next() {
             entity.insert(MeshMaterial3d(material));
         }

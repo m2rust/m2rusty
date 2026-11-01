@@ -100,6 +100,12 @@ pub struct SkillData {
     /// `byType`, a [`SkillType`] value.
     pub skill_type: u8,
     pub skill_index: u32,
+    /// `DESC_TOKEN_TYPE_JOB`: the job column as written ("WARRIOR",
+    /// "ASSASSIN", "SUPPORT", ...). `CPythonSkill::m_PathNameMap` keys on it.
+    pub job: Vec<u8>,
+    /// `DESC_TOKEN_TYPE_ICON_NAME`: the icon name column
+    /// (`CPythonSkill::__RegisterGradeIconImage`'s `c_szImageName`).
+    pub icon: Vec<u8>,
     pub max_level: u8,
     pub level_up_point: u8,
     pub level_limit: u8,
@@ -128,6 +134,8 @@ impl Default for SkillData {
         Self {
             skill_type: SkillType::Active as u8,
             skill_index: 0,
+            job: Vec::new(),
+            icon: Vec::new(),
             max_level: 20,
             level_up_point: 1,
             level_limit: 0,
@@ -162,6 +170,7 @@ mod desc {
     pub const CONDITION1: usize = 6;
     pub const ATTRIBUTE: usize = 10;
     pub const WEAPON: usize = 11;
+    pub const ICON_NAME: usize = 12;
     pub const MOTION_INDEX: usize = 13;
     pub const MOTION_INDEX_GRADE_NUM: usize = 14;
     pub const TARGET_COUNT_FORMULA: usize = 15;
@@ -228,6 +237,10 @@ impl SkillTables {
 
             let skill = self.skills.entry(index).or_default();
             skill.skill_index = index;
+            // Kept for the icon path rules of `RegisterSkillDesc`, which needs
+            // the original job spelling and the icon name column.
+            skill.job = column(desc::JOB).to_vec();
+            skill.icon = column(desc::ICON_NAME).to_vec();
 
             let Some(skill_type) = SkillType::from_job(&column(desc::JOB).to_ascii_lowercase()) else {
                 continue;
@@ -485,6 +498,8 @@ mod tests {
 
         let s = &skills.skills[&1];
         assert_eq!(s.skill_type, SkillType::Active as u8);
+        assert_eq!(s.job, b"WARRIOR");
+        assert_eq!(s.icon, b"icon");
         assert_eq!(s.grades[1].name, b"Name");
         assert_eq!(s.grades[2].name, b"N3");
         assert_eq!(s.conditions, [b"c1".to_vec(), b"c3".to_vec()]);
@@ -500,7 +515,9 @@ mod tests {
         assert_eq!(s.affects[1].max_formula, b"max3");
         assert_eq!((s.level_limit, s.max_level), (5, 5));
 
-        // Unknown job: a default entry with only the index set.
+        // Unknown job: the vnum, job and icon columns are kept, nothing else.
+        assert_eq!(skills.skills[&2].job, b"unknown");
+        assert_eq!(skills.skills[&2].icon, b"icon");
         assert_eq!(skills.skills[&2].skill_type, SkillType::Active as u8);
         assert_eq!(skills.skills[&2].name, b"");
         assert!(!skills.skills.contains_key(&0));

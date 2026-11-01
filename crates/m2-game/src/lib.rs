@@ -10,14 +10,17 @@
 //!   ([`world::MapScene`]).
 //! - [`ingame`]: the in-game scene (map, player character, third-person
 //!   camera) for the position the server warps to.
+//! - [`audio`]: keeps the `m2-audio` sound listener on the camera centre.
 //!
 //! Everything spawned here hangs under a root entity the caller owns, so the
 //! caller tags and despawns that root. The camera the scene is drawn for
 //! carries [`SceneCamera`]: tree leaves face it, clouds follow it, effects
 //! billboard towards it and the sky is installed on it.
 
+pub mod audio;
 pub mod ingame;
 pub mod net;
+pub mod player;
 pub mod render;
 pub mod world;
 
@@ -32,6 +35,12 @@ pub struct M2GamePlugin;
 
 impl Plugin for M2GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((render::terrain::TerrainPlugin, render::cloud::CloudPlugin, ingame::InGamePlugin));
+        app.add_plugins((
+            render::terrain::TerrainPlugin,
+            render::cloud::CloudPlugin,
+            render::lighting::LightingPlugin,
+            ingame::InGamePlugin,
+            audio::GameAudioPlugin,
+        ));
     }
 }

@@ -13,6 +13,12 @@ struct TerrainUniform {
     fog_params: vec4<f32>,
     // x = fog mode (0 off, 1 linear, 2 exp, 3 exp2).
     fog_mode: vec4<u32>,
+    // xyz = direction the light travels (Bevy world space), w unused.
+    light_direction: vec4<f32>,
+    // material.diffuse * light.diffuse.
+    light_diffuse: vec4<f32>,
+    // material.ambient * light.ambient + material.emissive.
+    light_ambient: vec4<f32>,
 }
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> terrain: TerrainUniform;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var ground: texture_2d_array<f32>;
@@ -38,8 +44,16 @@ fn vertex(input: Vertex) -> VertexOutput {
     out.view_depth = -(view.view_from_world * position).z;
     out.uv = v.uv;
     out.alpha_uv = v.uv_b;
-    let intensity = max(dot(normalize(normal), -normalize(vec3<f32>(0.35, -0.85, 0.4))), 0.0);
-    out.light = clamp(vec3<f32>(0.35) + intensity * vec3<f32>(0.95, 0.93, 0.88), vec3<f32>(0.0), vec3<f32>(1.0));
+    // CTerrainPatch::SoftwareTransformPatch_UpdateTerrainLighting: the
+    // absolute dot (the client does not clamp to the lit hemisphere), with the
+    // diffuse capped so that ambient + diffuse never overflows one channel.
+    var ndl = 0.0;
+    if length(terrain.light_direction.xyz) > 1e-6 {
+        ndl = abs(dot(normalize(normal), normalize(terrain.light_direction.xyz)));
+    }
+    let ambient = clamp(terrain.light_ambient.rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+    let diffuse = min(terrain.light_diffuse.rgb, vec3<f32>(1.0) - ambient);
+    out.light = clamp(ambient + ndl * diffuse, vec3<f32>(0.0), vec3<f32>(1.0));
     return out;
 }
 @fragment

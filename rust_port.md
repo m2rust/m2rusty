@@ -15,7 +15,7 @@ Last updated: 2026-11-01.
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
 | 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming belong to the game-world integration |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen, selects a character, enters the game and walks/attacks with a third-person camera. Actors are tracked but not drawn; movement and warps streaming and the bot gate remain |
-| 5. UI in Rust (D17; was "Python bridge and UI") | **started**: `m2-ui` crate with the login and select screens (logs in to a real server, draws the characters, enters the game). The Python bridge is dropped; layouts come from the original `uiscript` data files (roadmap §8) |
+| 5. UI in Rust (D17; was "Python bridge and UI") | **in progress**: `m2-ui` is all `bevy_ui` (D18): login, character select, in-game task bar/chat and the inventory/equipment/costume windows, from the original `.sub`/`.tga` artwork. The Python bridge is dropped; layouts follow the original `uiscript` data files (roadmap §8) |
 | 6. Parity and cut-over | not started |
 
 ### Phase 1 format families (`crates/m2-formats`)
@@ -66,12 +66,30 @@ accepted.
   screen; `--enter <slot>` starts the game and captures the character in the map;
   `--demo` walks to the nearest actor and swings once before the capture;
   `--host`/`--auth-port` override the shipped `serverinfo.py` defaults.
-- **`crates/m2-ui`**: the game UI in Rust (D17). The login screen (`login.rs`) is
-  egui with the original failure messages; the select screen (`select.rs`) draws
-  the account's characters in 3D with their intro motions, starts the game,
-  reports the enter progress and, in game, shows the map position, the current
-  target and the control help. Both are egui stopgaps; the real screens are
-  `bevy_ui` (D18).
+- **`crates/m2-audio`**: `neoeter/src/audio` on `bevy_audio`. `SoundManager`
+  (system param) ports `CSoundManager`: 2D sounds (4 at once), 3D sounds (32,
+  heard from the `SoundListener` that `m2-game` keeps on the camera centre,
+  with the Miles shim's inverse-distance falloff), the three music slots with
+  their fade-in/fade-out/limit fades, volume grades, save/restore and
+  `metin2.cfg` volumes. `M2Sound` assets (PCM `.wav`, `.mp3`) are validated on
+  load; all 1,635 shipped sounds decode. `m2-ui` plays the screen music, the
+  login result sounds and button clicks. Motion (`.mss`), effect and map
+  ambience sounds are not wired yet.
+- **`crates/m2-ui`**: the game UI in Rust (D17), all `bevy_ui` (D18). `login.rs`
+  holds the login/character state and the original failure messages; `select.rs`
+  draws the account's characters in 3D with their intro motions and enters the
+  game. `frontend.rs` is the login and character-select window (original
+  `locale/en/ui` artwork), `core.rs` the shared boards, title bars, buttons,
+  tooltips and draggable windows, `hud.rs` the in-game task bar (HP/SP/stamina
+  gauges and quick slots), chat and character/system windows, and
+  `inventory.rs` the Metin2 inventory: equipment paper doll (equipped weapon
+  included), 45-cell pages, money, item icons from `item_list.txt`/`item_proto`,
+  tooltips and use/move/split/quick-bind actions sent to the server through
+  `PlayerAction`; `character.rs` the tabbed character window (status, skills,
+  emotions, quests); `skills.rs`/`emotes.rs` its skill and emotion pages. Items,
+  skills and emotions can be assigned to the task bar's quick slots by
+  dragging or Ctrl+click, and used with the 1-4/F1-F4 keys. Non-UTF-8 and
+  `.sub` sprite regions are decoded by `m2-assets`.
 - **`crates/m2-game`**: the game-side Bevy library shared by the client and the
   viewer. `render::{model, tree, effect, terrain, sky, cloud}` draw with the
   client's render states; `render::character` dresses a race in its shape and
@@ -91,7 +109,11 @@ accepted.
   environment's fog (`soften_fog`: it starts at 100 m and is stretched) so the
   near view stays clear; the viewer keeps the file's exact fog. Other actors are
   tracked from `ActorAppend`/`Move`/`Sync`/`Remove`.
-  Everything spawns under a caller-owned root; the scene camera carries
+  Map lighting comes from the `.msenv` environment (`render::lighting`): two
+  directional lights (background and character) and the D3D9 material ambient,
+  with the original terrain formula `ambient·light.ambient + |N·L|·diffuse` and
+  a 2048 shadow map on the background light, instead of the old hard-coded
+  sun. Everything spawns under a caller-owned root; the scene camera carries
   `m2_game::SceneCamera`. `net::NetPlugin` is the
   server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
   `PreUpdate`, driven by `LoginRequest`/`EnterGame` and reported as
@@ -253,7 +275,7 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 | D14 | **UTF-8 everywhere it is possible** (user decision, 2026-11-01). New Rust APIs (Phase 2 onwards) expose text as `String`/`&str`. Legacy code pages are converted to UTF-8 once, at the file boundary; other encodings are not a goal and are not preserved on output | The user does not care about non-UTF-8 encodings. Phase 1 modules stay byte-oriented because they are proven byte-identical to C++; a UTF-8 façade is added on top, not a rewrite |
 | D15 | C++ bugs that are replicated or deliberately not replicated are tracked in [c++_rust_bugs.md](c++_rust_bugs.md) | One ledger, stable IDs, referenced from Rust comments |
 | D17 | **The UI is reimplemented in Rust; the port runs no Python** (user decision, 2026-11-01). Supersedes D1, D2 and D10 and the Python-bridge plan of Phase 5. Screens live in `m2-ui` on top of `m2-game` state; the original `uiscript`/`locale/*/ui` layout files are read as data | Removes CPython 2.7, the C ABI, the generated shims and the main-loop inversion; the client becomes pure Rust (one toolchain, and wasm/mobile are reachable). The 350 layout files are pure data (dict literals and simple expressions, no `def`/`class`/loops), so the original look survives without an interpreter |
-| D18 | **The game UI is built on `bevy_ui`; egui is for developer tools and stopgap screens** (user decision, 2026-11-01). The asset viewer, debug overlays and the temporary login/select screens use egui; the original-look UI (Milestone 4 onwards) is a retained `bevy_ui` tree | The layouts are absolute positions and `.sub` sprites, which map almost one to one onto `bevy_ui` nodes; matching the original pixel for pixel in egui would be a constant fight. Slots, drag and drop, cooldowns, tooltips and chat links are stateful, which suits ECS entities better than immediate mode. `m2-ui-core` already holds that state as a retained tree. One renderer, input path, asset source and version pin, on every target. Cost: no ready-made widgets, and editable text/IME is `bevy_ui`'s weak spot (covered by `m2-ui-core`'s edit logic over Bevy keyboard and `Ime` events) |
+| D18 | **The game UI is built on `bevy_ui`; egui is for developer tools only** (user decision, 2026-11-01). The asset viewer and debug overlays use egui; the game client's login, select, task bar and windows are a retained `bevy_ui` tree | The layouts are absolute positions and `.sub` sprites, which map almost one to one onto `bevy_ui` nodes; matching the original pixel for pixel in egui would be a constant fight. Slots, drag and drop, cooldowns, tooltips and chat links are stateful, which suits ECS entities better than immediate mode. `m2-ui-core` already holds that state as a retained tree. One renderer, input path, asset source and version pin, on every target. Cost: no ready-made widgets, and editable text/IME is `bevy_ui`'s weak spot (covered by `m2-ui-core`'s edit logic over Bevy keyboard and `Ime` events) |
 | D16 | **Reuse reputable Rust crates instead of reimplementing formats and codecs, but only if they work on every target platform: desktop (Linux/Windows/macOS), wasm32, Android and iOS.** In practice: pure Rust, no C/C++ build step or system library, maintained and widely used. Where a crate would change output on valid real data compared with C++, the differential test decides and own code is used (or the difference is accepted explicitly by the user) | User policy, 2026-11-01. Less code to own, and the port keeps the option of non-desktop targets |
 
 ## 5. Known deviations from C++ (all on malformed input or C++ UB)

@@ -17,8 +17,12 @@ cmake = "0.1.58"
 # Stored + deflate, as the client's packs use; zlib-rs keeps it pure Rust.
 zip = { version = "9.2.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 tempfile = "3.27.0"
+# Same version as bevy_audio uses; only the decoders the client data needs
+# (PCM `.wav`, `.mp3`).
+rodio = { version = "0.22", default-features = false, features = ["symphonia-wav", "symphonia-pcm", "symphonia-mp3"] }
 
 m2-assets = { path = "crates/m2-assets" }
+m2-audio = { path = "crates/m2-audio" }
 m2-effect = { path = "crates/m2-effect" }
 m2-formats = { path = "crates/m2-formats" }
 m2-game = { path = "crates/m2-game" }

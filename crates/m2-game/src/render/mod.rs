@@ -3,6 +3,7 @@
 pub mod character;
 pub mod cloud;
 pub mod effect;
+pub mod lighting;
 pub mod model;
 pub mod sky;
 pub mod terrain;

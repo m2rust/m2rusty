@@ -21,6 +21,12 @@ pub struct TerrainUniform {
     pub fog_params: Vec4,
     /// x = fog mode (0 off, 1 linear, 2 exp, 3 exp2).
     pub fog_mode: UVec4,
+    /// xyz = direction the light travels (Bevy space), normalized; w unused.
+    pub light_direction: Vec4,
+    /// `material.diffuse * light.diffuse`, gamma space.
+    pub light_diffuse: Vec4,
+    /// `material.ambient * light.ambient + material.emissive`, gamma space.
+    pub light_ambient: Vec4,
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Clone, Debug)]
@@ -61,6 +67,12 @@ pub fn patch_uniform(textures: &[TerrainTexture], counts: &[u32; 256]) -> Terrai
         fog_color: Vec4::ZERO,
         fog_params: Vec4::ZERO,
         fog_mode: UVec4::ZERO,
+        // A sun-like key and neutral fill, for a caller that builds terrain
+        // without a map environment. Any map overwrites these with
+        // `set_light`.
+        light_direction: Vec4::new(0.35, -0.85, 0.4, 0.0),
+        light_diffuse: Vec4::new(0.95, 0.93, 0.88, 0.0),
+        light_ambient: Vec4::new(0.35, 0.35, 0.35, 0.0),
     };
     for (id, texture) in textures.iter().take(MAX_LAYERS).enumerate().skip(1) {
         params.transforms[id] = Vec4::new(texture.u_scale * 0.2, texture.v_scale * 0.2, texture.u_offset, -texture.v_offset);
@@ -97,6 +109,19 @@ pub fn set_fog(params: &mut TerrainUniform, fog: Option<Fog>) {
             UVec4::new(3, 0, 0, 0)
         }
     };
+}
+
+/// The map environment's directional light, as
+/// `CTerrainPatch::SoftwareTransformPatch_UpdateTerrainLighting`
+/// (`client/src/game/TerrainPatch.cpp`) bakes it into the terrain's vertex
+/// colours: `light.diffuse * material.diffuse` and
+/// `light.ambient * material.ambient + material.emissive`, evaluated against
+/// `abs(dot(normal, direction))` in the shader.
+pub fn set_light(params: &mut TerrainUniform, light: &crate::render::lighting::SceneLight) {
+    let (direction, diffuse, ambient) = light.terrain_colours();
+    params.light_direction = direction;
+    params.light_diffuse = diffuse;
+    params.light_ambient = ambient;
 }
 
 /// One terrain's splat alpha masks, one 256×256 array slice per texture-set entry.
@@ -205,6 +230,25 @@ mod tests {
         let pixels = [0,0,0,255, 100,100,100,255, 200,200,200,255, 100,100,100,255];
         assert_eq!(resample_rgba(&pixels, 2,2,2,2), pixels);
         assert_eq!(resample_rgba(&pixels, 2,2,1,1), [100,100,100,255]);
+    }
+    #[test]
+    fn the_environment_light_is_the_terrain_vertex_lighting() {
+        let light = crate::render::lighting::SceneLight {
+            direction: Vec3::new(0.0, 1.0, 0.0),
+            diffuse: Vec4::new(1.0, 0.5, 0.0, 1.0),
+            ambient: Vec4::splat(0.1),
+            material_diffuse: Vec4::new(1.0, 1.0, 0.5, 1.0),
+            material_ambient: Vec4::splat(0.8),
+            material_emissive: Vec4::ZERO,
+            global_ambient: Vec4::ZERO,
+        };
+        let mut params = patch_uniform(&[], &[0; 256]);
+        set_light(&mut params, &light);
+        assert_eq!(params.light_direction, Vec4::new(0.0, 1.0, 0.0, 0.0));
+        // material.diffuse * light.diffuse
+        assert_eq!(params.light_diffuse, Vec4::new(1.0, 0.5, 0.0, 1.0));
+        // material.ambient * light.ambient + material.emissive
+        assert!((params.light_ambient - Vec4::splat(0.08)).abs().max_element() < 1e-6);
     }
     #[test]
     fn terrain_is_opaque_and_writes_depth_without_custom_sorting() {

@@ -16,21 +16,24 @@
 //! actor (`SendAttackPacket`); the camera orbits with a right-drag and zooms with
 //! the wheel (`CCamera`).
 //!
-//! Actors other than the player are tracked from `ActorAppend`/`Move`/`Sync`/
-//! `Remove` but not drawn yet; the next milestone draws them with their races.
+//! Actors other than the player are ECS entities tracked from
+//! `ActorAppend`/`Move`/`Sync`/`Remove`. Their server identity and appearance
+//! data stay on the entity so character rendering can consume them.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, futures::check_ready};
 use bevy::window::PrimaryWindow;
-use m2_assets::M2Packs;
+use m2_assets::{M2Packs, paths};
+use m2_formats::proto::parse_mob_proto;
 use m2_net::phase::NetEvent;
 
 use crate::SceneCamera;
 use crate::net::{Net, NetMessage};
-use crate::render::character::{Character, Look, Motion};
+use crate::player::{ItemCatalog, PlayerState};
+use crate::render::character::{ArmorShapes, Character, Look, Motion};
 use crate::render::{environment_fog, soften_fog};
 use crate::world::{MapScene, WarpedMap, prepare_map_at};
 
@@ -90,15 +93,63 @@ pub struct Actor {
     /// `CActorInstance::GetKind` (1 = NPC, 6 = player).
     pub kind: u8,
     pub level: u32,
+    pub armor: u16,
+    pub hair: u16,
     /// Global position.
     pub x: i32,
     pub y: i32,
+    pub rotation: f32,
+    move_from: Vec2,
+    move_to: Vec2,
+    move_elapsed: f32,
+    move_duration: f32,
+    moving: bool,
+    rendered_moving: Option<bool>,
 }
 
 /// The actors other than the main character, by VID.
 #[derive(Resource, Default)]
 pub struct Actors {
     pub by_vid: HashMap<u32, Actor>,
+    /// Bevy entity for each server actor. The main character is kept separate.
+    pub entities: HashMap<u32, Entity>,
+    /// Rendered character roots, keyed by server VID.
+    characters: HashMap<u32, Character>,
+    failed_visuals: HashSet<u32>,
+}
+
+/// The client mob_proto data needed to name and render a server NPC/monster.
+#[derive(Resource, Default)]
+pub struct MobCatalog {
+    by_race: HashMap<u16, MobAppearance>,
+}
+
+#[derive(Clone, Debug)]
+struct MobAppearance {
+    name: String,
+    level: u8,
+    race_file: Option<String>,
+    motions: ActorMotions,
+}
+
+#[derive(Clone, Debug, Default)]
+struct ActorMotions {
+    wait: Option<String>,
+    walk: Option<String>,
+    run: Option<String>,
+}
+
+/// Server identity and appearance metadata attached to every non-player actor.
+#[derive(Component, Clone, Debug)]
+pub struct ActorEntity {
+    pub vid: u32,
+    pub name: String,
+    pub race: u16,
+    /// Server actor kind (`1` NPC, `6` player; other values include monsters).
+    pub kind: u8,
+    pub level: u32,
+    pub armor: u16,
+    pub hair: u16,
 }
 
 /// Set by the UI: when it wants the pointer or the keyboard, the game ignores
@@ -108,6 +159,10 @@ pub struct UiFocus {
     pub pointer: bool,
     pub keyboard: bool,
 }
+
+/// Native UI publishes input capture before player movement runs.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GameControl;
 
 /// What the character does now (`CInstanceBase::FUNC_*`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -247,14 +302,24 @@ impl Plugin for InGamePlugin {
         app.init_resource::<GameWorld>()
             .init_resource::<PlayerControl>()
             .init_resource::<Actors>()
+            .init_resource::<MobCatalog>()
+            .init_resource::<ArmorShapes>()
             .init_resource::<UiFocus>()
             .add_message::<EnterWorld>()
-            .add_systems(Update, (start_entering, track_actors, drive_world).chain());
+            .add_systems(Update, (start_entering, track_actors, sync_actor_entities, drive_world.in_set(GameControl)).chain());
     }
 }
 
 /// Starts loading the map for an [`EnterWorld`] request.
-fn start_entering(mut messages: MessageReader<EnterWorld>, mut world: ResMut<GameWorld>, packs: Option<Res<M2Packs>>) {
+fn start_entering(
+    mut commands: Commands,
+    mut messages: MessageReader<EnterWorld>,
+    mut world: ResMut<GameWorld>,
+    packs: Option<Res<M2Packs>>,
+    mut mobs: ResMut<MobCatalog>,
+    mut armor_shapes: ResMut<ArmorShapes>,
+    mut actors: ResMut<Actors>,
+) {
     let Some(request) = messages.read().last() else { return };
     if world.state.is_some() {
         return;
@@ -265,49 +330,423 @@ fn start_entering(mut messages: MessageReader<EnterWorld>, mut world: ResMut<Gam
     };
     world.global = Some((request.x, request.y));
     world.main_vid = request.vid;
+    actors.by_vid.remove(&request.vid);
+    actors.failed_visuals.remove(&request.vid);
+    if let Some(character) = actors.characters.remove(&request.vid) {
+        commands.entity(character.root).despawn();
+    }
+    if let Some(entity) = actors.entities.remove(&request.vid) {
+        commands.entity(entity).despawn();
+    }
     info!("entering the world at {},{}", request.x, request.y);
     let packs = packs.packs.clone();
+    match ArmorShapes::load(&packs, LOCALE_PATH) {
+        Ok(shapes) => *armor_shapes = shapes,
+        Err(error) => warn!("could not load {LOCALE_PATH}/item_proto for actor armor: {error}"),
+    }
+    let mob_file = format!("{LOCALE_PATH}/mob_proto");
+    match packs.get(mob_file.as_bytes()).map_err(|error| error.to_string()).and_then(|data| {
+        parse_mob_proto(&data).map_err(|error| error.to_string())
+    }) {
+        Ok(tables) => {
+            let mut catalog = MobCatalog::default();
+            let directory_index = m2_assets::DirectoryIndex::build(&packs);
+            let race_registrations = load_race_registrations(&packs, &directory_index);
+            let registered_count = race_registrations.len();
+            let unresolved_count = race_registrations.values().filter(|race| race.race_file.is_none()).count();
+            catalog.by_race.extend(race_registrations);
+            for table in tables {
+                let race = table.vnum as u16;
+                catalog
+                    .by_race
+                    .entry(race)
+                    .and_modify(|mob| {
+                        let localized = proto_text(&table.locale_name);
+                        if !localized.is_empty() {
+                            mob.name = localized;
+                        }
+                        if mob.level == 0 {
+                            mob.level = table.level;
+                        }
+                    })
+                    .or_insert_with(|| MobAppearance {
+                        name: proto_text(&table.locale_name),
+                        level: table.level,
+                        race_file: None,
+                        motions: ActorMotions::default(),
+                    });
+            }
+            info!("loaded {registered_count} NPC race registrations; {unresolved_count} have no matching MSM asset");
+            mobs.by_race = catalog.by_race;
+        }
+        Err(error) => warn!("could not load {mob_file}: {error}"),
+    }
     let (x, y) = (request.x, request.y);
     let task = AsyncComputeTaskPool::get().spawn(async move { prepare_map_at(&packs, LOCALE_PATH, x, y) });
     world.state = Some(State::Loading { task, look: request.look, vid: request.vid, demo: request.demo });
 }
 
+fn proto_text(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).trim_end_matches('\0').trim().to_owned()
+}
+
+/// Ports `playersettingmodule.__LoadGameNPC`: vnum/name and
+/// `RegisterRaceSrcName` entries from `npclist.txt`, then resolves the same
+/// race paths as `CRaceManager::__LoadRaceData`.
+fn load_race_registrations(
+    packs: &m2_formats::pack::PackManager,
+    index: &m2_assets::DirectoryIndex,
+) -> HashMap<u16, MobAppearance> {
+    let Ok(data) = packs.get(b"npclist.txt") else {
+        warn!("could not load npclist.txt: no NPC race registrations");
+        return HashMap::new();
+    };
+    let mut names = HashMap::<u16, String>::new();
+    let mut source_names = HashMap::<String, String>::new();
+    for line in String::from_utf8_lossy(&data).lines() {
+        let mut fields = line.split('\t');
+        let Some(vnum) = fields.next().and_then(|value| value.trim().parse::<u32>().ok()) else {
+            continue;
+        };
+        let Some(name) = fields.next().map(str::trim).filter(|name| !name.is_empty()) else { continue };
+        if vnum == 0 {
+            if let Some(source) = fields.next().map(str::trim).filter(|source| !source.is_empty()) {
+                source_names.entry(name.to_owned()).or_insert_with(|| source.to_owned());
+            }
+        } else if vnum <= u16::MAX as u32 {
+            names.entry(vnum as u16).or_insert_with(|| name.to_owned());
+        }
+    }
+    names
+        .into_iter()
+        .map(|(race, name)| {
+            let file = resolve_registered_race_file(index, race, &name, source_names.get(&name));
+            let motions = file.as_deref().map_or_else(ActorMotions::default, |file| load_actor_motions(packs, file));
+            (race, MobAppearance { name, level: 0, race_file: file, motions })
+        })
+        .collect()
+}
+
+/// Reads the same GENERAL motion aliases that `CRaceManager` registers from a
+/// race's `motlist.txt`; many monsters use numeric filenames such as `00.msa`
+/// and have no literal `wait.msa` or `run.msa`.
+fn load_actor_motions(packs: &m2_formats::pack::PackManager, race_file: &str) -> ActorMotions {
+    let folder = paths::parent(race_file);
+    let mut race_data = m2_formats::race::RaceData::default();
+    let motion_list = if race_data.load(packs, paths::virtual_name(race_file), |_| true) {
+        proto_text(&race_data.motion_list_file_name)
+    } else {
+        "motlist.txt".to_owned()
+    };
+    let file = paths::join(folder, &motion_list);
+    let Ok(data) = packs.get(paths::virtual_name(&file)) else { return ActorMotions::default() };
+    let mut motions = ActorMotions::default();
+    for line in String::from_utf8_lossy(&data).lines() {
+        let mut fields = line.split_whitespace();
+        if !fields.next().is_some_and(|mode| mode.eq_ignore_ascii_case("general")) {
+            continue;
+        }
+        let (Some(kind), Some(file)) = (fields.next(), fields.next()) else { continue };
+        let kind = kind.to_ascii_uppercase();
+        let target = if kind == "WAIT" || (kind.starts_with("WAIT") && kind[4..].parse::<u8>().is_ok()) {
+            &mut motions.wait
+        } else if kind == "WALK" || (kind.starts_with("WALK") && kind[4..].parse::<u8>().is_ok()) {
+            &mut motions.walk
+        } else if kind == "RUN" || (kind.starts_with("RUN") && kind[3..].parse::<u8>().is_ok()) {
+            &mut motions.run
+        } else {
+            continue;
+        };
+        target.get_or_insert_with(|| paths::join(folder, file));
+    }
+    motions
+}
+
+/// Mirrors the ordered roots and explicit `#folder/shape.msm` convention in
+/// `CRaceManager`. Race source names come from zero-vnum `npclist.txt` rows.
+fn resolve_registered_race_file(
+    index: &m2_assets::DirectoryIndex,
+    race: u16,
+    name: &str,
+    source: Option<&String>,
+) -> Option<String> {
+    if let Some(local) = name.strip_prefix('#') {
+        let path = paths::canonical_asset_path(&format!("{local}shape.msm"));
+        return asset_exists(index, &path).then_some(path);
+    }
+    let categories: &[&str] = if (14000..15000).contains(&race) || race == 20043 {
+        &["guild", "npc", "npc2", "monster", "monster2"]
+    } else if race >= 30000 {
+        &["npc2", "npc", "monster", "monster2", "guild"]
+    } else if race > 9000 {
+        &["npc", "npc2", "monster", "monster2", "guild"]
+    } else if matches!(race, 8507 | 8510) {
+        &["monster2", "monster", "npc", "npc2", "guild"]
+    } else if race > 8000 {
+        &["monster", "monster2", "npc", "npc2", "guild"]
+    } else if race > 2000 || (1400..=1700).contains(&race) {
+        &["monster2", "monster", "npc", "npc2", "guild"]
+    } else {
+        &["monster", "monster2", "npc", "npc2", "guild"]
+    };
+    for category in categories {
+        let source_name = source.map_or(name, String::as_str);
+        let candidate = paths::canonical_asset_path(&format!("d:/ymir work/{category}/{source_name}/{name}.msm"));
+        if asset_exists(index, &candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+fn asset_exists(index: &m2_assets::DirectoryIndex, path: &str) -> bool {
+    let parent = paths::parent(path);
+    let file = path.rsplit('/').next().unwrap_or(path);
+    index
+        .list(parent)
+        .is_some_and(|mut entries| entries.any(|(name, is_dir)| !is_dir && name.eq_ignore_ascii_case(file)))
+}
+
 /// Follows the actors the server adds, moves and removes.
-fn track_actors(mut messages: MessageReader<NetMessage>, mut actors: ResMut<Actors>) {
+fn track_actors(
+    mut commands: Commands,
+    mut messages: MessageReader<NetMessage>,
+    mut actors: ResMut<Actors>,
+    game: Res<GameWorld>,
+    mobs: Res<MobCatalog>,
+) {
     for message in messages.read() {
         let NetMessage::Game(event) = message else { continue };
         match event {
             NetEvent::ActorAppend(actor) => {
+                if actor.vid == game.main_vid {
+                    continue;
+                }
+                if let Some(entity) = actors.entities.remove(&actor.vid) {
+                    commands.entity(entity).despawn();
+                }
+                actors.characters.remove(&actor.vid);
+                actors.failed_visuals.remove(&actor.vid);
+                let name = actor
+                    .name
+                    .as_deref()
+                    .filter(|name| !name.is_empty())
+                    .or_else(|| mobs.by_race.get(&actor.race).map(|mob| mob.name.as_str()))
+                    .unwrap_or("");
+                let level = if actor.level == 0 {
+                    mobs.by_race.get(&actor.race).map_or(0, |mob| u32::from(mob.level))
+                } else {
+                    actor.level
+                };
+                let entity = commands
+                    .spawn((
+                        Name::new(if name.is_empty() {
+                            format!("actor {}", actor.vid)
+                        } else {
+                            name.to_owned()
+                        }),
+                        ActorEntity {
+                            vid: actor.vid,
+                            name: name.to_owned(),
+                            race: actor.race,
+                            kind: actor.kind,
+                            level,
+                            armor: actor.armor,
+                            hair: actor.hair,
+                        },
+                        Transform::from_translation(Vec3::new(actor.x as f32, 0.0, -(actor.y as f32)))
+                            .with_rotation(Quat::from_rotation_y(-actor.rotation.to_radians())),
+                        Visibility::Visible,
+                    ))
+                    .id();
+                actors.entities.insert(actor.vid, entity);
                 actors.by_vid.insert(
                     actor.vid,
                     Actor {
-                        name: actor.name.clone().unwrap_or_default(),
+                        name: name.to_owned(),
                         race: actor.race,
                         kind: actor.kind,
-                        level: actor.level,
+                        level,
                         x: actor.x,
                         y: actor.y,
+                        rotation: actor.rotation,
+                        armor: actor.armor,
+                        hair: actor.hair,
+                        move_from: Vec2::new(actor.x as f32, actor.y as f32),
+                        move_to: Vec2::new(actor.x as f32, actor.y as f32),
+                        move_elapsed: 0.0,
+                        move_duration: 0.0,
+                        moving: false,
+                        rendered_moving: None,
                     },
                 );
             }
             NetEvent::ActorMove(motion) => {
                 if let Some(actor) = actors.by_vid.get_mut(&motion.vid) {
-                    actor.x = motion.x;
-                    actor.y = motion.y;
+                    actor.move_from = Vec2::new(actor.x as f32, actor.y as f32);
+                    actor.move_to = Vec2::new(motion.x as f32, motion.y as f32);
+                    actor.move_elapsed = 0.0;
+                    actor.move_duration = motion.duration as f32 / 1000.0;
+                    actor.moving = motion.func != FUNC_WAIT;
+                    if actor.move_duration == 0.0 {
+                        actor.x = motion.x;
+                        actor.y = motion.y;
+                    }
+                    actor.rotation = motion.rotation;
                 }
             }
             NetEvent::ActorSync { vid, x, y } => {
                 if let Some(actor) = actors.by_vid.get_mut(vid) {
                     actor.x = *x;
                     actor.y = *y;
+                    actor.move_from = Vec2::new(*x as f32, *y as f32);
+                    actor.move_to = actor.move_from;
+                    actor.move_elapsed = actor.move_duration;
+                }
+            }
+            NetEvent::ActorUpdate(update) => {
+                let appearance_changed = if let Some(actor) = actors.by_vid.get_mut(&update.vid) {
+                    let changed = actor.kind == m2_net::phase::ACTOR_TYPE_PC
+                        && (actor.armor != update.armor || actor.hair != update.hair);
+                    actor.armor = update.armor;
+                    actor.hair = update.hair;
+                    if changed {
+                        actor.rendered_moving = None;
+                    }
+                    changed
+                } else {
+                    false
+                };
+                if appearance_changed {
+                    if let Some(character) = actors.characters.remove(&update.vid) {
+                        commands.entity(character.root).despawn();
+                    }
+                    actors.failed_visuals.remove(&update.vid);
                 }
             }
             NetEvent::ActorRemove { vid } => {
                 actors.by_vid.remove(vid);
+                actors.characters.remove(vid);
+                actors.failed_visuals.remove(vid);
+                if let Some(entity) = actors.entities.remove(vid) {
+                    commands.entity(entity).despawn();
+                }
             }
             _ => {}
         }
     }
+}
+
+/// Keeps the Bevy actor transforms in map-local coordinates as server movement
+/// and synchronization packets arrive. Height is sampled from the loaded map.
+fn sync_actor_entities(world: &mut World) {
+    let delta = world.resource::<Time>().delta_secs().min(0.1);
+    {
+        let mut actors = world.resource_mut::<Actors>();
+        for actor in actors.by_vid.values_mut() {
+            if actor.move_duration > 0.0 {
+                actor.move_elapsed = (actor.move_elapsed + delta).min(actor.move_duration);
+                let position = actor.move_from.lerp(actor.move_to, actor.move_elapsed / actor.move_duration);
+                actor.x = position.x.round() as i32;
+                actor.y = position.y.round() as i32;
+            }
+        }
+    }
+    let (actors, entities, mobs, base, heights, ready) = {
+        let actors = world.resource::<Actors>();
+        let game = world.resource::<GameWorld>();
+        let mobs = world.resource::<MobCatalog>().by_race.clone();
+        let base = game.base;
+        let heights = actors
+            .by_vid
+            .iter()
+            .map(|(&vid, actor)| {
+                let x = (actor.x - base.0 as i32) as f32;
+                let y = (actor.y - base.1 as i32) as f32;
+                (vid, game.terrain_height(x, y))
+            })
+            .collect::<HashMap<_, _>>();
+        (actors.by_vid.clone(), actors.entities.clone(), mobs, base, heights, game.is_ready())
+    };
+    if !ready {
+        return;
+    }
+    let mut query = world.query::<(&mut ActorEntity, &mut Transform)>();
+    for (mut actor_entity, mut transform) in query.iter_mut(world) {
+        let Some(actor) = actors.get(&actor_entity.vid) else { continue };
+        let local_x = (actor.x - base.0 as i32) as f32;
+        let local_y = (actor.y - base.1 as i32) as f32;
+        let height = heights.get(&actor_entity.vid).copied().unwrap_or_default();
+        transform.translation = local_to_world(local_x, local_y, height);
+        transform.rotation = Quat::from_rotation_y(-actor.rotation.to_radians());
+        actor_entity.name.clone_from(&actor.name);
+        actor_entity.armor = actor.armor;
+        actor_entity.hair = actor.hair;
+    }
+
+    let pending: Vec<(u32, Entity, Actor)> = entities
+        .iter()
+        .filter(|(vid, _)| {
+            let actors = world.resource::<Actors>();
+            !actors.characters.contains_key(*vid) && !actors.failed_visuals.contains(*vid)
+        })
+        .filter_map(|(&vid, &entity)| actors.get(&vid).cloned().map(|actor| (vid, entity, actor)))
+        .collect();
+    for (vid, parent, actor) in pending {
+        let character = if actor.kind == m2_net::phase::ACTOR_TYPE_PC {
+            let shape = world.resource::<ArmorShapes>().shape(u32::from(actor.armor));
+            Character::spawn(
+                world,
+                Look { race: actor.race as u8, shape, hair: u32::from(actor.hair) },
+                Transform::IDENTITY,
+                Some(parent),
+            )
+        } else if let Some(file) = mobs.get(&actor.race).and_then(|mob| mob.race_file.as_deref()) {
+            Character::spawn_actor(world, actor.race, file, Transform::IDENTITY, Some(parent))
+        } else {
+            if mobs.contains_key(&actor.race) {
+                warn!("actor race {} has no matching registered MSM from npclist.txt", actor.race);
+            } else {
+                warn!("actor race {} is missing from {LOCALE_PATH}/mob_proto", actor.race);
+            }
+            world.resource_mut::<Actors>().failed_visuals.insert(vid);
+            continue;
+        };
+        world.resource_mut::<Actors>().characters.insert(vid, character);
+    }
+    let rendered: HashSet<u32> = world.resource::<Actors>().characters.keys().copied().collect();
+    let motion_updates: Vec<(u32, Actor)> = {
+        let mut actors = world.resource_mut::<Actors>();
+        actors
+            .by_vid
+            .iter_mut()
+            .filter_map(|(&vid, actor)| {
+                if actor.rendered_moving == Some(actor.moving) || !rendered.contains(&vid) {
+                    return None;
+                }
+                actor.rendered_moving = Some(actor.moving);
+                Some((vid, actor.clone()))
+            })
+            .collect()
+    };
+    for (vid, actor) in motion_updates {
+        world.resource_scope(|world, mut actors: Mut<Actors>| {
+            let Some(character) = actors.characters.get_mut(&vid) else { return };
+            if actor.kind == m2_net::phase::ACTOR_TYPE_PC {
+                character.play_motion(world, if actor.moving { Motion::Run } else { Motion::Wait }, true);
+            } else if let Some(motions) = mobs.get(&actor.race).map(|mob| &mob.motions) {
+                let motion = if actor.moving { motions.run.as_ref().or(motions.walk.as_ref()) } else { motions.wait.as_ref() };
+                if let Some(motion) = motion {
+                    character.play(world, motion, true);
+                }
+            }
+        });
+    }
+    world.resource_scope(|world, mut actors: Mut<Actors>| {
+        for character in actors.characters.values_mut() {
+            character.update(world);
+        }
+    });
 }
 
 /// Polls the map load, then handles input, movement, the network position
@@ -333,6 +772,7 @@ fn drive_world(world: &mut World) {
                         warped.name, warped.local_x, warped.local_y, height
                     );
                     let mut character = Character::spawn(world, look, Transform::from_translation(position), None);
+                    sync_main_weapon(world, &mut character);
                     character.play_motion(world, Motion::Wait, true);
                     let spawned = world.resource::<Time>().elapsed_secs();
                     game.state = Some(State::Ready {
@@ -506,6 +946,16 @@ fn drive_world(world: &mut World) {
             }
             game.local = Some((local.x.round() as i32, local.y.round() as i32));
 
+            // `CInstanceBase::ChangeWeapon`: the server's equipment cell drives
+            // the model, motion mode and the wait/run motion.
+            if sync_main_weapon(world, character) {
+                match control.state {
+                    MoveState::Idle => character.play_motion(world, Motion::Wait, true),
+                    MoveState::Moving => character.play_motion(world, Motion::Run, true),
+                    MoveState::Attacking => {}
+                }
+            }
+
             // Motions and position packets.
             match control.state {
                 MoveState::Attacking => {
@@ -543,6 +993,31 @@ fn drive_world(world: &mut World) {
         scene.update(world);
         character.update(world);
     });
+}
+
+/// Feeds the main character the weapon in the server-owned equipment cell
+/// (`GC_ITEM_SET` on cell `c_Equipment_Weapon` and later changes). The client
+/// does not predict equipment; `PlayerState` is the authority. Returns whether
+/// the weapon changed, so the caller can restart its motion
+/// (`CInstanceBase::ChangeWeapon`).
+fn sync_main_weapon(world: &mut World, character: &mut Character) -> bool {
+    let Some(player) = world.get_resource::<PlayerState>() else { return false };
+    let vnum = player.weapon().map_or(0, |item| item.vnum);
+    if vnum == character.weapon_vnum() {
+        return false;
+    }
+    if vnum == 0 {
+        return character.clear_weapon(world);
+    }
+    let visual = {
+        let Some(packs) = world.get_resource::<M2Packs>().map(|packs| packs.packs.clone()) else { return false };
+        world.get_resource::<ItemCatalog>().and_then(|catalog| catalog.weapon_visual(&packs, vnum))
+    };
+    match visual {
+        Some(visual) => character.set_weapon(world, visual.vnum, &visual.model, &visual.sub_model, visual.weapon_type),
+        // The catalog is still loading; retry next frame.
+        None => false,
+    }
 }
 
 /// The VID an attack goes to: the target when it is within reach, else 0 (a
@@ -730,6 +1205,113 @@ mod tests {
     use super::*;
 
     #[test]
+    fn actor_motion_list_uses_pack_virtual_paths_and_msm_override() {
+        use m2_formats::pack::{Container, PackManager};
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("fixture/ymir work/npc/guard");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(
+            folder.join("guard.msm"),
+            b"BaseModelFileName \"d:/ymir work/npc/guard/guard.gr2\"\nMotionListFileName \"custom.txt\"\n",
+        )
+        .unwrap();
+        std::fs::write(folder.join("custom.txt"), b"GENERAL WAIT 00.msa 100\nGENERAL RUN 03.msa 100\n").unwrap();
+        let mut packs = PackManager::new(dir.path());
+        packs.register("fixture", Container::Folder).unwrap();
+
+        let motions = load_actor_motions(&packs, "ymir work/npc/guard/guard.msm");
+        assert_eq!(motions.wait.as_deref(), Some("ymir work/npc/guard/00.msa"));
+        assert_eq!(motions.run.as_deref(), Some("ymir work/npc/guard/03.msa"));
+    }
+
+    #[test]
+    fn packed_guardians_have_idle_clips_for_their_skeletons() {
+        use m2_formats::pack::{PackManager, load_index};
+        let dir = std::env::var_os("M2_CLIENT_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));
+        if !dir.join("pack/Index.dev").exists() {
+            eprintln!("SKIP: client data not found (set M2_CLIENT_DIR)");
+            return;
+        }
+        let mut packs = PackManager::new(&dir);
+        load_index(&mut packs, "pack", "pack/Index.dev").unwrap();
+        let index = m2_assets::DirectoryIndex::build(&packs);
+        let races = load_race_registrations(&packs, &index);
+        for race in [11000, 11002] {
+            let appearance = races.get(&race).expect("guardian registration");
+            let race_file = appearance.race_file.as_deref().expect("guardian race file");
+            let wait = appearance.motions.wait.as_deref().expect("guardian idle motion");
+            assert!(wait.ends_with("/00.msa"), "race {race}: {wait}");
+
+            let mut race_data = m2_formats::race::RaceData::default();
+            assert!(race_data.load(&packs, paths::virtual_name(race_file), |_| true));
+            let model_file = proto_text(&race_data.base_model_file_name);
+            let model = m2_formats::gr2::parse(&packs.get(paths::virtual_name(&model_file)).unwrap()).unwrap();
+            let skeleton = model.models[0].skeleton.as_ref().expect("guardian skeleton");
+            let msa = packs.get(paths::virtual_name(wait)).unwrap();
+            let motion = m2_formats::race::RaceMotionData::from_script(&m2_formats::script::parse(&msa))
+                .expect("guardian motion data");
+            let animation_file = proto_text(&motion.motion_file_name);
+            let animation = m2_formats::gr2::parse(&packs.get(paths::virtual_name(&animation_file)).unwrap()).unwrap();
+            let clip = m2_assets::gr2::animation_to_clip(&animation.animations[0]);
+            let animated_bones = skeleton.bones.iter().filter(|bone| {
+                let name = String::from_utf8_lossy(&bone.name);
+                clip.curves().contains_key(&m2_assets::gr2::bone_target_id(&name))
+            }).count();
+            assert!(animated_bones > 10, "race {race} has only {animated_bones} animated bones");
+        }
+    }
+
+    #[test]
+    fn actor_updates_keep_unchanged_visuals_and_restart_changed_player_motions() {
+        use bevy::asset::AssetPlugin;
+        use m2_assets::M2AssetsPlugin;
+        use m2_formats::pack::PackManager;
+        use m2_net::phase::{ACTOR_TYPE_NPC, ACTOR_TYPE_PC, ActorUpdate};
+
+        let dir = tempfile::tempdir().unwrap();
+        let packs = std::sync::Arc::new(PackManager::new(dir.path()));
+        let mut app = App::new();
+        app.add_plugins(M2AssetsPlugin::from_packs(packs))
+            .add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_resource::<Actors>()
+            .init_resource::<GameWorld>()
+            .init_resource::<MobCatalog>()
+            .add_message::<NetMessage>()
+            .add_systems(Update, track_actors);
+        app.finish();
+        app.cleanup();
+
+        for (vid, kind) in [(10, ACTOR_TYPE_NPC), (11, ACTOR_TYPE_PC)] {
+            let actor = Actor {
+                name: String::new(), race: 0, kind, level: 0, armor: 0, hair: 0,
+                x: 0, y: 0, rotation: 0.0, move_from: Vec2::ZERO, move_to: Vec2::ZERO,
+                move_elapsed: 0.0, move_duration: 0.0, moving: false, rendered_moving: Some(false),
+            };
+            let character = Character::spawn(app.world_mut(), Look { race: 0, shape: 0, hair: 0 }, Transform::IDENTITY, None);
+            let mut actors = app.world_mut().resource_mut::<Actors>();
+            actors.by_vid.insert(vid, actor);
+            actors.characters.insert(vid, character);
+        }
+        let update = |vid, armor| NetMessage::Game(NetEvent::ActorUpdate(ActorUpdate {
+            vid, armor, guild_id: 0, move_speed: 0, attack_speed: 0, state_flags: 0,
+            affect_flags: 0, alignment: 0, pk_mode: 0, weapon: 0, hair: 0, mount_vnum: 0,
+        }));
+        app.world_mut().write_message(update(10, 1));
+        app.world_mut().write_message(update(11, 0));
+        app.update();
+        assert!(app.world().resource::<Actors>().characters.contains_key(&10));
+        assert!(app.world().resource::<Actors>().characters.contains_key(&11));
+
+        app.world_mut().write_message(update(11, 1));
+        app.update();
+        let actors = app.world().resource::<Actors>();
+        assert!(!actors.characters.contains_key(&11));
+        assert_eq!(actors.by_vid[&11].rendered_moving, None);
+    }
+
+    #[test]
     fn map_y_is_negated_in_world_space() {
         // b1: local y 62233 is south of the map origin, so -Z is north.
         assert_eq!(local_to_world(66382.0, 62233.0, 19242.91), Vec3::new(66382.0, 19242.91, -62233.0));
@@ -797,7 +1379,26 @@ mod tests {
     fn the_nearest_actor_inside_the_range_is_the_target() {
         let mut actors = HashMap::new();
         for (vid, x, y) in [(10, 100, 100), (11, 130, 100), (12, 2000, 2000)] {
-            actors.insert(vid, Actor { name: String::new(), race: 0, kind: 1, level: 0, x, y });
+            actors.insert(
+                vid,
+                Actor {
+                    name: String::new(),
+                    race: 0,
+                    kind: 1,
+                    level: 0,
+                    armor: 0,
+                    hair: 0,
+                    x,
+                    y,
+                    rotation: 0.0,
+                    move_from: Vec2::new(x as f32, y as f32),
+                    move_to: Vec2::new(x as f32, y as f32),
+                    move_elapsed: 0.0,
+                    move_duration: 0.0,
+                    moving: false,
+                    rendered_moving: None,
+                },
+            );
         }
         let target = nearest_actor(&actors, (0, 0), Vec2::ZERO, 11, 500.0);
         assert_eq!(target.map(|(vid, _)| vid), Some(10));

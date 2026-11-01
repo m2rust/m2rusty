@@ -9,13 +9,29 @@
 //! Screens so far:
 //! - [`login`]: account, password and channel.
 //! - [`select`]: the account's characters in 3D; "Start" enters the game.
+//! - [`frontend`]: the native login and character-select windows.
+//! - [`hud`]: the in-game task bar, status and chat.
+//! - [`inventory`]: the in-game inventory and equipment window.
+//! - [`character`]: the tabbed character window (status, skills, emotions,
+//!   quests), with [`skills`] and [`emotes`] for the two large pages.
+//! - [`quickslots`]: the shared quick-slot actions.
+//! - [`sound`]: screen music, login sounds and button clicks (`m2-audio`).
 //!
-//! The screens use egui for now (`bevy_egui`; stopgaps until the `bevy_ui` widget
-//! tree, D18). The app adds `EguiPlugin`, the asset and render plugins, and a 3D
-//! camera with `m2_game::SceneCamera` for the scenes.
+//! Everything is drawn with `bevy_ui` from the original `.sub`/`.tga` artwork
+//! (D18); `core` has the shared widgets (boards, title bars, buttons, tooltips
+//! and floating windows).
 
+pub mod character;
+pub mod core;
+pub mod emotes;
+pub mod frontend;
+pub mod hud;
+pub mod inventory;
 pub mod login;
+pub mod quickslots;
 pub mod select;
+pub mod skills;
+pub mod sound;
 
 use bevy::prelude::*;
 
@@ -24,6 +40,17 @@ pub struct M2UiPlugin;
 
 impl Plugin for M2UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((login::LoginScreenPlugin, select::SelectScreenPlugin));
+        app.add_message::<quickslots::QuickSlotUse>().add_plugins((
+            core::UiCorePlugin,
+            login::LoginScreenPlugin,
+            select::SelectScreenPlugin,
+            frontend::FrontendPlugin,
+            hud::PlayerHudPlugin,
+            inventory::InventoryPlugin,
+            character::CharacterPlugin,
+            skills::SkillsPlugin,
+            emotes::EmotesPlugin,
+            sound::UiSoundPlugin,
+        ));
     }
 }

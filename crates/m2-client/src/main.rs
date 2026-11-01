@@ -1,6 +1,6 @@
 //! The client: the Bevy app that puts `m2-game` (network, world, drawing) and
-//! `m2-ui` (screens) together. There is no Python: the UI is reimplemented in
-//! Rust (D17).
+//! `m2-ui` (screens) together, with `m2-audio` for sound. There is no Python:
+//! the UI is reimplemented in Rust (D17).
 //!
 //! ```text
 //! m2-client [--client <dir>] [--host <addr>] [--auth-port <port>]
@@ -13,8 +13,8 @@
 use std::path::PathBuf;
 
 use bevy::prelude::*;
-use bevy_egui::{EguiGlobalSettings, EguiPlugin, PrimaryEguiContext};
 use m2_assets::M2AssetsPlugin;
+use m2_audio::{AudioConfig, M2AudioPlugin};
 use m2_game::net::{NetPlugin, ServerInfo};
 use m2_game::{M2GamePlugin, SceneCamera};
 use m2_render::M2RenderPlugin;
@@ -32,7 +32,12 @@ struct Args {
 
 impl Default for Args {
     fn default() -> Self {
-        Args { client_dir: "bin".into(), host: None, auth_port: None, autologin: Autologin::default() }
+        Args {
+            client_dir: "bin".into(),
+            host: None,
+            auth_port: None,
+            autologin: Autologin::default(),
+        }
     }
 }
 
@@ -57,7 +62,11 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
                 a.autologin.enter = Some(slot.parse().map_err(|_| format!("bad slot {slot}"))?);
             }
             "--demo" => a.autologin.demo = true,
-            "--screenshot" => a.autologin.screenshot = Some(PathBuf::from(it.next().ok_or("--screenshot needs <out.png>")?)),
+            "--screenshot" => {
+                a.autologin.screenshot = Some(PathBuf::from(
+                    it.next().ok_or("--screenshot needs <out.png>")?,
+                ))
+            }
             other => return Err(format!("unknown argument {other}")),
         }
     }
@@ -84,39 +93,53 @@ fn main() -> AppExit {
         let _ = std::fs::remove_file(out);
     }
 
+    // `CPythonSystem::LoadConfig`: the volumes the sound manager starts with.
+    let audio = std::fs::read(args.client_dir.join("metin2.cfg")).map(|cfg| AudioConfig::parse(&cfg)).unwrap_or_default();
+
     let mut app = App::new();
     app.add_plugins(M2AssetsPlugin::new(args.client_dir))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window { title: "m2rusty".into(), ..default() }),
+            primary_window: Some(Window {
+                title: "m2rusty".into(),
+                ..default()
+            }),
             ..default()
         }))
-        .add_plugins((EguiPlugin::default(), M2RenderPlugin, M2GamePlugin))
+        .add_plugins((M2RenderPlugin, M2AudioPlugin::new(audio), M2GamePlugin))
         .insert_resource(ClearColor(Color::srgb(0.08, 0.08, 0.1)))
         .insert_resource(server)
         .insert_resource(args.autologin)
         .add_plugins((NetPlugin, M2UiPlugin))
         .add_systems(Startup, setup);
-    // egui draws on its own camera over the whole window (see `setup`).
-    app.world_mut().resource_mut::<EguiGlobalSettings>().auto_create_primary_context = false;
     app.run()
 }
 
-/// The scene camera (3D, the client's fixed-function colours) and the UI camera
-/// over it.
+/// The scene camera (3D, the client's fixed-function colours) and the native
+/// Bevy UI camera over it.
+///
+/// The scene is display-space: the game's fixed-function materials and the
+/// terrain shader write the environment's gamma-space colours directly, so
+/// the camera disables tonemapping and the exposure is fixed at 1.0
+/// (`ev100 = -log2(1.2)`). This is also what the Bevy light mapping in
+/// `m2_game::render::lighting` assumes: illuminance π and
+/// `Color::srgb` reproduce the authored colour on a white surface. The
+/// environment lights themselves are installed per map
+/// (`MapScene::spawn_with_fog`) and the neutral fallback by
+/// `M2GamePlugin`'s `LightingPlugin`.
 fn setup(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
         // The custom materials write display-space colours.
         bevy::core_pipeline::tonemapping::Tonemapping::None,
         bevy::core_pipeline::tonemapping::DebandDither::Disabled,
-        bevy::camera::Exposure { ev100: -(1.2f32).log2() },
+        bevy::camera::Exposure {
+            ev100: -(1.2f32).log2(),
+        },
         SceneCamera,
         Transform::from_xyz(0.0, 150.0, -520.0).looking_at(Vec3::new(0.0, 90.0, 0.0), Vec3::Y),
     ));
     commands.spawn((
         Camera2d,
-        PrimaryEguiContext,
-        bevy::camera::visibility::RenderLayers::none(),
         Camera {
             order: 1,
             output_mode: bevy::camera::CameraOutputMode::Write {
@@ -127,7 +150,7 @@ fn setup(mut commands: Commands) {
             ..default()
         },
     ));
-    commands.spawn((DirectionalLight::default(), Transform::from_xyz(4.0, 8.0, -6.0).looking_at(Vec3::ZERO, Vec3::Y)));
+    // No hard-coded sun: the map environment owns the scene lighting.
 }
 
 #[cfg(test)]
@@ -142,7 +165,20 @@ mod tests {
     fn args() {
         assert_eq!(p(&[]).unwrap(), Args::default());
         let a = p(&[
-            "--client", "c", "--host", "10.0.0.2", "--auth-port", "11002", "--login", "admin", "pw", "--enter", "1", "--demo", "--screenshot", "o.png",
+            "--client",
+            "c",
+            "--host",
+            "10.0.0.2",
+            "--auth-port",
+            "11002",
+            "--login",
+            "admin",
+            "pw",
+            "--enter",
+            "1",
+            "--demo",
+            "--screenshot",
+            "o.png",
         ])
         .unwrap();
         assert_eq!(a.client_dir, PathBuf::from("c"));

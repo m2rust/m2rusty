@@ -966,6 +966,12 @@ impl NetMachine {
         self.stream.send(&head.encode()) && self.stream.send(&body) && self.stream.send_sequence()
     }
 
+    /// Use an item in the player inventory.
+    pub fn send_item_use(&mut self, cell: u16) -> bool {
+        let packet = wire::TPacketCGItemUse { header: cg::ITEM_USE, pos: wire::TItemPos { window_type: 1, cell } };
+        self.stream.send_packet(&packet)
+    }
+
     /// `SendCharacterStatePacket` (position already in global coordinates).
     pub fn send_move(&mut self, func: u8, arg: u8, rot_degrees: f32, x: i32, y: i32, server_ms: u32) -> bool {
         let mut rot = rot_degrees;

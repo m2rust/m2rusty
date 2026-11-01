@@ -217,6 +217,7 @@ impl Plugin for NetPlugin {
             .add_message::<LoginRequest>()
             .add_message::<EnterGame>()
             .add_message::<NetMessage>()
+            .add_plugins(crate::player::PlayerStatePlugin)
             // Before the UI reads this frame's messages.
             .add_systems(PreUpdate, (start_login, enter_game, pump_net).chain());
     }

@@ -57,6 +57,7 @@ pub mod race;
 pub mod source;
 pub mod spt;
 pub mod texture;
+pub mod subimage;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -189,6 +190,9 @@ impl Plugin for M2AssetsPlugin {
         ensure_asset::<Mesh>(app);
         ensure_asset::<AnimationClip>(app);
         ensure_asset::<SkinnedMeshInverseBindposes>(app);
+        let packs = app.world().resource::<M2Packs>().packs.clone();
+        app.init_asset::<subimage::SubImage>()
+            .register_asset_loader(subimage::SubImageLoader { packs });
         app.init_asset::<gr2::Gr2Model>()
             .init_asset::<spt::SptTree>()
             .init_asset::<race::RaceAsset>()
