@@ -13,7 +13,7 @@ Last updated: 2026-11-01.
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **near done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree viewers, and the render harness merged; golden-image suite passes and a model plays `.msa` motions with skinning. Effect (`.mse`) viewer and the map viewer remain |
-| 3. World | **partial**: world queries/meshes and effect simulation crates merged; Bevy world rendering/integration remains |
+| 3. World | **partial**: world queries/meshes and effect simulation crates merged; `m2-viewer --map` draws whole outdoor maps (LOD 0, one ground texture). Splat layers, water, sky/fog, LOD and streaming remain |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, and phase machine merged; client game logic and server bot gate remain |
 | 5. Python bridge and UI | **partial**: module specs/generator and UI core merged; generated bridge integration and unmodified-script login gate remain |
 | 6. Parity and cut-over | not started |
@@ -66,8 +66,13 @@ executed in this run.
   repeated captures are byte-identical.
 - **World and effects:** `m2-world` ports terrain height/attribute queries,
   patch meshes, splats, lighting and area placement. `m2-effect` ports particle,
-  mesh and light simulation with a C++ differential harness. These are Rust
-  logic crates; they are not yet connected to Bevy rendering or the client.
+  mesh and light simulation with a C++ differential harness. `m2-effect` is not
+  connected to Bevy yet; `m2-world` is, through the map viewer:
+  `m2-viewer --map metin2_map_a1 --screenshot-only /tmp/a1.png` loads a map on
+  `AsyncComputeTaskPool` and spawns one mesh per terrain patch (LOD 0, UVs from
+  `m2_world::lighting`, lit fixed-function material with the first real texture
+  of the set). Splat layers need a second UV set in `m2-render`; water, sky,
+  fog, LOD 1/2, quadtree culling and 3×3 streaming are still missing.
 - **Networking:** `m2-net` contains packet structs/codecs, packet framing,
   sequence handling, transport abstractions and a login phase machine. It is
   not yet connected to `m2-client` or game entities.
