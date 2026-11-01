@@ -950,3 +950,86 @@ fn list_elem(toks: &[Tok], var: &str) -> Option<Ty> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lex::lex;
+
+    fn run(body: &str) -> Analysis {
+        analyze(&lex(body), "poArgs", false)
+    }
+
+    #[test]
+    fn required_and_optional_arguments() {
+        let a = run(r#"
+            int iSlot = 0;
+            if (!PyTuple_GetInteger(poArgs, 0, &iSlot)) return Py_BadArgument();
+            int iLife = 5;
+            if (PyTuple_Size(poArgs) == 2) { if (!PyTuple_GetInteger(poArgs, 1, &iLife)) return Py_BuildException(); }
+            return Py_BuildValue("(is)", 1, "x");
+        "#);
+        assert_eq!(a.overloads.len(), 1);
+        let p = &a.overloads[0];
+        assert_eq!(p[0].to_string(), "slot: int");
+        assert_eq!(p[1].to_string(), "life: int = 5");
+        assert_eq!(a.on_bad_arg, "bad_argument");
+        assert_eq!(a.returns.unwrap().to_string(), "tuple[int, str]");
+        assert!(a.unclassified.is_empty(), "{:?}", a.unclassified);
+    }
+
+    #[test]
+    fn switch_overloads_and_fallthrough() {
+        let a = run(r#"
+            TItemPos c;
+            switch (PyTuple_Size(poArgs)) {
+            case 1: if (!PyTuple_GetInteger(poArgs, 0, &c.cell)) return Py_BuildException(); break;
+            case 2: if (!PyTuple_GetByte(poArgs, 0, &c.window_type)) return Py_BuildException();
+                    if (!PyTuple_GetInteger(poArgs, 1, &c.cell)) return Py_BuildException();
+            default: return Py_BuildException();
+            }
+            return Py_BuildNone();
+        "#);
+        assert_eq!(a.overloads.len(), 2);
+        assert_eq!(a.overloads[1].len(), 2);
+        assert_eq!(a.overloads[1][0].ty, Ty::Byte);
+        assert!(a.quirks.iter().any(|q| q.contains("case 2")), "{:?}", a.quirks);
+    }
+
+    #[test]
+    fn unrecognised_constructs_are_reported() {
+        let a = run("PyObject *p = PyTuple_GetItem(poArgs, 0); return foo(p);");
+        assert!(a.unclassified.iter().any(|r| r.starts_with("args:")));
+        assert!(a.unclassified.iter().any(|r| r.starts_with("returns:")));
+    }
+
+    #[test]
+    fn parse_tuple_formats_and_errors() {
+        let a = run(r#"double x; PyObject *b = nullptr;
+            if (!PyArg_ParseTuple(poArgs, "d|O:log", &x, &b)) return nullptr;
+            if (x <= 0) { PyErr_SetString(PyExc_ValueError, "math domain error"); return nullptr; }
+            return PyFloat_FromDouble(x);"#);
+        assert_eq!(a.overloads[0][0].to_string(), "x: double");
+        assert!(a.overloads[0][1].optional);
+        assert_eq!(a.errors, vec!["ValueError: math domain error"]);
+        assert_eq!(a.returns, Some(Ty::Double));
+    }
+
+    #[test]
+    fn names() {
+        assert_eq!(param_name("szFileName"), "file_name");
+        assert_eq!(param_name("iSlotIndex"), "slot_index");
+        assert_eq!(snake("GetItemIndex"), "get_item_index");
+        assert_eq!(snake("SendGuildMarkUploadPacket"), "send_guild_mark_upload_packet");
+        assert_eq!(snake("wndMgr"), "wnd_mgr");
+    }
+
+    #[test]
+    fn build_value_formats() {
+        for (f, want) in
+            [("i", "int"), ("(ii)", "tuple[int, int]"), ("ii", "tuple[int, int]"), ("s#", "bytes"), ("()", "tuple[]"), ("(i)", "tuple[int]")]
+        {
+            assert_eq!(fmt_to_ty(f).unwrap().to_string(), want, "{f}");
+        }
+    }
+}
