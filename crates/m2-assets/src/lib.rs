@@ -50,6 +50,7 @@
 //! loaders convert on load; nothing downstream converts again.
 
 pub mod coords;
+mod dds_raw;
 pub mod gr2;
 pub mod paths;
 pub mod race;

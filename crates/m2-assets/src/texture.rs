@@ -91,13 +91,14 @@ pub fn decode(bytes: &[u8], settings: &M2ImageSettings) -> Result<Image, String>
 
     let mip_level_count = levels.len() as u32;
     let data: Vec<u8> = levels.concat();
-    let mut image = Image::new(
+    // `Image::new` checks the data against level 0 only, so fill it in afterwards.
+    let mut image = Image::new_uninit(
         Extent3d { width, height, depth_or_array_layers: 1 },
         TextureDimension::D2,
-        data,
         TextureFormat::Rgba8Unorm,
         RenderAssetUsages::default(),
     );
+    image.data = Some(data);
     image.texture_descriptor.mip_level_count = mip_level_count;
     let mode = if settings.repeat { ImageAddressMode::Repeat } else { ImageAddressMode::ClampToEdge };
     image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
@@ -111,7 +112,11 @@ pub fn decode(bytes: &[u8], settings: &M2ImageSettings) -> Result<Image, String>
 
 /// `(width, height, RGBA8 bytes per mip level)`.
 fn decode_dds(bytes: &[u8]) -> Result<(u32, u32, Vec<Vec<u8>>), String> {
-    let header = DxtcImage::load_header(bytes).ok_or("DDS is not DXT1/DXT3/DXT5")?;
+    let Some(header) = DxtcImage::load_header(bytes) else {
+        // The client's own DXT reader refuses anything else (D3DX loaded it on
+        // the GPU); a few effect textures are uncompressed 16/24/32-bit DDS.
+        return crate::dds_raw::decode_uncompressed_dds(bytes);
+    };
     if header.width <= 0 || header.height <= 0 {
         return Err(format!("bad DDS size {}x{}", header.width, header.height));
     }
