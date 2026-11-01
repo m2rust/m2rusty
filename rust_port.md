@@ -85,9 +85,12 @@ accepted.
   module drives the controls: left-click ground picking (heightfield ray march),
   `WASD`/arrows relative to the camera, `FUNC_MOVE`/`FUNC_WAIT` position reports
   every 300 ms, and space attacks the nearest actor (`CG_ATTACK`). The character
-  snaps to the movement direction and motion clips switch without blending, as
-  the client does. Other actors are tracked from
-  `ActorAppend`/`Move`/`Sync`/`Remove`.
+  turns towards its movement direction at the client's rotation speed
+  (`SetAdvancingRotation`: 1200°/s, 5/12 of that under 45°), and motion clips
+  switch without blending, as the client does. The game lightens the
+  environment's fog (`soften_fog`: it starts at 100 m and is stretched) so the
+  near view stays clear; the viewer keeps the file's exact fog. Other actors are
+  tracked from `ActorAppend`/`Move`/`Sync`/`Remove`.
   Everything spawns under a caller-owned root; the scene camera carries
   `m2_game::SceneCamera`. `net::NetPlugin` is the
   server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
@@ -302,6 +305,10 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
   the server keeps the reported position); actors are tracked but not drawn,
   terrain attributes/collision are not checked, warps are not handled and the
   headless bot does not exist yet.
+- **In-game fog is deliberately softer than the environment files.** The
+  client's linear fog starts at 50 m and is full at 200 m, which washed out the
+  near scene; the game uses `m2_game::render::soften_fog` (start at 100 m, full
+  at +400 m, density halved). The viewer's `--fog` still shows the exact file.
 - **CP949 object names block a few map objects.** `metin2_map_b1` places
   `ymir work/zone/<CP949 dir>/hay_01.gr2`/`hay_02.gr2`; the `m2://` source takes
   UTF-8 names, so those two fail to load (logged by Bevy). The reversible

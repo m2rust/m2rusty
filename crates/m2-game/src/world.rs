@@ -130,8 +130,14 @@ impl MapScene {
     /// spawned by [`MapScene::update`] once their assets have loaded. With
     /// `fog`, the environment's fog applies to everything.
     pub fn spawn(world: &mut World, map: Arc<PreparedMap>, fog: bool) -> Self {
+        let fog = map.map.environment.as_ref().filter(|_| fog).and_then(environment_fog);
+        Self::spawn_with_fog(world, map, fog)
+    }
+
+    /// [`MapScene::spawn`] with an explicit fog (the game lightens the
+    /// environment's own).
+    pub fn spawn_with_fog(world: &mut World, map: Arc<PreparedMap>, fog: Option<Fog>) -> Self {
         let loaded = &map.map;
-        let fog = loaded.environment.as_ref().filter(|_| fog).and_then(environment_fog);
         let root = world.spawn((Name::new(loaded.name.clone()), Transform::IDENTITY, Visibility::Visible)).id();
         if let Some(environment) = &loaded.environment {
             sky::install_sky(world, environment);

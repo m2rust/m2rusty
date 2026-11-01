@@ -31,6 +31,7 @@ use m2_net::phase::NetEvent;
 use crate::SceneCamera;
 use crate::net::{Net, NetMessage};
 use crate::render::character::{Character, Look, Motion};
+use crate::render::{environment_fog, soften_fog};
 use crate::world::{MapScene, WarpedMap, prepare_map_at};
 
 /// `LocaleService_GetLocalePath`'s default (`Locale.cpp`); used for
@@ -57,6 +58,9 @@ const RUN_SPEED: f32 = 500.0;
 /// `CPythonPlayerEventHandler::OnMoving`: a position packet every 300 ms.
 const MOVE_PACKET_SECONDS: f32 = 0.3;
 const ATTACK_COOLDOWN: f32 = 0.9;
+/// `c_fDefaultRotationSpeed` (`InstanceBase.cpp`): degrees per second. A
+/// correction wider than 45 degrees uses the full speed, a smaller one 5/12.
+const MAX_ROTATION_SPEED: f32 = 1200.0;
 /// Melee reach and how far away an actor is offered as a target.
 pub const ATTACK_RANGE: f32 = 320.0;
 const TARGET_RANGE: f32 = 1200.0;
@@ -120,8 +124,12 @@ pub struct PlayerControl {
     pub yaw: f32,
     pub pitch: f32,
     pub distance: f32,
-    /// `0` faces north; sent as `bRot / 5`.
+    /// The rendered rotation, in degrees (`0` faces north).
     pub facing: f32,
+    /// The rotation the character turns towards (`GetAdvancingRotation`).
+    pub advancing: f32,
+    /// `m_fRotSpd`, degrees per second.
+    rotation_speed: f32,
     pub state: MoveState,
     /// The actor space would hit, if any.
     pub target: Option<u32>,
@@ -138,6 +146,8 @@ impl Default for PlayerControl {
             pitch: 0.38,
             distance: CAMERA_START_DISTANCE,
             facing: 0.0,
+            advancing: 0.0,
+            rotation_speed: MAX_ROTATION_SPEED * 5.0 / 12.0,
             state: MoveState::Idle,
             target: None,
             target_distance: None,
@@ -313,8 +323,9 @@ fn drive_world(world: &mut World) {
                     game.map = Some(warped.name.clone());
                     game.base = (warped.base_x, warped.base_y);
                     game.main_vid = vid;
+                    let fog = warped.prepared.map.environment.as_ref().and_then(environment_fog).map(soften_fog);
                     let map = std::sync::Arc::new(warped.prepared);
-                    let scene = MapScene::spawn(world, map, true);
+                    let scene = MapScene::spawn_with_fog(world, map, fog);
                     let height = scene.map.map.terrain_height(warped.local_x as f32, warped.local_y as f32);
                     let position = local_to_world(warped.local_x as f32, warped.local_y as f32, height);
                     info!(
@@ -374,7 +385,7 @@ fn drive_world(world: &mut World) {
                 && let (Some(cursor), Some(previous)) = (cursor, last_pointer)
             {
                 let drag = cursor - previous;
-                control.yaw += drag.x * 0.006;
+                control.yaw -= drag.x * 0.006;
                 control.pitch = (control.pitch + drag.y * 0.005).clamp(CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
             }
             if !focus.pointer && scroll.delta.y != 0.0 {
@@ -417,7 +428,7 @@ fn drive_world(world: &mut World) {
                 if !*demo_attacked && elapsed > 4.5 {
                     *demo_attacked = true;
                     let victim = attack_victim(&control);
-                    face_actor(world, &mut control, character, base, local, victim);
+                    face_actor(world, &mut control, base, local, victim);
                     start_attack(world, &mut control, character, victim);
                 }
             }
@@ -470,16 +481,23 @@ fn drive_world(world: &mut World) {
                 control.destination = None;
                 attack_ready = now + ATTACK_COOLDOWN;
                 let victim = attack_victim(&control);
-                face_actor(world, &mut control, character, base, local, victim);
+                face_actor(world, &mut control, base, local, victim);
                 start_attack(world, &mut control, character, victim);
             }
 
             // Face where we run, keep the feet on the ground.
             if let Some(direction) = direction {
-                control.facing = facing_degrees(direction);
+                let target = facing_degrees(direction);
+                if signed_difference(target, control.advancing).abs() > 0.01 {
+                    set_advancing_rotation(&mut control, target);
+                }
+            }
+            // `CInstanceBase::Update`: walk the rendered rotation towards the
+            // advancing one at `m_fRotSpd`, taking the short way round.
+            if moved || control.state == MoveState::Attacking {
+                turn_towards(&mut control, delta);
                 if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
-                    let angle = -control.facing.to_radians();
-                    transform.rotation = Quat::from_rotation_y(angle);
+                    transform.rotation = Quat::from_rotation_y(-control.facing.to_radians());
                 }
             }
             let height = scene.map.map.terrain_height(local.x, local.y);
@@ -494,7 +512,7 @@ fn drive_world(world: &mut World) {
                     if character.motion_started() && character.motion_finished(world) {
                         control.state = MoveState::Idle;
                         character.play_motion(world, Motion::Wait, true);
-                        send_stop(world, base, local, control.facing);
+                        send_stop(world, base, local, control.advancing);
                     }
                 }
                 _ if moved => {
@@ -504,14 +522,14 @@ fn drive_world(world: &mut World) {
                     }
                     if now >= next_move_packet {
                         next_move_packet = now + MOVE_PACKET_SECONDS;
-                        send_move(world, base, local, control.facing);
+                        send_move(world, base, local, control.advancing);
                     }
                 }
                 _ => {
                     if control.state != MoveState::Idle {
                         control.state = MoveState::Idle;
                         character.play_motion(world, Motion::Wait, true);
-                        send_stop(world, base, local, control.facing);
+                        send_stop(world, base, local, control.advancing);
                     }
                 }
             }
@@ -537,7 +555,7 @@ fn attack_victim(control: &PlayerControl) -> u32 {
 }
 
 /// Turns the character towards the actor it attacks (`CActorInstance::SetAdvancingRotation`).
-fn face_actor(world: &mut World, control: &mut PlayerControl, character: &Character, base: (u32, u32), local: Vec2, victim: u32) {
+fn face_actor(world: &mut World, control: &mut PlayerControl, base: (u32, u32), local: Vec2, victim: u32) {
     if victim == 0 {
         return;
     }
@@ -547,10 +565,7 @@ fn face_actor(world: &mut World, control: &mut PlayerControl, character: &Charac
     if direction == Vec2::ZERO {
         return;
     }
-    control.facing = facing_degrees(direction.normalize());
-    if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
-        transform.rotation = Quat::from_rotation_y(-control.facing.to_radians());
-    }
+    set_advancing_rotation(control, facing_degrees(direction.normalize()));
 }
 
 /// Starts a normal attack: plays `attack.msa` and sends `CG_ATTACK`.
@@ -561,7 +576,7 @@ fn start_attack(world: &mut World, control: &mut PlayerControl, character: &mut 
     if let Some(mut net) = world.get_resource_mut::<Net>() {
         net.send_attack(victim);
     }
-    info!("attack: victim {victim}, facing {:.0}", control.facing);
+    info!("attack: victim {victim}, facing {:.0}", control.advancing);
 }
 
 fn send_move(world: &mut World, base: (u32, u32), local: Vec2, facing: f32) {
@@ -621,6 +636,40 @@ fn clamp_to_map(position: Vec2, extent: Vec2) -> Vec2 {
 /// The client's advancing rotation: `0` faces north (map `+y`).
 fn facing_degrees(direction: Vec2) -> f32 {
     f32::atan2(direction.x, direction.y).to_degrees().rem_euclid(360.0)
+}
+
+/// The shortest signed turn from `current` to `target`, in `-180..180`.
+fn signed_difference(target: f32, current: f32) -> f32 {
+    (target - current + 180.0).rem_euclid(360.0) - 180.0
+}
+
+/// `GetDegreeDifference`: the shortest angle between two headings, `0..180`.
+fn degree_difference(a: f32, b: f32) -> f32 {
+    signed_difference(a, b).abs()
+}
+
+/// `CInstanceBase::SetAdvancingRotation`: the target heading and the turn
+/// speed for it. A correction wider than 45 degrees uses the full speed, a
+/// smaller one 5/12 of it.
+fn set_advancing_rotation(control: &mut PlayerControl, target: f32) {
+    control.rotation_speed = if degree_difference(control.facing, target) > 45.0 {
+        MAX_ROTATION_SPEED
+    } else {
+        MAX_ROTATION_SPEED * 5.0 / 12.0
+    };
+    control.advancing = target.rem_euclid(360.0);
+}
+
+/// `CInstanceBase::Update`'s turn while walking: `facing` moves towards
+/// `advancing` at `rotation_speed` degrees per second, the short way round.
+fn turn_towards(control: &mut PlayerControl, delta: f32) {
+    let difference = signed_difference(control.advancing, control.facing);
+    let step = control.rotation_speed * delta;
+    if difference.abs() <= step {
+        control.facing = control.advancing;
+    } else {
+        control.facing = (control.facing + step * difference.signum()).rem_euclid(360.0);
+    }
 }
 
 /// The Bevy position of a map-local `(x, y)` at terrain `height`. The client's
@@ -716,6 +765,32 @@ mod tests {
         assert_eq!(facing_degrees(Vec2::new(0.0, 1.0)), 0.0);
         assert!((facing_degrees(Vec2::new(1.0, 0.0)) - 90.0).abs() < 1e-3);
         assert!((facing_degrees(Vec2::new(0.0, -1.0)) - 180.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn the_character_turns_at_the_client_rotation_speed() {
+        let mut control = PlayerControl::default();
+        // 90 - 0 > 45: full 1200 deg/s, 0.05 s is 60 degrees.
+        set_advancing_rotation(&mut control, 90.0);
+        assert_eq!(control.rotation_speed, MAX_ROTATION_SPEED);
+        turn_towards(&mut control, 0.05);
+        assert!((control.facing - 60.0).abs() < 1e-3, "{}", control.facing);
+
+        // A small correction turns at 5/12 of the speed and stops on the target.
+        control.facing = 0.0;
+        control.advancing = 0.0;
+        set_advancing_rotation(&mut control, 20.0);
+        assert_eq!(control.rotation_speed, MAX_ROTATION_SPEED * 5.0 / 12.0);
+        turn_towards(&mut control, 0.1);
+        assert_eq!(control.facing, 20.0);
+    }
+
+    #[test]
+    fn turning_takes_the_short_way_round_the_compass() {
+        let mut control =
+            PlayerControl { facing: 350.0, advancing: 10.0, rotation_speed: MAX_ROTATION_SPEED, ..Default::default() };
+        turn_towards(&mut control, 0.01); // 12 degrees, clockwise through north
+        assert!((control.facing - 2.0).abs() < 1e-3, "{}", control.facing);
     }
 
     #[test]
