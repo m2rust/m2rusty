@@ -41,7 +41,14 @@ impl LightInstance {
             attenuation: [data.attenuation0, data.attenuation1, data.attenuation2],
         };
         Self {
-            state: ElementState::new(data.base.start_time),
+            // C++ bug: OnSetDataPointer calls Destroy(), which re-initialises the
+            // element, so the StartTime of a light is ignored (it starts after
+            // its first update).
+            state: {
+                let mut s = ElementState::new(data.base.start_time);
+                s.reset();
+                s
+            },
             loop_count: data.loop_count as u32,
             light: Some(light),
             effect,

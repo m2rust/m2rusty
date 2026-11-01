@@ -480,25 +480,80 @@ fn real_effects_match_cpp() {
     // Record by record on a sample.
     let mut full_checked = 0;
     for chunk in sample.chunks(16) {
-        let mut args: Vec<&std::ffi::OsStr> = vec![client.as_os_str(), "pack/Index.dev".as_ref(), "full".as_ref()];
-        args.extend(chunk.iter().map(|(n, _)| std::ffi::OsStr::new(n.as_str())));
-        let full = String::from_utf8(run(&tool, &args)).unwrap();
-        let mut rust = String::new();
-        for (name, data) in chunk {
-            for sc in &SCENARIOS {
-                let (s, text) = run_scenario(name, data, &meshes, &env, sc, true);
-                rust.push_str(&text.unwrap());
-                rust.push_str(&s.line);
-                rust.push('\n');
-                full_checked += 1;
-            }
-        }
-        let body: String = full
-            .lines()
-            .filter(|l| !l.starts_with("CAM") && !l.starts_with("VIEW") && !l.starts_with("GLOBAL") && !l.starts_with("RAND") && !l.starts_with("MESHES"))
-            .map(|l| format!("{l}\n"))
-            .collect();
-        assert!(body == rust, "full dumps differ: {}", first_diff(&body, &rust));
+        full_checked += compare_full(&tool, &client, chunk, &meshes, &env);
     }
     eprintln!("{full_checked} full runs compared record by record ({} effects)", sample.len());
+}
+
+/// Runs the C++ `full` dump for `entries` and compares it with the Rust
+/// records line by line. Returns the number of runs.
+fn compare_full(
+    tool: &Path,
+    client: &Path,
+    entries: &[(String, Arc<EffectData>)],
+    meshes: &dyn MeshSource,
+    env: &Env,
+) -> usize {
+    let mut args: Vec<&std::ffi::OsStr> = vec![client.as_os_str(), "pack/Index.dev".as_ref(), "full".as_ref()];
+    args.extend(entries.iter().map(|(n, _)| std::ffi::OsStr::new(n.as_str())));
+    let full = String::from_utf8(run(tool, &args)).unwrap();
+    let mut rust = String::new();
+    let mut runs = 0;
+    for (name, data) in entries {
+        for sc in &SCENARIOS {
+            let (s, text) = run_scenario(name, data, meshes, env, sc, true);
+            rust.push_str(&text.unwrap());
+            rust.push_str(&s.line);
+            rust.push('\n');
+            runs += 1;
+        }
+    }
+    let skip = ["CAM", "VIEW", "GLOBAL", "RAND", "MESHES"];
+    let body: String =
+        full.lines().filter(|l| !skip.iter().any(|s| l.starts_with(s))).map(|l| format!("{l}\n")).collect();
+    assert!(body == rust, "full dumps differ: {}", first_diff(&body, &rust));
+    runs
+}
+
+/// Effects written for this test: no real effect has a light, so lights (and
+/// delayed starts, loops, the `SetDeactive` quirk) are only covered here.
+#[test]
+#[ignore = "differential: run scripts/differential.sh"]
+fn synthetic_lights_match_cpp() {
+    let dir = std::env::temp_dir().join(format!("m2_effect_synth_{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("pack")).unwrap();
+    std::fs::create_dir_all(dir.join("synth")).unwrap();
+    std::fs::create_dir_all(dir.join("pack/dummy")).unwrap();
+    std::fs::write(dir.join("pack/Index.dev"), b"dummy\tFOLDER\n").unwrap();
+
+    let light = |extra: &str| {
+        format!(
+            "Group Light\n{{\n{extra}\nAmbientColor 0.5 0.25 0.125 1\nDiffuseColor 1 0.5 0.25 1\nMaxRange 100\n\
+             Attenuation0 0\nAttenuation1 0.1\nAttenuation2 0\nList TimeEventRange\n{{\n0 0 0.5 1 1 0.5\n}}\n\
+             List TimeEventPosition\n{{\n0 MOVING_TYPE_DIRECT 0 0 0\n1 MOVING_TYPE_BEZIER_CURVE 10 20 30 5 5 5\n\
+             2 MOVING_TYPE_DIRECT 0 0 50\n}}\n}}\n"
+        )
+    };
+    let script = [
+        // Plays once and ends; delayed start.
+        light("StartTime 0.2\nDuration 1.5"),
+        // Loops twice.
+        light("Duration 0.5\nLoopFlag 1\nLoopCount 2"),
+        // Loops with a zero count: forever (the DWORD counter wraps).
+        light("Duration 0.7\nLoopFlag 1\nLoopCount 0"),
+    ]
+    .concat();
+    std::fs::write(dir.join("synth/light.mse"), script).unwrap();
+
+    let (manager, _) = setup(&dir);
+    let meshes = Meshes { manager: &manager, cache: Default::default() };
+    let tool = cpp_tool("effect_runtime");
+    let header = String::from_utf8(run(&tool, &[dir.as_os_str(), "pack/Index.dev".as_ref(), "full".as_ref()])).unwrap();
+    let env = parse_header(&header);
+
+    let data = Arc::new(load_effect(&manager, b"synth/light.mse").unwrap());
+    assert_eq!(data.lights.len(), 3);
+    let runs = compare_full(&tool, &dir, &[("synth/light.mse".to_string(), data)], &meshes, &env);
+    eprintln!("synthetic light effect: {runs} runs identical");
+    std::fs::remove_dir_all(&dir).ok();
 }

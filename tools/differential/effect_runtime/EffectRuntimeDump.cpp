@@ -502,6 +502,7 @@ void RunScenario(const std::string &name, CEffectData *data, const Scenario &sc,
             if (frame == 280)
             {
                 inst->Clear();
+                CEffectInstance::DestroySystem(); // see the note at the end of RunScenario
                 inst->SetEffectDataPointer(data);
                 inst->SetGlobalMatrix(g_global);
             }
