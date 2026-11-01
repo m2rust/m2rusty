@@ -51,6 +51,8 @@ as a module path, not a line number.
 | R25 | `map` | `CTerrain::LoadHeightMap` | Computes normals even when reading the height file failed | Mirrored |
 | R26 | `image` | `CTGAImage` | Uncompressed 24-bit data swaps red and blue | Mirrored; `image::tga` |
 | R27 | `image` | `CTGAImage` RLE decode | An RLE packet running past the pixel count fails the load | Mirrored; `image::tga` |
+| R28 | `net` | `CNetworkStream` / phase handlers | A header not handled by the current phase clears the whole receive buffer, so packets queued behind it are lost; a zero byte between packets is skipped | Mirrored; `NetEvent::Unhandled`, `stream::NetStream` |
+| R29 | `net` | `CPythonNetworkStream` actor add | A player/NPC add waits for the additional-info packet; monsters are appended at once | Mirrored |
 
 ## 2. Not replicated: C++ bug, Rust differs
 
@@ -91,6 +93,8 @@ Real bugs where mirroring would be wrong or impossible.
 | N31 | `image` | TGA / JPEG decode | Pixels left uninitialised (unsupported TGA type/depth combinations, missing parts of a truncated JPEG) | Zero |
 | N32 | `image` | stb JPEG | The client uses SSE2 kernels; the port is the scalar stb code. Identical on all 471 real jpg, but not proven identical for extreme coefficients | Scalar port; revisit if a mismatch ever shows |
 | N33 | `utf8` / client locale table | `gs_stLocaleData` declares the Czech locale as CP1252, but `locale/cz/*.txt` only reads correctly as CP1250 ("Přejete si použít kámen ducha?"); as CP1252 it is garbage | `utf8::locale_code_page("cz")` and `SHIPPED_LOCALES` use 1250 |
+| N34 | `net` | `CNetworkPacketHeaderMap` | Announces fewer bytes than the handler reads for four headers: `PLAYER_DELETE_SUCCESS` (read as 2 bytes), `SAFEBOX_SET` and `MALL_SET` (read as `ItemSet2`), and `WHISPER` (mapped static but carries a `wSize` and text tail). In C++ the handler's `Recv` fails and the whole buffer is dropped if the rest has not arrived yet | Rust waits for the handler's size (`handler_size_override`) instead |
+| N35 | `net` | `time_t` packet fields | `TPlayerSkill::tNextRead` and `TPacketGCTime::time` are `time_t`: 8 bytes in the 64-bit Linux build, possibly 4 in the original Win32 client | Rust uses `i64` (Linux build). Which size the target server speaks is open |
 
 ## 3. Reference-platform choices (not bugs)
 

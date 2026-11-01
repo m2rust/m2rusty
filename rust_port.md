@@ -89,6 +89,7 @@ Current totals on `main`: 151 tests pass, `cargo clippy -p m2-formats
    Windows'. Differences exist (CP1252 0x81, GBK/Big5 edge cases, CP1255/CP1258
    accent combining).
 6. **"TEA" is XTEA with 32 rounds.**
+7. **There is no stream cipher on the network.** In `CNetworkStream::Send` the TEA call is commented out and `Recv` never decrypts. TEA protects only pack and proto files. The only per-packet transformation is the sequence byte. The `adwClientKey` sent in `LOGIN2` is just a configured value. (From the `m2-net` port.)
 
 ### Data
 7. `bin/pack` holds 109 pack folders (2.2 GB, 52,578 virtual files). 31 file
