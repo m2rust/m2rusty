@@ -90,6 +90,7 @@ Real bugs where mirroring would be wrong or impossible.
 | N30 | `image` | TGA / DDS / JPEG readers | Reads past the end of a TGA, a DDS pointer outside the file, or a `Platform_GetImageInfo` DDS branch on files under 20 bytes read garbage | Return `None`/`false` |
 | N31 | `image` | TGA / JPEG decode | Pixels left uninitialised (unsupported TGA type/depth combinations, missing parts of a truncated JPEG) | Zero |
 | N32 | `image` | stb JPEG | The client uses SSE2 kernels; the port is the scalar stb code. Identical on all 471 real jpg, but not proven identical for extreme coefficients | Scalar port; revisit if a mismatch ever shows |
+| N33 | `utf8` / client locale table | `gs_stLocaleData` declares the Czech locale as CP1252, but `locale/cz/*.txt` only reads correctly as CP1250 ("Přejete si použít kámen ducha?"); as CP1252 it is garbage | `utf8::locale_code_page("cz")` and `SHIPPED_LOCALES` use 1250 |
 
 ## 3. Reference-platform choices (not bugs)
 
@@ -110,3 +111,20 @@ build that runs here.
 2. Put a short comment at the Rust site naming the ID (`// C++ bug R12: ...`).
 3. Make sure a test pins the behaviour: a differential test when it shows on
    real data, a unit test otherwise.
+
+## 5. Data problems (not code bugs)
+
+Found in the shipped `bin/pack` data; the port reads them as the original does.
+
+- **Greek pack** (`locale_gr`) contains untranslated Korean CP949 text in 13
+  files: mojibake in the declared CP1253, also in the original client.
+- **`locale_fr/guildbuildinglist.txt`** is UTF-8 inside a CP1252 locale: mojibake
+  in both.
+- **Every locale has one item** whose Korean `name` (bytes `c5 a9 b8 ae bd ba b8 b6`)
+  contains an invalid byte; glibc drops it, `encoding_rs` writes U+FFFD.
+- **31 pack file names** look like Latin-1 mojibake of CP949 names (`Á¤¸é…` for
+  "정면…"): valid UTF-8 where each CP949 byte became one Latin-1 character. The C++
+  produces the same form (libzip's encoding guess), so byte lookups work;
+  `utf8::virtual_name` recovers the real Korean name for display.
+- **`pack/Index`** lists `ZIP` packs that do not exist in this `bin/` (see
+  `rust_port.md` §3.3); only `Index.dev` loads data here.
