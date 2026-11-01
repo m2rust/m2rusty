@@ -1,0 +1,18 @@
+[package]
+name = "m2-modgen"
+description = "Python module spec extractor and generators for the Phase 5 bridge (docs/bevy-port-plan.md); no Bevy, no Python host"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "m2-modgen"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+
+[dev-dependencies]
+tempfile.workspace = true
