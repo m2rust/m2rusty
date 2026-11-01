@@ -350,3 +350,27 @@ conflict for pixel-exact codecs. The original decoders have quirks (stb
 rounding, `<< 3` expansion) that every texture in the game depends on, so a
 visually equivalent crate still changes pixels. D16 therefore only helps for
 containers and lossless formats unless pixel-exactness is relaxed.
+
+## 11. Status after the parallel wave (2026-11-01, evening)
+
+All branches below are merged into `main`. The workspace compiles
+(`cargo check --workspace --all-targets`). Tests were run for every crate except
+`m2-script`/`m2-client`: everything passes except two `m2-assets` real-data tests.
+The agents stopped at the usage limit, so several parts are **unfinished**.
+
+| Crate | What it is | State |
+|---|---|---|
+| `m2-formats` (+ `utf8`) | Phase 1 formats; `encoding_rs` decoding, `glibc-tables` now an optional feature | done; `encoding_rs` equals the glibc port on all real text (§utf8 findings in `c++_rust_bugs.md`) |
+| `m2-net` | packets (225 structs), stream framing, phase machine, fake-server tests | done, 15 tests; layouts/headers/sequence bytes/framing verified against C++ |
+| `m2-render` | fixed-function Bevy material, golden render test | partly done: golden test passes (1 test); report not received, so supported-state table and tolerances are only in its `README.md` |
+| `m2-viewer` | pack browser shell, orbit camera, texture preview, viewer registry | shell merged, 23 tests; not yet wired to `m2-assets`/`m2-render` |
+| `m2-assets` | pack asset source, coords, textures, gr2 model+motion, spt, race loaders | **WIP**: 21 unit tests pass, 2 real-data tests fail (`bind pose mismatch`; non-UTF-8 name count is 0 where the test expects the CP949 names, likely because `utf8::virtual_name` now recovers them) |
+| `m2-effect` | effect runtime simulation | **WIP**: unit + determinism tests pass (15); the C++ differential suite is committed but its result is unknown |
+| `m2-ui-core` | window tree, text tags, slots | **WIP**: first compile only (3 unit tests); differential suite committed, result unknown |
+| `m2-modgen` | Python module spec extractor and generator | **WIP**: real-build comparison for dbg/time/math/pack and conformance tests pass (14); `MODULES.md` report not confirmed |
+| `m2-world` | heightfield/attribute queries, terrain meshes, splat | **WIP**: 6 unit tests pass; first map matched C++ in the differential, full run unknown |
+
+Resuming: send each agent a message to continue (their worktrees are in
+`.claude/worktrees/`, git-ignored). The Phase 2 gate (a skinned character playing
+`.msa` motions in the viewer) still needs `m2-assets` finished and wired into
+`m2-viewer` with the `m2-render` material.
