@@ -110,6 +110,17 @@ fn poll_preload(mut preload: ResMut<MapPreload>, mut pending: ResMut<PendingOpen
     preload.opened = true;
 }
 
+/// The map a browser entry stands for: a map has no single file of its own, so
+/// selecting its `MapProperty.txt` (or `Setting.txt`) opens the whole map.
+pub fn map_dir_of_entry(name: &str) -> Option<String> {
+    let (dir, file) = name.rsplit_once('/')?;
+    if dir.is_empty() {
+        return None;
+    }
+    let stem = file.rsplit_once('.').map_or(file, |(stem, _)| stem).to_ascii_lowercase();
+    matches!(stem.as_str(), "mapproperty" | "setting").then(|| dir.to_owned())
+}
+
 /// Synthetic shell entry that routes to [`MapViewer`].
 pub fn map_open_file(name: &str, manager: Arc<PackManager>) -> OpenFile {
     OpenFile {
@@ -484,6 +495,15 @@ mod tests {
         // stored triangle is `[0,2,1]`; the odd `[1,2,3]` is `[2,1,3]` first.
         assert_eq!(&tris[..3], &[0, 2, 1]);
         assert_eq!(&tris[3..], &[2, 3, 1]);
+    }
+
+    #[test]
+    fn a_map_is_opened_from_its_property_or_setting_file() {
+        assert_eq!(map_dir_of_entry("metin2_map_b1/mapproperty.txt").as_deref(), Some("metin2_map_b1"));
+        assert_eq!(map_dir_of_entry("metin2_map_b1/Setting.TXT").as_deref(), Some("metin2_map_b1"));
+        // Anything else stays an ordinary file.
+        assert_eq!(map_dir_of_entry("metin2_map_b1/0000001.tga"), None);
+        assert_eq!(map_dir_of_entry("mapproperty.txt"), None);
     }
 
     #[test]

@@ -148,13 +148,18 @@ fn open_entry(world: &mut World, shell: &mut Shell, idx: u32) {
                 hex: hex_dump(&bytes, 256),
                 text: text_preview(entry.kind, &bytes),
             });
-            world.resource_mut::<PendingOpen>().0 = Some(OpenFile {
-                name: entry.name.clone(),
-                display: entry.display().to_string(),
-                ext: entry.ext().to_string(),
-                kind: entry.kind,
-                bytes: Arc::new(bytes),
-                manager: b.pack.manager.clone(),
+            // A map has no entry of its own: its property (or setting) file
+            // stands for the whole map directory.
+            world.resource_mut::<PendingOpen>().0 = Some(match crate::map::map_dir_of_entry(&entry.name) {
+                Some(map) => crate::map::map_open_file(&map, b.pack.manager.clone()),
+                None => OpenFile {
+                    name: entry.name.clone(),
+                    display: entry.display().to_string(),
+                    ext: entry.ext().to_string(),
+                    kind: entry.kind,
+                    bytes: Arc::new(bytes),
+                    manager: b.pack.manager.clone(),
+                },
             });
         }
         Err(e) => shell.open_error = Some(format!("{}: {e}", entry.name)),
