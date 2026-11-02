@@ -89,6 +89,7 @@ struct Held {
 enum Pending {
     Split(Held),
     Use(Held),
+    Apply(Held, ItemPosition, u32),
 }
 
 /// The inventory's view state (the server's copy is in [`PlayerState`]).
@@ -296,6 +297,7 @@ pub fn build(commands: &mut Commands, assets: &AssetServer) {
         .spawn((
             Quantity,
             TextInput,
+            bevy::input_focus::tab_navigation::TabIndex(0),
             Surface,
             Hovered::default(),
             core::rect(22., 65., 80., 20.),
@@ -509,6 +511,18 @@ fn apply_slot(
             return;
         }
         if pos != held.pos {
+            let source = &player.items[&held.pos];
+            if m2_game::item_use::applies_to_item(source, catalog) && player.items.contains_key(&pos) {
+                if let Some(target) = player.items.get(&pos)
+                    && m2_game::item_use::can_apply(source, target, catalog).is_ok()
+                    && !(pos.cell >= 90 && catalog.get(source.vnum).is_some_and(|d| d.table.item_type == 10 || d.table.item_type == 3 && d.table.sub_type == 2))
+                {
+                    let confirms = catalog.get(source.vnum).is_some_and(|item| item.table.item_type == 10 || item.table.item_type == 3 && matches!(item.table.sub_type, 2 | 14));
+                    if confirms { ui.pending = Some(Pending::Apply(held, pos, target.vnum)); }
+                    else { requests.write(PlayerAction::UseItemToItem { source: held.pos, target: pos }); }
+                } else { ui.held = Some(held); }
+                return;
+            }
             let count = player.items.get(&held.pos).map_or(0, |item| {
                 if held.count == 0 { item.count } else { held.count.min(item.count) }
             });
@@ -708,7 +722,7 @@ fn accept(
 ) {
     let Some(pending) = ui.pending.take() else { return };
     let held = match pending {
-        Pending::Split(held) | Pending::Use(held) => held,
+        Pending::Split(held) | Pending::Use(held) | Pending::Apply(held, _, _) => held,
     };
     let Some(item) = player.items.get(&held.pos).filter(|item| item.vnum == held.vnum) else {
         manager.modal = None;
@@ -716,6 +730,9 @@ fn accept(
         return;
     };
     match pending {
+        Pending::Apply(_, target, vnum) => {
+            if player.items.get(&target).is_some_and(|item| item.vnum == vnum) { requests.write(PlayerAction::UseItemToItem { source: held.pos, target }); }
+        }
         Pending::Use(_) => {
             requests.write(PlayerAction::UseItem(held.pos));
         }
@@ -799,12 +816,15 @@ fn drop_carried_on_world(
     surfaces: Query<&Hovered, With<crate::core::Surface>>,
     mut ui: ResMut<InventoryUi>,
     mut requests: MessageWriter<PlayerAction>,
+    control: Res<m2_game::ingame::PlayerControl>,
+    actors: Res<m2_game::ingame::Actors>,
+    player: Res<PlayerState>,
+    mut consumed: ResMut<Consumed>,
 ) {
     if (ui.carried.is_none() && ui.held.is_none()) || !buttons.just_pressed(MouseButton::Left) || surfaces.iter().any(|hovered| hovered.0) {
         return;
     }
-    // A bag item let go over the world goes back (the drop question of
-    // `__PutItem` is not ported).
+    if give_held(&mut ui, &control, &actors, &player, &mut requests) { consumed.pointer = true; return; }
     ui.held = None;
     if let Some(slot) = ui.carried.take().and_then(|carried| carried.from_quick) {
         requests.write(PlayerAction::ClearQuickslot(slot));
@@ -815,15 +835,40 @@ fn drag_end(
     event: On<PointerDragEnd>,
     mut ui: ResMut<InventoryUi>,
     mut requests: MessageWriter<PlayerAction>,
+    control: Res<m2_game::ingame::PlayerControl>,
+    actors: Res<m2_game::ingame::Actors>,
+    player: Res<PlayerState>,
+    surfaces: Query<&Hovered, With<Surface>>,
+    mut consumed: ResMut<Consumed>,
 ) {
     if event.button != PointerButton::Primary {
         return;
+    }
+    if !surfaces.iter().any(|hovered| hovered.0) && give_held(&mut ui, &control, &actors, &player, &mut requests) {
+        consumed.pointer = true;
+        consumed.drag_dropped = true;
     }
     if let Some(carried) = ui.carried.take()
         && let Some(slot) = carried.from_quick
     {
         requests.write(PlayerAction::ClearQuickslot(slot));
     }
+}
+
+fn give_held(ui: &mut InventoryUi, control: &m2_game::ingame::PlayerControl, actors: &m2_game::ingame::Actors, player: &PlayerState, requests: &mut MessageWriter<PlayerAction>) -> bool {
+    let Some(held) = ui.held else { return false };
+    let Some(vid) = control.hover else { return false };
+    let Some(actor) = actors.by_vid.get(&vid).filter(|actor| actor.kind == 1 || actor.kind == 6) else { return false };
+    let Some(item) = player.items.get(&held.pos).filter(|item| item.vnum == held.vnum) else { ui.held = None; return false };
+    if held.pos.window != 1 || held.pos.cell >= 90 { return false; }
+    if actor.kind == 1 {
+        requests.write(PlayerAction::GiveItem { target: vid, source: held.pos, count: if held.count == 0 { item.count } else { held.count.min(item.count) } });
+    } else {
+        requests.write(PlayerAction::Exchange { subheader: 0, arg: vid, slot: 0, position: held.pos });
+        requests.write(PlayerAction::Exchange { subheader: 1, arg: 0, slot: 0, position: held.pos });
+    }
+    ui.held = None;
+    true
 }
 
 fn icon_path(catalog: &ItemCatalog, vnum: u32) -> String {
@@ -949,6 +994,11 @@ fn refresh(
                 Some(data) => format!("Use {}?", data.table.locale_name_utf8(1252)),
                 None => format!("Use item {}?", held.vnum),
             },
+            Some(Pending::Apply(held, _, _)) => match catalog.get(held.vnum).map(|d| (d.table.item_type, d.table.sub_type)) {
+                Some((10, _)) => "Attach this spirit stone? If it fails, the stone will be broken.".into(),
+                Some((3, 14)) => "Detach the spirit stones from this item?".into(),
+                _ => "Refine this item? Failure may destroy or downgrade it.".into(),
+            },
             None => String::new(),
         };
         if **text != value {
@@ -1040,7 +1090,7 @@ fn tooltip(
         core::edit_node(&mut node, |node| {
             node.display = if show { Display::Flex } else { Display::None };
             node.left = Val::Px((cursor.x + 16.).min(viewport.x - 280.).max(0.));
-            node.top = Val::Px((cursor.y + 18.).max(0.));
+            crate::skills::place_vertically(node, cursor, viewport);
         });
     }
     if let (true, Some(item)) = (show, item) {
@@ -1151,4 +1201,32 @@ mod tests {
         player.quickslots[0] = TQuickSlot { Type: 1, Position: 7 };
         assert_eq!(empty_quickslot(&player), Some(1));
     }
+    #[test]
+    fn bonus_changer_applies_to_items_but_moves_normally_to_an_empty_cell() {
+        use m2_formats::proto::ItemData;
+        let mut app = App::new();
+        app.init_resource::<InventoryUi>().init_resource::<PlayerState>().init_resource::<ItemCatalog>()
+            .add_message::<PlayerAction>().add_message::<QuickSlotUse>()
+            .add_systems(Update, |mut ui: ResMut<InventoryUi>, player: Res<PlayerState>, catalog: Res<ItemCatalog>, mut actions: MessageWriter<PlayerAction>, mut quick: MessageWriter<QuickSlotUse>| {
+                apply_slot(Slot::Bag(1), false, false, false, false, &mut ui, &player, &catalog, &mut actions, &mut quick);
+            });
+        for (vnum, kind, subtype) in [(10,3,18),(20,1,0)] {
+            let mut data = ItemData::default(); data.table.item_type = kind; data.table.sub_type = subtype; data.table.size = 1;
+            app.world_mut().resource_mut::<ItemCatalog>().0.items.insert(vnum, data);
+        }
+        let source = ItemPosition::inventory(0); let target = ItemPosition::inventory(1);
+        app.world_mut().resource_mut::<PlayerState>().items.insert(source, item(10,1));
+        let mut weapon = item(20,1); weapon.attributes[0].bType = 1;
+        app.world_mut().resource_mut::<PlayerState>().items.insert(target, weapon);
+        app.world_mut().resource_mut::<InventoryUi>().held = Some(Held{pos:source,vnum:10,count:0});
+        let mut cursor = app.world().resource::<Messages<PlayerAction>>().get_cursor(); app.update();
+        assert!(matches!(cursor.read(app.world().resource::<Messages<PlayerAction>>()).next(), Some(PlayerAction::UseItemToItem{source:s,target:t}) if *s == source && *t == target));
+        app.world_mut().resource_mut::<PlayerState>().items.get_mut(&target).unwrap().attributes[0].bType = 0;
+        app.world_mut().resource_mut::<InventoryUi>().held = Some(Held{pos:source,vnum:10,count:0}); app.update();
+        assert_eq!(cursor.read(app.world().resource::<Messages<PlayerAction>>()).count(),0);
+        assert!(app.world().resource::<InventoryUi>().held.is_some());
+        app.world_mut().resource_mut::<PlayerState>().items.remove(&target); app.update();
+        assert!(matches!(cursor.read(app.world().resource::<Messages<PlayerAction>>()).next(), Some(PlayerAction::MoveItem{source:s,destination:t,count:1}) if *s == source && *t == target));
+    }
+
 }

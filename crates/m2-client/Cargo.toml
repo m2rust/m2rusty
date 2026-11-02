@@ -17,3 +17,6 @@ m2-audio.workspace = true
 m2-game.workspace = true
 m2-render.workspace = true
 m2-ui.workspace = true
+
+[dev-dependencies]
+m2-net.workspace = true

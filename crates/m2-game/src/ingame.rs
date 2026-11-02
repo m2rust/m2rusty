@@ -426,6 +426,8 @@ pub struct ActorEntity {
 #[derive(Resource, Default, Clone, Copy)]
 pub struct UiFocus {
     pub pointer: bool,
+    /// Item dragging captures clicks but still needs the actor under the cursor.
+    pub world_hover: bool,
     pub keyboard: bool,
 }
 
@@ -2451,7 +2453,7 @@ fn drive_world(world: &mut World) {
 
             // `CInstanceBase::OnTargeted` attaches the registered
             // `EFFECT_TARGET` (`click_glow_select.mse`) and follows the actor.
-            let hover_vid = (!focus.pointer)
+            let hover_vid = (!focus.pointer || focus.world_hover)
                 .then_some(cursor)
                 .flatten()
                 .and_then(|cursor| pick_actor(world, cursor, base));

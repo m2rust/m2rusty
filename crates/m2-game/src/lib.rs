@@ -25,6 +25,7 @@ pub mod ground;
 pub mod ingame;
 pub mod net;
 pub mod player;
+pub mod item_use;
 pub mod render;
 pub mod social;
 pub mod world;

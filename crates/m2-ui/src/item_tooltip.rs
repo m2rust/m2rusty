@@ -49,7 +49,7 @@ impl LocaleGame {
 }
 
 /// The `%d`, `%s` and `%%` of Python's `%` operator, applied in order.
-fn printf(format: &str, ints: &[i64], strs: &[&str]) -> String {
+pub(crate) fn printf(format: &str, ints: &[i64], strs: &[&str]) -> String {
     let mut out = String::new();
     let (mut ints, mut strs) = (ints.iter(), strs.iter());
     let mut chars = format.chars().peekable();

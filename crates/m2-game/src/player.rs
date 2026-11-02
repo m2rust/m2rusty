@@ -94,6 +94,7 @@ pub struct Quest {
     pub title: String,
     pub clock_name: String,
     pub clock_value: i32,
+    pub clock_updated: Option<std::time::Instant>,
     pub counter_name: String,
     pub counter_value: i32,
     pub icon: String,
@@ -348,12 +349,12 @@ impl PlayerState {
                         } else {
                             if info.begin == Some(true) { self.quests.insert(head.index, Quest::default()); }
                             let quest = self.quests.entry(head.index).or_default();
-                            if let Some(value) = info.title.filter(|s| !s.is_empty()) { quest.title = value; }
-                            if let Some(value) = info.clock_name.filter(|s| !s.is_empty()) { quest.clock_name = value; }
-                            if let Some(value) = info.clock_value { quest.clock_value = value; }
-                            if let Some(value) = info.counter_name.filter(|s| !s.is_empty()) { quest.counter_name = value; }
+                            if let Some(value) = info.title { quest.title = value; }
+                            if let Some(value) = info.clock_name { quest.clock_name = value; }
+                            if let Some(value) = info.clock_value { quest.clock_value = value; quest.clock_updated = Some(std::time::Instant::now()); }
+                            if let Some(value) = info.counter_name { quest.counter_name = value; }
                             if let Some(value) = info.counter_value { quest.counter_value = value; }
-                            if let Some(value) = info.icon.filter(|s| !s.is_empty()) { quest.icon = value; }
+                            if let Some(value) = info.icon { quest.icon = value; }
                         }
                     }
                 }
@@ -397,10 +398,12 @@ impl PlayerState {
                     member.vid = p.vid;
                 }
                 GcPacket::PartyUnlink(p) => {
-                    if let Some(member) = self.party.get_mut(&p.pid) { member.vid = 0; }
+                    if p.vid == self.vid { for member in self.party.values_mut() { member.vid = 0; } }
+                    else if let Some(member) = self.party.get_mut(&p.pid) { member.vid = 0; }
                 }
                 GcPacket::PartyRemove(p) => {
-                    self.party.retain(|_, member| member.pid!=p.pid);
+                    if self.party.get(&p.pid).is_some_and(|member| member.vid == self.vid || !self.name.is_empty() && member.name == self.name) { self.party.clear(); }
+                    else { self.party.remove(&p.pid); }
                 }
                 GcPacket::ItemSet(p) => {
                     debug!("item set cell {:?} vnum {} count {}", p.Cell, p.vnum, p.count);
@@ -450,6 +453,10 @@ impl PlayerState {
     /// `c_Equipment_Start + 6`).
     pub fn arrow_count(&self) -> u32 {
         self.items.get(&ItemPosition::equipment(EQUIPMENT_START+9)).map_or(0, |item| u32::from(item.count))
+    }
+
+    pub fn party_self(&self) -> Option<&PartyMember> {
+        self.party.values().find(|m| m.vid == self.vid || !self.name.is_empty() && m.name == self.name)
     }
 
     /// `CPythonPlayer::__HasItem`.
@@ -536,6 +543,19 @@ pub enum PlayerAction {
     /// Clicks a quest letter/button offered by an NPC script.
     QuestButton(u32),
     UseItem(ItemPosition),
+    UseItemToItem { source: ItemPosition, target: ItemPosition },
+    GiveItem { target: u32, source: ItemPosition, count: u8 },
+    Refine { position: u8, kind: u8 },
+    Whisper { to: String, text: String },
+    FriendAddVid(u32),
+    FriendAdd(String),
+    FriendRemove(String),
+    PartyInvite(u32),
+    PartyAnswer { leader: u32, accept: bool },
+    PartyRemove(u32),
+    PartyState { pid: u32, role: u8, enabled: bool },
+    PartyDistribution(u8),
+    Exchange { subheader: u8, arg: u32, slot: u8, position: ItemPosition },
     MoveItem {source:ItemPosition,destination:ItemPosition,count:u8},
     SafeboxCheckin {inventory:ItemPosition,safe_cell:u8},
     SafeboxCheckout {safe_cell:u8,inventory:ItemPosition},
@@ -601,6 +621,21 @@ fn receive(
         }
     }
 }
+fn legacy_name<const N: usize>(name: &str) -> [u8; N] {
+    let mut out = [0; N];
+    let encoded = m2_formats::utf8::encode(1252, name.trim());
+    let count = encoded.len().min(N.saturating_sub(1));
+    out[..count].copy_from_slice(&encoded[..count]);
+    out
+}
+
+fn send_whisper(net: &mut m2_net::phase::NetMachine, to: &str, text: &str) -> bool {
+    let encoded = m2_formats::utf8::encode(1252, text);
+    if to.trim().is_empty() || text.trim().is_empty() || encoded.len() >= 255 || text.chars().any(char::is_control) { return false; }
+    let head = wire::TPacketCGWhisper { bHeader: cg::WHISPER, wSize: (wire::TPacketCGWhisper::SIZE + encoded.len() + 1) as u16, szNameTo: legacy_name(to) };
+    net.stream.send(&head.encode()) && net.stream.send(&encoded) && net.stream.send(&[0]) && net.stream.send_sequence()
+}
+
 fn dispatch(
     mut actions:MessageReader<PlayerAction>,
     mut net:ResMut<Net>,
@@ -614,6 +649,25 @@ fn dispatch(
             PlayerAction::Chat{text,kind} => !text.is_empty() && text.len()<512 && !text.chars().any(char::is_control) && matches!(kind,0|3|4|6) && net.game.send_chat(text,*kind),
             PlayerAction::QuestAnswer(answer) => net.game.send_script_answer(*answer),
             PlayerAction::QuestButton(index) => net.game.send_script_button(*index),
+            PlayerAction::UseItemToItem { source, target } => source != target && source.valid() && target.valid()
+                && player.items.contains_key(source) && player.items.contains_key(target)
+                && net.game.stream.send_packet(&wire::TPacketCGItemUseToItem { header: cg::ITEM_USE_TO_ITEM, source_pos: source.wire(), target_pos: target.wire() }),
+            PlayerAction::GiveItem { target, source, count } => *target != 0 && source.window == 1 && source.cell < 90
+                && player.items.get(source).is_some_and(|item| *count > 0 && *count <= item.count)
+                && net.game.stream.send_packet(&wire::TPacketCGGiveItem { byHeader: cg::GIVE_ITEM, dwTargetVID: *target, ItemPos: source.wire(), byItemCount: *count }),
+            PlayerAction::Refine { position, kind } => net.game.stream.send_packet(&wire::TPacketCGRefine { header: cg::REFINE, pos: *position, r#type: *kind }),
+            PlayerAction::Whisper { to, text } => send_whisper(&mut net.game, to, text),
+            PlayerAction::FriendAddVid(vid) => net.game.stream.send(&wire::TPacketCGMessenger { header: cg::MESSENGER, subheader: 0 }.encode())
+                && net.game.stream.send(&vid.to_le_bytes()) && net.game.stream.send_sequence(),
+            PlayerAction::FriendAdd(name) | PlayerAction::FriendRemove(name) => !name.trim().is_empty()
+                && net.game.stream.send(&wire::TPacketCGMessenger { header: cg::MESSENGER, subheader: if matches!(action, PlayerAction::FriendAdd(_)) { 1 } else { 2 } }.encode())
+                && net.game.stream.send(&legacy_name::<24>(name)) && net.game.stream.send_sequence(),
+            PlayerAction::PartyInvite(vid) => net.game.stream.send_packet(&wire::TPacketCGPartyInvite { header: cg::PARTY_INVITE, vid: *vid }),
+            PlayerAction::PartyAnswer { leader, accept } => net.game.stream.send_packet(&wire::TPacketCGPartyInviteAnswer { header: cg::PARTY_INVITE_ANSWER, leader_pid: *leader, accept: u8::from(*accept) }),
+            PlayerAction::PartyRemove(pid) => net.game.stream.send_packet(&wire::TPacketCGPartyRemove { header: cg::PARTY_REMOVE, pid: *pid }),
+            PlayerAction::PartyState { pid, role, enabled } => net.game.stream.send_packet(&wire::TPacketCGPartySetState { byHeader: cg::PARTY_SET_STATE, dwVID: *pid, byState: *role, byFlag: u8::from(*enabled) }),
+            PlayerAction::PartyDistribution(mode) => net.game.stream.send_packet(&wire::TPacketCGPartyParameter { bHeader: cg::PARTY_PARAMETER, bDistributeMode: *mode }),
+            PlayerAction::Exchange { subheader, arg, slot, position } => net.game.stream.send_packet(&wire::TPacketCGExchange { header: cg::EXCHANGE, subheader: *subheader, arg1: *arg, arg2: *slot, Pos: position.wire() }),
             PlayerAction::UseItem(pos) => pos.valid() && player.items.contains_key(pos) && net.game.stream.send_packet(&wire::TPacketCGItemUse{header:cg::ITEM_USE,pos:pos.wire()}),
             PlayerAction::MoveItem{source,destination,count} => {
                 source!=destination && source.valid() && destination.valid() && player.items.get(source).is_some_and(|i|*count<=i.count) && net.game.stream.send_packet(&wire::TPacketCGItemMove{header:cg::ITEM_MOVE,pos:source.wire(),change_pos:destination.wire(),num:*count})
@@ -762,4 +816,36 @@ fn dispatch(
         assert_eq!(weapon.sub_model,"ymir work/item/weapon/04010_1.gr2");
         assert_eq!(weapon.weapon_type,1);
     }
+    #[test]
+    fn interaction_actions_encode_the_legacy_packets_without_confusing_item_moves() {
+        let mut app = App::new();
+        let mut net = Net::default();
+        net.game.feed(&wire::TPacketGCPhase {header:wire::gc::PHASE,phase:m2_net::phase::phase_id::GAME}.encode()); net.game.poll(0);
+        net.game.stream.set_sequence_mode(false); net.game.take_output(4096);
+        app.insert_resource(net).init_resource::<PlayerState>().init_resource::<StorageState>().init_resource::<ShopState>()
+            .add_message::<PlayerAction>().add_systems(Update, dispatch);
+        let stack = ItemStack {vnum:1,count:3,flags:0,anti_flags:0,sockets:[0;3],attributes:Default::default()};
+        app.world_mut().resource_mut::<PlayerState>().items.insert(ItemPosition::inventory(0),stack.clone());
+        app.world_mut().resource_mut::<PlayerState>().items.insert(ItemPosition::inventory(1),stack);
+        for action in [PlayerAction::UseItemToItem{source:ItemPosition::inventory(0),target:ItemPosition::inventory(1)}, PlayerAction::GiveItem{target:0x01020304,source:ItemPosition::inventory(0),count:2}, PlayerAction::Refine{position:4,kind:2}, PlayerAction::Whisper{to:"José".into(),text:"Salut é".into()}] { app.world_mut().write_message(action); }
+        app.update();
+        let bytes = app.world_mut().resource_mut::<Net>().game.take_output(4096);
+        assert_eq!(&bytes[..7], &[cg::ITEM_USE_TO_ITEM,1,0,0,1,1,0]);
+        assert_eq!(&bytes[7..16], &[cg::GIVE_ITEM,4,3,2,1,1,0,0,2]);
+        assert_eq!(&bytes[16..19], &[cg::REFINE,4,2]);
+        let whisper = &bytes[19..]; assert_eq!(whisper[0],cg::WHISPER);
+        assert_eq!(u16::from_le_bytes([whisper[1],whisper[2]]) as usize,whisper.len());
+        assert_eq!(&whisper[3..8],b"Jos\xe9\0"); assert_eq!(&whisper[28..],b"Salut \xe9\0");
+    }
+    #[test]
+    fn leaving_the_party_removes_all_members_even_after_unlinking() {
+        let mut player = PlayerState {vid:1,name:"Me".into(),..default()};
+        player.party.insert(100, PartyMember {pid:100,vid:1,name:"Me".into(),..default()});
+        player.party.insert(200, PartyMember {pid:200,vid:2,name:"Ally".into(),..default()});
+        player.apply(&NetEvent::Packet(GcPacket::PartyUnlink(wire::TPacketGCPartyUnlink{pid:100,vid:1,..default()})));
+        assert!(player.party.values().all(|m|m.vid==0)); assert_eq!(player.party_self().unwrap().pid,100);
+        player.apply(&NetEvent::Packet(GcPacket::PartyRemove(wire::TPacketGCPartyRemove{pid:100,..default()})));
+        assert!(player.party.is_empty());
+    }
+
 }

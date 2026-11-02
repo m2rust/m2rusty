@@ -38,6 +38,7 @@ pub enum Anchor {
 #[derive(Component)] pub struct WindowTitle(pub Entity);
 #[derive(Component)] struct DragWindow(Entity);
 #[derive(Component)] struct CloseWindow(Entity);
+#[derive(Component)] struct OpenState(bool);
 #[derive(Resource,Default)] pub struct WindowManager {pub serial:i32,pub modal:Option<Entity>}
 
 pub struct UiCorePlugin;
@@ -49,7 +50,7 @@ impl Plugin for UiCorePlugin {
             .add_systems(First,|mut c:ResMut<Consumed>|*c=Consumed::default())
             .add_observer(pointer_click).add_observer(window_press).add_observer(window_drag)
             .add_systems(Startup,spawn_tooltip)
-            .add_systems(Update,(resize_scale,close_windows,position_windows,resolve_art,game_focus,tooltip).chain().in_set(UiSet::Draw))
+            .add_systems(Update,(resize_scale,raise_open_windows,close_windows,position_windows,resolve_art,game_focus,tooltip).chain().in_set(UiSet::Draw))
             .configure_sets(PostUpdate,bevy::ui::UiSystems::Layout.run_if(ui_layout_needed));
     }
 }
@@ -76,9 +77,10 @@ fn ui_layout_needed(
 pub fn edit_node(node:&mut Mut<Node>,edit:impl FnOnce(&mut Node)){let mut next=node.clone();edit(&mut next);node.set_if_neq(next);}
 /// [`edit_node`] for the common case of showing or hiding a node.
 pub fn set_display(node:&mut Mut<Node>,display:Display){if node.display!=display{node.display=display;}}
+pub fn set_text(text:&mut Mut<Text>,value:String){if text.0!=value{text.0=value;}}
 pub fn rect(x:f32,y:f32,w:f32,h:f32)->Node {Node{position_type:PositionType::Absolute,left:Val::Px(x),top:Val::Px(y),width:Val::Px(w),height:Val::Px(h),..default()}}
 pub fn picture(commands:&mut Commands,assets:&AssetServer,parent:Entity,path:&str,node:Node)->Entity {
-    let id=commands.spawn((node,Art::load(assets,path),ImageNode::default(),Pickable::IGNORE)).id();commands.entity(parent).add_child(id);id
+    let id=commands.spawn((node,Art::load(assets,path),ImageNode{image_mode:NodeImageMode::Stretch,..default()},Pickable::IGNORE)).id();commands.entity(parent).add_child(id);id
 }
 pub fn text(commands:&mut Commands,parent:Entity,value:impl Into<String>,node:Node)->Entity {
     let id=commands.spawn((node,Text::new(value),TextFont{font_size:bevy::text::FontSize::Px(12.),..default()},TextColor(Color::srgb(0.9,0.9,0.9)),TextShadow::default(),Pickable::IGNORE)).id();commands.entity(parent).add_child(id);id
@@ -90,9 +92,9 @@ pub fn button(commands:&mut Commands,assets:&AssetServer,parent:Entity,node:Node
 /// A three-state button whose artwork is loaded by the caller (the original
 /// client also has multi-state `.tga` buttons, not only `.sub` regions).
 pub fn button_with(commands:&mut Commands,parent:Entity,node:Node,art:[Art;3],caption:&str)->Entity {
-    let id=commands.spawn((Button,Control,Surface,Hovered::default(),node,ImageNode::default(),ButtonArt(art))).id();
+    let id=commands.spawn((Button,Control,Surface,Hovered::default(),node,ImageNode{image_mode:NodeImageMode::Stretch,..default()},ButtonArt(art))).id();
     commands.entity(parent).add_child(id);
-    if !caption.is_empty(){text(commands,id,caption,Node{width:Val::Percent(100.),height:Val::Percent(100.),display:Display::Flex,justify_content:JustifyContent::Center,align_items:AlignItems::Center,..default()});}
+    if !caption.is_empty(){let label=text(commands,id,caption,Node{width:Val::Percent(100.),height:Val::Percent(100.),display:Display::Flex,justify_content:JustifyContent::Center,align_items:AlignItems::Center,..default()});commands.entity(label).insert(TextLayout::justify(Justify::Center));}
     id
 }
 pub fn art_button(commands:&mut Commands,assets:&AssetServer,parent:Entity,node:Node,prefix:&str,caption:&str)->Entity {
@@ -117,7 +119,7 @@ pub fn board(commands:&mut Commands,assets:&AssetServer,parent:Entity,w:f32,h:f3
 /// `x = SCREEN_WIDTH - width - right`, `y = SCREEN_HEIGHT - height - bottom`).
 pub fn window(commands:&mut Commands,assets:&AssetServer,id:&'static str,title:&str,size:Vec2,position:Vec2,anchor:Anchor,open:bool)->Entity {
     let start=match anchor{Anchor::TopLeft|Anchor::LeftCenter(_)=>position,Anchor::BottomRight(_)=>Vec2::ZERO};
-    let root=commands.spawn((FloatingWindow{id,open,size,position:start,moved:false,anchor},Surface,Hovered::default(),GlobalZIndex(200),Node{display:if open{Display::Flex}else{Display::None},..rect(position.x,position.y,size.x,size.y)})).id();
+    let root=commands.spawn((OpenState(false),FloatingWindow{id,open,size,position:start,moved:false,anchor},Surface,Hovered::default(),GlobalZIndex(200),Node{display:if open{Display::Flex}else{Display::None},..rect(position.x,position.y,size.x,size.y)})).id();
     board(commands,assets,root,size.x,size.y);
     let titlebar=commands.spawn((Surface,Hovered::default(),DragWindow(root),rect(8.,7.,size.x-15.,23.))).id();commands.entity(root).add_child(titlebar);
     for (part,x,w) in [("left",0.,32.),("center",32.,size.x-79.),("right",size.x-47.,32.)] {
@@ -126,7 +128,7 @@ pub fn window(commands:&mut Commands,assets:&AssetServer,id:&'static str,title:&
     }
     // `TitleName` is centred in the title bar (`x: 77`, centre aligned).
     let title_text=text(commands,titlebar,title,Node{width:Val::Px(size.x-15.),height:Val::Px(23.),display:Display::Flex,justify_content:JustifyContent::Center,align_items:AlignItems::Center,..default()});
-    commands.entity(title_text).insert(WindowTitle(root));
+    commands.entity(title_text).insert((WindowTitle(root),TextLayout::justify(Justify::Center)));
     let close=button(commands,assets,titlebar,rect(size.x-36.,3.,16.,16.),"d:/ymir work/ui/public/close_button","");commands.entity(close).insert(CloseWindow(root));
     root
 }
@@ -145,6 +147,9 @@ fn window_drag(mut event:On<PointerDrag>,titles:Query<&DragWindow>,mut windows:Q
 }
 fn resize_scale(windows:Query<&Window,With<PrimaryWindow>>,mut scale:ResMut<UiScale>){
     if let Ok(window)=windows.single(){let desired=(window.width()/800.).min(window.height()/600.).min(1.).max(0.25);if (scale.0-desired).abs()>0.001{scale.0=desired;}}
+}
+fn raise_open_windows(mut manager:ResMut<WindowManager>,mut windows:Query<(&FloatingWindow,&mut OpenState,&mut GlobalZIndex)>){
+    for (window,mut state,mut z) in &mut windows{if window.open&&!state.0{manager.serial+=1;z.0=200+manager.serial;}if state.0!=window.open{state.0=window.open;}}
 }
 fn close_windows(mut clicks:MessageReader<Click>,close:Query<&CloseWindow>,mut windows:Query<(&mut FloatingWindow,&GlobalZIndex)>,keys:Res<ButtonInput<KeyCode>>,mut consumed:ResMut<Consumed>,mut focus:ResMut<InputFocus>,parents:Query<&ChildOf>){
     let mut target=None;
@@ -189,29 +194,45 @@ fn game_focus(input:Res<InputFocus>,fields:Query<(),With<bevy::ui_widgets::TextI
     // `OnMouseLeftButtonDown` with something attached only drops it; the world
     // is not clicked.
     let attached=inventory.is_some_and(|ui|ui.carried.is_some()||ui.held_item().is_some());
-    focus.pointer=consumed.pointer || surfaces.iter().any(|h|h.0) || manager.modal.is_some() || attached;
+    let over_ui=surfaces.iter().any(|h|h.0) || manager.modal.is_some();
+    focus.world_hover=attached && !over_ui;
+    focus.pointer=consumed.pointer || over_ui || attached;
 }
 #[derive(Component)] struct CoreTooltip;
 #[derive(Component)] struct CoreTooltipText;
 fn spawn_tooltip(mut commands:Commands){
     let root=commands.spawn((CoreTooltip,Node{display:Display::None,position_type:PositionType::Absolute,left:Val::Px(0.),top:Val::Px(0.),width:Val::Px(240.),padding:UiRect::all(Val::Px(6.)),border:UiRect::all(Val::Px(1.)),..default()},BackgroundColor(Color::srgba(0.,0.,0.,0.9)),BorderColor::all(Color::srgb(0.7,0.65,0.5)),GlobalZIndex(100_000),Pickable::IGNORE)).id();
-    let label=commands.spawn((CoreTooltipText,Node{width:Val::Percent(100.),..default()})).id();
+    let label=commands.spawn(Node{width:Val::Percent(100.),..default()}).id();
     commands.entity(root).add_child(label);
-    let text=commands.spawn((Text::new(""),TextFont{font_size:bevy::text::FontSize::Px(12.),..default()},TextColor(Color::srgb(0.95,0.92,0.85)),TextShadow::default())).id();
+    // The `Text` itself carries the marker: the label node above only sizes it.
+    let text=commands.spawn((CoreTooltipText,Text::new(""),TextFont{font_size:bevy::text::FontSize::Px(12.),..default()},TextColor(Color::srgb(0.95,0.92,0.85)),TextShadow::default())).id();
     commands.entity(label).add_child(text);
 }
-fn tooltip(primary:Query<&Window,With<PrimaryWindow>>,scale:Res<UiScale>,time:Res<Time>,hovered:Query<(&Tooltip,&Hovered)>,mut tip:Query<&mut Node,With<CoreTooltip>>,mut labels:Query<&mut Text,With<CoreTooltipText>>,mut last:Local<Option<(usize,f32)>>){
+fn tooltip(primary:Query<&Window,With<PrimaryWindow>>,scale:Res<UiScale>,time:Res<Time>,hovered:Query<(Entity,&Tooltip,&Hovered)>,mut tip:Query<&mut Node,With<CoreTooltip>>,mut labels:Query<&mut Text,With<CoreTooltipText>>,mut last:Local<Option<(Entity,f32)>>){
     let Ok(window)=primary.single()else{return;};
-    let current=hovered.iter().find_map(|(tip,h)|(h.0&&!tip.0.is_empty()).then_some(tip));
-    let entity=hovered.iter().enumerate().find(|(_, (tip,h))|h.0&&!tip.0.is_empty()).map(|(i,_)|i);
+    let current=hovered.iter().find(|(_,tip,h)|h.0&&!tip.0.is_empty());
+    let entity=current.map(|(e,..)|e);
     if entity!=last.as_ref().map(|(e,_)|*e){*last=entity.map(|e|(e,time.elapsed_secs()));}
-    let Some(tooltip)=current else{
+    let ready=last.is_some_and(|(_,at)|time.elapsed_secs()-at>0.3);
+    let (Some((_,tooltip,_)),true)=(current,ready) else{
         for mut node in &mut tip{set_display(&mut node,Display::None);}
         return;
     };
-    if !last.is_some_and(|(_,at)|time.elapsed_secs()-at>0.3){return;}
     let Some(cursor)=window.cursor_position().map(|p|p/scale.0)else{return;};
     let viewport=Vec2::new(window.width(),window.height())/scale.0;
-    for mut node in &mut tip{edit_node(&mut node,|node|{node.display=Display::Flex;node.left=Val::Px((cursor.x+16.).min(viewport.x-240.).max(0.));node.top=Val::Px((cursor.y+18.).min((viewport.y-60.).max(0.)).max(0.));});}
+    for mut node in &mut tip{edit_node(&mut node,|node|{node.display=Display::Flex;node.left=Val::Px((cursor.x+16.).min(viewport.x-240.).max(0.));crate::skills::place_vertically(node,cursor,viewport);});}
     for mut text in &mut labels{if **text!=tooltip.0{**text=tooltip.0.clone();}}
+}
+
+#[cfg(test)]
+mod input_tests {
+    use super::*;
+    #[test]
+    fn an_attached_item_captures_clicks_but_keeps_world_hover_for_npc_giving() {
+        let mut app = App::new();
+        app.init_resource::<InputFocus>().init_resource::<Consumed>().init_resource::<WindowManager>().init_resource::<UiFocus>().init_resource::<crate::inventory::InventoryUi>().add_systems(Update,game_focus);
+        app.world_mut().resource_mut::<crate::inventory::InventoryUi>().carried = Some(crate::inventory::Carried {kind:2,position:1,from_quick:None});
+        app.update(); let focus = app.world().resource::<UiFocus>(); assert!(focus.pointer && focus.world_hover);
+        app.world_mut().spawn((Surface,Hovered(true))); app.update(); let focus = app.world().resource::<UiFocus>(); assert!(focus.pointer && !focus.world_hover);
+    }
 }

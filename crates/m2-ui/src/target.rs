@@ -8,7 +8,7 @@
 //! edge at `y = 17`; the close button is 30 pixels from the right at
 //! `y = 13`. The board is centred 10 pixels below the top of the screen.
 
-use bevy::picking::hover::Hovered;
+use bevy::picking::{hover::Hovered, pointer::PointerButton};
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 use m2_game::ingame::{ClearTarget, TargetBoard};
@@ -36,12 +36,16 @@ struct TargetGauge;
 struct TargetGaugeBar;
 #[derive(Component)]
 struct TargetClose;
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+enum PcButton { Whisper, Trade, Duel, Friend, Party, Emotion }
+#[derive(Component)] struct PcCaption(PcButton);
+
 
 pub struct TargetBoardPlugin;
 
 impl Plugin for TargetBoardPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (close.in_set(UiSet::Actions), refresh.in_set(UiSet::Draw)));
+        app.add_systems(Update, ((close, pc_actions).in_set(UiSet::Actions), (refresh, pc_refresh).chain().in_set(UiSet::Draw)));
     }
 }
 
@@ -144,10 +148,15 @@ pub fn build(commands: &mut Commands, assets: &AssetServer) {
 
     let close = core::button(commands, assets, root, core::rect(250.0 - 30.0, 13.0, 16.0, 16.0), "d:/ymir work/ui/public/close_button", "");
     commands.entity(close).insert(TargetClose);
+    for action in [PcButton::Whisper, PcButton::Trade, PcButton::Duel, PcButton::Friend, PcButton::Party, PcButton::Emotion] {
+        let id = core::button(commands, assets, root, core::rect(0., 34., 72., 23.), "d:/ymir work/ui/public/small_thin_button", "");
+        commands.entity(id).insert(action);
+        let label = core::text(commands, id, "", core::rect(0., 3., 72., 18.)); commands.entity(label).insert((PcCaption(action),TextLayout::justify(Justify::Center),TextFont {font_size:bevy::text::FontSize::Px(10.),..default()}));
+    }
 }
 
 /// The close button: `OnPressedCloseButton` -> `player.ClearTarget()`.
-fn close(mut clicks: MessageReader<Click>, buttons: Query<(), With<TargetClose>>, mut clear: MessageWriter<ClearTarget>) {
+fn close(mut clicks: MessageReader<Click>, buttons: Query<(), (With<TargetClose>, Without<PcButton>)>, mut clear: MessageWriter<ClearTarget>) {
     if clicks.read().any(|click| buttons.contains(click.entity)) {
         clear.write(ClearTarget);
     }
@@ -160,11 +169,11 @@ fn refresh(
     board: Res<TargetBoard>,
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     scale: Res<UiScale>,
-    mut root: Query<&mut Node, (With<TargetRoot>, Without<TargetName>, Without<TargetGauge>, Without<TargetGaugeBar>, Without<TargetClose>)>,
-    mut name: Query<(&mut Text, &mut Node, &mut TextLayout), (With<TargetName>, Without<TargetGauge>, Without<TargetGaugeBar>, Without<TargetClose>)>,
-    mut gauge: Query<&mut Node, (With<TargetGauge>, Without<TargetGaugeBar>, Without<TargetClose>)>,
-    mut bar: Query<&mut Node, (With<TargetGaugeBar>, Without<TargetClose>)>,
-    mut close: Query<&mut Node, With<TargetClose>>,
+    mut root: Query<&mut Node, (With<TargetRoot>, Without<TargetName>, Without<TargetGauge>, Without<TargetGaugeBar>, Without<TargetClose>, Without<PcButton>)>,
+    mut name: Query<(&mut Text, &mut Node, &mut TextLayout), (With<TargetName>, Without<TargetGauge>, Without<TargetGaugeBar>, Without<TargetClose>, Without<PcButton>)>,
+    mut gauge: Query<&mut Node, (With<TargetGauge>, Without<TargetGaugeBar>, Without<TargetClose>, Without<PcButton>)>,
+    mut bar: Query<&mut Node, (With<TargetGaugeBar>, Without<TargetClose>, Without<PcButton>)>,
+    mut close: Query<&mut Node, (With<TargetClose>, Without<PcButton>)>,
 ) {
     let Ok(mut root) = root.single_mut() else { return };
     if !board.visible {
@@ -184,6 +193,7 @@ fn refresh(
     let viewport = windows.single().map_or(800.0, |window| window.width() / scale.0);
     root.display = Display::Flex;
     root.width = Val::Px(width);
+    root.height = Val::Px(HEIGHT);
     root.left = Val::Px((viewport / 2.0 - width / 2.0).floor());
     if let Ok((mut text, mut node, mut layout)) = name.single_mut() {
         if text.0 != board.name {
@@ -211,5 +221,64 @@ fn refresh(
     }
     if let Ok(mut close) = close.single_mut() {
         close.left = Val::Px(width - 30.0);
+    }
+}
+
+fn party_caption(player: &m2_game::player::PlayerState, actor: &m2_game::ingame::Actor, vid: u32) -> Option<&'static str> {
+    let me = player.party_self();
+    if let Some(member) = player.party.values().find(|m| m.vid == vid) {
+        if member.state == 1 { Some("Leave party") } else if me.is_some_and(|m| m.state == 1) { Some("Kick") } else { None }
+    } else if me.is_some_and(|m| m.state != 1) { None }
+    else if me.is_none() && actor.state_flags & (1 << 4) != 0 { Some("Join party") }
+    else { Some("Invite party") }
+}
+fn pc_actions(mut clicks: MessageReader<Click>, buttons: Query<&PcButton>, board: Res<TargetBoard>, actors: Res<m2_game::ingame::Actors>, player: Res<m2_game::player::PlayerState>, mut requests: MessageWriter<m2_game::player::PlayerAction>, mut whisper: MessageWriter<crate::social_ui::OpenWhisper>) {
+    use m2_game::player::{ItemPosition, PlayerAction};
+    let Some(actor) = actors.by_vid.get(&board.vid).filter(|a| a.kind == 6 && board.vid != player.vid && board.visible) else { return };
+    for click in clicks.read().filter(|c| c.button == PointerButton::Primary) {
+        let Ok(action) = buttons.get(click.entity) else { continue };
+        let command = match action {
+            PcButton::Whisper => { whisper.write(crate::social_ui::OpenWhisper(actor.name.clone())); continue; }
+            PcButton::Trade => PlayerAction::Exchange { subheader: 0, arg: board.vid, slot: 0, position: ItemPosition::inventory(0) },
+            PcButton::Friend => PlayerAction::FriendAddVid(board.vid),
+            PcButton::Duel => PlayerAction::Chat { kind: 0, text: format!("/pvp {}", board.vid) },
+            PcButton::Emotion => PlayerAction::Chat { kind: 0, text: format!("/emotion_allow {}", board.vid) },
+            PcButton::Party => match party_caption(&player, actor, board.vid) {
+                Some("Kick") => { let Some(member) = player.party.values().find(|m| m.vid == board.vid) else { continue }; PlayerAction::PartyRemove(member.pid) }
+                Some("Leave party") => { let Some(me) = player.party_self() else { continue }; PlayerAction::PartyRemove(me.pid) }
+                Some("Join party") => PlayerAction::Chat { kind: 0, text: format!("/party_request {}", board.vid) },
+                Some(_) => PlayerAction::PartyInvite(board.vid), None => continue,
+            }
+        }; requests.write(command);
+    }
+}
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+fn pc_refresh(board: Res<TargetBoard>, actors: Res<m2_game::ingame::Actors>, player: Res<m2_game::player::PlayerState>, social: Res<m2_game::social::SocialState>, game: Res<m2_game::ingame::GameWorld>, windows: Query<&Window, With<bevy::window::PrimaryWindow>>, scale: Res<UiScale>, mut roots: Query<&mut Node, (With<TargetRoot>, Without<PcButton>, Without<TargetName>, Without<TargetClose>)>, mut buttons: Query<(&PcButton, &mut Node), (Without<TargetRoot>, Without<TargetName>, Without<TargetClose>)>, mut captions: Query<(&PcCaption, &mut Text)>, mut names: Query<&mut Node, (With<TargetName>, Without<PcButton>, Without<TargetRoot>, Without<TargetClose>)>, mut closes: Query<&mut Node, (With<TargetClose>, Without<TargetRoot>, Without<PcButton>, Without<TargetName>)>) {
+    let actor = actors.by_vid.get(&board.vid).filter(|a| board.visible && a.kind == 6 && board.vid != player.vid);
+    let party = actor.and_then(|actor| party_caption(&player, actor, board.vid));
+    let mut visible = Vec::new();
+    if let Some(actor) = actor {
+        visible.push(PcButton::Whisper);
+        let close = game.local.is_some_and(|(x,y)| Vec2::new(x as f32 + game.base.0 as f32 - actor.x as f32, y as f32 + game.base.1 as f32 - actor.y as f32).length() <= 3000.);
+        if close { visible.push(PcButton::Trade); }
+        let same_empire = player.empire == actor.empire;
+        if same_empire && !player.party.values().any(|m| m.vid == board.vid) && !player.pvp.cant_fight.contains(&board.vid) { visible.push(PcButton::Duel); }
+        if same_empire && !social.messenger.friends.contains_key(&actor.name) { visible.push(PcButton::Friend); }
+        if same_empire && party.is_some() { visible.push(PcButton::Party); }
+        visible.push(PcButton::Emotion);
+    }
+    for (button, mut node) in &mut buttons {
+        if let Some(index) = visible.iter().position(|a| a == button) { core::edit_node(&mut node, |n| {n.display = Display::Flex; n.left = Val::Px(10. + index as f32 * 74.);}); } else { core::set_display(&mut node, Display::None); }
+    }
+    for (button, mut text) in &mut captions { core::set_text(&mut text, match button.0 {
+        PcButton::Whisper => "Whisper", PcButton::Trade => "Trade", PcButton::Friend => "Friend", PcButton::Party => party.unwrap_or("Party"), PcButton::Emotion => "Emote",
+        PcButton::Duel => if player.pvp.challenge.contains(&board.vid) { "Accept duel" } else if player.pvp.revenge.contains(&board.vid) { "Avenge" } else { "Duel" },
+    }.into()); }
+    if actor.is_some() {
+        let width = (20. + visible.len() as f32 * 74.).max(250.);
+        let viewport = windows.single().map_or(800., |w| w.width() / scale.0);
+        for mut root in &mut roots { core::edit_node(&mut root, |n| { n.width = Val::Px(width); n.height = Val::Px(65.); n.left = Val::Px((viewport - width) / 2.); }); }
+        for mut name in &mut names { core::edit_node(&mut name, |n| n.width = Val::Px(width)); }
+        for mut close in &mut closes { core::edit_node(&mut close, |n| n.left = Val::Px(width - 30.)); }
     }
 }

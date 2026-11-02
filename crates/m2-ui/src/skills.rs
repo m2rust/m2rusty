@@ -461,19 +461,28 @@ fn is_active(catalog: &SkillCatalog, vnum: u32) -> bool {
 
 /// `CanShowPlusButton` + `__RefreshSkillPlusButton`: skill points left, a
 /// skill in the slot, still on its first grade (masters train by books) and
-/// `skill.CanLevelUpSkill` (below its max level). Unlearned skills qualify:
-/// that is how a skill gets its first point. `RefreshSkillPlusButtonList`
-/// shows none before a skill group is chosen.
+/// `skill.CanLevelUpSkill` (below its max level, no `CANNOT_LEVEL_UP`; the
+/// requirement lists it also checks are never filled by `RegisterSkillDesc`).
+/// Unlearned skills qualify: that is how a skill gets its first point.
+/// `RefreshSkillPlusButtonList` shows none before a skill group is chosen.
 fn can_show_plus(catalog: &SkillCatalog, state: &SkillState, player: &PlayerState, vnum: u32, points: i32) -> bool {
     if points <= 0 || vnum == 0 || state.grade(vnum) != 0 || !can_use_skill_now(player) {
         return false;
     }
-    let max_level = catalog.get(vnum).map_or(0, |data| data.max_level);
-    state.level(vnum) < max_level
+    catalog.get(vnum).is_some_and(|data| {
+        state.level(vnum) < data.max_level && data.skill_attribute & SKILL_ATTRIBUTE_CANNOT_LEVEL_UP == 0
+    })
 }
+
+/// `uicharacter.HIDE_SUPPORT_SKILL_POINT`: true for the European locales, so
+/// support skills (trained by books and quests) get no plus button and the
+/// page shows no support point label.
+const HIDE_SUPPORT_SKILL_POINT: bool = true;
 
 /// `SKILL_ATTRIBUTE_PASSIVE` (`PythonSkill.h`).
 const SKILL_ATTRIBUTE_PASSIVE: u32 = 1 << 17;
+/// `SKILL_ATTRIBUTE_CANNOT_LEVEL_UP` (`PythonSkill.h`).
+const SKILL_ATTRIBUTE_CANNOT_LEVEL_UP: u32 = 1 << 18;
 
 /// The vnum and level of a source slot, if it holds a learned skill.
 fn resolve(player: &PlayerState, state: &SkillState, group: u8, slot: u32) -> Option<(u32, u8)> {
@@ -568,17 +577,19 @@ pub fn build(commands: &mut Commands, assets: &AssetServer, parent: Entity) -> E
     // `Skill_ETC_Title_Bar` and `Skill_ETC_Slot` (support/guild/horse).
     bar(commands, assets, body, 12., 206., 223.);
     header_text(commands, body, "Support", 17., 208.);
-    core::picture(
-        commands,
-        assets,
-        body,
-        "locale/en/ui/windows/label_uppt.sub",
-        core::rect(158., 209., 52., 14.),
-    );
-    let support_points = core::text(commands, body, "", core::rect(184., 210., 22., 13.));
-    commands
-        .entity(support_points)
-        .insert((SkillPointValue(true), TextLayout::justify(Justify::Right)));
+    if !HIDE_SUPPORT_SKILL_POINT {
+        core::picture(
+            commands,
+            assets,
+            body,
+            "locale/en/ui/windows/label_uppt.sub",
+            core::rect(158., 209., 52., 14.),
+        );
+        let support_points = core::text(commands, body, "", core::rect(184., 210., 22., 13.));
+        commands
+            .entity(support_points)
+            .insert((SkillPointValue(true), TextLayout::justify(Justify::Right)));
+    }
     for index in 0..SUPPORT_PAGE_SLOTS {
         skill_cell(
             commands,
@@ -813,6 +824,7 @@ fn actions(
             let group = effective_group(&ui, &player);
             if let Some((vnum, _)) = resolve(&player, &state, group, plus.slot)
                 && !typing
+                && !(plus.slot >= 101 && HIDE_SUPPORT_SKILL_POINT)
             {
                 requests.write(PlayerAction::Chat { text: format!("/skillup {vnum}"), kind: 0 });
             }
@@ -1026,7 +1038,8 @@ fn refresh(
             player.points[POINT_ACTIVE].max(0)
         };
         // The plus sits on the first-grade cell only (`ShowSlotButton(slotIndex)`).
-        let display = if can_show_plus(&catalog, &state, &player, vnum, point) && (plus.slot >= 101 || plus.grade == 0) {
+        let shown = if plus.slot >= 101 { !HIDE_SUPPORT_SKILL_POINT } else { plus.grade == 0 };
+        let display = if shown && can_show_plus(&catalog, &state, &player, vnum, point) {
             Display::Flex
         } else {
             Display::None
@@ -1075,30 +1088,46 @@ fn tooltip(
     cells: Query<(Entity, &SkillCell, &Hovered)>,
     quick: (Query<(Entity, &Slot, &Hovered)>, Res<InventoryUi>),
     mut tip: Query<&mut Node, With<SkillTip>>,
-    mut text: Query<&mut Text, With<SkillTipText>>,
-    mut last: Local<Option<(Entity, f32)>>,
+    mut text: Query<(Entity, &mut Text), With<SkillTipText>>,
+    (mut commands, locale, mut last, mut shown): (
+        Commands,
+        Res<crate::item_tooltip::LocaleGame>,
+        Local<Option<(Entity, f32)>>,
+        Local<Vec<crate::item_tooltip::Line>>,
+    ),
 ) {
+    use crate::skill_tooltip::{SkillInfo, SkillTip as Tip, skill_lines};
     let Ok(window) = primary.single() else { return };
     let cursor = window.cursor_position().map(|point| point / scale.0);
     let viewport = Vec2::new(window.width(), window.height()) / scale.0;
-    // A skill cell of the page, or a task bar slot holding a skill
-    // (`uitaskbar.OverInItem` -> `SetSkill`).
+    // A skill cell of the page (`uicharacter.OverInItem`), or a task bar
+    // slot holding a skill (`uitaskbar.OverInItem` -> `SetSkillNew` with the
+    // skill's real grade).
     let (slots, inventory) = quick;
     let group = effective_group(&ui, &player);
-    let hovered: Option<(Entity, u32, u8, u8)> = cells
+    let hovered: Option<(Entity, u32, u8, Tip)> = cells
         .iter()
         .filter(|(_, _, hovered)| hovered.0 && !ui.riding)
         .find_map(|(entity, cell, _)| {
-            let (vnum, level) = resolve(&player, &state, group, cell.slot)?;
-            // Each grade cell describes its own grade; a support cell its skill.
-            let grade = if cell.slot >= 101 { state.grade(vnum).min(SKILL_GRADE_COUNT - 1) } else { cell.grade };
-            Some((entity, vnum, level, grade))
+            let (vnum, _) = resolve(&player, &state, group, cell.slot)?;
+            let real = state.grade(vnum);
+            // Support cells describe their skill; an active skill's grade
+            // cell its own grade, in full only once the skill reached it.
+            Some(if cell.slot >= 101 || !is_active(&catalog, vnum) {
+                (entity, vnum, real, Tip::Full)
+            } else if cell.grade == SKILL_GRADE_COUNT - 1 && real == SKILL_GRADE_COUNT {
+                (entity, vnum, real, Tip::Full)
+            } else if cell.grade == real {
+                (entity, vnum, cell.grade, Tip::Full)
+            } else {
+                (entity, vnum, cell.grade, Tip::OnlyName)
+            })
         })
         .or_else(|| {
             slots.iter().filter(|(_, _, hovered)| hovered.0).find_map(|(entity, slot, _)| {
                 let Slot::Quick(local) = *slot else { return None };
-                let (vnum, grade) = quick_skill(&player, &state, inventory.quick_page, local)?;
-                Some((entity, vnum, state.level(vnum), grade))
+                let (vnum, _) = quick_skill(&player, &state, inventory.quick_page, local)?;
+                Some((entity, vnum, state.grade(vnum), Tip::Full))
             })
         });
     let current = hovered.map(|(entity, ..)| entity);
@@ -1110,37 +1139,55 @@ fn tooltip(
         && last.is_some_and(|(_, at)| time.elapsed_secs() - at > 0.3)
         && hovered.is_some();
     for mut node in &mut tip {
-        core::set_display(&mut node, if show { Display::Flex } else { Display::None });
-        if let Some(cursor) = cursor {
-            node.left = Val::Px((cursor.x + 16.).min(viewport.x - 250.).max(0.));
-            node.top = Val::Px((cursor.y + 18.).max(0.));
-        }
+        core::edit_node(&mut node, |node| {
+            node.display = if show { Display::Flex } else { Display::None };
+            if let Some(cursor) = cursor {
+                node.left = Val::Px((cursor.x + 16.).min(viewport.x - 250.).max(0.));
+                place_vertically(node, cursor, viewport);
+            }
+        });
     }
-    let (true, Some((_, vnum, level, grade))) = (show, hovered) else { return };
-    let details = match catalog.get(vnum) {
+    let (true, Some((_, vnum, grade, kind))) = (show, hovered) else { return };
+    let mut lines = match catalog.get(vnum) {
         Some(data) => {
-            let name = if grade == 0 {
-                data.name_utf8(1252).into_owned()
-            } else {
-                data.grades[grade as usize].name_utf8(1252).into_owned()
-            };
-            let mut value = format!("{name}   Level {level} / {}", data.max_level);
-            if !data.description.is_empty() {
-                value.push('\n');
-                value.push_str(&data.description_utf8(1252));
-            }
-            let left = state.cool_time_left(vnum, time.elapsed_secs());
-            if left > 0.0 {
-                value.push_str(&format!("\nCooldown: {left:.1}s"));
-            }
-            value
+            let info = SkillInfo { data, vnum, grade, real_grade: state.grade(vnum), level: state.level(vnum), points: &player.points };
+            skill_lines(&info, kind, &locale)
         }
-        None => format!("Skill {vnum}   Level {level}"),
+        None => vec![(format!("Skill {vnum}"), crate::item_tooltip::color::TITLE)],
     };
-    for mut label in &mut text {
-        if **label != details {
-            **label = details.clone();
+    // The cool time box of the slot, spelled out.
+    let left = state.cool_time_left(vnum, time.elapsed_secs());
+    if left > 0.0 {
+        lines.push((format!("Cooldown: {left:.0}s"), crate::item_tooltip::color::NORMAL));
+    }
+    if *shown != lines {
+        for (entity, mut label) in &mut text {
+            // The lines are coloured spans under an empty root text.
+            **label = String::new();
+            commands.entity(entity).despawn_related::<Children>();
+            for (index, (line, color)) in lines.iter().enumerate() {
+                let value = if index == 0 { line.clone() } else { format!("\n{line}") };
+                commands.entity(entity).with_child((
+                    TextSpan::new(value),
+                    TextFont { font_size: bevy::text::FontSize::Px(12.), ..default() },
+                    TextColor(*color),
+                ));
+            }
         }
+        *shown = lines;
+    }
+}
+
+/// Below the cursor, or above it in the lower half of the screen: the task
+/// bar's tooltips (`uitaskbar`'s `SetToolTipText(..., 0, -18)`) open upwards
+/// so they stay on screen.
+pub(crate) fn place_vertically(node: &mut Node, cursor: Vec2, viewport: Vec2) {
+    if cursor.y > viewport.y * 0.5 {
+        node.top = Val::Auto;
+        node.bottom = Val::Px((viewport.y - cursor.y + 8.).max(0.));
+    } else {
+        node.top = Val::Px((cursor.y + 18.).max(0.));
+        node.bottom = Val::Auto;
     }
 }
 
@@ -1438,6 +1485,10 @@ mod tests {
         assert!(!can_show_plus(&catalog, &state, &player, 1, 3));
         state.levels[1] = 5;
         state.grades[1] = 1;
+        assert!(!can_show_plus(&catalog, &state, &player, 1, 3));
+        // `CANNOT_LEVEL_UP` skills are trained some other way.
+        state.grades[1] = 0;
+        catalog.0.skills.get_mut(&1).unwrap().skill_attribute |= SKILL_ATTRIBUTE_CANNOT_LEVEL_UP;
         assert!(!can_show_plus(&catalog, &state, &player, 1, 3));
     }
 

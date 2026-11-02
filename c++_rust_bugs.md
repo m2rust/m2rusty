@@ -99,6 +99,7 @@ Real bugs where mirroring would be wrong or impossible.
 | N35 | `net` | `time_t` packet fields | `TPlayerSkill::tNextRead` and `TPacketGCTime::time` are `time_t`: 8 bytes in the 64-bit Linux build, possibly 4 in the original Win32 client | Rust uses `i64` (Linux build). Which size the target server speaks is open |
 | N36 | `net` | `CAccountConnector::__AnalyzePacket` chain | A header the current state has no handler for is never consumed: every later packet queues behind it and the account connection stalls until it times out | `m2_net::auth` frames it with the header map, drops it and reports `AuthEvent::Unhandled` |
 | N37 | `net` | `CAccountConnector::__AuthState_Process` | Latent: `HEADER_GC_LOGIN_FAILURE` is peeked with `sizeof(TPacketGCAuthSuccess)` (6 bytes) but read with `sizeof(TPacketGCLoginFailure)`; if only part of the packet has arrived, the `Recv` fails and the connection is dropped | Framed with the header map's `LOGIN_FAILURE` size |
+| N38 | `ui` | `uiToolTip.SkillToolTip.AppendPartySkillData` | Reads `player.GetSkillLevel(skillIndex)` with the skill index (121) as a slot index, so the leadership bonuses are computed from an unrelated slot's level | `m2_ui::skill_tooltip::party_data` uses the leadership skill's own level |
 
 ## 3. Reference-platform choices (not bugs)
 

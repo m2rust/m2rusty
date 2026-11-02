@@ -58,6 +58,7 @@ enum TaskAction {
     Inventory,
     Character,
     System,
+    Messenger,
     Chat,
 }
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
@@ -91,7 +92,42 @@ impl Plugin for PlayerHudPlugin {
                     refresh.in_set(UiSet::Draw),
                 ),
             );
-        app.add_systems(Update, update_fps.in_set(UiSet::Draw));
+        app.add_systems(Update, (update_fps, gauge_tips).in_set(UiSet::Draw));
+    }
+}
+
+/// The hover areas of `taskbar.py`'s `hpGaugeBoard`/`mpGaugeBoard`/
+/// `stGaugeBoard` and the EXP orbs; their `tooltipHP`.. text follows the points.
+#[derive(Component, Clone, Copy)]
+enum GaugeTip {
+    Hp,
+    Sp,
+    Stamina,
+    Exp,
+}
+
+/// `RefreshStatus`/`SetExperience`: `"%s : %d / %d"`, and the EXP percentage.
+fn gauge_tip_text(tip: GaugeTip, points: &[i32]) -> String {
+    match tip {
+        GaugeTip::Hp => format!("HP : {} / {}", points[5], points[6]),
+        GaugeTip::Sp => format!("SP : {} / {}", points[7], points[8]),
+        GaugeTip::Stamina => format!("ST : {} / {}", points[9], points[10]),
+        GaugeTip::Exp => {
+            let (current, next) = (points[POINT_EXP] as u32, points[POINT_NEXT_EXP] as u32);
+            format!("Experience : {:.2}%", f64::from(current) / f64::from(next.max(1)) * 100.)
+        }
+    }
+}
+
+fn gauge_tips(player: Res<PlayerState>, mut tips: Query<(&GaugeTip, &mut Tooltip)>) {
+    if !player.is_changed() {
+        return;
+    }
+    for (tip, mut tooltip) in &mut tips {
+        let value = gauge_tip_text(*tip, &player.points);
+        if tooltip.0 != value {
+            tooltip.0 = value;
+        }
     }
 }
 
@@ -134,6 +170,9 @@ fn lifecycle(
     crate::shop::build(&mut commands, &assets);
     crate::target::build(&mut commands, &assets);
     crate::restart::build(&mut commands, &assets);
+    crate::refine::build(&mut commands, &assets);
+    crate::social_ui::build(&mut commands, &assets);
+    crate::exchange::build(&mut commands, &assets);
 }
 
 fn build_fps_counter(commands: &mut Commands) {
@@ -335,6 +374,15 @@ fn build_taskbar(commands: &mut Commands, assets: &AssetServer) {
     spawn_gauge(commands, assets, root, Gauge::Hp, 4., 11., "d:/ymir work/ui/pattern/hpgauge/01.tga");
     spawn_gauge(commands, assets, root, Gauge::Sp, 14., 11., "d:/ymir work/ui/pattern/spgauge/01.tga");
     spawn_gauge(commands, assets, root, Gauge::Stamina, 28., 6., "d:/ymir work/ui/pattern/stgauge/01.tga");
+    for (tip, node) in [
+        (GaugeTip::Hp, core::rect(59., 4., GAUGE_WIDTH, 10.)),
+        (GaugeTip::Sp, core::rect(59., 14., GAUGE_WIDTH, 11.)),
+        (GaugeTip::Stamina, core::rect(59., 26., GAUGE_WIDTH, 10.)),
+        (GaugeTip::Exp, core::rect(158., 0., 105., 37.)),
+    ] {
+        let area = commands.spawn((tip, Surface, Hovered::default(), Tooltip(String::new()), node, ZIndex(5))).id();
+        commands.entity(root).add_child(area);
+    }
 
     // `quickslot_board` is centred, 86 px right of the screen centre.
     let quick = commands
@@ -373,6 +421,7 @@ fn build_taskbar(commands: &mut Commands, assets: &AssetServer) {
     for (right, prefix, label, action) in [
         (144., "character_button", "Character", TaskAction::Character),
         (110., "inventory_button", "Inventory", TaskAction::Inventory),
+        (76., "community_button", "Friends", TaskAction::Messenger),
         (42., "system_button", "System", TaskAction::System),
     ] {
         let button = core::button(
@@ -545,6 +594,7 @@ fn task_actions(
             TaskAction::Inventory => toggle(&mut windows, "inventory"),
             TaskAction::Character => toggle(&mut windows, "character"),
             TaskAction::System => toggle(&mut windows, "system"),
+            TaskAction::Messenger => toggle(&mut windows, "messenger"),
             TaskAction::Chat => chat.typing = true,
         }
     }

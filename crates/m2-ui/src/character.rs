@@ -38,14 +38,20 @@ struct StatAction {
     key: &'static str,
     plus: bool,
 }
+#[derive(Component, Clone, Copy)]
+enum StatField { Name, Level, Exp, Remaining, Points, Point(usize), Hp, Sp, Attack, Defense, MagicAttack }
 #[derive(Component)]
-struct StatusText;
+struct QuestRow(usize);
 #[derive(Component)]
-struct StatValues;
+struct QuestLabel(usize);
 #[derive(Component)]
-struct CombatText;
+struct QuestIcon(usize);
 #[derive(Component)]
-struct QuestText;
+struct QuestPage(i32);
+#[derive(Component)]
+struct QuestPageLabel;
+#[derive(Resource, Default)]
+struct QuestOffset(usize);
 #[derive(Component)]
 struct FaceImage(Option<u16>);
 #[derive(Resource)]
@@ -57,8 +63,8 @@ impl Default for CharacterWindow {
 pub struct CharacterPlugin;
 impl Plugin for CharacterPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CharacterTab>().init_resource::<CharacterWindow>()
-            .add_systems(Update, (tabs, keys, stat_actions).in_set(UiSet::Actions))
+        app.init_resource::<QuestOffset>().init_resource::<CharacterTab>().init_resource::<CharacterWindow>()
+            .add_systems(Update, (tabs, keys, stat_actions, quest_actions).in_set(UiSet::Actions))
             .add_systems(Update, (visibility, status, quests).chain().in_set(UiSet::Draw));
     }
 }
@@ -115,42 +121,100 @@ pub fn build(commands: &mut Commands, assets: &AssetServer) {
 
     let quest_page = commands.spawn((PageRoot(CharacterTab::Quest), core::rect(0., 24., 250., 304.))).id();
     commands.entity(root).add_child(quest_page);
-    let quest = core::text(commands, quest_page, "No quests.", core::rect(16., 20., 218., 260.));
-    commands.entity(quest).insert((QuestText, TextColor(Color::srgb(0.85, 0.82, 0.7))));
+    for row in 0..5 {
+        let entry = commands.spawn((QuestRow(row), Control, Surface, Hovered::default(), core::Tooltip(String::new()), core::rect(12., 10. + row as f32 * 51., 226., 48.))).id();
+        commands.entity(quest_page).add_child(entry);
+        core::picture(commands, assets, entry, "d:/ymir work/ui/game/quest/slot_base.sub", core::rect(0., 5., 32., 32.));
+        let icon = core::picture(commands, assets, entry, "season1/icon/scroll_open.tga", core::rect(0., 5., 32., 32.));
+        commands.entity(icon).insert(QuestIcon(row));
+        let text = core::text(commands, entry, "", core::rect(38., 0., 186., 48.));
+        commands.entity(text).insert((QuestLabel(row), TextLayout::no_wrap(), TextFont { font_size: bevy::text::FontSize::Px(11.), ..default() }));
+    }
+    for (x, delta, label) in [(12., -1, "<"), (202., 1, ">") ] {
+        let button = core::button(commands, assets, quest_page, core::rect(x, 271., 36., 22.), "d:/ymir work/ui/public/small_thin_button", label);
+        commands.entity(button).insert(QuestPage(delta));
+    }
+    let label = core::text(commands, quest_page, "", core::rect(50., 274., 150., 18.));
+    commands.entity(label).insert(QuestPageLabel);
 
     crate::skills::build(commands, assets, root);
     crate::emotes::build(commands, assets, root);
 }
 
-fn quests(player: Res<PlayerState>, mut texts: Query<&mut Text, With<QuestText>>) {
-    let titles: Vec<_> = player.quests.values().filter(|quest| !quest.title.is_empty()).map(|quest| quest.title.as_str()).collect();
-    let value = if titles.is_empty() { "No quests.".to_owned() } else { titles.join("\n") };
-    for mut text in &mut texts { if **text != value { **text = value.clone(); } }
+fn quest_actions(mut clicks: MessageReader<Click>, rows: Query<&QuestRow>, pages: Query<&QuestPage>, mut offset: ResMut<QuestOffset>, player: Res<PlayerState>, mut actions: MessageWriter<PlayerAction>) {
+    let entries: Vec<_> = player.quests.iter().filter(|(_, q)| !q.title.is_empty()).collect();
+    for click in clicks.read().filter(|c| c.button == PointerButton::Primary) {
+        if let Ok(row) = rows.get(click.entity) {
+            if let Some((index, _)) = entries.get(offset.0 + row.0) { actions.write(PlayerAction::QuestButton(0x8000_0000 | u32::from(**index))); }
+        }
+        if let Ok(page) = pages.get(click.entity) {
+            offset.0 = offset.0.saturating_add_signed(page.0 as isize * 5).min(entries.len().saturating_sub(1) / 5 * 5);
+        }
+    }
+}
+
+fn quests(mut commands: Commands, assets: Res<AssetServer>, player: Res<PlayerState>, mut offset: ResMut<QuestOffset>, mut rows: Query<(&QuestRow, &mut Node, &mut core::Tooltip)>, mut labels: Query<(&QuestLabel, &mut Text), Without<QuestPageLabel>>, mut page_labels: Query<&mut Text, With<QuestPageLabel>>, icons: Query<(Entity, &QuestIcon)>) {
+    let entries: Vec<_> = player.quests.values().filter(|q| !q.title.is_empty()).collect();
+    let bound = offset.0.min(entries.len().saturating_sub(1) / 5 * 5);
+    if offset.0 != bound { offset.0 = bound; }
+    for (row, mut node, mut tip) in &mut rows { core::set_display(&mut node, if entries.get(offset.0 + row.0).is_some() { Display::Flex } else { Display::None }); let title = entries.get(offset.0 + row.0).map_or("", |q| q.title.as_str()); if tip.0 != title {tip.0 = title.to_owned();} }
+    for (row, mut text) in &mut labels {
+        if let Some(q) = entries.get(offset.0 + row.0) {
+            let counter = if q.counter_name.is_empty() { String::new() } else { format!("{}: {}", q.counter_name, q.counter_value) };
+            let clock = if q.clock_name.is_empty() { String::new() } else {
+                let left = i64::from(q.clock_value) - q.clock_updated.map_or(0, |at| at.elapsed().as_secs() as i64);
+                if left <= 0 { "Time over".into() } else { format!("{}: {}m {:02}s", q.clock_name, left / 60, left % 60) }
+            };
+            let shorten = |s: &str| if s.chars().count() > 28 {format!("{}...",s.chars().take(25).collect::<String>())} else {s.to_owned()};
+            core::set_text(&mut text, format!("{}\n{}\n{}", shorten(&q.title), shorten(&counter), shorten(&clock)));
+        }
+    }
+    for mut label in &mut page_labels { core::set_text(&mut label, if entries.is_empty() { "No quests".into() } else { format!("{} / {}", offset.0 / 5 + 1, entries.len().div_ceil(5)) }); }
+    if player.is_changed() || offset.is_changed() {
+        for (entity, row) in &icons {
+            if let Some(q) = entries.get(offset.0 + row.0) {
+                let path = if q.icon.is_empty() { "season1/icon/scroll_open.tga".to_owned() } else { format!("d:/ymir work/ui/game/quest/questicon/{}", q.icon) };
+                commands.entity(entity).insert(Art::load(&assets, &path));
+            }
+        }
+    }
+}
+
+fn field(commands: &mut Commands, assets: &AssetServer, page: Entity, kind: StatField, label: &str, x: f32, y: f32, width: f32, label_width: f32) {
+    let caption = core::text(commands, page, label, core::rect(x, y + 2., label_width, 17.));
+    commands.entity(caption).insert((TextFont {font_size: bevy::text::FontSize::Px(10.), ..default()}, TextLayout::no_wrap()));
+    core::picture(commands, assets, page, "d:/ymir work/ui/public/parameter_slot_01.sub", core::rect(x + label_width, y, width - label_width, 17.));
+    let text = core::text(commands, page, "", core::rect(x + label_width, y, width - label_width, 17.));
+    commands.entity(text).insert((kind, TextLayout::justify(Justify::Center), TextFont { font_size: bevy::text::FontSize::Px(11.), ..default() }));
 }
 
 fn build_status(commands: &mut Commands, assets: &AssetServer, page: Entity) {
-    // `Character_Page`: face, level/experience and the two stat blocks.
     core::picture(commands, assets, page, "d:/ymir work/ui/game/windows/box_face.sub", core::rect(7., 7., 50., 50.));
     let face = core::picture(commands, assets, page, "d:/ymir work/ui/game/windows/face_warrior.sub", core::rect(11., 11., 42., 42.));
     commands.entity(face).insert(FaceImage(None));
-
-    let top = core::text(commands, page, "", core::rect(64., 10., 182., 92.));
-    commands.entity(top).insert((StatusText, TextLayout::justify(Justify::Left)));
-
-    for (row, (key, caption)) in [("hth", "CON"), ("int", "INT"), ("str", "STR"), ("dex", "DEX")]
-        .into_iter()
-        .enumerate()
-    {
-        let y = 138. + row as f32 * 23.;
-        let label = core::text(commands, page, caption, core::rect(34., y + 1., 36., 18.));
-        commands.entity(label).insert(TextColor(Color::srgb(0.85, 0.78, 0.6)));
-        stat_button(commands, assets, page, 16., y, key, false);
-        stat_button(commands, assets, page, 202., y, key, true);
+    let name = core::text(commands, page, "", core::rect(62., 8., 180., 18.)); commands.entity(name).insert(StatField::Name);
+    field(commands, assets, page, StatField::Level, "Level", 62., 31., 180., 48.);
+    field(commands, assets, page, StatField::Exp, "EXP", 12., 62., 230., 70.);
+    field(commands, assets, page, StatField::Remaining, "Remaining", 12., 82., 230., 70.);
+    field(commands, assets, page, StatField::Points, "Stat points", 12., 104., 230., 170.);
+    for (row, (key, caption, point)) in [("ht", "CON", 13), ("iq", "INT", 15), ("st", "STR", 12), ("dx", "DEX", 14)].into_iter().enumerate() {
+        let y = 130. + row as f32 * 23.;
+        field(commands, assets, page, StatField::Point(point), caption, 30., y, 65., 30.);
+        stat_button(commands, assets, page, 12., y + 2., key, false);
+        stat_button(commands, assets, page, 99., y + 2., key, true);
     }
-    let values = core::text(commands, page, "", core::rect(74., 138., 122., 96.));
-    commands.entity(values).insert((StatValues, TextLayout::justify(Justify::Left)));
-    let combat = core::text(commands, page, "", core::rect(16., 240., 220., 56.));
-    commands.entity(combat).insert((CombatText, TextLayout::justify(Justify::Left)));
+    for (row, (kind, caption)) in [(StatField::Hp, "HP"), (StatField::Sp, "SP"), (StatField::Attack, "Attack"), (StatField::Defense, "Defense")].into_iter().enumerate() {
+        field(commands, assets, page, kind, caption, 116., 130. + row as f32 * 23., 126., 46.);
+    }
+    for (row, (kind, caption, right, right_caption)) in [
+        (StatField::Point(19), "Move", StatField::MagicAttack, "Magic atk"),
+        (StatField::Point(17), "Atk spd", StatField::Point(23), "Magic def"),
+        (StatField::Point(21), "Cast spd", StatField::Point(18), "Evade"),
+    ].into_iter().enumerate() {
+        let y = 231. + row as f32 * 23.;
+        field(commands, assets, page, kind, caption, 12., y, 100., 55.);
+        field(commands, assets, page, right, right_caption, 116., y, 126., 60.);
+    }
 }
 
 fn stat_button(commands: &mut Commands, assets: &AssetServer, parent: Entity, x: f32, y: f32, key: &'static str, plus: bool) {
@@ -197,6 +261,7 @@ fn keys(
     if !matches!(screen.status, Status::InGame { .. }) || chat.typing || focus.get().is_some() {
         return;
     }
+    if keys.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight, KeyCode::AltLeft, KeyCode::AltRight]) { return; }
     let target = if keys.just_pressed(KeyCode::KeyC) {
         Some(CharacterTab::Status)
     } else if keys.just_pressed(KeyCode::KeyV) {
@@ -252,12 +317,13 @@ fn visibility(
     }
 }
 
-fn stat_actions(mut clicks: MessageReader<Click>, buttons: Query<&StatAction>, mut actions: MessageWriter<PlayerAction>) {
+fn stat_actions(mut clicks: MessageReader<Click>, buttons: Query<&StatAction>, player: Res<PlayerState>, mut actions: MessageWriter<PlayerAction>) {
     for click in clicks.read() {
         if click.button != PointerButton::Primary {
             continue;
         }
         let Ok(button) = buttons.get(click.entity) else { continue };
+        if player.points[if button.plus {26} else {112}] <= 0 { continue; }
         let text = if button.plus {
             format!("/stat {}", button.key)
         } else {
@@ -267,79 +333,77 @@ fn stat_actions(mut clicks: MessageReader<Click>, buttons: Query<&StatAction>, m
     }
 }
 
-fn status(
-    mut commands: Commands,
-    assets: Res<AssetServer>,
-    player: Res<PlayerState>,
-    mut top: Query<&mut Text, (With<StatusText>, Without<StatValues>, Without<CombatText>)>,
-    mut stats: Query<&mut Text, (With<StatValues>, Without<StatusText>, Without<CombatText>)>,
-    mut combat: Query<&mut Text, (With<CombatText>, Without<StatusText>, Without<StatValues>)>,
-    mut faces: Query<(Entity, &mut FaceImage, &mut ImageNode)>,
-) {
+fn stat_value(field: StatField, player: &PlayerState) -> String {
     let p = &player.points;
-    let top_value = format!(
-        "{}    Level {}\nEXP  {} / {}\n\nPoints  {}\nSkill points  {}",
-        player.name,
-        p[1],
-        p[3].max(0),
-        p[4].max(0),
-        p[26].max(0),
-        p[28].max(0),
-    );
-    let stat_value = format!(
-        "{}\n{}\n{}\n{}",
-        p[13].max(0),
-        p[15].max(0),
-        p[12].max(0),
-        p[14].max(0),
-    );
-    let combat_value = format!(
-        "HP {} / {}    SP {} / {}\nAttack {}-{}    Defense {}\nMove {}  Attack speed {}\nMagic {}/{}  Evade {}",
-        p[5],
-        p[6],
-        p[7],
-        p[8],
-        p[29].max(0),
-        p[30].max(0),
-        p[20].max(0),
-        p[19].max(0),
-        p[17].max(0),
-        p[22].max(0),
-        p[23].max(0),
-        p[18].max(0),
-    );
-    for mut text in &mut top {
-        if **text != top_value {
-            **text = top_value.clone();
-        }
+    let range = |lo: i32, hi: i32| if lo == hi { lo.to_string() } else { format!("{lo}-{hi}") };
+    match field {
+        StatField::Name => player.name.clone(), StatField::Level => p[1].to_string(),
+        StatField::Exp => (p[3] as u32).to_string(),
+        StatField::Remaining => (i64::from(p[4] as u32) - i64::from(p[3] as u32)).to_string(),
+        StatField::Points => p[26].to_string(), StatField::Point(index) => p[index].to_string(),
+        StatField::Hp => format!("{}/{}", p[5], p[6]), StatField::Sp => format!("{}/{}", p[7], p[8]),
+        StatField::Attack => range(p[29] + p[95] + p[91], p[30] + p[95] + p[91]),
+        // locale/en keeps constInfo.ADD_DEF_BONUS_ENABLE disabled.
+        StatField::Defense => p[20].to_string(),
+        StatField::MagicAttack => range(p[22] + p[202], p[22] + p[203]),
     }
-    for mut text in &mut stats {
-        if **text != stat_value {
-            **text = stat_value.clone();
-        }
-    }
-    for mut text in &mut combat {
-        if **text != combat_value {
-            **text = combat_value.clone();
-        }
-    }
-    let race = (player.race > 0).then_some(player.race);
+}
+
+fn status(mut commands: Commands, assets: Res<AssetServer>, player: Res<PlayerState>, mut fields: Query<(&StatField, &mut Text)>, mut buttons: Query<(&StatAction, &mut Node)>, mut faces: Query<(Entity, &mut FaceImage, &mut ImageNode)>) {
+    for (field, mut text) in &mut fields { let value = stat_value(*field, &player); if text.0 != value { text.0 = value; } }
+    for (button, mut node) in &mut buttons { core::set_display(&mut node, if player.points[if button.plus {26} else {112}] > 0 { Display::Flex } else { Display::None }); }
     for (entity, mut face, mut image) in &mut faces {
-        if face.0 == race {
-            continue;
-        }
-        let job = match race.unwrap_or(0) % 4 {
-            1 => "assassin",
-            2 => "sura",
-            3 => "shaman",
-            _ => "warrior",
-        };
+        if face.0 == Some(player.race) { continue; }
+        let job = match player.race % 4 { 1 => "assassin", 2 => "sura", 3 => "shaman", _ => "warrior" };
         let art = Art::load(&assets, &format!("d:/ymir work/ui/game/windows/face_{job}.sub"));
-        if let Art::Image(handle) = &art {
-            image.image = handle.clone();
-            image.rect = None;
-        }
-        commands.entity(entity).insert(art);
-        face.0 = race;
+        if let Art::Image(handle) = &art { image.image = handle.clone(); image.rect = None; }
+        commands.entity(entity).insert(art); face.0 = Some(player.race);
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn status_uses_unsigned_experience_and_total_combat_points() {
+        let mut player = PlayerState::default();
+        player.points[3] = 3_000_000_000u32 as i32; player.points[4] = 3_500_000_000u32 as i32;
+        assert_eq!(stat_value(StatField::Exp, &player), "3000000000");
+        assert_eq!(stat_value(StatField::Remaining, &player), "500000000");
+        for (index, value) in [(29, 100), (30, 120), (95, 10), (91, 20), (22, 70), (202, 20), (203, 30), (20, 50), (96, 7)] { player.points[index] = value; }
+        assert_eq!(stat_value(StatField::Attack, &player), "130-150");
+        assert_eq!(stat_value(StatField::MagicAttack, &player), "90-100");
+        assert_eq!(stat_value(StatField::Defense, &player), "50");
+    }
+    #[test]
+    fn quest_page_selection_sends_the_high_bit_quest_button_index() {
+        let mut app = App::new();
+        app.init_resource::<PlayerState>().init_resource::<QuestOffset>().add_message::<Click>().add_message::<PlayerAction>().add_systems(Update, quest_actions);
+        for index in 10..17 { app.world_mut().resource_mut::<PlayerState>().quests.insert(index, m2_game::player::Quest {title:format!("Quest {index}"),..default()}); }
+        let row = app.world_mut().spawn(QuestRow(1)).id();
+        let page = app.world_mut().spawn(QuestPage(1)).id();
+        let mut cursor = app.world().resource::<Messages<PlayerAction>>().get_cursor();
+        app.world_mut().write_message(Click{entity:page,button:PointerButton::Primary,count:1}); app.update();
+        app.world_mut().write_message(Click{entity:row,button:PointerButton::Primary,count:1}); app.update();
+        assert!(matches!(cursor.read(app.world().resource::<Messages<PlayerAction>>()).next(), Some(PlayerAction::QuestButton(0x8000_0010))));
+    }
+    #[test]
+    fn stat_buttons_send_the_server_point_names() {
+        let mut app = App::new();
+        app.init_resource::<PlayerState>().add_message::<Click>().add_message::<PlayerAction>().add_systems(Update, stat_actions);
+        app.world_mut().resource_mut::<PlayerState>().points[26] = 3;
+        let mut cursor = app.world().resource::<Messages<PlayerAction>>().get_cursor();
+        // `statusPlusCommandDict`: `/stat ht|iq|st|dx`, not the key names.
+        for key in ["ht", "iq", "st", "dx"] {
+            let button = app.world_mut().spawn(StatAction { key, plus: true }).id();
+            app.world_mut().write_message(Click{entity:button,button:PointerButton::Primary,count:1});
+        }
+        let minus = app.world_mut().spawn(StatAction { key: "ht", plus: false }).id();
+        app.world_mut().write_message(Click{entity:minus,button:PointerButton::Primary,count:1});
+        app.update();
+        let sent: Vec<_> = cursor.read(app.world().resource::<Messages<PlayerAction>>()).map(|action| match action { PlayerAction::Chat { text, .. } => text.clone(), _ => String::new() }).collect();
+        // No stat reset points: the minus button sends nothing.
+        assert_eq!(sent, ["/stat ht", "/stat iq", "/stat st", "/stat dx"]);
+    }
+
 }

@@ -26,6 +26,7 @@ pub mod affects;
 pub mod character;
 pub mod core;
 pub mod emotes;
+pub mod exchange;
 pub mod frontend;
 pub mod hud;
 pub mod inventory;
@@ -36,9 +37,12 @@ pub mod nametags;
 pub mod quickslots;
 pub mod quest_dialog;
 pub mod restart;
+pub mod refine;
 pub mod select;
 pub mod skills;
+pub mod skill_tooltip;
 pub mod sound;
+pub mod social_ui;
 pub mod shop;
 pub mod storage;
 pub mod target;
@@ -68,6 +72,9 @@ impl Plugin for M2UiPlugin {
             quest_dialog::QuestDialogPlugin,
         )).add_plugins((
             restart::RestartDialogPlugin,
+            refine::RefinePlugin,
+            social_ui::SocialUiPlugin,
+            exchange::ExchangePlugin,
             nametags::NameTagPlugin,
             minimap::MiniMapPlugin,
             warp_fade::WarpFadePlugin,
@@ -76,3 +83,6 @@ impl Plugin for M2UiPlugin {
         ));
     }
 }
+
+#[cfg(test)]
+mod interaction_tests;
