@@ -108,10 +108,8 @@ fn every_available_pc_skill_has_valid_motions_and_delivery_events_at_every_grade
                             }
                             RaceMotionEventKind::Effect { file, .. }
                             | RaceMotionEventKind::EffectToTarget { file, .. } => {
-                                assert!(
-                                    packs.get(paths::virtual_name(file)).is_ok(),
-                                    "{path}: missing effect {file}"
-                                );
+                                crate::render::effect::load_instance(&packs, file.as_bytes(), Mat4::IDENTITY.to_cols_array())
+                                    .unwrap_or_else(|error| panic!("{path}: {error}"));
                             }
                             RaceMotionEventKind::SpecialAttacking(splash) => {
                                 assert!(!splash.spheres.is_empty(), "{path}: empty splash")

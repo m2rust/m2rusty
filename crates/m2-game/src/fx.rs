@@ -678,6 +678,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn repeated_skill_casts_reload_the_drive_less_motion_effect_after_expiry() {
+        let dir = std::env::var_os("M2_CLIENT_DIR").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));
+        if !dir.join("pack/Index.dev").exists() { return; }
+        let mut manager = m2_formats::pack::PackManager::new(&dir);
+        m2_formats::pack::load_index(&mut manager, "pack", "pack/Index.dev").unwrap();
+        let packs = Arc::new(manager);
+        let packs = M2Packs { reader: m2_assets::source::PackAssetReader::new(packs.clone()), packs };
+        let partial = load_instance(&packs.packs, b"ymir work/pc/sura/effect/muyeong_make.mse", Mat4::IDENTITY.to_cols_array()).unwrap();
+        assert!(!partial.particle_systems().is_empty(), "a missing optional mesh must not discard the particle effects");
+        let mut world = World::new();
+        let entity = world.spawn(GlobalTransform::IDENTITY).id();
+        let mut fx = CombatFx::default();
+        let file = "ymir work/pc/warrior/effect/palbang_2_spin.mse";
+        let mut rng = m2_effect::GlibcRandom::default();
+        for cast in 0..3 {
+            fx.spawn_following(Some(&packs), file, entity, Vec3::ZERO);
+            assert_eq!(fx.following.len(), cast + 1, "cast {} did not create its effect", cast + 1);
+            assert!(!fx.failed.contains(file), "a valid motion path must not be blacklisted");
+            let instance = &mut fx.following.last_mut().unwrap().2;
+            assert!(instance.is_alive(), "a new cast must get fresh simulation state");
+            assert_eq!(instance.data().file_name, b"d:/ymir work/pc/warrior/effect/palbang_2_spin.mse");
+            for _ in 0..600 { instance.update(1.0 / 60.0, &mut rng); }
+            assert!(!instance.is_alive(), "the previous cast should have finished before recasting");
+        }
+    }
+
+    #[test]
     fn packed_enemy_arrow_loads_its_visible_attachment_and_flies() {
         let dir = std::env::var_os("M2_CLIENT_DIR").map(std::path::PathBuf::from)
             .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));

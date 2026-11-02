@@ -25,17 +25,25 @@ use std::{collections::HashMap, sync::Arc};
 pub type EffectMeshes = HashMap<Vec<u8>, Arc<EffectMesh>>;
 
 pub fn load_data(packs: &PackManager, file: &[u8]) -> Result<Arc<EffectData>, String> {
-    load_effect(packs, file)
+    // Motion assets use Bevy's drive-less paths. Pack lookup and relative
+    // effect references need the original d:/ymir work/... virtual name.
+    // Normalize at this shared boundary for every effect creation path.
+    let file = m2_formats::pack::virtual_name(file);
+    load_effect(packs, &file)
         .map(Arc::new)
-        .map_err(|e| format!("Effect {}: {e:?}", String::from_utf8_lossy(file)))
+        .map_err(|e| format!("Effect {}: {e}", String::from_utf8_lossy(&file)))
 }
 
 pub fn load_meshes(packs: &PackManager, data: &EffectData) -> Result<EffectMeshes, String> {
     let mut meshes = EffectMeshes::new();
     for mesh in &data.meshes {
-        let loaded = load_effect_mesh(packs, &mesh.mesh_file_name)
-            .map_err(|e| format!("Effect mesh {}: {e:?}", String::from_utf8_lossy(&mesh.mesh_file_name)))?;
-        meshes.insert(mesh.mesh_file_name.clone(), Arc::new(loaded));
+        let file = m2_formats::pack::virtual_name(&mesh.mesh_file_name);
+        match load_effect_mesh(packs, &file) {
+            Ok(loaded) => { meshes.insert(mesh.mesh_file_name.clone(), Arc::new(loaded)); }
+            // CEffectMeshInstance::OnSetDataPointer can leave a missing mesh
+            // unset. Only that element ends; particles and lights still play.
+            Err(error) => warn!("Effect mesh {}: {error}; keeping the other effect elements", String::from_utf8_lossy(&file)),
+        }
     }
     Ok(meshes)
 }
