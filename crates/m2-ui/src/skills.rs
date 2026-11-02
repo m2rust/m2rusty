@@ -7,12 +7,14 @@
 //! vnum (`CPythonPlayer::SetSkillLevel_`), so a slot's vnum is looked up in
 //! the table every frame and its level in [`SkillState`].
 //!
-//! Clicking a learned skill sends `TPacketCGUseSkill`
-//! (`CPythonNetworkStream::SendUseSkillPacket`, `__UseSkill`); Ctrl+click binds
-//! it to the first empty global quick slot (`uicharacter.SelectSkill`'s
-//! `RequestAddToEmptyLocalQuickSlot`). The task bar draws the bound skill over
-//! `inventory`'s quick slot with a child of its own, never touching the item
-//! icon.
+//! Every skill of the group is drawn, learned or not (`__RefreshSkillPage`);
+//! the `+` button spends a point with `/skillup`, including the first one.
+//! As in `uicharacter.SelectSkill`, a left click (or a drag) attaches a
+//! learned skill to the cursor ([`InventoryUi::carried`]) and dropping it on a
+//! task bar slot binds it; Ctrl+click binds it to the first empty quick slot;
+//! a right or double click uses it (`ClickSkillSlot`). The task bar draws the
+//! bound skill over `inventory`'s quick slot with a child of its own, never
+//! touching the item icon.
 
 use std::collections::HashMap;
 
@@ -34,7 +36,7 @@ use m2_net::wire::{GcPacket, TQuickSlot};
 use crate::character::{CharacterTab, PageRoot};
 use crate::core::{self, Art, Click, Consumed, Control, Selected, Surface, UiSet};
 use crate::hud::{ChatState, GameUiRoot};
-use crate::inventory::{InventoryUi, Slot};
+use crate::inventory::{Carried, InventoryUi, Slot};
 use crate::quickslots::{self, QuickSlotUse};
 
 /// `uicharacter.ACTIVE_PAGE_SLOT_COUNT`.
@@ -107,9 +109,28 @@ struct SkillCount {
     grade: u8,
 }
 
+/// The cooldown cover of a page cell.
+#[derive(Component)]
+struct SkillCover {
+    slot: u32,
+    grade: u8,
+}
+
+/// The cooldown cover and level count drawn on a task bar skill (children
+/// of its [`QuickSkill`]).
+#[derive(Component)]
+struct QuickCover(Entity);
+#[derive(Component)]
+struct QuickCount(Entity);
+
+/// `RenderCoolTimeBox`'s shade. The C++ draws a clock sweep; the port covers
+/// the remaining fraction from the top.
+const COOL_COVER: Color = Color::srgba(0.0, 0.0, 0.0, 0.6);
+
 #[derive(Component)]
 struct SkillPlus {
     slot: u32,
+    grade: u8,
 }
 
 #[derive(Component, Clone, Copy)]
@@ -153,7 +174,76 @@ impl Plugin for SkillsPlugin {
             .add_systems(Startup, load_catalog)
             .add_systems(Update, (poll_catalog, receive_levels).chain().in_set(UiSet::State))
             .add_systems(Update, actions.in_set(UiSet::Actions))
-            .add_systems(Update, (refresh, tooltip, quick_overlay).chain().in_set(UiSet::Draw));
+            .add_systems(Update, (refresh, tooltip, quick_overlay, carried_ghost, cooldowns).chain().in_set(UiSet::Draw))
+            .add_observer(drag_start);
+    }
+}
+
+/// The skill icon under the cursor while a skill is attached.
+#[derive(Component)]
+struct SkillGhost(Option<String>);
+
+/// Dragging a learned skill out of the page attaches it, like a click.
+#[allow(clippy::too_many_arguments)]
+fn drag_start(
+    mut event: On<bevy::picking::events::PointerDragStart>,
+    cells: Query<&SkillCell>,
+    player: Res<PlayerState>,
+    state: Res<SkillState>,
+    catalog: Res<SkillCatalog>,
+    ui: Res<SkillUi>,
+    mut inventory: ResMut<InventoryUi>,
+    mut consumed: ResMut<Consumed>,
+) {
+    if event.button != PointerButton::Primary || ui.riding {
+        return;
+    }
+    let Ok(cell) = cells.get(event.entity) else { return };
+    let group = effective_group(&ui, &player);
+    if let Some((vnum, level)) = resolve(&player, &state, group, cell.slot)
+        && level != 0
+        && is_usable(&catalog, vnum)
+    {
+        inventory.carried = Some(Carried { kind: quickslots::SKILL, position: cell.slot as u8, from_quick: None });
+        consumed.pointer = true;
+        event.propagate(false);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn carried_ghost(
+    mut commands: Commands,
+    assets: Res<AssetServer>,
+    primary: Query<&Window, With<PrimaryWindow>>,
+    scale: Res<UiScale>,
+    catalog: Res<SkillCatalog>,
+    state: Res<SkillState>,
+    player: Res<PlayerState>,
+    inventory: Res<InventoryUi>,
+    mut ghosts: Query<(Entity, &mut SkillGhost, &mut Node)>,
+) {
+    let cursor = primary.single().ok().and_then(|window| window.cursor_position()).map(|point| point / scale.0);
+    let carried = inventory.carried.filter(|carried| carried.kind == quickslots::SKILL);
+    let path = carried.and_then(|carried| {
+        let vnum = slot_vnum(player.race, player.skill_group.clamp(1, 2), u32::from(carried.position), &state);
+        icon_path(&catalog, vnum, state.grade(vnum).min(SKILL_GRADE_COUNT - 1))
+    });
+    for (entity, mut ghost, mut node) in &mut ghosts {
+        if ghost.0 != path {
+            match &path {
+                Some(path) => commands.entity(entity).insert(Art::load(&assets, path)),
+                None => commands.entity(entity).remove::<Art>(),
+            };
+            ghost.0 = path.clone();
+        }
+        match (&path, cursor) {
+            (Some(_), Some(cursor)) => core::edit_node(&mut node, |node| {
+                node.display = Display::Flex;
+                node.left = Val::Px(cursor.x + 8.);
+                node.top = Val::Px(cursor.y + 8.);
+            }),
+            _ => core::set_display(&mut node, Display::None),
+        }
     }
 }
 
@@ -209,6 +299,12 @@ fn receive_levels(
                 *ui = SkillUi::default();
             }
             NetMessage::Game(NetEvent::MainCharacter(_)) => {
+                skills.reset();
+                *ui = SkillUi::default();
+            }
+            // `RecvChangeSkillGroupPacket` -> `NEW_ClearSkillData`: the new
+            // group's levels follow in `GC_SKILL_LEVEL_NEW`.
+            NetMessage::Game(NetEvent::Packet(GcPacket::ChangeSkillGroup(_))) => {
                 skills.reset();
                 *ui = SkillUi::default();
             }
@@ -340,14 +436,44 @@ fn empty_quick_slot(player: &PlayerState) -> Option<u8> {
     (0..32u8).find(|slot| player.quickslots[usize::from(*slot)].Type == 0)
 }
 
-/// The group shown by the page. `SkillUi::group` overrides the character's
-/// group while a group button is pressed.
+/// The group shown by the page (`__SelectSkillGroup`): the character's own
+/// group once it has one; before that the group buttons preview either group.
 fn effective_group(ui: &SkillUi, player: &PlayerState) -> u8 {
-    match ui.group {
-        1 | 2 => ui.group,
-        _ => player.skill_group.clamp(1, 2),
+    match player.skill_group {
+        1 | 2 => player.skill_group,
+        _ => ui.group.clamp(1, 2),
     }
 }
+
+/// `uicharacter.__CanUseSkillNow`: active skills need a chosen group.
+fn can_use_skill_now(player: &PlayerState) -> bool {
+    player.skill_group != 0
+}
+
+/// `CPythonSkill::SSkillData::IsCanUseSkill`: anything but a passive skill.
+fn is_usable(catalog: &SkillCatalog, vnum: u32) -> bool {
+    catalog.get(vnum).is_some_and(|data| data.skill_attribute & SKILL_ATTRIBUTE_PASSIVE == 0)
+}
+
+fn is_active(catalog: &SkillCatalog, vnum: u32) -> bool {
+    catalog.get(vnum).is_some_and(|data| data.skill_type == SkillType::Active as u8)
+}
+
+/// `CanShowPlusButton` + `__RefreshSkillPlusButton`: skill points left, a
+/// skill in the slot, still on its first grade (masters train by books) and
+/// `skill.CanLevelUpSkill` (below its max level). Unlearned skills qualify:
+/// that is how a skill gets its first point. `RefreshSkillPlusButtonList`
+/// shows none before a skill group is chosen.
+fn can_show_plus(catalog: &SkillCatalog, state: &SkillState, player: &PlayerState, vnum: u32, points: i32) -> bool {
+    if points <= 0 || vnum == 0 || state.grade(vnum) != 0 || !can_use_skill_now(player) {
+        return false;
+    }
+    let max_level = catalog.get(vnum).map_or(0, |data| data.max_level);
+    state.level(vnum) < max_level
+}
+
+/// `SKILL_ATTRIBUTE_PASSIVE` (`PythonSkill.h`).
+const SKILL_ATTRIBUTE_PASSIVE: u32 = 1 << 17;
 
 /// The vnum and level of a source slot, if it holds a learned skill.
 fn resolve(player: &PlayerState, state: &SkillState, group: u8, slot: u32) -> Option<(u32, u8)> {
@@ -509,6 +635,15 @@ pub fn build(commands: &mut Commands, assets: &AssetServer, parent: Entity) -> E
     let label = core::text(commands, tip, "", Node { width: Val::Percent(100.), ..default() });
     commands.entity(label).insert(SkillTipText);
 
+    commands.spawn((
+        GameUiRoot,
+        SkillGhost(None),
+        Node { display: Display::None, ..core::rect(0., 0., 32., 32.) },
+        ImageNode { color: Color::srgba(1., 1., 1., 0.85), ..default() },
+        GlobalZIndex(100_002),
+        Pickable::IGNORE,
+    ));
+
     page
 }
 
@@ -590,6 +725,17 @@ fn skill_cell(
         .id();
     commands.entity(entity).add_child(icon);
 
+    // `SetSlotCoolTime`: the cooling cell is covered while the skill recharges.
+    let cover = commands
+        .spawn((
+            SkillCover { slot: cell.slot, grade: cell.grade },
+            Node { display: Display::None, ..core::rect(0., 0., 32., 0.) },
+            BackgroundColor(COOL_COVER),
+            ZIndex(3),
+            Pickable::IGNORE,
+        ))
+        .id();
+    commands.entity(entity).add_child(cover);
     let count = core::text(commands, entity, "", core::rect(0., 17., 30., 15.));
     commands.entity(count).insert((
         SkillCount { slot: cell.slot, grade: cell.grade },
@@ -603,7 +749,7 @@ fn skill_cell(
         Art::load(assets, "d:/ymir work/ui/game/windows/btn_plus_down.sub"),
     ];
     let plus = core::button_with(commands, entity, core::rect(17., 0., 14., 14.), art, "");
-    commands.entity(plus).insert((SkillPlus { slot: cell.slot }, ZIndex(4)));
+    commands.entity(plus).insert((SkillPlus { slot: cell.slot, grade: cell.grade }, ZIndex(4)));
     entity
 }
 
@@ -614,9 +760,7 @@ fn actions(
     pluses: Query<&SkillPlus>,
     groups: Query<&GroupButton>,
     tabs: Query<&SkillTab>,
-    keys: Res<ButtonInput<KeyCode>>,
-    focus: Res<InputFocus>,
-    chat: Res<ChatState>,
+    (keys, focus, chat): (Res<ButtonInput<KeyCode>>, Res<InputFocus>, Res<ChatState>),
     mut ui: ResMut<SkillUi>,
     player: Res<PlayerState>,
     state: Res<SkillState>,
@@ -625,11 +769,32 @@ fn actions(
     mut requests: MessageWriter<PlayerAction>,
     mut use_skill: MessageWriter<m2_game::combat::UseSkillRequest>,
     mut consumed: ResMut<Consumed>,
+    (catalog, mut inventory): (Res<SkillCatalog>, ResMut<InventoryUi>),
 ) {
     let typing = focus.get().is_some() || chat.typing;
     let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
 
     for click in clicks.read() {
+        // `SetUnselectItemSlotEvent`/`SetUseSlotEvent` -> `ClickSkillSlot`: a
+        // right click or a double click uses the skill.
+        if let Ok(cell) = cells.get(click.entity)
+            && (click.button == PointerButton::Secondary || (click.button == PointerButton::Primary && click.count >= 2))
+        {
+            consumed.pointer = true;
+            inventory.carried = None;
+            if typing || ui.riding {
+                continue;
+            }
+            let group = effective_group(&ui, &player);
+            if let Some((vnum, level)) = resolve(&player, &state, group, cell.slot)
+                && level != 0
+                && is_usable(&catalog, vnum)
+                && (can_use_skill_now(&player) || !is_active(&catalog, vnum))
+            {
+                send_use_skill(&mut use_skill, vnum);
+            }
+            continue;
+        }
         if click.button != PointerButton::Primary {
             continue;
         }
@@ -655,23 +820,26 @@ fn actions(
             continue;
         }
         let Ok(cell) = cells.get(click.entity) else { continue };
-        if typing || ui.riding {
+        consumed.pointer = true;
+        // `SelectSkill`: a click while something is attached lets it go.
+        if inventory.carried.take().is_some() || typing || ui.riding {
             continue;
         }
         let group = effective_group(&ui, &player);
         let Some((vnum, level)) = resolve(&player, &state, group, cell.slot) else { continue };
-        if level == 0 {
+        if level == 0 || !is_usable(&catalog, vnum) {
             continue;
         }
         if ctrl {
-            // `uicharacter.SelectSkill` on Ctrl: bind the source slot index.
+            // `RequestAddToEmptyLocalQuickSlot(SLOT_TYPE_SKILL, srcSlotIndex)`.
             if let Some(slot) = empty_quick_slot(&player) {
                 quickslots::bind(&mut net, slot, quickslots::SKILL, cell.slot as u8);
             }
         } else {
-            send_use_skill(&mut use_skill, vnum);
+            // `mouseController.AttachObject(self, SLOT_TYPE_SKILL, srcSlotIndex, ...)`:
+            // the skill follows the cursor until it is dropped on a quick slot.
+            inventory.carried = Some(Carried { kind: quickslots::SKILL, position: cell.slot as u8, from_quick: None });
         }
-        consumed.pointer = true;
     }
 
     // A task bar skill slot (`inventory::Slot::Quick` with `Type == 2`).
@@ -746,7 +914,7 @@ fn refresh(
     ui: Res<SkillUi>,
     mut cache: Local<HashMap<(u32, u8), Option<String>>>,
     mut icons: Query<
-        (Entity, &mut SkillIcon, &mut Node),
+        (Entity, &mut SkillIcon, &mut Node, &mut ImageNode),
         (Without<SkillBody>, Without<RidingBody>, Without<SkillCount>, Without<SkillPlus>),
     >,
     mut counts: Query<
@@ -777,7 +945,7 @@ fn refresh(
 ) {
     if !catalog.is_changed() && !state.is_changed() && !player.is_changed() && !ui.is_changed()
         && !packs.as_ref().is_some_and(|packs| packs.is_changed())
-        && icons.iter_mut().all(|(_, icon, _)| !icon.is_added())
+        && icons.iter_mut().all(|(_, icon, _, _)| !icon.is_added())
     {
         return;
     }
@@ -787,7 +955,7 @@ fn refresh(
         cache.clear();
     }
 
-    for (entity, mut icon, mut node) in &mut icons {
+    for (entity, mut icon, mut node, mut image) in &mut icons {
         let vnum = slot_vnum(player.race, group, icon.slot, &state);
         let level = state.level(vnum);
         // Support icons are not grade-stacked; Riding uses its grade art.
@@ -796,7 +964,16 @@ fn refresh(
         } else {
             icon.grade
         };
-        let path = if vnum != 0 && level != 0 {
+        // `__RefreshSkillPage` draws every skill of the group, learned or not;
+        // an active skill's grades other than its current one, and anything
+        // not usable yet, have their cover disabled (drawn dark).
+        let current = icon.slot >= 101 || icon.grade == count_grade(state.grade(vnum));
+        let lit = level != 0 && current && (icon.slot >= 101 || can_use_skill_now(&player));
+        let color = if lit { Color::WHITE } else { Color::srgb(0.38, 0.38, 0.38) };
+        if image.color != color {
+            image.color = color;
+        }
+        let path = if vnum != 0 {
             let key = (vnum, art_grade);
             if let Some(cached) = cache.get(&key) {
                 cached.clone()
@@ -831,7 +1008,7 @@ fn refresh(
         let level = state.level(vnum);
         let shown = level != 0
             && (count.slot >= 101 || count.grade == count_grade(state.grade(vnum)));
-        let value = if shown { level.to_string() } else { String::new() };
+        let value = if shown { count_text(state.grade(vnum), level) } else { String::new() };
         if **text != value {
             **text = value;
         }
@@ -841,7 +1018,6 @@ fn refresh(
 
     for (plus, mut node) in &mut pluses {
         let vnum = slot_vnum(player.race, group, plus.slot, &state);
-        let level = state.level(vnum);
         let point = if plus.slot >= 101 {
             player.points[POINT_SUPPORT].max(0)
         } else if ui.riding {
@@ -849,9 +1025,8 @@ fn refresh(
         } else {
             player.points[POINT_ACTIVE].max(0)
         };
-        let max_level = catalog.get(vnum).map_or(20, |data| data.max_level);
-        // `CanShowPlusButton`: points left, first grade, below max level.
-        let display = if point > 0 && vnum != 0 && level != 0 && state.grade(vnum) == 0 && level < max_level {
+        // The plus sits on the first-grade cell only (`ShowSlotButton(slotIndex)`).
+        let display = if can_show_plus(&catalog, &state, &player, vnum, point) && (plus.slot >= 101 || plus.grade == 0) {
             Display::Flex
         } else {
             Display::None
@@ -898,6 +1073,7 @@ fn tooltip(
     player: Res<PlayerState>,
     ui: Res<SkillUi>,
     cells: Query<(Entity, &SkillCell, &Hovered)>,
+    quick: (Query<(Entity, &Slot, &Hovered)>, Res<InventoryUi>),
     mut tip: Query<&mut Node, With<SkillTip>>,
     mut text: Query<&mut Text, With<SkillTipText>>,
     mut last: Local<Option<(Entity, f32)>>,
@@ -905,12 +1081,31 @@ fn tooltip(
     let Ok(window) = primary.single() else { return };
     let cursor = window.cursor_position().map(|point| point / scale.0);
     let viewport = Vec2::new(window.width(), window.height()) / scale.0;
-    let hovered = cells.iter().find(|(_, _, hovered)| hovered.0);
-    let current = hovered.map(|(entity, _, _)| entity);
+    // A skill cell of the page, or a task bar slot holding a skill
+    // (`uitaskbar.OverInItem` -> `SetSkill`).
+    let (slots, inventory) = quick;
+    let group = effective_group(&ui, &player);
+    let hovered: Option<(Entity, u32, u8, u8)> = cells
+        .iter()
+        .filter(|(_, _, hovered)| hovered.0 && !ui.riding)
+        .find_map(|(entity, cell, _)| {
+            let (vnum, level) = resolve(&player, &state, group, cell.slot)?;
+            // Each grade cell describes its own grade; a support cell its skill.
+            let grade = if cell.slot >= 101 { state.grade(vnum).min(SKILL_GRADE_COUNT - 1) } else { cell.grade };
+            Some((entity, vnum, level, grade))
+        })
+        .or_else(|| {
+            slots.iter().filter(|(_, _, hovered)| hovered.0).find_map(|(entity, slot, _)| {
+                let Slot::Quick(local) = *slot else { return None };
+                let (vnum, grade) = quick_skill(&player, &state, inventory.quick_page, local)?;
+                Some((entity, vnum, state.level(vnum), grade))
+            })
+        });
+    let current = hovered.map(|(entity, ..)| entity);
     if current != last.as_ref().map(|(entity, _)| *entity) {
         *last = current.map(|entity| (entity, time.elapsed_secs()));
     }
-    let show = ui.riding == false
+    let show = inventory.carried.is_none()
         && cursor.is_some()
         && last.is_some_and(|(_, at)| time.elapsed_secs() - at > 0.3)
         && hovered.is_some();
@@ -921,13 +1116,7 @@ fn tooltip(
             node.top = Val::Px((cursor.y + 18.).max(0.));
         }
     }
-    let (true, Some((_, cell, _)), Some(_)) = (show, hovered, cursor) else { return };
-    let group = effective_group(&ui, &player);
-    let Some((vnum, level)) = resolve(&player, &state, group, cell.slot) else { return };
-    if level == 0 {
-        return;
-    }
-    let grade = state.grade(vnum).min(SKILL_GRADE_COUNT - 1);
+    let (true, Some((_, vnum, level, grade))) = (show, hovered) else { return };
     let details = match catalog.get(vnum) {
         Some(data) => {
             let name = if grade == 0 {
@@ -940,6 +1129,10 @@ fn tooltip(
                 value.push('\n');
                 value.push_str(&data.description_utf8(1252));
             }
+            let left = state.cool_time_left(vnum, time.elapsed_secs());
+            if left > 0.0 {
+                value.push_str(&format!("\nCooldown: {left:.1}s"));
+            }
             value
         }
         None => format!("Skill {vnum}   Level {level}"),
@@ -947,6 +1140,74 @@ fn tooltip(
     for mut label in &mut text {
         if **label != details {
             **label = details.clone();
+        }
+    }
+}
+
+/// `CSlotWindow::SetSlotCountNew`: the level, `m`/`g` before it for the master
+/// and grand master grades, `p` alone for perfect.
+fn count_text(grade: u8, level: u8) -> String {
+    match (grade, level) {
+        (_, 0) => String::new(),
+        (0, level) => level.to_string(),
+        (1, level) => format!("m{level}"),
+        (2, level) => format!("g{level}"),
+        _ => "p".into(),
+    }
+}
+
+/// The fraction of a skill's cooldown still to run (`fCoolTime` against
+/// `fStartCoolTime`), 0 when ready.
+fn cooling(state: &SkillState, vnum: u32, now: f32) -> f32 {
+    let total = state.cooldown.get(vnum as usize).copied().unwrap_or(0.0);
+    if vnum == 0 || total <= 0.0 {
+        return 0.0;
+    }
+    (state.cool_time_left(vnum, now) / total).clamp(0.0, 1.0)
+}
+
+/// Cooldown covers on the page and the task bar, and the task bar's level
+/// counts (`uitaskbar.RefreshQuickSlot`'s `SetSlotCountNew`, `OnUseSkill`'s
+/// `SetSlotCoolTime`).
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+fn cooldowns(
+    time: Res<Time>,
+    state: Res<SkillState>,
+    player: Res<PlayerState>,
+    ui: Res<SkillUi>,
+    quick: Query<&QuickSkill>,
+    mut covers: Query<(&SkillCover, &mut Node), Without<QuickCover>>,
+    mut quick_covers: Query<(&QuickCover, &mut Node), Without<SkillCover>>,
+    mut counts: Query<(&QuickCount, &mut Text)>,
+) {
+    let now = time.elapsed_secs();
+    let group = effective_group(&ui, &player);
+    let set = |node: &mut Mut<Node>, fraction: f32| {
+        if fraction > 0.0 {
+            core::edit_node(node, |node| {
+                node.display = Display::Flex;
+                node.height = Val::Px((32.0 * fraction).ceil());
+            });
+        } else {
+            core::set_display(node, Display::None);
+        }
+    };
+    for (cover, mut node) in &mut covers {
+        let vnum = slot_vnum(player.race, group, cover.slot, &state);
+        // `OnUseSkill` marks the cell of the skill's current grade.
+        let current = cover.slot >= 101 || cover.grade == count_grade(state.grade(vnum));
+        set(&mut node, if current { cooling(&state, vnum, now) } else { 0.0 });
+    }
+    for (cover, mut node) in &mut quick_covers {
+        let fraction = quick.get(cover.0).map_or(0.0, |skill| cooling(&state, skill.vnum, now));
+        set(&mut node, fraction);
+    }
+    for (count, mut text) in &mut counts {
+        let value = quick.get(count.0).map_or_else(|_| String::new(), |skill| {
+            count_text(state.grade(skill.vnum), state.level(skill.vnum))
+        });
+        if **text != value {
+            **text = value;
         }
     }
 }
@@ -992,6 +1253,17 @@ fn quick_overlay(
                 ))
                 .id();
             commands.entity(slot_entity).add_child(helper);
+            let cover = commands
+                .spawn((
+                    QuickCover(helper),
+                    Node { display: Display::None, ..core::rect(0., 0., 32., 0.) },
+                    BackgroundColor(COOL_COVER),
+                    Pickable::IGNORE,
+                ))
+                .id();
+            let count = core::text(&mut commands, helper, "", core::rect(0., 17., 30., 15.));
+            commands.entity(count).insert((QuickCount(helper), TextLayout::justify(Justify::Right)));
+            commands.entity(helper).add_child(cover);
             continue;
         };
         let Ok((entity, mut marker, mut node, mut image)) = overlays.get_mut(overlay) else { continue };
@@ -1148,6 +1420,25 @@ mod tests {
         assert_eq!(quick_skill(&player, &state, 1, 0), None);
         player.quickslots[8] = TQuickSlot { Type: quickslots::SKILL, Position: 102 };
         assert_eq!(quick_skill(&player, &state, 1, 0), None);
+    }
+
+    #[test]
+    fn the_plus_button_learns_an_unlearned_skill_once_a_group_is_chosen() {
+        let mut catalog = catalog();
+        catalog.0.skills.get_mut(&1).unwrap().max_level = 20;
+        let mut player = PlayerState::default();
+        let mut state = SkillState::default();
+        // No group yet: no plus buttons at all.
+        assert!(!can_show_plus(&catalog, &state, &player, 1, 3));
+        player.skill_group = 1;
+        assert!(can_show_plus(&catalog, &state, &player, 1, 3));
+        // No points, or a master grade, or the max level: none.
+        assert!(!can_show_plus(&catalog, &state, &player, 1, 0));
+        state.levels[1] = 20;
+        assert!(!can_show_plus(&catalog, &state, &player, 1, 3));
+        state.levels[1] = 5;
+        state.grades[1] = 1;
+        assert!(!can_show_plus(&catalog, &state, &player, 1, 3));
     }
 
     #[test]

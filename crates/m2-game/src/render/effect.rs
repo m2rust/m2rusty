@@ -90,9 +90,40 @@ struct Draw {
     operation: u8,
 }
 
+/// The D3D-to-Bevy axis conversion reverses the camera-facing particle quad.
+/// Keep the simulator's original UVs intact and correct their handedness here.
+fn particle_uv() -> [[f32; 2]; 4] {
+    m2_effect::particle::QUAD_UV.map(|[u, v]| [1.0 - u, v])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn camera_facing_particle_textures_are_not_mirrored() {
+        let mut particle = m2_effect::particle::Particle::default();
+        particle.half_size = [1.0, 1.0];
+        let props = m2_formats::effect::ParticleProperty { billboard_type: m2_effect::particle::billboard::ALL, ..Default::default() };
+        let camera = Camera { up: [0.0, 0.0, 1.0], cross: [1.0, 0.0, 0.0], view: [0.0, -1.0, 0.0] };
+        let quad = particle.quad(&props, &camera, None, None);
+        let uv = particle_uv();
+        for (point, [u, _]) in quad.iter().zip(uv) {
+            assert_eq!(point[0].is_sign_positive(), u == 1.0);
+        }
+    }
+}
+
 impl EffectRenderer {
     pub fn update(&mut self, world: &mut World) {
         if self.instances.is_empty() {
+            for (entity, _, _, _) in &self.draws {
+                if let Some(mut visibility) = world.get_mut::<Visibility>(*entity)
+                    && *visibility != Visibility::Hidden
+                {
+                    *visibility = Visibility::Hidden;
+                }
+            }
             return;
         }
         let Some(camera) = world.query_filtered::<&GlobalTransform, With<SceneCamera>>().iter(world).next().copied()
@@ -127,7 +158,7 @@ impl EffectRenderer {
                     });
                     let base = job.positions.len() as u32;
                     job.positions.extend(quad.positions.map(|p| coords::vec3(p).to_array()));
-                    job.uvs.extend(m2_effect::particle::QUAD_UV);
+                    job.uvs.extend(particle_uv());
                     job.colors.extend([d3d_color(quad.color).to_array(); 4]);
                     job.indices.extend([0, 2, 1, 2, 3, 1].map(|i| i + base));
                 }

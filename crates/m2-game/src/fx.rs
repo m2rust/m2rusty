@@ -52,6 +52,17 @@ pub struct CombatFx {
 }
 
 impl CombatFx {
+    /// Remove effects tied to the previous map while retaining loaded assets.
+    pub fn clear_scene(&mut self) {
+        self.renderer.instances.clear();
+        self.target = None;
+        self.hover = None;
+        self.attached.clear();
+        self.ground.clear();
+        self.flies.clear();
+        self.sounds.clear();
+    }
+
     /// Sets or moves the persistent target glow. Position uses collision
     /// coordinates `(x, -map_y, height)`, like the C++ actor effects.
     pub fn set_target(&mut self, packs: Option<&M2Packs>, target: Option<(u32, Vec3)>) {
@@ -316,10 +327,10 @@ pub fn special_effect(kind: u8) -> Option<(&'static str, bool)> {
 /// `chrmgr.RegisterEffect(chrmgr.EFFECT_AFFECT + n, bone, file)`
 /// (`playersettingmodule.py`): the looping effect `__SetAffect` attaches
 /// while affect `n` is on, and the bone it follows (`""` is the actor root).
-/// The GM mark (0), invisibility (1) and the warrior's weapon aura (15) are
-/// not plain attached effects and have none here.
+/// Invisibility (1) and the warrior's weapon aura (15) are handled separately.
 pub fn affect_effect(affect: u32) -> Option<(&'static str, &'static str)> {
     Some(match affect {
+        0 => ("Bip01", "locale/en/effect/gm.mse"),
         3 => ("Bip01", "d:/ymir work/effect/hit/blow_poison/poison_loop.mse"),
         4 => ("", "d:/ymir work/effect/affect/slow.mse"),
         5 => ("Bip01 Head", "d:/ymir work/effect/etc/stun/stun_loop.mse"),
@@ -349,6 +360,41 @@ pub fn affect_effect(affect: u32) -> Option<(&'static str, &'static str)> {
 /// `AFFECT_GYEONGGONG`/`AFFECT_KWAESOK` are attached only while running.
 pub fn affect_effect_needs_walking(affect: u32) -> bool {
     matches!(affect, 17 | 24)
+}
+
+/// `CInstanceBase::__GetRefinedEffect`: effect key, attachment and script.
+/// The attachment is `right`, `left`, or a body bone name.
+pub fn refined_effects(vnum: u32, item: &m2_formats::proto::ItemData) -> Vec<(u32, &'static str, &'static str)> {
+    const SWORD: [&str; 3] = ["d:/ymir work/pc/common/effect/sword/sword_7.mse", "d:/ymir work/pc/common/effect/sword/sword_8.mse", "d:/ymir work/pc/common/effect/sword/sword_9.mse"];
+    const SMALL: [&str; 3] = ["d:/ymir work/pc/common/effect/sword/sword_7_s.mse", "d:/ymir work/pc/common/effect/sword/sword_8_s.mse", "d:/ymir work/pc/common/effect/sword/sword_9_s.mse"];
+    const BOW: [&str; 3] = ["d:/ymir work/pc/common/effect/sword/sword_7_b.mse", "d:/ymir work/pc/common/effect/sword/sword_8_b.mse", "d:/ymir work/pc/common/effect/sword/sword_9_b.mse"];
+    const FAN: [&str; 3] = ["d:/ymir work/pc/common/effect/sword/sword_7_f.mse", "d:/ymir work/pc/common/effect/sword/sword_8_f.mse", "d:/ymir work/pc/common/effect/sword/sword_9_f.mse"];
+    const ARMOR: [&str; 3] = ["d:/ymir work/pc/common/effect/armor/armor_7.mse", "d:/ymir work/pc/common/effect/armor/armor_8.mse", "d:/ymir work/pc/common/effect/armor/armor_9.mse"];
+    let mut effects = Vec::new();
+    if item.table.item_type == 2 && item.table.sub_type == 0 && (12010..=12049).contains(&vnum) {
+        effects.push((190, "Bip01", "d:/ymir work/pc/common/effect/armor/armor-4-2-1.mse"));
+        effects.push((191, "Bip01", "d:/ymir work/pc/common/effect/armor/armor-4-2-2.mse"));
+    }
+    let refine = (vnum % 10 + u32::from(item.table.gain_socket_pct)).saturating_sub(3);
+    if !(7..=9).contains(&refine) { return effects; }
+    let index = (refine - 7) as usize;
+    match (item.table.item_type, item.table.sub_type) {
+        (1, subtype) => {
+            let files = match subtype {
+                1 | 4 | 6 => &SMALL,
+                2 => &BOW,
+                5 => &FAN,
+                _ => &SWORD,
+            };
+            effects.push((100 + refine * 10 + u32::from(subtype), "right", files[index]));
+            if subtype == 1 {
+                effects.push((200 + refine * 10, "left", SMALL[index]));
+            }
+        }
+        (2, 0) => effects.push((300 + refine, "Bip01", ARMOR[index])),
+        _ => {}
+    }
+    effects
 }
 
 /// Where a [`Fly`] stands after a step.
@@ -562,5 +608,72 @@ fn sync_effects(
                 failed.insert((*file).to_owned());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn packed_enemy_arrow_loads_its_visible_attachment_and_flies() {
+        let dir = std::env::var_os("M2_CLIENT_DIR").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));
+        if !dir.join("pack/Index.dev").exists() {
+            eprintln!("SKIP: client data not found (set M2_CLIENT_DIR)");
+            return;
+        }
+        let mut manager = m2_formats::pack::PackManager::new(&dir);
+        m2_formats::pack::load_index(&mut manager, "pack", "pack/Index.dev").unwrap();
+        let packs = Arc::new(manager);
+        let packs = M2Packs { reader: m2_assets::source::PackAssetReader::new(packs.clone()), packs };
+        let mut fx = CombatFx::default();
+        fx.fly(Some(&packs), "d:/ymir work/pc/assassin/effect/arrow_01_fast.msf", Vec3::ZERO, 7, Vec3::new(0.0, -1000.0, 100.0));
+        assert_eq!(fx.flies.len(), 1);
+        assert!(!fx.flies[0].attach.is_empty(), "arrow must have a visible effect attachment");
+        let start = fx.flies[0].position;
+        fx.update_flies(Some(&packs), 0.05, |_| None);
+        assert_eq!(fx.flies.len(), 1);
+        assert!(fx.flies[0].position.distance(start) > 0.0);
+    }
+
+    #[test]
+    fn gm_affect_uses_the_original_locale_effect() {
+        let dir = std::env::var_os("M2_CLIENT_DIR").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));
+        if !dir.join("pack/Index.dev").exists() {
+            eprintln!("SKIP: client data not found (set M2_CLIENT_DIR)");
+            return;
+        }
+        let mut manager = m2_formats::pack::PackManager::new(&dir);
+        m2_formats::pack::load_index(&mut manager, "pack", "pack/Index.dev").unwrap();
+        let packs = Arc::new(manager);
+        let packs = M2Packs { reader: m2_assets::source::PackAssetReader::new(packs.clone()), packs };
+        let (bone, file) = affect_effect(0).unwrap();
+        assert_eq!(bone, "Bip01");
+        let mut fx = CombatFx::default();
+        fx.sync_attached(Some(&packs), &[((7, 0), file, Vec3::ZERO)]);
+        assert_eq!(fx.attached.len(), 1);
+        fx.sync_attached(Some(&packs), &[]);
+        assert!(fx.attached.is_empty());
+    }
+
+    #[test]
+    fn refined_equipment_effects_follow_the_client_threshold_and_weapon_type() {
+        let mut item = m2_formats::proto::ItemData::default();
+        item.table.item_type = 1;
+        item.table.gain_socket_pct = 3;
+        assert!(refined_effects(16, &item).is_empty());
+        assert_eq!(refined_effects(19, &item)[0].2, "d:/ymir work/pc/common/effect/sword/sword_9.mse");
+        item.table.sub_type = 1;
+        let effects = refined_effects(19, &item);
+        assert_eq!(effects.len(), 2);
+        assert_eq!(effects[0].1, "right");
+        assert_eq!(effects[1].1, "left");
+        item.table.item_type = 2;
+        item.table.sub_type = 0;
+        let effects = refined_effects(12019, &item);
+        assert_eq!(effects.len(), 3);
+        assert_eq!(effects[2].2, "d:/ymir work/pc/common/effect/armor/armor_9.mse");
     }
 }

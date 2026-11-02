@@ -254,6 +254,8 @@ pub enum TextureOp {
     BlendFactorAlpha = 14,
     BlendTextureAlphaPm = 15,
     BlendCurrentAlpha = 16,
+    /// `Arg1.rgb + Arg1.a * Arg2.rgb` (`CGrannyMaterial::__ApplySpecularRenderState`).
+    ModulateAlphaAddColor = 18,
 }
 
 /// `D3DTA_*` source.

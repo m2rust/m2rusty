@@ -23,7 +23,7 @@ use bevy::render::texture::{FallbackImage, GpuImage};
 
 use crate::state::{
     AlphaTest, Blend, BlendFactor, CullMode, DepthState, Fog, FogMode, Lighting, PipelineKey, SamplerState,
-    TextureStage,
+    TextureArg, TextureOp, TextureStage,
 };
 
 /// Embedded shader path, registered by [`crate::M2RenderPlugin`].
@@ -82,6 +82,9 @@ pub struct FixedFunctionMaterial {
     pub lighting: Option<Lighting>,
     /// Draw-order nudge for the transparent phase (see `Material::depth_bias`).
     pub depth_bias: f32,
+    /// Stage 1 reads `D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR` coordinates,
+    /// scrolled by the specular texture matrix (`CGrannyMaterial::ms_matSpecular`).
+    pub stage1_reflection: bool,
 }
 
 impl Default for FixedFunctionMaterial {
@@ -99,6 +102,7 @@ impl Default for FixedFunctionMaterial {
             fog: None,
             lighting: None,
             depth_bias: 0.0,
+            stage1_reflection: false,
         }
     }
 }
@@ -195,6 +199,27 @@ impl FixedFunctionMaterial {
         self
     }
 
+    /// The sphere-map specular pass of `CGrannyMaterial::__ApplySpecularRenderState`:
+    /// stage 0 `MODULATE` with its alpha scaled by `power` (`TFACTOR.a`), stage 1
+    /// `MODULATEALPHA_ADDCOLOR` of the sphere map on reflection coordinates.
+    /// `TFACTOR`'s colour is `g_fSpecularColor`, black unless a script sets it.
+    pub fn specular(mut self, sphere_map: Handle<Image>, power: f32) -> Self {
+        self.stages[0].alpha_op = TextureOp::Modulate;
+        self.stages[0].alpha_arg1 = TextureArg::TEXTURE;
+        self.stages[0].alpha_arg2 = TextureArg::TFACTOR;
+        self.texture_factor = Vec4::new(0.0, 0.0, 0.0, power);
+        let stage = TextureStage {
+            color_op: TextureOp::ModulateAlphaAddColor,
+            color_arg1: TextureArg::CURRENT,
+            color_arg2: TextureArg::TEXTURE,
+            alpha_op: TextureOp::SelectArg1,
+            alpha_arg1: TextureArg::CURRENT,
+            alpha_arg2: TextureArg::CURRENT,
+        };
+        self.stage1_reflection = true;
+        self.stage1(sphere_map, stage, SamplerState::default())
+    }
+
     /// The discrete state that selects the render pipeline.
     pub fn pipeline_key(&self) -> PipelineKey {
         PipelineKey { blend: self.blend, cull: self.cull, depth: self.depth }
@@ -230,7 +255,7 @@ impl FixedFunctionMaterial {
             stage_alpha,
             fog_params,
             flags: UVec4::new(fog_mode, alpha_func, lit.is_some() as u32, texture_mask),
-            alpha_ref: UVec4::new(alpha_ref, 0, 0, 0),
+            alpha_ref: UVec4::new(alpha_ref, self.stage1_reflection as u32, 0, 0),
         }
     }
 }

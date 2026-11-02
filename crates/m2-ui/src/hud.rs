@@ -45,6 +45,14 @@ enum Gauge {
     Sp,
     Stamina,
 }
+/// `HPRecoveryGaugeBar`/`SPRecoveryGaugeBar`: how far the pending potion
+/// recovery (`POINT_HP_RECOVERY`/`POINT_SP_RECOVERY`) will fill the gauge.
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+struct RecoveryBar(Gauge);
+/// `POINT_HP_RECOVERY`, `POINT_SP_RECOVERY` (`Packet.h`).
+const POINT_HP_RECOVERY: usize = 35;
+const POINT_SP_RECOVERY: usize = 36;
+
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 enum TaskAction {
     Inventory,
@@ -101,7 +109,7 @@ fn lifecycle(
 ) {
     if !matches!(screen.status, Status::InGame { .. }) {
         for root in &roots {
-            commands.entity(root).despawn();
+            commands.entity(root).try_despawn();
         }
         if !roots.is_empty() {
             *chat = ChatState::default();
@@ -121,6 +129,7 @@ fn lifecycle(
     build_chat(&mut commands);
     build_windows(&mut commands, &assets);
     inventory::build(&mut commands, &assets);
+    crate::affects::build(&mut commands);
     crate::storage::build(&mut commands, &assets);
     crate::shop::build(&mut commands, &assets);
     crate::target::build(&mut commands, &assets);
@@ -310,6 +319,18 @@ fn build_taskbar(commands: &mut Commands, assets: &AssetServer) {
                 ..default()
             },
         );
+    }
+    // `taskbar.py`: each recovery bar sits under its gauge (0x55ff0000, 0x550000ff).
+    for (gauge, y, color) in [(Gauge::Hp, 4., Color::srgba(1., 0., 0., 0x55 as f32 / 255.)), (Gauge::Sp, 14., Color::srgba(0., 0., 1., 0x55 as f32 / 255.))] {
+        let bar = commands
+            .spawn((
+                RecoveryBar(gauge),
+                Node { display: Display::None, ..core::rect(59., y, 0., 11.) },
+                BackgroundColor(color),
+                Pickable::IGNORE,
+            ))
+            .id();
+        commands.entity(root).add_child(bar);
     }
     spawn_gauge(commands, assets, root, Gauge::Hp, 4., 11., "d:/ymir work/ui/pattern/hpgauge/01.tga");
     spawn_gauge(commands, assets, root, Gauge::Sp, 14., 11., "d:/ymir work/ui/pattern/spgauge/01.tga");
@@ -560,6 +581,7 @@ fn system_actions(
     }
 }
 
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn refresh(
     player: Res<PlayerState>,
     chat: Res<ChatState>,
@@ -567,7 +589,8 @@ fn refresh(
     mut gauges: Query<(&Gauge, &mut Node, &mut ImageNode), Without<ChatLine>>,
     mut log: Query<&mut Text, (With<ChatLog>, Without<ChatLine>)>,
     mut line: Query<(&mut Text, &mut Node), (With<ChatLine>, Without<ChatLog>, Without<Gauge>, Without<ExpOrb>)>,
-    mut orbs: Query<(&ExpOrb, &mut Node), (Without<Gauge>, Without<ChatLine>)>,
+    mut orbs: Query<(&ExpOrb, &mut Node), (Without<Gauge>, Without<ChatLine>, Without<RecoveryBar>)>,
+    mut recovery: Query<(&RecoveryBar, &mut Node), (Without<Gauge>, Without<ChatLine>, Without<ExpOrb>)>,
 ) {
     if !matches!(screen.status, Status::InGame { .. }) {
         return;
@@ -587,6 +610,23 @@ fn refresh(
         if image.rect.is_some_and(|rect| rect.max.x != width) {
             image.rect.as_mut().unwrap().max.x = width;
         }
+    }
+    // `SetHP`/`SetSP`: `min(max, cur + recovery)`, hidden without recovery.
+    for (bar, mut node) in &mut recovery {
+        let (value, max, pending) = match bar.0 {
+            Gauge::Hp => (points[5], points[6], points[POINT_HP_RECOVERY]),
+            _ => (points[7], points[8], points[POINT_SP_RECOVERY]),
+        };
+        if pending <= 0 || max <= 0 {
+            core::set_display(&mut node, Display::None);
+            continue;
+        }
+        let dest = (value.max(0) + pending).min(max);
+        let width = (GAUGE_WIDTH * dest as f32 / max as f32).floor();
+        core::edit_node(&mut node, |node| {
+            node.display = Display::Flex;
+            node.width = Val::Px(width);
+        });
     }
     // `SetExperience`: each orb is a quarter of the level's experience.
     let exp = points[POINT_EXP] as u32;

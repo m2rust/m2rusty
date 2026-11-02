@@ -22,12 +22,14 @@
 //! (D18); `core` has the shared widgets (boards, title bars, buttons, tooltips
 //! and floating windows).
 
+pub mod affects;
 pub mod character;
 pub mod core;
 pub mod emotes;
 pub mod frontend;
 pub mod hud;
 pub mod inventory;
+pub mod item_tooltip;
 pub mod login;
 pub mod minimap;
 pub mod nametags;
@@ -40,6 +42,7 @@ pub mod sound;
 pub mod shop;
 pub mod storage;
 pub mod target;
+mod warp_fade;
 
 use bevy::prelude::*;
 
@@ -67,6 +70,9 @@ impl Plugin for M2UiPlugin {
             restart::RestartDialogPlugin,
             nametags::NameTagPlugin,
             minimap::MiniMapPlugin,
+            warp_fade::WarpFadePlugin,
+            item_tooltip::ItemTooltipPlugin,
+            affects::AffectShowerPlugin,
         ));
     }
 }

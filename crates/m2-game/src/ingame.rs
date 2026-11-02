@@ -20,7 +20,8 @@
 //! `ActorAppend`/`Move`/`Sync`/`Remove`. Their server identity and appearance
 //! data stay on the entity so character rendering can consume them.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::time::{Duration, Instant};
 
 use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
@@ -28,7 +29,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, futures::check_ready};
 use bevy::window::PrimaryWindow;
 use m2_assets::{M2Packs, paths};
 use m2_formats::proto::parse_mob_proto;
-use m2_net::phase::NetEvent;
+use m2_net::phase::{ActorMove, NetEvent};
 
 use crate::SceneCamera;
 use crate::battle::{self, DynamicSphere};
@@ -36,7 +37,7 @@ use crate::combat::{self, ActorCombat, AttackContext, SkillCheck, SkillError, Sk
 use crate::fx::{self, CombatFx};
 use crate::net::{Net, NetMessage};
 use crate::player::{ItemCatalog, PlayerState};
-use crate::render::character::{ArmorShapes, Character, Look, MOUNT_HEIGHT, Motion, MotionTick};
+use crate::render::character::{ArmorShapes, Character, FishingMotion, Look, MOUNT_HEIGHT, Motion, MotionTick};
 use crate::render::{environment_fog, soften_fog};
 use crate::world::{MapScene, WarpedMap, prepare_map_at};
 
@@ -65,7 +66,9 @@ const CAMERA_PITCH_MAX: f32 = 1.1;
 const CAMERA_TARGET_UP: f32 = 85.0;
 
 /// Run speed in world units (cm) per second (the client's `GetRunSpeed`).
-const RUN_SPEED: f32 = 500.0;
+/// `CActorInstance::__AccumulationMovement` fallback; the shipped player run
+/// motions also accumulate 450 units per second at 100% movement speed.
+const RUN_SPEED: f32 = 450.0;
 /// `CPythonPlayerEventHandler::OnMoving`: a position packet every 300 ms.
 const MOVE_PACKET_SECONDS: f32 = 0.3;
 const ATTACK_COOLDOWN: f32 = 0.9;
@@ -79,6 +82,32 @@ pub const ATTACK_RANGE: f32 = 320.0;
 const OBJECTS_WAIT: f32 = 8.0;
 /// How long a `--demo` run lasts (move, attack, stand).
 const DEMO_SECONDS: f32 = 4.9;
+
+/// Duration of each half of the map-transfer curtain.
+pub const WARP_FADE_SECONDS: f32 = 0.35;
+
+#[derive(Resource, Default)]
+pub struct WarpTransition {
+    started: Option<Instant>,
+    cleared: bool,
+    fading_in: Option<Instant>,
+}
+
+impl WarpTransition {
+    pub(crate) fn ready_to_connect(&self) -> bool {
+        self.cleared
+    }
+
+    pub fn alpha(&self) -> f32 {
+        if let Some(start) = self.fading_in {
+            (1.0 - start.elapsed().as_secs_f32() / WARP_FADE_SECONDS).clamp(0.0, 1.0)
+        } else if let Some(start) = self.started {
+            (start.elapsed().as_secs_f32() / WARP_FADE_SECONDS).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+}
 
 /// Enter the world at global position `(x, y)` with character `look`.
 #[derive(Message, Clone, Copy, Debug)]
@@ -101,11 +130,16 @@ pub struct Actor {
     pub kind: u8,
     pub level: u32,
     pub armor: u16,
+    pub weapon: u16,
     pub hair: u16,
+    pub move_speed: u8,
+    pub attack_speed: u8,
+    walk_mode: bool,
     /// Global position.
     pub x: i32,
     pub y: i32,
     pub rotation: f32,
+    rendered_rotation: f32,
     /// `CharacterAdditionalInfo`/`CharacterUpdate` combat metadata.
     pub empire: u8,
     pub pk_mode: u8,
@@ -116,17 +150,76 @@ pub struct Actor {
     pub mount_vnum: u32,
     move_from: Vec2,
     move_to: Vec2,
-    move_elapsed: f32,
-    move_duration: f32,
     moving: bool,
     rendered_moving: Option<bool>,
-    /// Seconds since the actor reached its move destination while `moving`.
-    arrived_for: f32,
-    /// The current move is a push (`CPhysicsObject` blend), eased out.
-    pushed: bool,
+    /// Action to perform after reaching the position reported by the server.
+    move_action: Option<ActorAction>,
+    /// The `CInstanceBase` command queue and movement state.
+    remote: RemoteMotion,
+}
+
+/// `CInstanceBase::m_kQue_kCmdNew` and the `StateProcess`/`MovementProcess`
+/// state of a remote player: commands wait until `dwCmdTime +
+/// m_nAverageNetworkGap`, then the actor walks from `move_from` towards
+/// `move_to` at its run speed.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct RemoteMotion {
+    /// `(m_dwChkTime, command)`, oldest first.
+    commands: VecDeque<(u32, ActorMove)>,
+    /// `m_nAverageNetworkGap` in milliseconds.
+    network_gap: i32,
+    /// `m_isGoing`.
+    going: bool,
+    /// `m_kMovAfterFunc.eFunc == FUNC_MOVE`: keep walking past `move_to`.
+    after_move: bool,
+    /// `m_fDstRot`.
+    dst_rotation: f32,
+    /// The exact position (`x`/`y` are rounded copies).
+    position: Vec2,
+    /// Monsters walk at the speed their move packet implies (distance over
+    /// `dwDuration`); players at their run or walk speed.
+    speed: Option<f32>,
+    /// `CPhysicsObject`'s push: an offset blended onto the position on top
+    /// of any movement (hits with an external force, `GC_SYNC_POSITION`).
+    push: Option<PushBlend>,
+}
+
+/// `CPhysicsObject::SetLastPosition` + its `CEaseOutInterpolation`s: `total`
+/// is added to the actor over [`PUSH_SECONDS`], eased out.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PushBlend {
+    total: Vec2,
+    applied: Vec2,
+    elapsed: f32,
+    /// Where the push ends (its start plus `total`), to recognise its echo.
+    end: Vec2,
+}
+
+impl PushBlend {
+    fn new(from: Vec2, to: Vec2) -> Self {
+        Self { total: to - from, applied: Vec2::ZERO, elapsed: 0.0, end: to }
+    }
+    /// Advances the blend; returns this frame's share of the offset.
+    fn step(&mut self, delta: f32) -> Vec2 {
+        self.elapsed = (self.elapsed + delta).min(PUSH_SECONDS);
+        let t = self.elapsed / PUSH_SECONDS;
+        let offset = self.total * (1.0 - (1.0 - t) * (1.0 - t));
+        let step = offset - self.applied;
+        self.applied = offset;
+        step
+    }
+    fn done(&self) -> bool {
+        self.elapsed >= PUSH_SECONDS
+    }
 }
 
 impl Actor {
+    /// A player drawn as a player: `CActorInstance::IsPoly` is a PC whose race
+    /// is a monster's (`m_eRace >= MAIN_RACE_MAX_NUM`), drawn with that race.
+    pub fn has_player_body(&self) -> bool {
+        self.kind == m2_net::phase::ACTOR_TYPE_PC && self.race < MAIN_RACE_MAX_NUM
+    }
+
     /// The actor as the combat predicates see it, in map-local coordinates
     /// (`base` is the map's global origin).
     pub fn combat(&self, vid: u32, base: (u32, u32)) -> crate::combat::ActorCombat {
@@ -161,6 +254,30 @@ pub struct Actors {
     fights: HashMap<u32, ActorFight>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ShotTarget {
+    Actor(u32),
+    Position(Vec3),
+}
+
+#[derive(Resource, Default)]
+struct FlyTargets(HashMap<u32, VecDeque<ShotTarget>>);
+
+impl FlyTargets {
+    fn set(&mut self, shooter: u32, target: ShotTarget, additional: bool) {
+        let targets = self.0.entry(shooter).or_default();
+        if !additional {
+            targets.clear();
+        }
+        targets.push_back(target);
+    }
+
+    fn shot(&mut self, shooter: u32) -> Option<ShotTarget> {
+        let targets = self.0.get_mut(&shooter)?;
+        if targets.len() > 1 { targets.pop_front() } else { targets.front().copied() }
+    }
+}
+
 /// What an actor does in a fight beyond moving.
 #[derive(Debug, Default)]
 struct ActorFight {
@@ -176,6 +293,8 @@ struct ActorFight {
     shake_until: f32,
     /// `Die()` ran (`m_isRealDead`).
     dead: bool,
+    /// `IsFishing`: the line is out (`StartFishing` until the cast ends).
+    fishing: bool,
     /// `Stun()`: the next hit kills it.
     stunned: bool,
     /// `m_dwOwnerVID`/`m_fOwnerBaseTime` (`GC_OWNERSHIP`): who syncs its position, since when.
@@ -200,6 +319,11 @@ enum ActorAction {
     Knockdown { back: bool },
     /// `Die()`: `NAME_DEAD`, held at its last frame.
     Dead,
+    /// `RecvDigMotionPacket`: `NAME_DIG`, `count` times.
+    Dig(u8),
+    /// `RecvFishing`: a once motion, then `NAME_FISHING_WAIT` while the
+    /// line is out (`fishing`), else `NAME_WAIT`.
+    Fishing { motion: FishingMotion, fishing: bool },
 }
 
 /// `uiTarget.TargetBoard`: who is targeted and, for monsters, the HP the
@@ -328,6 +452,17 @@ pub struct PlayerControl {
     pub state: MoveState,
     /// The actor space would hit, if any.
     pub target: Option<u32>,
+    /// `CPythonPlayer::m_dwTargetEndTime`: until then a hit does not take the
+    /// target away from the current one (seconds of `Time::elapsed`).
+    pub target_end: f32,
+    /// `m_isSmtMov`: the left button was pressed on the world and is held.
+    pub smart_held: bool,
+    /// Where the cursor is pinned during a camera drag, and how far the drag
+    /// turned (`m_fPitchSum`/`m_fRollSum`).
+    pub camera_anchor: Option<Vec2>,
+    pub camera_dragged: f32,
+    /// The polymorph race the main body was built for (0: the player race).
+    pub poly_race: u16,
     /// How far away that actor is, in world units.
     pub target_distance: Option<f32>,
     /// The ground point to run to, in map coordinates.
@@ -378,6 +513,11 @@ impl Default for PlayerControl {
     fn default() -> Self {
         PlayerControl {
             yaw: 0.0,
+            target_end: 0.0,
+            smart_held: false,
+            camera_anchor: None,
+            camera_dragged: 0.0,
+            poly_race: 0,
             pitch: 0.38,
             distance: CAMERA_START_DISTANCE,
             facing: 0.0,
@@ -453,6 +593,12 @@ impl GameWorld {
         matches!(self.state, Some(State::Ready { .. }))
     }
 
+    /// Destination terrain, streamed objects, and the player's model are ready.
+    pub fn assets_ready(&self) -> bool {
+        matches!(&self.state, Some(State::Ready { scene, character, .. })
+            if scene.pending_objects() == 0 && (character.is_ready() || character.error.is_some()))
+    }
+
     /// The map and the character are spawned and the placed objects had their
     /// time to load (or there are none left). A `--demo` run also waits for
     /// its scripted movement and attack.
@@ -500,8 +646,10 @@ pub struct InGamePlugin;
 impl Plugin for InGamePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GameWorld>()
+            .init_resource::<WarpTransition>()
             .init_resource::<PlayerControl>()
             .init_resource::<Actors>()
+            .init_resource::<FlyTargets>()
             .init_resource::<MobCatalog>()
             .init_resource::<ArmorShapes>()
             .init_resource::<UiFocus>()
@@ -515,11 +663,14 @@ impl Plugin for InGamePlugin {
             .add_systems(
                 Update,
                 (
+                    update_warp_transition,
+                    clear_world_on_warp,
                     start_entering,
                     track_actors,
                     track_battle,
                     sync_actor_entities,
                     drive_world.in_set(GameControl),
+                    apply_stealth,
                     show_damage,
                     CombatFx::update,
                     fx::play_sounds.run_if(resource_exists::<m2_audio::SoundState>),
@@ -530,6 +681,60 @@ impl Plugin for InGamePlugin {
             .init_resource::<MiniMap>()
             .add_systems(PostUpdate, (update_name_tags.after(bevy::transform::TransformSystems::Propagate), update_minimap));
     }
+}
+
+fn update_warp_transition(mut transition: ResMut<WarpTransition>, mut messages: MessageReader<NetMessage>, game: Res<GameWorld>) {
+    for message in messages.read() {
+        match message {
+            NetMessage::Game(NetEvent::Warp { .. }) => {
+                transition.started = Some(Instant::now());
+                transition.cleared = false;
+                transition.fading_in = None;
+            }
+            NetMessage::ConnectFailed { .. } | NetMessage::Disconnected { .. } | NetMessage::Game(NetEvent::LoginFailure { .. })
+                if transition.started.is_some() => transition.fading_in = Some(Instant::now()),
+            _ => {}
+        }
+    }
+    if transition.started.is_some() && transition.cleared && transition.fading_in.is_none()
+        && (game.assets_ready() || game.error().is_some())
+    {
+        transition.fading_in = Some(Instant::now());
+    }
+    if transition.fading_in.is_some_and(|start| start.elapsed() >= Duration::from_secs_f32(WARP_FADE_SECONDS)) {
+        *transition = WarpTransition::default();
+    }
+}
+
+/// Discard the previous map and actors once the curtain is opaque.
+fn clear_world_on_warp(world: &mut World) {
+    let transition = world.resource::<WarpTransition>();
+    if transition.cleared || transition.fading_in.is_some() || !transition.started.is_some_and(|start| start.elapsed() >= Duration::from_secs_f32(WARP_FADE_SECONDS)) {
+        return;
+    }
+    world.resource_mut::<WarpTransition>().cleared = true;
+    let mut game = world.remove_resource::<GameWorld>().unwrap();
+    if let Some(State::Ready { scene, character, .. }) = game.state.take() {
+        world.despawn(scene.root);
+        world.despawn(character.root);
+    }
+    world.insert_resource(GameWorld::default());
+    let mut actors = world.remove_resource::<Actors>().unwrap();
+    for (_, entity) in actors.entities.drain() {
+        world.despawn(entity);
+    }
+    for (_, character) in actors.characters.drain() {
+        if world.get_entity(character.root).is_ok() {
+            world.despawn(character.root);
+        }
+    }
+    world.insert_resource(Actors::default());
+    world.resource_mut::<FlyTargets>().0.clear();
+    world.resource_mut::<CombatFx>().clear_scene();
+    crate::ground::GroundItems::clear_scene(world);
+    *world.resource_mut::<PlayerControl>() = PlayerControl::default();
+    *world.resource_mut::<TargetBoard>() = TargetBoard::default();
+    crate::render::sky::clear_sky(world);
 }
 
 /// Starts loading the map for an [`EnterWorld`] request.
@@ -543,9 +748,14 @@ fn start_entering(
     mut armor_shapes: ResMut<ArmorShapes>,
     mut actors: ResMut<Actors>,
     mut grades: ResMut<GradeNames>,
+    transition: Res<WarpTransition>,
+    mut pending: Local<Option<EnterWorld>>,
 ) {
-    let Some(request) = messages.read().last() else { return };
+    let Some(request) = messages.read().last().copied().or_else(|| pending.take()) else { return };
     if world.state.is_some() {
+        if transition.started.is_some() {
+            *pending = Some(request);
+        }
         return;
     }
     let Some(packs) = packs else {
@@ -557,10 +767,10 @@ fn start_entering(
     actors.by_vid.remove(&request.vid);
     actors.failed_visuals.remove(&request.vid);
     if let Some(character) = actors.characters.remove(&request.vid) {
-        commands.entity(character.root).despawn();
+        commands.entity(character.root).try_despawn();
     }
     if let Some(entity) = actors.entities.remove(&request.vid) {
-        commands.entity(entity).despawn();
+        commands.entity(entity).try_despawn();
     }
     info!("entering the world at {},{}", request.x, request.y);
     let packs = packs.packs.clone();
@@ -773,7 +983,10 @@ fn track_actors(
     game: Res<GameWorld>,
     mobs: Res<MobCatalog>,
     time: Res<Time>,
+    net: Option<Res<Net>>,
 ) {
+    // `ELTimer_GetServerFrameMSec`.
+    let server_now = net.as_ref().map(|net| net.server_ms());
     // Actors appended before `mob_proto` loaded get its name and level now.
     if !mobs.by_race.is_empty() {
         for actor in actors.by_vid.values_mut().filter(|actor| actor.name.is_empty() && actor.kind != m2_net::phase::ACTOR_TYPE_PC) {
@@ -793,7 +1006,7 @@ fn track_actors(
                     continue;
                 }
                 if let Some(entity) = actors.entities.remove(&actor.vid) {
-                    commands.entity(entity).despawn();
+                    commands.entity(entity).try_despawn();
                 }
                 actors.characters.remove(&actor.vid);
                 actors.failed_visuals.remove(&actor.vid);
@@ -846,8 +1059,13 @@ fn track_actors(
                         x: actor.x,
                         y: actor.y,
                         rotation: actor.rotation,
+                        rendered_rotation: actor.rotation,
                         armor: actor.armor,
+                        weapon: actor.weapon,
                         hair: actor.hair,
+                        move_speed: actor.move_speed,
+                        attack_speed: actor.attack_speed,
+                        walk_mode: false,
                         empire: actor.empire,
                         pk_mode: actor.pk_mode,
                         guild_id: actor.guild_id,
@@ -857,48 +1075,27 @@ fn track_actors(
                         mount_vnum: actor.mount_vnum,
                         move_from: Vec2::new(actor.x as f32, actor.y as f32),
                         move_to: Vec2::new(actor.x as f32, actor.y as f32),
-                        move_elapsed: 0.0,
-                        move_duration: 0.0,
                         moving: false,
                         rendered_moving: None,
-                        arrived_for: 0.0,
-                        pushed: false,
+                        move_action: None,
+                        remote: RemoteMotion { position: Vec2::new(actor.x as f32, actor.y as f32), ..RemoteMotion::default() },
                     },
                 );
             }
             NetEvent::ActorMove(motion) => {
                 if let Some(actor) = actors.by_vid.get_mut(&motion.vid) {
-                    actor.move_from = Vec2::new(actor.x as f32, actor.y as f32);
-                    actor.move_to = Vec2::new(motion.x as f32, motion.y as f32);
-                    actor.move_elapsed = 0.0;
-                    actor.move_duration = motion.duration as f32 / 1000.0;
-                    actor.pushed = false;
-                    // `FUNC_MOVE`, and `FUNC_WAIT` with somewhere to go (the
-                    // server's `Goto` of a chasing monster), `StartWalking`;
-                    // the actor stops once it arrives.
-                    actor.moving = matches!(motion.func, FUNC_MOVE | FUNC_WAIT)
-                        && actor.move_duration > 0.0
-                        && actor.move_from.distance(actor.move_to) > 1.0;
-                    if actor.move_duration == 0.0 {
-                        actor.x = motion.x;
-                        actor.y = motion.y;
-                    }
-                    actor.rotation = motion.rotation;
-                    // `CInstanceBase::PushTCPState`: the function after the
-                    // move (attacks, skills) plays a once motion.
-                    let action = match motion.func {
-                        FUNC_ATTACK => Some(ActorAction::Attack),
-                        FUNC_COMBO => Some(ActorAction::Combo(u32::from(motion.arg))),
-                        FUNC_MOB_SKILL => Some(ActorAction::Special(motion.arg)),
-                        func if func & FUNC_SKILL != 0 => Some(ActorAction::Skill(u16::from(func & !FUNC_SKILL))),
-                        _ => None,
-                    };
-                    if let Some(action) = action {
-                        let fight = actors.fights.entry(motion.vid).or_default();
-                        if !fight.dead {
-                            fight.pending = Some(action);
+                    // `CInstanceBase::PushTCPState` (every actor but the main one): replayed at the sender's
+                    // time plus the smoothed network gap (`StateProcess`).
+                    let remote = &mut actor.remote;
+                    let check = match server_now {
+                        Some(now) => {
+                            let gap = now.wrapping_sub(motion.time) as i32;
+                            remote.network_gap = (remote.network_gap * 70 + gap * 30) / 100;
+                            motion.time.wrapping_add(remote.network_gap as u32)
                         }
-                    }
+                        None => 0,
+                    };
+                    remote.commands.push_back((check, motion.clone()));
                 }
             }
             NetEvent::ActorOwner { owner_vid, victim_vid } => {
@@ -907,13 +1104,26 @@ fn track_actors(
                 fight.owner = *owner_vid;
                 fight.owner_since = time.elapsed_secs();
             }
+            NetEvent::Packet(m2_net::wire::GcPacket::WalkMode(packet)) => {
+                if let Some(actor) = actors.by_vid.get_mut(&packet.vid) {
+                    let walking = packet.mode != 0;
+                    if actor.walk_mode != walking {
+                        actor.walk_mode = walking;
+                        actor.rendered_moving = None;
+                    }
+                }
+            }
             NetEvent::ActorSync { vid, x, y } => {
+                // `SyncActor` -> `NEW_SyncPixelPosition` -> `TEMP_Push`/`__Push`:
+                // the actor is blended to the synced position like a push (eased
+                // out over the physics blend time), not snapped there. A push in
+                // progress towards the same point (our own hit's sync echoed
+                // back) keeps running.
                 if let Some(actor) = actors.by_vid.get_mut(vid) {
-                    actor.x = *x;
-                    actor.y = *y;
-                    actor.move_from = Vec2::new(*x as f32, *y as f32);
-                    actor.move_to = actor.move_from;
-                    actor.move_elapsed = actor.move_duration;
+                    let target = Vec2::new(*x as f32, *y as f32);
+                    if actor.remote.push.is_none_or(|push| push.end.distance(target) >= 1.0) {
+                        actor.remote.push = Some(PushBlend::new(actor.remote.position, target));
+                    }
                 }
             }
             NetEvent::ActorUpdate(update) => {
@@ -921,7 +1131,10 @@ fn track_actors(
                     let changed = actor.kind == m2_net::phase::ACTOR_TYPE_PC
                         && (actor.armor != update.armor || actor.hair != update.hair);
                     actor.armor = update.armor;
+                    actor.weapon = update.weapon;
                     actor.hair = update.hair;
+                    actor.move_speed = update.move_speed;
+                    actor.attack_speed = update.attack_speed;
                     actor.guild_id = update.guild_id;
                     actor.alignment = update.alignment;
                     actor.pk_mode = update.pk_mode;
@@ -937,7 +1150,7 @@ fn track_actors(
                 };
                 if appearance_changed {
                     if let Some(character) = actors.characters.remove(&update.vid) {
-                        commands.entity(character.root).despawn();
+                        commands.entity(character.root).try_despawn();
                     }
                     actors.failed_visuals.remove(&update.vid);
                 }
@@ -948,7 +1161,12 @@ fn track_actors(
                 actors.characters.remove(vid);
                 actors.failed_visuals.remove(vid);
                 if let Some(entity) = actors.entities.remove(vid) {
-                    commands.entity(entity).despawn();
+                    commands.entity(entity).try_despawn();
+                }
+            }
+            NetEvent::Packet(m2_net::wire::GcPacket::Mount(packet)) => {
+                if let Some(actor) = actors.by_vid.get_mut(&packet.vid) {
+                    actor.mount_vnum = packet.mount_vid;
                 }
             }
             _ => {}
@@ -976,6 +1194,7 @@ fn track_battle(
     grades: Res<GradeNames>,
     mut net: Option<ResMut<Net>>,
     mut fx: ResMut<CombatFx>,
+    mut fly_targets: ResMut<FlyTargets>,
     packs: Option<Res<M2Packs>>,
 ) {
     use m2_net::wire::GcPacket;
@@ -990,6 +1209,40 @@ fn track_battle(
     for message in messages.read() {
         let NetMessage::Game(NetEvent::Packet(packet)) = message else { continue };
         match packet {
+            GcPacket::PlayerPointChange(p) if p.Type == combat::point::LEVEL as u8 || p.Type == 25 => {
+                // `ShowPointEffect`: level and level-step packets display
+                // effects at the actor; neither one initiates a map transfer.
+                let vid = if p.dwVID == u32::MAX { game.main_vid } else { p.dwVID };
+                let local = if vid == game.main_vid {
+                    game.local.map(|(x, y)| Vec2::new(x as f32, y as f32))
+                } else {
+                    actors.by_vid.get_mut(&vid).map(|actor| {
+                        if p.Type == combat::point::LEVEL as u8 {
+                            actor.level = p.value.max(0) as u32;
+                        }
+                        Vec2::new((actor.x - base.0) as f32, (actor.y - base.1) as f32)
+                    })
+                };
+                if let Some(local) = local {
+                    let file = if p.Type == combat::point::LEVEL as u8 {
+                        "d:/ymir work/effect/etc/levelup_1/level_up.mse"
+                    } else {
+                        "d:/ymir work/effect/etc/skillup/skillup_1.mse"
+                    };
+                    let at = Vec3::new(local.x, -local.y, game.terrain_height(local.x, local.y));
+                    fx.spawn(packs.as_deref(), file, at, Vec3::ZERO);
+                }
+            }
+            GcPacket::FlyTargeting(p) | GcPacket::AddFlyTargeting(p) => {
+                let target = if p.dwTargetVID != 0 && (p.dwTargetVID == game.main_vid || actors.by_vid.contains_key(&p.dwTargetVID)) {
+                    ShotTarget::Actor(p.dwTargetVID)
+                } else {
+                    let x = (p.lX - base.0) as f32;
+                    let y = (p.lY - base.1) as f32;
+                    ShotTarget::Position(Vec3::new(x, -y, game.terrain_height(x, y) + 60.0))
+                };
+                fly_targets.set(p.dwShooterVID, target, matches!(packet, GcPacket::AddFlyTargeting(_)));
+            }
             GcPacket::Target(p) => {
                 let actor = actors.by_vid.get(&p.dwVID);
                 let alive = actor.is_some_and(|actor| {
@@ -1086,6 +1339,56 @@ fn track_battle(
                     own,
                     target: board.vid == p.dwVID,
                 });
+            }
+            // `RecvDigMotionPacket`: face the vein, then dig `count` times.
+            GcPacket::DigMotion(p) => {
+                let target = actors.by_vid.get(&p.target_vid).map(|actor| Vec2::new(actor.x as f32, actor.y as f32));
+                if let Some(actor) = actors.by_vid.get_mut(&p.vid) {
+                    if let Some(target) = target {
+                        actor.rotation = facing_degrees(target - Vec2::new(actor.x as f32, actor.y as f32));
+                    }
+                    actors.fights.entry(p.vid).or_default().pending = Some(ActorAction::Dig(p.count));
+                }
+            }
+            // `RecvFishing`: `StartFishing` turns to `dir * 5` degrees and
+            // throws; the others end the cast (`IsFishing` guards stop/react).
+            GcPacket::Fishing(p) if p.subheader != crate::social::fishing::FISH => {
+                use crate::social::fishing;
+                let actors = &mut *actors;
+                let Some(actor) = actors.by_vid.get_mut(&p.info) else { continue };
+                let fight = actors.fights.entry(p.info).or_default();
+                let fishing_now = fight.fishing;
+                let action = match p.subheader {
+                    fishing::START => {
+                        actor.rotation = (f32::from(p.dir) * 5.0).rem_euclid(360.0);
+                        fight.fishing = true;
+                        Some((FishingMotion::Throw, true))
+                    }
+                    fishing::STOP if fishing_now => Some((FishingMotion::Stop, false)),
+                    fishing::REACT if fishing_now => Some((FishingMotion::React, true)),
+                    fishing::SUCCESS => Some((FishingMotion::Catch, false)),
+                    fishing::FAIL => Some((FishingMotion::Fail, false)),
+                    _ => None,
+                };
+                if let Some((motion, fishing)) = action {
+                    fight.fishing = fishing;
+                    fight.pending = Some(ActorAction::Fishing { motion, fishing });
+                }
+            }
+            // `RecvSpecificEffect`: an effect file attached to the actor.
+            GcPacket::SpecificEffect(p) => {
+                let local = if p.vid == game.main_vid {
+                    game.local.map(|(x, y)| Vec2::new(x as f32, y as f32))
+                } else {
+                    actors.by_vid.get(&p.vid).map(|actor| Vec2::new((actor.x - base.0) as f32, (actor.y - base.1) as f32))
+                };
+                let file = m2_net::wire::cstr_to_string(&p.effect_file);
+                if let Some(local) = local
+                    && !file.is_empty()
+                {
+                    let at = Vec3::new(local.x, -local.y, game.terrain_height(local.x, local.y));
+                    fx.spawn(packs.as_deref(), &file, at, Vec3::ZERO);
+                }
             }
             GcPacket::Dead(p) => {
                 if p.vid == game.main_vid {
@@ -1199,30 +1502,8 @@ fn show_damage(
 /// and synchronization packets arrive. Height is sampled from the loaded map.
 fn sync_actor_entities(world: &mut World) {
     let delta = world.resource::<Time>().delta_secs().min(0.1);
-    {
-        let mut actors = world.resource_mut::<Actors>();
-        for actor in actors.by_vid.values_mut() {
-            if actor.move_duration > 0.0 {
-                actor.move_elapsed = (actor.move_elapsed + delta).min(actor.move_duration);
-                let t = actor.move_elapsed / actor.move_duration;
-                // `CEaseOutInterpolation` for a push, linear for a move.
-                let t = if actor.pushed { 1.0 - (1.0 - t) * (1.0 - t) } else { t };
-                let position = actor.move_from.lerp(actor.move_to, t);
-                actor.x = position.x.round() as i32;
-                actor.y = position.y.round() as i32;
-            }
-            // Arrived: back to wait, a moment late so that the next move
-            // packet of a running actor does not flicker it to wait.
-            if actor.moving && actor.move_elapsed >= actor.move_duration {
-                actor.arrived_for += delta;
-                if actor.arrived_for >= ARRIVAL_GRACE {
-                    actor.moving = false;
-                }
-            } else {
-                actor.arrived_for = 0.0;
-            }
-        }
-    }
+    let server_now = world.get_resource::<Net>().map(Net::server_ms);
+    advance_actor_states(&mut world.resource_mut::<Actors>(), delta, server_now);
     if !world.resource::<GameWorld>().is_ready() {
         return;
     }
@@ -1231,6 +1512,50 @@ fn sync_actor_entities(world: &mut World) {
     world.resource_scope(|world, mobs: Mut<MobCatalog>| {
         sync_actor_visuals(world, &mobs.by_race);
     });
+}
+
+/// `CInstanceBase::Update` for the remote actors: the rotation blend, the
+/// physics push, `StateProcess` (due commands) and `MovementProcess`.
+fn advance_actor_states(actors: &mut Actors, delta: f32, server_now: Option<u32>) {
+    let mut arrived_actions = Vec::new();
+    for (&vid, actor) in &mut actors.by_vid {
+        let turn = signed_difference(actor.rotation, actor.rendered_rotation);
+        let rate = if turn.abs() > 45.0 { MAX_ROTATION_SPEED } else { MAX_ROTATION_SPEED * 5.0 / 12.0 };
+        actor.rendered_rotation = (actor.rendered_rotation + turn.clamp(-rate * delta, rate * delta)).rem_euclid(360.0);
+        // `CPhysicsObject::Update`: the push moves the actor on its own,
+        // whatever it is doing (`m_x += GetXMovement()`).
+        if let Some(push) = &mut actor.remote.push {
+            let step = push.step(delta);
+            let done = push.done();
+            actor.remote.position += step;
+            actor.x = actor.remote.position.x.round() as i32;
+            actor.y = actor.remote.position.y.round() as i32;
+            if done {
+                actor.remote.push = None;
+            }
+        }
+        // `__CanProcessNetworkStatePacket`: the dead keep their commands queued.
+        if !actors.fights.get(&vid).is_some_and(|fight| fight.dead) {
+            while let Some((check, _)) = actor.remote.commands.front() {
+                if server_now.is_some_and(|now| (now.wrapping_sub(*check) as i32) < 0) {
+                    break;
+                }
+                let (_, command) = actor.remote.commands.pop_front().expect("front exists");
+                if let Some(action) = remote_state_process(actor, &command) {
+                    arrived_actions.push((vid, action));
+                }
+            }
+        }
+        if let Some(action) = remote_movement_process(actor, delta) {
+            arrived_actions.push((vid, action));
+        }
+    }
+    for (vid, action) in arrived_actions {
+        let fight = actors.fights.entry(vid).or_default();
+        if !fight.dead {
+            fight.pending = Some(action);
+        }
+    }
 }
 
 fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
@@ -1257,7 +1582,7 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
             let local_y = (actor.y - base.1 as i32) as f32;
             let height = heights.get(&actor_entity.vid).copied().unwrap_or_default();
             let translation = local_to_world(local_x, local_y, height);
-            let rotation = Quat::from_rotation_y(-actor.rotation.to_radians());
+            let rotation = Quat::from_rotation_y(-actor.rendered_rotation.to_radians());
             if transform.translation != translation || transform.rotation != rotation {
                 transform.translation = translation;
                 transform.rotation = rotation;
@@ -1278,14 +1603,17 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
             .collect()
     };
     for (vid, parent, actor) in pending {
-        let character = if actor.kind == m2_net::phase::ACTOR_TYPE_PC {
-            let shape = world.resource::<ArmorShapes>().shape(u32::from(actor.armor));
-            Character::spawn(
+        let character = if actor.has_player_body() {
+            let shapes = world.resource::<ArmorShapes>();
+            let (shape, specular) = (shapes.shape(u32::from(actor.armor)), shapes.specular(u32::from(actor.armor)));
+            let mut character = Character::spawn(
                 world,
                 Look { race: actor.race as u8, shape, hair: u32::from(actor.hair) },
                 Transform::IDENTITY,
                 Some(parent),
-            )
+            );
+            character.set_armor_specular(specular);
+            character
         } else if let Some(file) = mobs.get(&actor.race).and_then(|mob| mob.race_file.as_deref()) {
             Character::spawn_actor(world, actor.race, file, Transform::IDENTITY, Some(parent))
         } else {
@@ -1299,6 +1627,20 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
         };
         world.resource_mut::<Actors>().characters.insert(vid, character);
     }
+
+    world.resource_scope(|_world, mut actors: Mut<Actors>| {
+        let rates: Vec<_> = actors.by_vid.iter().map(|(&vid, actor)| (vid, actor.move_speed)).collect();
+        for (vid, speed) in rates {
+            let rate = if speed == 0 { 1.0 } else { f32::from(speed) / 100.0 };
+            if actors.characters.get_mut(&vid).is_some_and(|character| character.set_movement_rate(rate))
+                && let Some(actor) = actors.by_vid.get_mut(&vid) && actor.moving
+            {
+                actor.rendered_moving = None;
+            }
+        }
+    });
+
+    sync_remote_equipment(world, mobs);
     let rendered: HashSet<u32> = world.resource::<Actors>().characters.keys().copied().collect();
     let now = world.resource::<Time>().elapsed_secs();
 
@@ -1324,11 +1666,11 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
     for (vid, action, actor) in actions {
         world.resource_scope(|world, mut actors: Mut<Actors>| {
             let Some(character) = actors.characters.get_mut(&vid) else { return };
-            let pc = actor.kind == m2_net::phase::ACTOR_TYPE_PC;
+            let pc = actor.has_player_body();
             let fallback = ActorMotions::default();
             let motions = mobs.get(&actor.race).map(|mob| &mob.motions).unwrap_or(&fallback);
             let idle = if pc {
-                character.motion_path(if actor.moving { Motion::Run } else { Motion::Wait })
+                character.motion_path(if actor.moving { if actor.walk_mode { Motion::Walk } else { Motion::Run } } else { Motion::Wait })
             } else if actor.moving {
                 motions.run.clone().or(motions.walk.clone())
             } else {
@@ -1360,10 +1702,31 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
                 }
                 ActorAction::Dead if pc => character.motion_path(Motion::Dead),
                 ActorAction::Dead => motions.dead.clone(),
+                ActorAction::Dig(_) if pc => character.motion_path(Motion::Dig),
+                ActorAction::Fishing { motion, .. } if pc => character.motion_path(Motion::Fishing(motion)),
+                ActorAction::Dig(_) | ActorAction::Fishing { .. } => None,
             };
             let Some(once) = once else { return };
+            // A rider attacks or casts from a standing horse.
+            if matches!(action, ActorAction::Attack | ActorAction::Combo(_) | ActorAction::Skill(_)) {
+                character.idle_mount(world);
+            }
             match action {
                 ActorAction::Dead => character.play(world, &once, false),
+                ActorAction::Dig(count) => {
+                    let mut then: Vec<(&str, bool)> = vec![(once.as_str(), false); usize::from(count.max(1)) - 1];
+                    if let Some(idle) = idle.as_deref() {
+                        then.push((idle, true));
+                    }
+                    character.play_sequence(world, &once, &then);
+                }
+                ActorAction::Fishing { fishing, .. } => {
+                    let wait = if fishing { character.motion_path(Motion::Fishing(FishingMotion::Wait)) } else { idle.clone() };
+                    match wait.as_deref() {
+                        Some(wait) => character.play_then(world, &once, wait),
+                        None => character.play(world, &once, false),
+                    }
+                }
                 ActorAction::Knockdown { back } => {
                     let stand = if pc {
                         character.motion_path(Motion::StandUp { back })
@@ -1421,10 +1784,12 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
     for (vid, actor) in motion_updates {
         world.resource_scope(|world, mut actors: Mut<Actors>| {
             let Some(character) = actors.characters.get_mut(&vid) else { return };
-            if actor.kind == m2_net::phase::ACTOR_TYPE_PC {
-                character.play_motion(world, if actor.moving { Motion::Run } else { Motion::Wait }, true);
+            if actor.has_player_body() {
+                character.play_motion(world, if actor.moving { if actor.walk_mode { Motion::Walk } else { Motion::Run } } else { Motion::Wait }, true);
             } else if let Some(motions) = mobs.get(&actor.race).map(|mob| &mob.motions) {
-                let motion = if actor.moving { motions.run.as_ref().or(motions.walk.as_ref()) } else { motions.wait.as_ref() };
+                let motion = if actor.moving {
+                    if actor.walk_mode { motions.walk.as_ref().or(motions.run.as_ref()) } else { motions.run.as_ref().or(motions.walk.as_ref()) }
+                } else { motions.wait.as_ref() };
                 if let Some(motion) = motion {
                     character.play(world, motion, true);
                 }
@@ -1441,29 +1806,29 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
                 .iter()
                 .filter(|(_, fight)| fight.shake_until > now)
                 .filter_map(|(vid, fight)| {
-                    let entity = actors.characters.get(vid)?.root;
+                    let character = actors.characters.get(vid)?;
                     let seed = (now * 1000.0) as u32 ^ (fight.shake_until * 977.0) as u32 ^ vid;
-                    Some((entity, shake_offset(seed)))
+                    Some((character.root, rest_offset(character) + shake_offset(seed)))
                 })
                 .collect()
         };
-        let resting: Vec<Entity> = world
+        let resting: Vec<(Entity, Vec3)> = world
             .resource::<Actors>()
             .characters
             .iter()
             .filter(|(vid, _)| !world.resource::<Actors>().fights.get(*vid).is_some_and(|fight| fight.shake_until > now))
-            .map(|(_, character)| character.root)
+            .map(|(_, character)| (character.root, rest_offset(character)))
             .collect();
         for (entity, offset) in shaking {
             if let Some(mut transform) = world.get_mut::<Transform>(entity) {
                 transform.translation = offset;
             }
         }
-        for entity in resting {
+        for (entity, rest) in resting {
             if let Some(mut transform) = world.get_mut::<Transform>(entity)
-                && transform.translation != Vec3::ZERO
+                && transform.translation != rest
             {
-                transform.translation = Vec3::ZERO;
+                transform.translation = rest;
             }
         }
     }
@@ -1479,9 +1844,10 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
         let height = heights.get(&vid).copied().unwrap_or_default();
         let position = local_to_world(local.x, local.y, height);
         let metin2 = Vec3::new(local.x, -local.y, height);
+        let target = shot_target(world, vid, None, base, height, &tick);
         world.resource_scope(|world, mut actors: Mut<Actors>| {
             let Some(character) = actors.characters.get_mut(&vid) else { return };
-            motion_tick_effects(world, character, &tick, position, metin2, actor.rotation, true);
+            motion_tick_effects(world, character, &tick, position, metin2, actor.rotation, true, target);
         });
     }
 
@@ -1490,6 +1856,54 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
             character.update(world);
         }
     });
+}
+
+/// `CInstanceBase::SetWeapon` / `ChangeWeapon` and mount changes for remote PCs.
+fn sync_remote_equipment(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
+    let equipment: Vec<(u32, u16, u32)> = {
+        let actors = world.resource::<Actors>();
+        actors.by_vid.iter().filter(|(_, actor)| actor.has_player_body())
+            .map(|(&vid, actor)| (vid, actor.weapon, actor.mount_vnum)).collect()
+    };
+    for (vid, weapon, mount) in equipment {
+        let needs_change = world.resource::<Actors>().characters.get(&vid).is_some_and(|character| {
+            character.weapon_vnum() != u32::from(weapon) || character.mount_vnum() != mount
+        });
+        if !needs_change { continue; }
+        let visual = if weapon == 0 { None } else {
+            world.get_resource::<M2Packs>().and_then(|packs| {
+                world.get_resource::<ItemCatalog>().and_then(|catalog| catalog.weapon_visual(&packs.packs, u32::from(weapon)))
+            })
+        };
+        let mount_info = mobs.get(&(mount as u16));
+        world.resource_scope(|world, mut actors: Mut<Actors>| {
+            let Some(character) = actors.characters.get_mut(&vid) else { return };
+            let mut changed = if weapon == 0 {
+                character.clear_weapon(world)
+            } else if let Some(visual) = &visual {
+                character.set_weapon(world, visual.vnum, &visual.model, &visual.sub_model, visual.weapon_type, f32::from(visual.specular) / 100.0)
+            } else {
+                false
+            };
+            if mount == 0 {
+                changed |= character.clear_mount(world);
+            } else if let Some(mob) = mount_info && let Some(file) = mob.race_file.as_deref() {
+                changed |= character.set_mount(world, mount, file, mob.motions.wait.as_deref(), mob.motions.run.as_deref());
+            }
+            if changed && let Some(mut transform) = world.get_mut::<Transform>(character.root) {
+                transform.translation.y = if character.is_mounted() { MOUNT_HEIGHT } else { 0.0 };
+            }
+            if changed && let Some(actor) = actors.by_vid.get_mut(&vid) {
+                actor.rendered_moving = None;
+            }
+        });
+    }
+}
+
+/// Where an actor's character root rests under its entity: lifted onto the
+/// saddle height while mounted.
+fn rest_offset(character: &Character) -> Vec3 {
+    if character.is_mounted() { Vec3::Y * MOUNT_HEIGHT } else { Vec3::ZERO }
 }
 
 /// `ShakeProcess`'s random offset (−9..9 on each axis), as a Bevy vector.
@@ -1505,6 +1919,30 @@ fn shake_offset(seed: u32) -> Vec3 {
     fx::bevy_position(Vec3::new(x, y, z))
 }
 
+/// Resolve an actor's current server-provided fly target when its motion fires.
+fn shot_target(world: &mut World, shooter: u32, fallback: Option<u32>, base: (u32, u32), height: f32, tick: &MotionTick) -> Option<(u32, Vec3)> {
+    if !tick.events.iter().any(|event| matches!(event.kind, m2_assets::race::RaceMotionEventKind::Fly { .. })) {
+        return None;
+    }
+    let target = world.resource_mut::<FlyTargets>().shot(shooter).or(fallback.map(ShotTarget::Actor))?;
+    match target {
+        ShotTarget::Position(at) => Some((0, at)),
+        ShotTarget::Actor(vid) => {
+            let game = world.get_resource::<GameWorld>();
+            let local = if game.is_some_and(|game| game.main_vid == vid) {
+                let (x, y) = game?.local?;
+                Vec2::new(x as f32, y as f32)
+            } else {
+                let actors = world.resource::<Actors>();
+                let actor = actors.by_vid.get(&vid)?;
+                Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32)
+            };
+            let ground = game.map_or(height, |game| game.terrain_height(local.x, local.y));
+            Some((vid, Vec3::new(local.x, -local.y, ground + fx::FLY_TARGET_HEIGHT)))
+        }
+    }
+}
+
 /// Plays a motion tick's sounds and effect events for a character at
 /// `position` (Bevy) / `metin2` with heading `rotation`.
 /// `ProcessMotionEventEffectEvent`: independent and non-attached effects are
@@ -1518,6 +1956,7 @@ fn motion_tick_effects(
     metin2: Vec3,
     rotation: f32,
     check_frequency: bool,
+    fly_target: Option<(u32, Vec3)>,
 ) {
     use m2_assets::race::RaceMotionEventKind;
     world.resource_scope(|world, mut fx: Mut<CombatFx>| {
@@ -1539,6 +1978,14 @@ fn motion_tick_effects(
                     fx.spawn(packs, file, at, Vec3::new(0.0, 0.0, rotation));
                 }
                 RaceMotionEventKind::Sound { file } => fx.sound(position, file, false),
+                RaceMotionEventKind::Fly { file, bone, position: offset } => {
+                    let Some((target, target_at)) = fly_target else { continue };
+                    let offset = Vec3::from_array(m2_assets::coords::vec3_back(Vec3::from_array(offset.to_array())));
+                    let start = bone.as_deref().and_then(|name| character.bone_transform(world, name))
+                        .map(|matrix| Vec3::from_array(m2_assets::coords::vec3_back(matrix.translation())))
+                        .unwrap_or(metin2) + offset;
+                    fx.fly(packs, file, start, target, target_at);
+                }
                 _ => {}
             }
         }
@@ -1602,10 +2049,15 @@ fn drive_world(world: &mut World) {
 
         let now = world.resource::<Time>().elapsed_secs();
         let delta = world.resource::<Time>().delta_secs().min(0.1);
-        let focus = *world.resource::<UiFocus>();
+        let mut focus = *world.resource::<UiFocus>();
+        if world.resource::<WarpTransition>().started.is_some() {
+            focus.pointer = true;
+            focus.keyboard = true;
+        }
         let keys = world.resource::<ButtonInput<KeyCode>>().clone();
         let buttons = world.resource::<ButtonInput<MouseButton>>().clone();
         let scroll = *world.resource::<AccumulatedMouseScroll>();
+        let mouse_motion = world.get_resource::<bevy::input::mouse::AccumulatedMouseMotion>().map_or(Vec2::ZERO, |motion| motion.delta);
         let cursor = world
             .query_filtered::<&Window, With<PrimaryWindow>>()
             .single(world)
@@ -1613,7 +2065,7 @@ fn drive_world(world: &mut World) {
             .and_then(|window| window.cursor_position());
         let base = game.base;
         let main_vid = game.main_vid;
-        let mut last_pointer = game.last_pointer;
+        let last_pointer: Option<Vec2>;
         let mut attack_ready = game.attack_ready;
         let mut next_move_packet = game.next_move_packet;
         let (count_x, count_y) = scene.map.map.terrain_count;
@@ -1627,14 +2079,37 @@ fn drive_world(world: &mut World) {
             let position = world.get::<Transform>(character.root).map_or(Vec3::ZERO, |t| t.translation) - control.shake_offset;
             let mut local = Vec2::new(position.x, -position.z);
 
-            // Camera: right-drag orbits, the wheel zooms.
-            if buttons.pressed(MouseButton::Right)
-                && let (Some(cursor), Some(previous)) = (cursor, last_pointer)
+            // Camera (`MBF_CAMERA` on the right and middle buttons,
+            // `NEW_SetMouseCameraState`): a press starts a drag and hides the
+            // cursor, which stays where it was while the mouse turns the camera
+            // (`CCamera::BeginDrag`/`Drag` warp it back); the release shows it
+            // again. A release that did not turn the camera (`EndDrag` under 1)
+            // targets the actor under the cursor (`__ChangeTargetToPickedInstance`).
+            let camera_buttons = [MouseButton::Right, MouseButton::Middle];
+            let mut camera_click = false;
+            if !focus.pointer
+                && control.camera_anchor.is_none()
+                && camera_buttons.iter().any(|button| buttons.just_pressed(*button))
+                && let Some(cursor) = cursor
             {
-                let drag = cursor - previous;
-                control.yaw -= drag.x * 0.006;
-                control.pitch = (control.pitch + drag.y * 0.005).clamp(CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+                control.camera_anchor = Some(cursor);
+                control.camera_dragged = 0.0;
+                set_cursor_lock(world, Some(cursor));
             }
+            if let Some(anchor) = control.camera_anchor {
+                if camera_buttons.iter().any(|button| buttons.pressed(*button)) {
+                    let drag = mouse_motion;
+                    control.yaw -= drag.x * 0.006;
+                    control.pitch = (control.pitch + drag.y * 0.005).clamp(CAMERA_PITCH_MIN, CAMERA_PITCH_MAX);
+                    control.camera_dragged += drag.length();
+                    set_cursor_lock(world, Some(anchor));
+                } else {
+                    camera_click = control.camera_dragged < 1.0;
+                    control.camera_anchor = None;
+                    set_cursor_lock(world, None);
+                }
+            }
+            let cursor = if control.camera_anchor.is_some() { None } else { cursor };
             if !focus.pointer && scroll.delta.y != 0.0 {
                 control.distance =
                     (control.distance - scroll.delta.y * 60.0).clamp(CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
@@ -1661,6 +2136,11 @@ fn drive_world(world: &mut World) {
                 )
             };
             me.in_safe = in_safe;
+            if character.set_movement_rate(if points.move_speed > 0 { points.move_speed as f32 / 100.0 } else { 1.0 })
+                && control.state == MoveState::Moving
+            {
+                character.play_motion(world, Motion::Run, true);
+            }
 
             // The tracked actors as combat sees them, in map-local coordinates.
             let candidates: Vec<(u32, ActorCombat)> = world
@@ -1702,63 +2182,69 @@ fn drive_world(world: &mut World) {
             }
             control.target_distance = control.target.and_then(|vid| distance_to(vid, local));
 
-            // Left click: an actor under the pointer is targeted (and attacked
-            // when in reach), otherwise the ground point is a move order.
+            // The left button is `MBF_SMART` (`NEW_SetMouseSmartState`): a
+            // press runs `__OnPressSmart`, which `NEW_RefreshMouseWalkingDirection`
+            // repeats every frame while the button is held (`m_isSmtMov`), and
+            // the release runs `__OnClickSmart`. Ctrl turns it into `NEW_Attack`.
             let mut click_attack = false;
-            if !focus.pointer
-                && buttons.just_pressed(MouseButton::Left)
+            let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+            let left_press = !focus.pointer && buttons.just_pressed(MouseButton::Left);
+            if left_press {
+                control.smart_held = !ctrl;
+            }
+            let left_hold = control.smart_held && buttons.pressed(MouseButton::Left) && !left_press;
+            let left_release = control.smart_held && buttons.just_released(MouseButton::Left);
+            if !buttons.pressed(MouseButton::Left) {
+                control.smart_held = false;
+            }
+            let bow_mode = matches!(
+                character.motion_mode(),
+                crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow
+            );
+            let reach = if bow_mode { bow_range(&points) } else { ATTACK_RANGE };
+            let actor_at = |vid: u32| {
+                candidates.iter().find(|(candidate, _)| *candidate == vid).map(|(_, actor)| *actor).unwrap_or_default()
+            };
+            if left_press && ctrl {
+                click_attack = true;
+            } else if (left_press || left_hold)
                 && let Some(cursor) = cursor
             {
-                if let Some(vid) = pick_actor(world, cursor, base) {
-                    info!("clicked actor {vid}");
-                    control.target = Some(vid);
+                if let Some(vid) = pick_actor(world, cursor, base).filter(|vid| *vid != main_vid) {
+                    // `__OnPressActor`: `__ChangeTargetToPickedInstance` (`SetTarget`
+                    // with `bForceChange`), then attack it in reach or walk to it.
+                    if control.target == Some(vid) {
+                        control.target_end = now + 1.0;
+                    } else {
+                        control.target = Some(vid);
+                        control.target_end = now + 2.0;
+                        if let Some(mut net) = world.get_resource_mut::<Net>() {
+                            net.send_target(vid);
+                        }
+                    }
                     control.target_distance = distance_to(vid, local);
                     control.reserved_talk = None;
                     control.reserved_attack = None;
                     control.reserved_item = None;
-                    if let Some(mut net) = world.get_resource_mut::<Net>() {
-                        net.send_target(vid);
-                    }
-                    let actor = candidates
-                        .iter()
-                        .find(|(candidate, _)| *candidate == vid)
-                        .map(|(_, actor)| *actor)
-                        .unwrap_or_default();
-                    if actor.is_npc() {
-                        if control.target_distance.is_some_and(|distance| distance <= 250.0) {
+                    let actor = actor_at(vid);
+                    let in_reach = control.target_distance.is_some_and(|distance| distance <= reach);
+                    if attackable(vid) {
+                        if in_reach {
                             control.destination = None;
-                            if let Some(mut net) = world.get_resource_mut::<Net>() {
-                                if net.send_on_click(vid) {
-                                    info!("requested NPC dialog from {vid}");
-                                } else {
-                                    warn!("could not send NPC click for {vid}");
-                                }
-                            }
-                        } else {
-                            let destination = Vec2::new(actor.x as f32, actor.y as f32);
-                            let direction = (destination - local).normalize_or_zero();
-                            control.destination = Some(destination - direction * 180.0);
-                            control.reserved_talk = Some(vid);
-                            info!("walking into click range of NPC {vid}");
-                        }
-                    } else {
-                        let in_reach = control.target_distance.is_some_and(|distance| {
-                            let bow = matches!(
-                                character.motion_mode(),
-                                crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow
-                            );
-                            distance <= if bow { bow_range(&points) } else { ATTACK_RANGE }
-                        });
-                        if attackable(vid) && in_reach {
                             click_attack = true;
                         } else {
-                            let destination = Vec2::new(actor.x as f32, actor.y as f32);
-                            control.destination = Some(destination);
+                            control.destination = Some(Vec2::new(actor.x as f32, actor.y as f32));
                             control.reserved_attack = Some(vid);
-                            info!("walk to actor {vid} at {:.0},{:.0}", destination.x, destination.y);
                         }
+                    } else if control.target_distance.is_some_and(|distance| distance > 250.0) {
+                        // `__ReserveClickActor`: walk into click range; the
+                        // release (or the arrival) talks to it.
+                        let destination = Vec2::new(actor.x as f32, actor.y as f32);
+                        let direction = (destination - local).normalize_or_zero();
+                        control.destination = Some(destination - direction * 180.0);
+                        control.reserved_talk = actor.is_npc().then_some(vid);
                     }
-                } else if let Some(item) = crate::ground::pick_item(world, cursor) {
+                } else if let Some(item) = crate::ground::pick_item(world, cursor).filter(|_| left_press) {
                     // `__OnPressItem`: pick it at once within reach, else
                     // `__ReserveClickItem` and walk there first.
                     control.reserved_talk = None;
@@ -1774,20 +2260,70 @@ fn drive_world(world: &mut World) {
                             control.reserved_item = Some(item);
                         }
                     }
-                } else {
+                } else if control.reserved_item.is_none() || left_press {
+                    // `__OnPressGround`: run to the point under the cursor,
+                    // following it while the button is held.
                     control.reserved_talk = None;
                     control.reserved_attack = None;
                     control.reserved_item = None;
                     let height = |x: f32, y: f32| scene.ground_height(x, y);
                     if let Some(point) = pick_terrain(world, cursor, height, extent) {
                         control.destination = Some(point);
-                        info!("walk to {:.0},{:.0}", point.x, point.y);
-                        // `__ShowPickedEffect`: `EFFECT_PICK` on the ground point.
+                    }
+                }
+            } else if left_release
+                && let Some(cursor) = cursor
+            {
+                if crate::ground::pick_item(world, cursor).is_some() {
+                    // `__OnClickItem` does nothing.
+                } else if let Some(vid) = pick_actor(world, cursor, base) {
+                    // `__OnClickActor`: talk to an NPC in click range (else
+                    // walk there first), then `NEW_Stop`.
+                    let actor = actor_at(vid);
+                    let distance = distance_to(vid, local);
+                    if !attackable(vid) && actor.is_npc() {
+                        if distance.is_some_and(|distance| distance <= 250.0) {
+                            control.destination = None;
+                            if let Some(mut net) = world.get_resource_mut::<Net>()
+                                && net.send_on_click(vid)
+                            {
+                                info!("requested NPC dialog from {vid}");
+                            }
+                        } else {
+                            let destination = Vec2::new(actor.x as f32, actor.y as f32);
+                            let direction = (destination - local).normalize_or_zero();
+                            control.destination = Some(destination - direction * 180.0);
+                            control.reserved_talk = Some(vid);
+                        }
+                    } else if control.reserved_attack.is_none() {
+                        control.destination = None;
+                    }
+                } else {
+                    let height = |x: f32, y: f32| scene.ground_height(x, y);
+                    if let Some(point) = pick_terrain(world, cursor, height, extent) {
+                        // `__OnClickGround`: the move and `__ShowPickedEffect`.
+                        control.destination = Some(point);
                         let at = Vec3::new(point.x, -point.y, scene.ground_height(point.x, point.y));
                         let packs = world.get_resource::<M2Packs>().cloned();
                         world.resource_mut::<CombatFx>().spawn(packs.as_ref(), fx::EFFECT_PICK, at, Vec3::ZERO);
+                    } else {
+                        control.destination = None;
                     }
                 }
+            }
+            if camera_click
+                && let Some(cursor) = cursor
+                && let Some(vid) = pick_actor(world, cursor, base)
+            {
+                // The right button's click: `__ChangeTargetToPickedInstance`
+                // (`OpenCharacterMenu` is the PC target board, drawn for any target).
+                if control.target != Some(vid) {
+                    control.target = Some(vid);
+                    if let Some(mut net) = world.get_resource_mut::<Net>() {
+                        net.send_target(vid);
+                    }
+                }
+                control.target_end = now + 2.0;
             }
 
             // `CInstanceBase::OnTargeted` attaches the registered
@@ -1829,7 +2365,11 @@ fn drive_world(world: &mut World) {
                 let main_flags = world.get_resource::<PlayerState>().map_or(0, |player| player.affect_flags);
                 let mut affects = Vec::new();
                 let mut attach = |vid: u32, flags: u64, walking: bool, at: Vec3, chr: Option<&Character>| {
-                    if combat::has_affect(flags, combat::AFFECT_INVISIBILITY) {
+                    // Others under stealth hide their effects too (`HideAllAttachingEffect`).
+                    let hidden_other = vid != main_vid
+                        && (combat::has_affect(flags, combat::AFFECT_EUNHYEONG)
+                            || combat::has_affect(flags, combat::AFFECT_REVIVE_INVISIBILITY));
+                    if combat::has_affect(flags, combat::AFFECT_INVISIBILITY) || hidden_other {
                         return;
                     }
                     for affect in 0..64 {
@@ -1848,6 +2388,32 @@ fn drive_world(world: &mut World) {
                 for (&vid, actor) in &actors.by_vid {
                     if vid != main_vid && actor.affect_flags != 0 {
                         attach(vid, actor.affect_flags, actor.moving, feet(actor_local(actor)), actors.characters.get(&vid));
+                    }
+                }
+                let catalog = world.get_resource::<ItemCatalog>();
+                let mut refine = |vid: u32, vnum: u32, at: Vec3, chr: &Character| {
+                    let Some(item) = catalog.and_then(|catalog| catalog.get(vnum)) else { return };
+                    for (key, attachment, file) in fx::refined_effects(vnum, item) {
+                        let (right, left) = crate::render::character::weapon_bones(chr.look.race);
+                        let bone = match attachment { "right" => right, "left" => left, other => Some(other) };
+                        let position = bone.and_then(|bone| chr.bone_transform(world, bone))
+                            .map_or(at, |t| Vec3::from_array(m2_assets::coords::vec3_back(t.translation())));
+                        affects.push(((vid, key), file, position));
+                    }
+                };
+                let player = world.get_resource::<PlayerState>();
+                if let Some(player) = player {
+                    refine(main_vid, player.weapon().map_or(0, |item| item.vnum), feet(local), character);
+                    if let Some((armor, _)) = player.appearance {
+                        refine(main_vid, u32::from(armor), feet(local), character);
+                    }
+                }
+                for (&vid, actor) in &actors.by_vid {
+                    if actor.kind != m2_net::phase::ACTOR_TYPE_PC { continue; }
+                    if let Some(chr) = actors.characters.get(&vid) {
+                        let at = feet(actor_local(actor));
+                        refine(vid, u32::from(actor.weapon), at, chr);
+                        refine(vid, u32::from(actor.armor), at, chr);
                     }
                 }
                 (targets, affects)
@@ -1883,6 +2449,18 @@ fn drive_world(world: &mut World) {
 
             let mut moved = false;
             let mut direction = None;
+            if character.is_mounted() && control.state == MoveState::Attacking && !focus.keyboard {
+                let mut input = Vec2::ZERO;
+                if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) { input.y += 1.0; }
+                if keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown) { input.y -= 1.0; }
+                if keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight) { input.x += 1.0; }
+                if keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft) { input.x -= 1.0; }
+                if input != Vec2::ZERO {
+                    let forward = Vec2::new(-control.yaw.sin(), control.yaw.cos());
+                    let right = Vec2::new(control.yaw.cos(), control.yaw.sin());
+                    direction = Some((forward * input.y + right * input.x).normalize());
+                }
+            }
             if !matches!(control.state, MoveState::Attacking | MoveState::Casting) && !control.dead {
                 let mut input = Vec2::ZERO;
                 if !focus.keyboard {
@@ -1909,8 +2487,9 @@ fn drive_world(world: &mut World) {
                     control.reserved_item = None;
                 }
                 let mut wanted = None;
+                let run_speed = remote_run_speed(points.move_speed.clamp(0, 255) as u8);
                 if let Some(destination) = control.destination {
-                    let (next, arrived) = advance_towards(local, destination, RUN_SPEED * delta);
+                    let (next, arrived) = advance_towards(local, destination, run_speed * delta);
                     wanted = Some(next);
                     if arrived {
                         info!("destination reached at {:.0},{:.0}", next.x, next.y);
@@ -1920,7 +2499,7 @@ fn drive_world(world: &mut World) {
                     let forward = Vec2::new(-control.yaw.sin(), control.yaw.cos());
                     let right = Vec2::new(control.yaw.cos(), control.yaw.sin());
                     let map_direction = (forward * input.y + right * input.x).normalize();
-                    wanted = Some(clamp_to_map(local + map_direction * RUN_SPEED * delta, extent));
+                    wanted = Some(clamp_to_map(local + map_direction * run_speed * delta, extent));
                 }
                 if let Some(wanted) = wanted
                     && (wanted - local).length() > f32::EPSILON
@@ -2183,6 +2762,7 @@ fn drive_world(world: &mut World) {
             // (`accum · dt / duration`, turned by the advancing rotation),
             // through the same collision as walking.
             if matches!(control.state, MoveState::Attacking | MoveState::Casting)
+                && !(character.is_mounted() && control.state == MoveState::Attacking)
                 && let Some(elapsed) = character.motion_elapsed(now)
                 && let Some((accumulation, duration)) = character
                     .motion_handle()
@@ -2231,6 +2811,9 @@ fn drive_world(world: &mut World) {
                 let target = facing_degrees(direction);
                 if signed_difference(target, control.advancing).abs() > 0.01 {
                     set_advancing_rotation(&mut control, target);
+                    if character.is_mounted() && control.state == MoveState::Attacking {
+                        control.attack_rotation = target;
+                    }
                 }
             }
             // `CInstanceBase::Update`: walk the rendered rotation towards the
@@ -2257,17 +2840,55 @@ fn drive_world(world: &mut World) {
             control.shake_offset = shake;
             game.local = Some((local.x.round() as i32, local.y.round() as i32));
 
+            // Polymorph: the main actor re-appended with a monster race is
+            // rebuilt as that monster (`CInstanceBase::SetRace`, `IsPoly`), and
+            // back as the player race when it ends.
+            let poly = world.get_resource::<PlayerState>().map_or(0, |player| player.poly_race);
+            if poly != control.poly_race {
+                let transform = world.get::<Transform>(character.root).copied().unwrap_or_default();
+                let replacement = if poly != 0 {
+                    world.get_resource::<MobCatalog>().and_then(|mobs| mobs.by_race.get(&poly)).cloned().and_then(|mob| {
+                        let file = mob.race_file.clone()?;
+                        let mut body = Character::spawn_actor(world, poly, &file, transform, None);
+                        body.set_mob_motions(mob_motion_files(&mob.motions));
+                        Some(body)
+                    })
+                } else {
+                    let (race, hair, armor) = world.get_resource::<PlayerState>().map_or((0, 0, 0), |player| {
+                        let (armor, hair) = player.appearance.unwrap_or_default();
+                        (player.race as u8, u32::from(hair), u32::from(armor))
+                    });
+                    let shape = world.resource::<ArmorShapes>().shape(armor);
+                    Some(Character::spawn(world, Look { race, shape, hair }, transform, None))
+                };
+                // The monster's data may still be loading: retry next frame.
+                if let Some(mut body) = replacement {
+                    if world.get_entity(character.root).is_ok() {
+                        world.despawn(character.root);
+                    }
+                    body.play_motion(world, if control.state == MoveState::Moving { Motion::Run } else { Motion::Wait }, true);
+                    **character = body;
+                    control.poly_race = poly;
+                }
+            }
+
             // `CInstanceBase::ChangeWeapon`/`MountHorse`: the server's
             // equipment and mount cells drive the model, motion mode and the
-            // wait/run motion.
-            if sync_main_weapon(world, character) {
+            // wait/run motion. A polymorphed body has neither.
+            if let Some((armor, hair)) = world.get_resource::<PlayerState>().and_then(|player| player.appearance) {
+                let shapes = world.resource::<ArmorShapes>();
+                let (shape, specular) = (shapes.shape(u32::from(armor)), shapes.specular(u32::from(armor)));
+                let look = Look { race: character.look.race, shape, hair: u32::from(hair) };
+                character.change_look(world, look, specular);
+            }
+            if !character.is_poly() && sync_main_weapon(world, character) {
                 match control.state {
                     MoveState::Idle => character.play_motion(world, Motion::Wait, true),
                     MoveState::Moving => character.play_motion(world, Motion::Run, true),
                     MoveState::Attacking | MoveState::Casting | MoveState::Dead => {}
                 }
             }
-            if sync_main_mount(world, character) {
+            if !character.is_poly() && sync_main_mount(world, character) {
                 match control.state {
                     MoveState::Idle => character.play_motion(world, Motion::Wait, true),
                     MoveState::Moving => character.play_motion(world, Motion::Run, true),
@@ -2283,7 +2904,7 @@ fn drive_world(world: &mut World) {
             main_motion_events(world, &mut control, character, me_position, now);
             let blocked = |p: Vec2| map_attr(scene, p, ATTR_BLOCK);
             main_attack_process(world, &mut control, character, &candidates, &attackable, me_position, now, delta, &heights, &blocked);
-            actor_attacks_on_main(world, &mut control, character, main_vid, base, me_position, now, delta, &heights);
+            actor_attacks_on_main(world, &mut control, character, &candidates, &me, &combat_world, base, me_position, now, delta, &heights);
 
             // `GC_DEAD`: the death motion once, then nothing until revived
             // (the server restores the HP on restart).
@@ -2325,8 +2946,10 @@ fn drive_world(world: &mut World) {
                     if control.state != MoveState::Moving {
                         control.state = MoveState::Moving;
                         character.play_motion(world, Motion::Run, true);
+                        next_move_packet = now + MOVE_PACKET_SECONDS;
+                        send_move(world, base, local, control.advancing);
                     }
-                    if now >= next_move_packet {
+                    else if now >= next_move_packet {
                         next_move_packet = now + MOVE_PACKET_SECONDS;
                         send_move(world, base, local, control.advancing);
                     }
@@ -2355,10 +2978,154 @@ fn drive_world(world: &mut World) {
 
 /// `CRaceMotionData::NAME_COMBO_ATTACK_1`: the motion index of combo motion 1.
 const NAME_COMBO_ATTACK_1: u32 = 14;
+/// Hides the cursor and keeps it at `anchor` while the camera is dragged
+/// (`SetCursorVisible(FALSE)` + `CCamera::Drag`'s `SetCursorPos` back to the
+/// drag start); `None` releases it there.
+fn set_cursor_lock(world: &mut World, anchor: Option<Vec2>) {
+    use bevy::window::{CursorGrabMode, CursorOptions};
+    let Ok((mut window, mut options)) =
+        world.query_filtered::<(&mut Window, &mut CursorOptions), With<PrimaryWindow>>().single_mut(world)
+    else {
+        return;
+    };
+    let (visible, grab) = if anchor.is_some() { (false, CursorGrabMode::Confined) } else { (true, CursorGrabMode::None) };
+    if options.visible != visible {
+        options.visible = visible;
+    }
+    if options.grab_mode != grab {
+        options.grab_mode = grab;
+    }
+    if let Some(anchor) = anchor
+        && window.cursor_position().is_some_and(|cursor| cursor.distance(anchor) > 0.5)
+    {
+        window.set_cursor_position(Some(anchor));
+    }
+}
+
+/// A monster's motion files for a polymorphed player body.
+fn mob_motion_files(motions: &ActorMotions) -> crate::render::character::MobMotionFiles {
+    crate::render::character::MobMotionFiles {
+        wait: motions.wait.clone(),
+        walk: motions.walk.clone(),
+        run: motions.run.clone(),
+        attack: motions.attack.clone(),
+        damage: motions.damage.clone(),
+        dead: motions.dead.clone(),
+    }
+}
+
+/// `MAIN_RACE_MAX_NUM`: the eight player races.
+pub const MAIN_RACE_MAX_NUM: u16 = 8;
+
 /// `IS_HUGE_RACE`: reached from further away, not pushed.
 const HUGE_RACE: u16 = 2493;
-/// Seconds an arrived actor keeps its run motion, waiting for the next move.
-const ARRIVAL_GRACE: f32 = 0.15;
+
+/// The once motion a state command plays (`StateProcess`'s function cases).
+fn command_action(motion: &ActorMove) -> Option<ActorAction> {
+    match motion.func {
+        FUNC_ATTACK => Some(ActorAction::Attack),
+        FUNC_COMBO => Some(ActorAction::Combo(u32::from(motion.arg))),
+        FUNC_MOB_SKILL => Some(ActorAction::Special(motion.arg)),
+        func if func & FUNC_SKILL != 0 => Some(ActorAction::Skill(u16::from(func & !FUNC_SKILL))),
+        _ => None,
+    }
+}
+
+/// `CInstanceBase::StateProcess` for one due command of a remote PC. Returns
+/// the once motion to play now (a function close enough to run in place).
+fn remote_state_process(actor: &mut Actor, command: &ActorMove) -> Option<ActorAction> {
+    let current = actor.remote.position;
+    let destination = Vec2::new(command.x as f32, command.y as f32);
+    let distance = current.distance(destination);
+    let action = command_action(command);
+    // `FUNC_WAIT` walks over 1 unit, the functions over 50; `FUNC_MOVE` always.
+    let walk = match command.func {
+        FUNC_MOVE => true,
+        FUNC_WAIT => distance > 1.0,
+        _ if action.is_some() => distance >= 50.0,
+        _ => return None,
+    };
+    // A monster's pace is the server's: the distance over the packet's duration.
+    actor.remote.speed = (actor.kind != m2_net::phase::ACTOR_TYPE_PC && command.duration > 0)
+        .then(|| distance / (command.duration as f32 / 1000.0))
+        .filter(|speed| speed.is_finite() && *speed > 0.0);
+    if walk {
+        // `NEW_SetSrcPixelPosition(cur)`, `NEW_SetDstPixelPosition(dst)`,
+        // `m_isGoing`, `m_kMovAfterFunc`, `StartWalking`.
+        actor.move_from = current;
+        actor.move_to = destination;
+        actor.remote.position = current;
+        actor.remote.dst_rotation = command.rotation;
+        actor.remote.going = true;
+        actor.remote.after_move = command.func == FUNC_MOVE;
+        actor.move_action = action;
+        actor.moving = true;
+        None
+    } else {
+        // In place: `SCRIPT_SetPixelPosition(dst)`, the rotation, then the function.
+        actor.remote.going = false;
+        actor.move_action = None;
+        actor.moving = false;
+        actor.x = command.x;
+        actor.y = command.y;
+        actor.remote.position = destination;
+        actor.rotation = command.rotation;
+        action
+    }
+}
+
+/// The remote half of `CInstanceBase::MovementProcess`: walk along the source
+/// to destination direction at the run speed; a `FUNC_MOVE` keeps walking
+/// through its destination (re-aiming once it is 100 units past), the others
+/// stop on it and run their function. Returns that function's motion.
+fn remote_movement_process(actor: &mut Actor, delta: f32) -> Option<ActorAction> {
+    if !actor.remote.going || !actor.moving {
+        return None;
+    }
+    let step = actor.remote.speed.unwrap_or_else(|| remote_move_speed(actor.move_speed, actor.walk_mode)) * delta;
+    let direction = |from: Vec2, to: Vec2, rotation: f32| {
+        (to - from).try_normalize().unwrap_or(Vec2::new(rotation.to_radians().sin(), rotation.to_radians().cos()))
+    };
+    let current = actor.remote.position;
+    let mut heading = direction(actor.move_from, actor.move_to, actor.remote.dst_rotation);
+    let mut next = current + heading * step;
+    let current_length = current.distance(actor.move_from);
+    let next_length = next.distance(actor.move_from);
+    let total_length = actor.move_to.distance(actor.move_from);
+    let mut action = None;
+    if total_length - current_length < -100.0 {
+        // Latency let it run too far: aim back at the destination and stop
+        // there unless another move arrives first.
+        actor.move_from = current;
+        heading = direction(current, actor.move_to, actor.remote.dst_rotation);
+        next = current + heading * step;
+        actor.remote.after_move = false;
+    } else if current_length <= total_length && total_length <= next_length && !actor.remote.after_move {
+        // Arrived: `SCRIPT_SetPixelPosition(dst)`, the rotation, `EndWalking`.
+        next = actor.move_to;
+        actor.remote.going = false;
+        actor.moving = false;
+        actor.rotation = actor.remote.dst_rotation;
+        action = actor.move_action.take();
+    }
+    if actor.remote.going {
+        // `SetAdvancingRotation`: face the way it walks.
+        actor.rotation = facing_degrees(heading);
+    }
+    actor.remote.position = next;
+    actor.x = next.x.round() as i32;
+    actor.y = next.y.round() as i32;
+    action
+}
+
+/// Remote PCs walk using their synchronized movement-speed percentage.
+fn remote_run_speed(speed: u8) -> f32 {
+    RUN_SPEED * if speed == 0 { 1.0 } else { f32::from(speed) / 100.0 }
+}
+
+fn remote_move_speed(speed: u8, walking: bool) -> f32 {
+    remote_run_speed(speed) * if walking { 220.0 / RUN_SPEED } else { 1.0 }
+}
 /// `gc_fActorSlideMoveSpeed`: the most a collision slide may move per frame.
 const ACTOR_SLIDE_MOVE_SPEED: f32 = 30.0;
 /// The body sphere of an actor whose race has none (players' `.msm` give 40).
@@ -2606,19 +3373,22 @@ fn attack_success(
             let mut actors = world.resource_mut::<Actors>();
             if let Some(actor) = actors.by_vid.get_mut(&victim.vid) {
                 let global = Vec2::new(to.x + base.0 as f32, to.y + base.1 as f32);
-                actor.move_from = Vec2::new(actor.x as f32, actor.y as f32);
-                actor.move_to = global;
-                actor.move_elapsed = 0.0;
-                actor.move_duration = PUSH_SECONDS;
-                actor.moving = false;
-                actor.pushed = true;
+                // `IncreaseExternalForce`: the offset blends in over the
+                // physics time while the victim keeps its own movement.
+                let from = actor.remote.position;
+                actor.remote.push = Some(PushBlend::new(from, global));
                 control.victims.push((victim.vid, global.x as i32, global.y as i32));
             }
         }
     }
-    // `OnHit`: the victim becomes the target; the hit goes to the server.
-    if control.target != Some(victim.vid) {
+    // `OnHit` -> `SetTarget(victim, FALSE)`: hitting the target keeps it for
+    // another second; another victim takes over only once that has run out,
+    // so a swing through a group does not flip the target between them.
+    if control.target == Some(victim.vid) {
+        control.target_end = now + 1.0;
+    } else if control.target_end <= now && control.target != Some(victim.vid) {
         control.target = Some(victim.vid);
+        control.target_end = now + 1.0;
         if let Some(mut net) = world.get_resource_mut::<Net>() {
             net.send_target(victim.vid);
         }
@@ -2716,31 +3486,49 @@ fn main_motion_events(world: &mut World, control: &mut PlayerControl, character:
             ));
         }
     }
-    motion_tick_effects(world, character, &tick, fx::bevy_position(position), position, control.facing, false);
+    let target = shot_target(world, control.main_vid, control.target, control.base, position.z, &tick);
+    motion_tick_effects(world, character, &tick, fx::bevy_position(position), position, control.facing, false, target);
 }
 
 /// Monsters' and other players' swings against the main character
 /// (`AttackProcess` of every instance, without a packet): the victim shakes,
 /// shows the hit and, when standing, plays its damage motion.
+///
+/// `AttackProcess` only tests victims the attacker `IsAttackableInstance`s,
+/// and `CheckAttacking` skips both sides standing in a safe zone; a remote
+/// instance has no duel mode of its own (`SetDuelMode` is main-only).
 #[allow(clippy::too_many_arguments)]
 fn actor_attacks_on_main(
     world: &mut World,
     control: &mut PlayerControl,
     character: &mut Character,
-    main_vid: u32,
+    candidates: &[(u32, ActorCombat)],
+    me: &ActorCombat,
+    combat_world: &combat::CombatWorld,
     base: (u32, u32),
     position: Vec3,
     now: f32,
     frame: f32,
     heights: &dyn Fn(f32, f32) -> f32,
 ) {
+    let main_vid = me.vid;
+    if me.in_safe {
+        return;
+    }
+    let remote_world = combat::CombatWorld { observer: false, duel_mode: combat::DUEL_NONE, ..combat_world.clone() };
+    let may_hit = |vid: u32| {
+        candidates
+            .iter()
+            .find(|(candidate, _)| *candidate == vid)
+            .is_some_and(|(_, attacker)| !attacker.in_safe && combat::is_attackable(&remote_world, attacker, me))
+    };
     let attackers: Vec<(u32, Vec3, f32, f32, m2_assets::race::MotionAttackData)> = {
         let actors = world.resource::<Actors>();
         let motions = world.resource::<Assets<m2_assets::race::RaceMotionAsset>>();
         actors
             .fights
             .iter()
-            .filter(|(_, fight)| fight.attacking && !fight.dead)
+            .filter(|(vid, fight)| fight.attacking && !fight.dead && may_hit(**vid))
             .filter_map(|(vid, _)| {
                 let actor = actors.by_vid.get(vid)?;
                 let character = actors.characters.get(vid)?;
@@ -2915,7 +3703,7 @@ fn sync_main_weapon(world: &mut World, character: &mut Character) -> bool {
         world.get_resource::<ItemCatalog>().and_then(|catalog| catalog.weapon_visual(&packs, vnum))
     };
     match visual {
-        Some(visual) => character.set_weapon(world, visual.vnum, &visual.model, &visual.sub_model, visual.weapon_type),
+        Some(visual) => character.set_weapon(world, visual.vnum, &visual.model, &visual.sub_model, visual.weapon_type, f32::from(visual.specular) / 100.0),
         // The catalog is still loading; retry next frame.
         None => false,
     }
@@ -3221,13 +4009,13 @@ fn sync_main_mount(world: &mut World, character: &mut Character) -> bool {
     if vnum == 0 {
         return character.clear_mount(world);
     }
-    let file = world
+    let mob = world
         .get_resource::<MobCatalog>()
         .and_then(|mobs| mobs.by_race.get(&(vnum as u16)))
-        .and_then(|mob| mob.race_file.clone());
-    match file {
-        Some(file) => character.set_mount(world, vnum, &file),
-        None => {
+        .cloned();
+    match mob {
+        Some(mob) if mob.race_file.is_some() => character.set_mount(world, vnum, mob.race_file.as_deref().unwrap(), mob.motions.wait.as_deref(), mob.motions.run.as_deref()),
+        _ => {
             warn!("mount vnum {vnum} has no registered MSM race");
             false
         }
@@ -3466,6 +4254,87 @@ mod tests {
     use super::*;
 
     #[test]
+    fn fly_target_packets_keep_shooters_and_position_targets_separate() {
+        let mut targets = FlyTargets::default();
+        targets.set(5, ShotTarget::Actor(10), false);
+        targets.set(5, ShotTarget::Position(Vec3::new(30.0, -40.0, 60.0)), true);
+        targets.set(6, ShotTarget::Actor(11), false);
+        assert_eq!(targets.shot(5), Some(ShotTarget::Actor(10)));
+        assert_eq!(targets.shot(5), Some(ShotTarget::Position(Vec3::new(30.0, -40.0, 60.0))));
+        assert_eq!(targets.shot(6), Some(ShotTarget::Actor(11)));
+        targets.set(5, ShotTarget::Actor(12), false);
+        assert_eq!(targets.shot(5), Some(ShotTarget::Actor(12)));
+    }
+
+    #[test]
+    fn warp_curtain_stays_opaque_while_loading_and_fades_back_in() {
+        let start = Instant::now() - Duration::from_secs_f32(WARP_FADE_SECONDS * 2.0);
+        let mut transition = WarpTransition { started: Some(start), cleared: true, fading_in: None };
+        assert_eq!(transition.alpha(), 1.0);
+        transition.fading_in = Some(start);
+        assert_eq!(transition.alpha(), 0.0);
+    }
+
+    #[test]
+    fn warp_keeps_old_scene_until_faded_and_waits_for_destination() {
+        let mut app = App::new();
+        app.add_message::<NetMessage>()
+            .insert_resource(GameWorld { state: Some(State::Failed("old scene".into())), ..default() })
+            .init_resource::<WarpTransition>()
+            .init_resource::<Actors>()
+            .init_resource::<FlyTargets>()
+            .init_resource::<CombatFx>()
+            .init_resource::<PlayerControl>()
+            .init_resource::<TargetBoard>()
+            .add_systems(Update, (update_warp_transition, clear_world_on_warp).chain());
+        app.world_mut().write_message(NetMessage::Game(NetEvent::Warp { x: 1, y: 2, addr: 0, port: 1 }));
+        app.update();
+        assert_eq!(app.world().resource::<GameWorld>().error(), Some("old scene"));
+        assert!(!app.world().resource::<WarpTransition>().ready_to_connect());
+        app.world_mut().resource_mut::<WarpTransition>().started = Some(Instant::now() - Duration::from_secs_f32(WARP_FADE_SECONDS * 2.0));
+        app.update();
+        assert!(app.world().resource::<WarpTransition>().ready_to_connect());
+        assert!(app.world().resource::<GameWorld>().state.is_none());
+        app.update();
+        assert!(app.world().resource::<WarpTransition>().fading_in.is_none());
+        app.world_mut().resource_mut::<GameWorld>().state = Some(State::Failed("destination failed".into()));
+        app.update();
+        assert!(app.world().resource::<WarpTransition>().fading_in.is_some());
+    }
+
+    #[test]
+    fn enemy_motion_fly_event_launches_the_targeted_arrow() {
+        use m2_assets::race::{RaceMotionEvent, RaceMotionEventKind};
+        use std::sync::Arc;
+        let dir = std::env::var_os("M2_CLIENT_DIR").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));
+        if !dir.join("pack/Index.dev").exists() {
+            eprintln!("SKIP: client data not found (set M2_CLIENT_DIR)");
+            return;
+        }
+        let mut manager = m2_formats::pack::PackManager::new(&dir);
+        m2_formats::pack::load_index(&mut manager, "pack", "pack/Index.dev").unwrap();
+        let packs = Arc::new(manager);
+        let mut world = World::new();
+        world.insert_resource(M2Packs { reader: m2_assets::source::PackAssetReader::new(packs.clone()), packs });
+        world.insert_resource(CombatFx::default());
+        world.insert_resource(Actors::default());
+        world.insert_resource(GameWorld { main_vid: 7, local: Some((500, 400)), ..default() });
+        let mut targets = FlyTargets::default();
+        targets.set(3, ShotTarget::Actor(7), false);
+        world.insert_resource(targets);
+        let character = Character::spawn_actor(&mut world, 1, "", Transform::IDENTITY, None);
+        let tick = MotionTick { events: vec![RaceMotionEvent {
+            frame: 10, start: 0.0, duration: 0.0,
+            kind: RaceMotionEventKind::Fly { file: "d:/ymir work/pc/assassin/effect/arrow_01_fast.msf".into(), bone: None, position: Vec3::ZERO },
+        }], ..default() };
+        let target = shot_target(&mut world, 3, None, (0, 0), 0.0, &tick);
+        assert_eq!(target, Some((7, Vec3::new(500.0, -400.0, fx::FLY_TARGET_HEIGHT))));
+        motion_tick_effects(&mut world, &character, &tick, Vec3::ZERO, Vec3::ZERO, 0.0, true, target);
+        assert_eq!(world.resource::<CombatFx>().fly_targets(), vec![7]);
+    }
+
+    #[test]
     fn actor_motion_list_uses_pack_virtual_paths_and_msm_override() {
         use m2_formats::pack::{Container, PackManager};
         let dir = tempfile::tempdir().unwrap();
@@ -3525,6 +4394,27 @@ mod tests {
     }
 
     #[test]
+    fn packed_riding_horses_have_the_saddle_bone() {
+        use m2_formats::pack::{PackManager, load_index};
+        let dir = std::env::var_os("M2_CLIENT_DIR").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../bin"));
+        if !dir.join("pack/Index.dev").exists() { return; }
+        let mut packs = PackManager::new(&dir);
+        load_index(&mut packs, "pack", "pack/Index.dev").unwrap();
+        let index = m2_assets::DirectoryIndex::build(&packs);
+        let races = load_race_registrations(&packs, &index);
+        for race in [20104, 20107] {
+            let file = races[&race].race_file.as_deref().unwrap();
+            let mut race_data = m2_formats::race::RaceData::default();
+            assert!(race_data.load(&packs, paths::virtual_name(file), |_| true));
+            let model_file = proto_text(&race_data.base_model_file_name);
+            let model = m2_formats::gr2::parse(&packs.get(paths::virtual_name(&model_file)).unwrap()).unwrap();
+            let skeleton = model.models[0].skeleton.as_ref().unwrap();
+            assert!(skeleton.bones.iter().any(|bone| bone.name.eq_ignore_ascii_case(b"saddle")), "race {race} has no saddle bone");
+        }
+    }
+
+    #[test]
     fn actor_updates_keep_unchanged_visuals_and_restart_changed_player_motions() {
         use bevy::asset::AssetPlugin;
         use m2_assets::M2AssetsPlugin;
@@ -3546,10 +4436,10 @@ mod tests {
 
         for (vid, kind) in [(10, ACTOR_TYPE_NPC), (11, ACTOR_TYPE_PC)] {
             let actor = Actor {
-                name: String::new(), race: 0, kind, level: 0, armor: 0, hair: 0,
+                name: String::new(), race: 0, kind, level: 0, armor: 0, weapon: 0, hair: 0, move_speed: 100, attack_speed: 100, walk_mode: false,
                 empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
-                x: 0, y: 0, rotation: 0.0, move_from: Vec2::ZERO, move_to: Vec2::ZERO,
-                move_elapsed: 0.0, move_duration: 0.0, moving: false, rendered_moving: Some(false), arrived_for: 0.0, pushed: false,
+                x: 0, y: 0, rotation: 0.0, rendered_rotation: 0.0, move_from: Vec2::ZERO, move_to: Vec2::ZERO,
+                moving: false, rendered_moving: Some(false), move_action: None, remote: RemoteMotion::default(),
             };
             let character = Character::spawn(app.world_mut(), Look { race: 0, shape: 0, hair: 0 }, Transform::IDENTITY, None);
             let mut actors = app.world_mut().resource_mut::<Actors>();
@@ -3561,16 +4451,156 @@ mod tests {
             affect_flags: 0, alignment: 0, pk_mode: 0, weapon: 0, hair: 0, mount_vnum: 0,
         }));
         app.world_mut().write_message(update(10, 1));
-        app.world_mut().write_message(update(11, 0));
+        let mut armed = update(11, 0);
+        if let NetMessage::Game(NetEvent::ActorUpdate(data)) = &mut armed {
+            data.weapon = 19;
+            data.move_speed = 120;
+        }
+        app.world_mut().write_message(armed);
         app.update();
         assert!(app.world().resource::<Actors>().characters.contains_key(&10));
         assert!(app.world().resource::<Actors>().characters.contains_key(&11));
+        assert_eq!(app.world().resource::<Actors>().by_vid[&11].weapon, 19);
+        assert_eq!(app.world().resource::<Actors>().by_vid[&11].move_speed, 120);
+        let mut catalog = ItemCatalog::default();
+        catalog.0.items.insert(19, m2_formats::proto::ItemData {
+            model_file_name: b"d:/ymir work/item/weapon/00019.gr2".to_vec(),
+            table: m2_formats::proto::ItemTable { sub_type: 0, ..default() },
+            ..default()
+        });
+        app.insert_resource(catalog);
+        sync_remote_equipment(app.world_mut(), &HashMap::new());
+        {
+            let actors = app.world().resource::<Actors>();
+            let character = actors.characters.get(&11).unwrap();
+            assert_eq!(character.weapon_vnum(), 19);
+            assert_eq!(character.weapon_type(), Some(0));
+            assert_eq!(character.motion_mode(), crate::render::character::MotionMode::OneHandSword);
+        }
+        app.world_mut().write_message(update(11, 0));
+        app.update();
+        sync_remote_equipment(app.world_mut(), &HashMap::new());
+        assert_eq!(app.world().resource::<Actors>().characters[&11].weapon_type(), None);
+        app.world_mut().resource_scope(|world, mut actors: Mut<Actors>| {
+            let character = actors.characters.get_mut(&11).unwrap();
+            let root = character.root;
+            assert!(character.change_look(world, Look { race: 0, shape: 3, hair: 2 }, 0.0));
+            assert_eq!(character.root, root);
+            assert_eq!((character.look.shape, character.look.hair), (3, 2));
+        });
 
         app.world_mut().write_message(update(11, 1));
         app.update();
         let actors = app.world().resource::<Actors>();
         assert!(!actors.characters.contains_key(&11));
         assert_eq!(actors.by_vid[&11].rendered_moving, None);
+    }
+
+    #[test]
+    fn remote_player_follows_move_and_zero_duration_stop_without_snapping() {
+        use m2_net::phase::{ActorData, ActorMove, ACTOR_TYPE_PC};
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins).init_resource::<Actors>().init_resource::<GameWorld>()
+            .init_resource::<MobCatalog>().add_message::<NetMessage>().add_systems(Update, track_actors);
+        let actor = ActorData {
+            vid: 9, kind: ACTOR_TYPE_PC, race: 0, move_speed: 100, attack_speed: 100, state_flags: 0,
+            rotation: 0.0, x: 1000, y: 2000, affect_flags: 0, name: Some("rucadi".into()),
+            guild_id: 0, level: 1, alignment: 0, pk_mode: 0, empire: 2, armor: 0, weapon: 19, hair: 0, mount_vnum: 0,
+        };
+        app.world_mut().write_message(NetMessage::Game(NetEvent::ActorAppend(actor)));
+        app.update();
+        let movement = |func, x, duration| NetMessage::Game(NetEvent::ActorMove(ActorMove {
+            vid: 9, func, arg: 0, rotation: 90.0, x, y: 2000, time: 0, duration,
+        }));
+        app.world_mut().write_message(movement(FUNC_MOVE, 1100, 0));
+        app.update();
+        assert_eq!(app.world().resource::<Actors>().by_vid[&9].x, 1000);
+        advance_actor_states(&mut app.world_mut().resource_mut::<Actors>(), 0.1, None);
+        assert_eq!(app.world().resource::<Actors>().by_vid[&9].x, 1045);
+        app.world_mut().write_message(movement(FUNC_WAIT, 1150, 0));
+        app.update();
+        assert_eq!(app.world().resource::<Actors>().by_vid[&9].x, 1045);
+        advance_actor_states(&mut app.world_mut().resource_mut::<Actors>(), 0.1, None);
+        assert_eq!(app.world().resource::<Actors>().by_vid[&9].x, 1090);
+        advance_actor_states(&mut app.world_mut().resource_mut::<Actors>(), 0.1, None);
+        advance_actor_states(&mut app.world_mut().resource_mut::<Actors>(), 0.1, None);
+        let actors = app.world().resource::<Actors>();
+        assert_eq!(actors.by_vid[&9].x, 1150);
+        assert_eq!(actors.by_vid[&9].weapon, 19);
+    }
+
+    fn remote_pc(x: i32) -> Actor {
+        Actor {
+            name: String::new(), race: 0, kind: m2_net::phase::ACTOR_TYPE_PC, level: 0, armor: 0, weapon: 0, hair: 0, move_speed: 100, attack_speed: 100, walk_mode: false,
+            empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
+            x, y: 0, rotation: 0.0, rendered_rotation: 0.0, move_from: Vec2::ZERO, move_to: Vec2::ZERO,
+            moving: false, rendered_moving: None, move_action: None,
+            remote: RemoteMotion::default(),
+        }
+    }
+
+    fn command(func: u8, x: i32, time: u32) -> ActorMove {
+        ActorMove { vid: 9, func, arg: 0, rotation: 90.0, x, y: 0, time, duration: 0 }
+    }
+
+    #[test]
+    fn remote_move_runs_on_then_returns_to_its_last_position() {
+        let mut actors = Actors::default();
+        let mut actor = remote_pc(0);
+        actor.remote.commands.push_back((0, command(FUNC_MOVE, 100, 0)));
+        actors.by_vid.insert(9, actor);
+        // `MovementProcess` keeps a MOVE walking until 100 units past its target...
+        let mut furthest = 0;
+        for _ in 0..40 {
+            advance_actor_states(&mut actors, 0.05, None);
+            furthest = furthest.max(actors.by_vid[&9].x);
+        }
+        assert!((200..=225).contains(&furthest), "ran to {furthest}");
+        // ...then aims back at it and stops there.
+        assert_eq!(actors.by_vid[&9].x, 100);
+        assert!(!actors.by_vid[&9].moving);
+    }
+
+    #[test]
+    fn remote_commands_wait_for_their_check_time() {
+        let mut actors = Actors::default();
+        let mut actor = remote_pc(0);
+        actor.remote.commands.push_back((1_000, command(FUNC_MOVE, 500, 900)));
+        actors.by_vid.insert(9, actor);
+        advance_actor_states(&mut actors, 0.1, Some(990));
+        assert_eq!((actors.by_vid[&9].x, actors.by_vid[&9].moving), (0, false));
+        advance_actor_states(&mut actors, 0.1, Some(1_000));
+        assert_eq!((actors.by_vid[&9].x, actors.by_vid[&9].moving), (45, true));
+    }
+
+    #[test]
+    fn a_push_keeps_blending_while_the_actor_moves() {
+        let mut actors = Actors::default();
+        let mut actor = remote_pc(0);
+        actor.kind = 0; // `TYPE_ENEMY`
+        actor.remote.push = Some(PushBlend::new(Vec2::ZERO, Vec2::new(0.0, 100.0)));
+        // A monster's move to x 1000 over four seconds starts with the push.
+        actor.remote.commands.push_back((0, ActorMove { duration: 4000, ..command(FUNC_WAIT, 1000, 0) }));
+        actors.by_vid.insert(9, actor);
+        for _ in 0..41 {
+            advance_actor_states(&mut actors, 0.05, None);
+        }
+        let actor = &actors.by_vid[&9];
+        // Both happened: about half the walk at the packet's pace and the whole push.
+        assert!((495..=520).contains(&actor.x), "x {}", actor.x);
+        assert!((95..=100).contains(&actor.y), "y {}", actor.y);
+        assert!(actor.remote.push.is_none());
+    }
+
+    #[test]
+    fn a_close_attack_command_plays_in_place() {
+        let mut actors = Actors::default();
+        let mut actor = remote_pc(0);
+        actor.remote.commands.push_back((0, command(FUNC_ATTACK, 30, 0)));
+        actors.by_vid.insert(9, actor);
+        advance_actor_states(&mut actors, 0.016, None);
+        assert_eq!(actors.by_vid[&9].x, 30);
+        assert_eq!(actors.fights[&9].pending, Some(ActorAction::Attack));
     }
 
     #[test]
@@ -3649,19 +4679,22 @@ mod tests {
                     kind: 1,
                     level: 0,
                     armor: 0,
+                    weapon: 0,
                     hair: 0,
+                    move_speed: 100,
+                    attack_speed: 100,
+                    walk_mode: false,
                     empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
                     x,
                     y,
                     rotation: 0.0,
+                    rendered_rotation: 0.0,
                     move_from: Vec2::new(x as f32, y as f32),
                     move_to: Vec2::new(x as f32, y as f32),
-                    move_elapsed: 0.0,
-                    move_duration: 0.0,
                     moving: false,
                     rendered_moving: None,
-                    arrived_for: 0.0,
-                    pushed: false,
+                    move_action: None,
+                    remote: RemoteMotion::default(),
                 },
             );
         }
@@ -3719,6 +4752,9 @@ pub struct NameTag {
     /// `RefreshTextTail`'s alignment title and its colour.
     pub title: Option<(&'static str, [u8; 3])>,
     pub guild: Option<String>,
+    /// The colour of the line above the name: white for a guild, yellow for
+    /// a ground item's owner (`SetItemTextTailOwner`).
+    pub guild_color: [u8; 3],
 }
 
 /// The tails to draw this frame (`ShowAllTextTail` within 35 m while names
@@ -3824,6 +4860,7 @@ fn update_name_tags(world: &mut World) {
                 level,
                 title: alignment_title(i32::from(player.alignment)),
                 guild,
+                guild_color: [255, 255, 255],
             },
         );
     }
@@ -3863,8 +4900,34 @@ fn update_name_tags(world: &mut World) {
                 level: (pc && actor.level > 0).then_some(actor.level),
                 title: if pc { alignment_title(i32::from(actor.alignment)) } else { None },
                 guild: None,
+                guild_color: [255, 255, 255],
             },
         );
+    }
+    // `RegisterItemTextTail`: ground items show their name (`c_TextTail_Item_Color`,
+    // white) within the same range, and `SetItemTextTailOwner`'s "<name>'s" in yellow.
+    if show_all
+        && let (Some(items), Some(catalog)) = (world.get_resource::<crate::ground::GroundItems>(), world.get_resource::<ItemCatalog>())
+    {
+        for item in items.by_vid.values() {
+            let Some(at) = item.entity().and_then(|entity| world.get::<GlobalTransform>(entity)).map(GlobalTransform::translation) else { continue };
+            if !main_at.is_some_and(|me| (me - at).xz().length() < NAME_TAG_RANGE) {
+                continue;
+            }
+            let Some(data) = catalog.get(item.vnum) else { continue };
+            if let Ok(position) = camera.world_to_viewport(&eye, at + Vec3::Y * 20.0) {
+                tags.push(NameTag {
+                    vid: 0,
+                    position,
+                    name: data.table.locale_name_utf8(1252).into_owned(),
+                    color: [255, 255, 255],
+                    level: None,
+                    title: None,
+                    guild: (!item.owner.is_empty()).then(|| format!("{}'s", item.owner)),
+                    guild_color: [255, 255, 0],
+                });
+            }
+        }
     }
     world.resource_mut::<NameTags>().tags = tags;
 }
@@ -3954,5 +5017,84 @@ mod push_tests {
         assert!((movement.x - 13.5).abs() < 0.01, "{movement}");
         assert_eq!(movement.y, 0.0);
         assert!(external_force_movement(Vec2::ZERO, 3.0).is_none());
+    }
+}
+
+/// A mesh part's own material while [`apply_stealth`] has it drawn see-through.
+#[derive(Component)]
+struct OpaqueMaterial(Handle<m2_render::FixedFunctionMaterial>);
+
+/// `__Assassin_SetEunhyeongAffect` / `__SetReviveInvisibilityAffect` and
+/// `AFFECT_INVISIBILITY`: under stealth the main character is drawn at half
+/// opacity (`BlendAlphaValue(0.5)`), everyone else not at all (alpha 0 with
+/// their effects hidden). The C++ blends the alpha over a second; here it
+/// switches at once.
+fn apply_stealth(world: &mut World, mut applied: Local<HashMap<Entity, f32>>) {
+    let stealthy = |flags: u64| {
+        combat::has_affect(flags, combat::AFFECT_EUNHYEONG) || combat::has_affect(flags, combat::AFFECT_REVIVE_INVISIBILITY)
+    };
+    let mut wanted: Vec<(Entity, f32)> = Vec::new();
+    if let Some(State::Ready { character, .. }) = world.resource::<GameWorld>().state.as_ref() {
+        let flags = world.get_resource::<PlayerState>().map_or(0, |player| player.affect_flags);
+        wanted.push((character.root, if stealthy(flags) { 0.5 } else { 1.0 }));
+    }
+    {
+        let actors = world.resource::<Actors>();
+        for (vid, character) in &actors.characters {
+            let flags = actors.by_vid.get(vid).map_or(0, |actor| actor.affect_flags);
+            let hidden = stealthy(flags) || combat::has_affect(flags, combat::AFFECT_INVISIBILITY);
+            wanted.push((character.root, if hidden { 0.0 } else { 1.0 }));
+        }
+    }
+    applied.retain(|root, _| wanted.iter().any(|(entity, _)| entity == root));
+    for (root, alpha) in wanted {
+        // Opaque characters that were never touched need no walk.
+        if alpha >= 1.0 && applied.get(&root).is_none_or(|previous| *previous >= 1.0) {
+            continue;
+        }
+        if world.get_entity(root).is_err() {
+            continue;
+        }
+        let visibility = if alpha <= 0.0 { Visibility::Hidden } else { Visibility::Inherited };
+        if world.get::<Visibility>(root).is_some_and(|current| *current != visibility) {
+            world.entity_mut(root).insert(visibility);
+        }
+        // New parts (a weapon, a respawned body) appear later, so the parts
+        // are walked every frame while the alpha is not 1.
+        let mut parts = Vec::new();
+        let mut stack = vec![root];
+        while let Some(entity) = stack.pop() {
+            if let Some(children) = world.get::<Children>(entity) {
+                stack.extend(children.iter());
+            }
+            if world.get::<MeshMaterial3d<m2_render::FixedFunctionMaterial>>(entity).is_some() {
+                parts.push(entity);
+            }
+        }
+        for part in parts {
+            let original = world.get::<OpaqueMaterial>(part).map(|opaque| opaque.0.clone());
+            if alpha >= 1.0 || alpha <= 0.0 {
+                if let Some(original) = original {
+                    world.entity_mut(part).insert(MeshMaterial3d(original)).remove::<OpaqueMaterial>();
+                }
+                continue;
+            }
+            if original.is_some() {
+                continue;
+            }
+            let current = world.get::<MeshMaterial3d<m2_render::FixedFunctionMaterial>>(part).expect("part has a material").0.clone();
+            let Some(mut material) = world.resource::<Assets<m2_render::FixedFunctionMaterial>>().get(&current).cloned() else {
+                continue;
+            };
+            // The diffuse alpha scales the texture's (`MODULATE(TEXTURE, DIFFUSE)`).
+            material.diffuse.w = alpha;
+            material.stages[0].alpha_op = m2_render::TextureOp::Modulate;
+            material.stages[0].alpha_arg1 = m2_render::TextureArg::TEXTURE;
+            material.stages[0].alpha_arg2 = m2_render::TextureArg::DIFFUSE;
+            material.blend = Some(m2_render::Blend::ALPHA);
+            let translucent = crate::render::cached_material(world, material);
+            world.entity_mut(part).insert((MeshMaterial3d(translucent), OpaqueMaterial(current)));
+        }
+        applied.insert(root, alpha);
     }
 }

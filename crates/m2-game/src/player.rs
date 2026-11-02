@@ -38,6 +38,65 @@ pub struct ChatLine { pub kind: u8, pub text: String }
 pub struct PartyMember {
     pub pid: u32,
     pub vid: u32,
+    pub name: String,
+    pub state: u8,
+    pub percent_hp: u8,
+    pub affects: [i16; 7],
+}
+
+/// `PVP_MODE_*` (`Packet.h`).
+pub const PVP_MODE_NONE: u8 = 0;
+pub const PVP_MODE_AGREE: u8 = 1;
+pub const PVP_MODE_FIGHT: u8 = 2;
+pub const PVP_MODE_REVENGE: u8 = 3;
+
+/// `CInstanceBase::g_kSet_dwPVPKey` and `CPythonPlayer`'s challenge,
+/// revenge and cannot-fight instance sets.
+#[derive(Clone, Debug, Default)]
+pub struct Pvp {
+    pub keys: HashSet<(u32, u32)>,
+    /// `g_kSet_dwGVGKey`: guilds at war (`GUILD_SUBHEADER_GC_GUILD_WAR_LIST`).
+    pub guild_keys: HashSet<(u32, u32)>,
+    pub challenge: HashSet<u32>,
+    pub revenge: HashSet<u32>,
+    pub cant_fight: HashSet<u32>,
+}
+
+impl Pvp {
+    /// `CPythonNetworkStream::RecvPVPPacket`; `me` is the main character's VID.
+    pub fn apply(&mut self, me: u32, src: u32, dst: u32, mode: u8) {
+        match mode {
+            PVP_MODE_AGREE => {
+                self.remove_key(src, dst);
+                // The other side asked me (dst) to fight.
+                if dst == me { self.revenge.remove(&src); self.challenge.insert(src); }
+                // I cannot fight while my request is pending.
+                if src == me { self.cant_fight.insert(dst); }
+            }
+            PVP_MODE_REVENGE => {
+                self.remove_key(src, dst);
+                // src killed me (dst): I may take revenge.
+                if dst == me { self.challenge.remove(&src); self.revenge.insert(src); }
+                if src == me { self.cant_fight.insert(dst); }
+            }
+            PVP_MODE_FIGHT => { self.keys.insert((src, dst)); self.forget(src); self.forget(dst); }
+            PVP_MODE_NONE => { self.remove_key(src, dst); self.forget(src); self.forget(dst); }
+            _ => {}
+        }
+    }
+    fn remove_key(&mut self, a: u32, b: u32) { self.keys.remove(&(a, b)); self.keys.remove(&(b, a)); }
+    /// `CPythonPlayer::ForgetInstance`.
+    fn forget(&mut self, vid: u32) { self.challenge.remove(&vid); self.revenge.remove(&vid); self.cant_fight.remove(&vid); }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Quest {
+    pub title: String,
+    pub clock_name: String,
+    pub clock_value: i32,
+    pub counter_name: String,
+    pub counter_value: i32,
+    pub icon: String,
 }
 
 #[derive(Resource)]
@@ -49,12 +108,20 @@ pub struct PlayerState {
     /// combat predicates read).
     pub kind: u8, pub empire: u8, pub alignment: i16, pub pk_mode: u8, pub guild_id: u32,
     pub level: u32, pub state_flags: u8, pub affect_flags: u64,
+    /// Armor vnum and hair part from the main actor's appearance packets.
+    pub appearance: Option<(u16, u16)>,
+    /// The monster race the main character is polymorphed into, 0 when not
+    /// (its own `GC_CHARACTER_ADD` carries a race of `MAIN_RACE_MAX_NUM` and up).
+    pub poly_race: u16,
     /// `TPacketGCMount.mount_vid`; 0 when not mounted.
     pub mount_vnum: u32,
     /// `CPythonPlayer::m_dwDuelMode` and the `InsertDUELKey` pairs.
     pub duel_mode: u8, pub duel_keys: HashSet<(u32, u32)>,
+    /// `GC_PVP` state: the fight keys and the target board's duel buttons.
+    pub pvp: Pvp,
     /// Party members by player id (`CPythonPlayer::m_PartyMemberMap`).
     pub party: BTreeMap<u32, PartyMember>,
+    pub quests: BTreeMap<u16, Quest>,
     pub observer: bool,
 }
 
@@ -222,7 +289,7 @@ fn set_storage_item(items: &mut [Option<ItemStack>], index: u16, item: ItemStack
     }
 }
 impl Default for PlayerState {
-    fn default() -> Self { Self { vid:0, name:String::new(), points:[0;255], items:BTreeMap::new(), quickslots:[TQuickSlot::default();32], chat:VecDeque::new(), race:0, skill_group:0, kind:0, empire:0, alignment:0, pk_mode:0, guild_id:0, level:0, state_flags:0, affect_flags:0, mount_vnum:0, duel_mode:0, duel_keys:HashSet::new(), party:BTreeMap::new(), observer:false } }
+    fn default() -> Self { Self { vid:0, name:String::new(), points:[0;255], items:BTreeMap::new(), quickslots:[TQuickSlot::default();32], chat:VecDeque::new(), race:0, skill_group:0, kind:0, empire:0, alignment:0, pk_mode:0, guild_id:0, level:0, state_flags:0, affect_flags:0, appearance:None, poly_race:0, mount_vnum:0, duel_mode:0, duel_keys:HashSet::new(), pvp:Pvp::default(), party:BTreeMap::new(), quests:BTreeMap::new(), observer:false } }
 }
 impl PlayerState {
     pub fn line(&mut self, kind:u8, text:String) {
@@ -236,7 +303,9 @@ impl PlayerState {
             // `MainCharacter`, so keep them (`MainCharacter` is not a reset).
             NetEvent::MainCharacter(main) => {
                 self.vid=main.vid; self.name=main.name.clone(); self.race=main.race; self.skill_group=main.skill_group;
+                self.poly_race=0;
                 self.kind=m2_net::phase::ACTOR_TYPE_PC;
+                self.appearance=None;
             }
             NetEvent::Empire(empire) => self.empire = *empire,
             NetEvent::ActorAppend(actor) if actor.vid==self.vid => {
@@ -248,7 +317,9 @@ impl PlayerState {
                 self.level=actor.level;
                 self.state_flags=actor.state_flags;
                 self.affect_flags=actor.affect_flags;
-                if actor.mount_vnum!=0 { self.mount_vnum=actor.mount_vnum; }
+                self.appearance=Some((actor.armor,actor.hair));
+                self.mount_vnum=actor.mount_vnum;
+                self.poly_race=if actor.race>=8 { actor.race } else { 0 };
             }
             NetEvent::ActorUpdate(update) if update.vid==self.vid => {
                 self.alignment=update.alignment;
@@ -256,13 +327,32 @@ impl PlayerState {
                 self.guild_id=update.guild_id;
                 self.state_flags=update.state_flags;
                 self.affect_flags=update.affect_flags;
-                if update.mount_vnum!=0 { self.mount_vnum=update.mount_vnum; }
+                self.appearance=Some((update.armor,update.hair));
+                self.mount_vnum=update.mount_vnum;
             }
             NetEvent::Chat{kind,text,..} if *kind != 5 => self.line(*kind,text.clone()),
             NetEvent::Packet(packet) => match packet {
                 GcPacket::PlayerPoints(p) => self.points=p.points,
-                GcPacket::PlayerPointChange(p) if p.dwVID==self.vid => self.points[p.Type as usize]=p.value,
+                GcPacket::PlayerPointChange(p) if p.dwVID==self.vid => {
+                    if let Some(point)=self.points.get_mut(p.Type as usize) { *point=p.value; }
+                }
                 GcPacket::Mount(p) if p.vid==self.vid => self.mount_vnum=p.mount_vid,
+                GcPacket::QuestInfo { head, tail } => {
+                    if let Ok(info) = wire::tails::quest_info(head.flag, tail) {
+                        if info.begin == Some(false) {
+                            self.quests.remove(&head.index);
+                        } else {
+                            if info.begin == Some(true) { self.quests.insert(head.index, Quest::default()); }
+                            let quest = self.quests.entry(head.index).or_default();
+                            if let Some(value) = info.title.filter(|s| !s.is_empty()) { quest.title = value; }
+                            if let Some(value) = info.clock_name.filter(|s| !s.is_empty()) { quest.clock_name = value; }
+                            if let Some(value) = info.clock_value { quest.clock_value = value; }
+                            if let Some(value) = info.counter_name.filter(|s| !s.is_empty()) { quest.counter_name = value; }
+                            if let Some(value) = info.counter_value { quest.counter_value = value; }
+                            if let Some(value) = info.icon.filter(|s| !s.is_empty()) { quest.icon = value; }
+                        }
+                    }
+                }
                 // `GC_AFFECT_ADD`/`_REMOVE` name the affect's type (a skill
                 // or item buff id), not an `AFFECT_*` flag bit; the visible
                 // flags come only with `GC_CHARACTER_ADD`/`_UPDATE`
@@ -276,11 +366,34 @@ impl PlayerState {
                     }
                     self.duel_mode=if self.duel_keys.is_empty() { combat::DUEL_CANNOTATTACK } else { combat::DUEL_START };
                 }
+                // `RecvChangeSkillGroupPacket`: `m_dwMainActorSkillGroup`.
+                GcPacket::ChangeSkillGroup(p) => self.skill_group=p.skill_group,
+                GcPacket::Pvp(p) => self.pvp.apply(self.vid, p.dwVIDSrc, p.dwVIDDst, p.bMode),
+                GcPacket::Guild { head, tail } if matches!(head.subheader, crate::social::guild::GUILD_WAR_LIST | crate::social::guild::GUILD_WAR_END_LIST) => {
+                    for (a, b) in crate::social::guild_war_pairs(tail).unwrap_or_default() {
+                        if head.subheader == crate::social::guild::GUILD_WAR_LIST { self.pvp.guild_keys.insert((a, b)); }
+                        else { self.pvp.guild_keys.remove(&(a, b)); self.pvp.guild_keys.remove(&(b, a)); }
+                    }
+                }
+                GcPacket::PartyAdd(p) => {
+                    let member = self.party.entry(p.pid).or_default();
+                    member.pid = p.pid;
+                    member.name = p.name_str();
+                }
+                GcPacket::PartyUpdate(p) => {
+                    if let Some(member) = self.party.get_mut(&p.pid) {
+                        member.state = p.state;
+                        member.percent_hp = p.percent_hp;
+                        member.affects = p.affects;
+                    }
+                }
                 GcPacket::PartyLink(p) => {
-                    self.party.insert(p.pid, PartyMember{pid:p.pid, vid:p.vid});
+                    let member = self.party.entry(p.pid).or_default();
+                    member.pid = p.pid;
+                    member.vid = p.vid;
                 }
                 GcPacket::PartyUnlink(p) => {
-                    self.party.remove(&p.pid);
+                    if let Some(member) = self.party.get_mut(&p.pid) { member.vid = 0; }
                 }
                 GcPacket::PartyRemove(p) => {
                     self.party.retain(|_, member| member.pid!=p.pid);
@@ -324,7 +437,8 @@ impl PlayerState {
             duel_mode:self.duel_mode,
             party:self.party.values().map(|member| member.vid).collect(),
             duel_keys:self.duel_keys.clone(),
-            ..CombatWorld::default()
+            pvp_keys:self.pvp.keys.clone(),
+            gvg_keys:self.pvp.guild_keys.clone(),
         }
     }
 
@@ -362,6 +476,8 @@ pub struct WeaponVisual {
     pub sub_model: String,
     /// `CItemData::GetWeaponType` (`TItemTable::bSubType`).
     pub weapon_type: u8,
+    /// `TItemTable::bSpecular` (`GetSpecularPowerf` is this over 100).
+    pub specular: u8,
 }
 
 #[derive(Resource,Default)]
@@ -384,7 +500,7 @@ impl ItemCatalog {
         } else {
             paths::canonical_asset_path(&String::from_utf8_lossy(&item.sub_model_file_name))
         };
-        Some(WeaponVisual{vnum,model,sub_model,weapon_type:item.table.sub_type})
+        Some(WeaponVisual{vnum,model,sub_model,weapon_type:item.table.sub_type,specular:item.table.specular})
     }
 }
 
@@ -425,6 +541,8 @@ pub enum PlayerAction {
     ShopSell {position:u8,count:u8},
     ShopEnd,
     BindItem {slot:u8,position:ItemPosition},
+    /// `SendQuickSlotAddPacket` for a skill or emotion (`SLOT_TYPE_SKILL`/`_EMOTION`).
+    BindQuickslot {slot:u8,kind:u8,position:u8},
     ClearQuickslot(u8),
     SwapQuickslot {source:u8,destination:u8},
 }
@@ -541,6 +659,7 @@ fn dispatch(
             }
             PlayerAction::ShopEnd => shop.open && net.game.send_shop_end(),
             PlayerAction::BindItem{slot,position}=>*slot<32 && position.window==1 && position.cell<90 && player.items.contains_key(position) && net.game.stream.send_packet(&wire::TPacketCGQuickSlotAdd{header:cg::QUICKSLOT_ADD,pos:*slot,slot:TQuickSlot{Type:1,Position:position.cell as u8}}),
+            PlayerAction::BindQuickslot{slot,kind,position}=>*slot<32 && matches!(*kind,2|3) && net.game.stream.send_packet(&wire::TPacketCGQuickSlotAdd{header:cg::QUICKSLOT_ADD,pos:*slot,slot:TQuickSlot{Type:*kind,Position:*position}}),
             PlayerAction::ClearQuickslot(slot)=>*slot<32 && net.game.stream.send_packet(&wire::TPacketCGQuickSlotDel{header:cg::QUICKSLOT_DEL,pos:*slot}),
             PlayerAction::SwapQuickslot{source,destination}=>*source<32 && *destination<32 && source!=destination && net.game.stream.send_packet(&wire::TPacketCGQuickSlotSwap{header:cg::QUICKSLOT_SWAP,pos:*source,change_pos:*destination}),
         };
@@ -584,9 +703,40 @@ fn dispatch(
         assert_eq!((state.pk_mode,state.empire,state.guild_id,state.alignment),(2,1,12,-5000));
         state.apply(&NetEvent::Packet(GcPacket::Mount(wire::TPacketGCMount{vid:7,mount_vid:20104,..default()})));
         assert_eq!(state.mount_vnum,20104);
+        state.apply(&NetEvent::ActorUpdate(m2_net::phase::ActorUpdate { vid:7, guild_id:12, move_speed:100, attack_speed:100, state_flags:0, affect_flags:0, alignment:-5000, pk_mode:2, armor:0, weapon:0, hair:0, mount_vnum:0 }));
+        assert_eq!(state.mount_vnum,0);
         // A buff's type is not a flag bit: type 23 must not turn on bit 23.
         state.apply(&NetEvent::Packet(GcPacket::AffectAdd(wire::TPacketGCAffectAdd{elem:wire::TPacketAffectElement{dwType:23,..default()},..default()})));
         assert_eq!(state.affect_flags,0);
+    }
+    #[test] fn quest_packets_begin_update_and_end_a_quest() {
+        let mut state = PlayerState::default();
+        let packet = |flag, tail| NetEvent::Packet(GcPacket::QuestInfo { head: wire::TPacketGCQuestInfo { header: wire::gc::QUEST_INFO, size: 6, index: 42, flag }, tail });
+        state.apply(&packet(1, vec![1]));
+        let mut title = vec![0; 31];
+        title[..5].copy_from_slice(b"Quest");
+        state.apply(&packet(2, title));
+        assert_eq!(state.quests[&42].title, "Quest");
+        state.apply(&packet(1, vec![0]));
+        assert!(!state.quests.contains_key(&42));
+    }
+    #[test] fn party_packets_keep_member_information_across_link_changes() {
+        let mut state = PlayerState::default();
+        let mut add = wire::TPacketGCPartyAdd { pid: 8, ..default() };
+        add.set_name_str("Ally");
+        state.apply(&NetEvent::Packet(GcPacket::PartyAdd(add)));
+        state.apply(&NetEvent::Packet(GcPacket::PartyUpdate(wire::TPacketGCPartyUpdate { pid: 8, percent_hp: 73, state: 2, ..default() })));
+        state.apply(&NetEvent::Packet(GcPacket::PartyLink(wire::TPacketGCPartyLink { pid: 8, vid: 15, ..default() })));
+        state.apply(&NetEvent::Packet(GcPacket::PartyUnlink(wire::TPacketGCPartyUnlink { pid: 8, vid: 15, ..default() })));
+        assert_eq!((state.party[&8].name.as_str(), state.party[&8].percent_hp, state.party[&8].vid), ("Ally", 73, 0));
+        state.apply(&NetEvent::Packet(GcPacket::PartyRemove(wire::TPacketGCPartyRemove { pid: 8, ..default() })));
+        assert!(state.party.is_empty());
+    }
+    #[test] fn own_gm_affect_comes_from_the_character_packet() {
+        let mut state=PlayerState { vid: 7, ..PlayerState::default() };
+        let actor=m2_net::phase::ActorData{vid:7,kind:6,race:0,move_speed:100,attack_speed:100,state_flags:0,rotation:0.0,x:0,y:0,affect_flags:1,name:None,guild_id:0,level:1,alignment:0,pk_mode:0,empire:2,armor:0,weapon:0,hair:0,mount_vnum:0};
+        state.apply(&NetEvent::ActorAppend(actor));
+        assert!(combat::has_affect(state.affect_flags,0));
     }
     #[test] fn weapon_cell_is_the_cpp_equipment_weapon_slot() {
         // GameType.h: `c_Equipment_Start = c_ItemSlot_Count` (90),

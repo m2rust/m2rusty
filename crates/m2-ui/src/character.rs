@@ -45,6 +45,8 @@ struct StatValues;
 #[derive(Component)]
 struct CombatText;
 #[derive(Component)]
+struct QuestText;
+#[derive(Component)]
 struct FaceImage(Option<u16>);
 #[derive(Resource)]
 struct CharacterWindow(Entity);
@@ -57,7 +59,7 @@ impl Plugin for CharacterPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CharacterTab>().init_resource::<CharacterWindow>()
             .add_systems(Update, (tabs, keys, stat_actions).in_set(UiSet::Actions))
-            .add_systems(Update, (visibility, status).chain().in_set(UiSet::Draw));
+            .add_systems(Update, (visibility, status, quests).chain().in_set(UiSet::Draw));
     }
 }
 
@@ -113,11 +115,17 @@ pub fn build(commands: &mut Commands, assets: &AssetServer) {
 
     let quest_page = commands.spawn((PageRoot(CharacterTab::Quest), core::rect(0., 24., 250., 304.))).id();
     commands.entity(root).add_child(quest_page);
-    let quest = core::text(commands, quest_page, "No quests.", core::rect(16., 20., 218., 30.));
-    commands.entity(quest).insert(TextColor(Color::srgb(0.85, 0.82, 0.7)));
+    let quest = core::text(commands, quest_page, "No quests.", core::rect(16., 20., 218., 260.));
+    commands.entity(quest).insert((QuestText, TextColor(Color::srgb(0.85, 0.82, 0.7))));
 
     crate::skills::build(commands, assets, root);
     crate::emotes::build(commands, assets, root);
+}
+
+fn quests(player: Res<PlayerState>, mut texts: Query<&mut Text, With<QuestText>>) {
+    let titles: Vec<_> = player.quests.values().filter(|quest| !quest.title.is_empty()).map(|quest| quest.title.as_str()).collect();
+    let value = if titles.is_empty() { "No quests.".to_owned() } else { titles.join("\n") };
+    for mut text in &mut texts { if **text != value { **text = value.clone(); } }
 }
 
 fn build_status(commands: &mut Commands, assets: &AssetServer, page: Entity) {

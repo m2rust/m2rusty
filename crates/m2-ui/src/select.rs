@@ -15,7 +15,7 @@ use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, futures::check_ready};
 use m2_assets::M2Packs;
 use m2_game::SceneCamera;
-use m2_game::ingame::{EnterWorld, GameWorld, LOCALE_PATH};
+use m2_game::ingame::{EnterWorld, GameWorld, LOCALE_PATH, WarpTransition};
 use m2_game::net::{EnterGame, Net, NetMessage};
 use m2_game::render::character::{ArmorShapes, Character, IntroMotion, Look};
 use m2_net::phase::{NetEvent, Phase};
@@ -42,6 +42,8 @@ pub struct SelectScreen {
     start: Option<(f32, bool)>,
     /// `MainCharacter` while entering: name, position and VID for the in-game screen.
     main: Option<(String, i32, i32, u32)>,
+    /// Appearance retained after the selection scene is destroyed, for warps.
+    active_look: Option<Look>,
 }
 
 impl SelectScreen {
@@ -111,8 +113,28 @@ fn track_entering(
     mut net: ResMut<Net>,
     auto: Res<Autologin>,
     mut enter_world: MessageWriter<EnterWorld>,
+    transition: Option<Res<WarpTransition>>,
+    mut warp_slot: Local<Option<u8>>,
 ) {
+    if let Some(slot) = *warp_slot {
+        if !matches!(screen.status, Status::InGame { .. }) {
+            *warp_slot = None;
+        } else if transition.as_ref().is_none_or(|transition| transition.alpha() >= 1.0) {
+            screen.status = Status::Entering { slot, step: "Connecting to the game server…".into() };
+            *warp_slot = None;
+        }
+    }
     for message in messages.read() {
+        if matches!(message, NetMessage::Game(NetEvent::Warp { .. })) && matches!(screen.status, Status::InGame { .. }) {
+            let slot = net.game.direct_enter_slot().unwrap_or_else(|| net.game.selected_slot());
+            select.main = None;
+            if transition.is_none() {
+                screen.status = Status::Entering { slot, step: "Connecting to the game server…".into() };
+            } else {
+                *warp_slot = Some(slot);
+            }
+            continue;
+        }
         let Status::Entering { slot, step } = &mut screen.status else {
             continue;
         };
@@ -149,11 +171,13 @@ fn track_entering(
                     .characters
                     .iter()
                     .find(|(c, _)| c.slot == slot)
-                    .map(|(_, c)| c.look);
+                    .map(|(_, c)| c.look)
+                    .or(select.active_look);
                 info!("in game as {name}");
                 // `introloading.py`: `net.Warp(playerX, playerY)` and the game window.
                 match look {
                     Some(look) => {
+                        select.active_look = Some(look);
                         enter_world.write(EnterWorld {
                             x,
                             y,
@@ -321,6 +345,34 @@ fn slot_position(index: usize, count: usize, selected: bool) -> Vec3 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn warp_reenters_with_destination_and_retained_appearance() {
+        let look = Look { race: 2, shape: 7, hair: 3 };
+        let mut app = App::new();
+        app.add_message::<NetMessage>()
+            .add_message::<EnterWorld>()
+            .insert_resource(LoginScreen { status: Status::InGame { name: "Hero".into(), x: 1, y: 2 }, ..default() })
+            .insert_resource(SelectScreen { active_look: Some(look), ..default() })
+            .init_resource::<Net>()
+            .init_resource::<Autologin>()
+            .add_systems(Update, track_entering);
+        app.world_mut().resource_mut::<Net>().game.set_direct_enter(2);
+        app.world_mut().write_message(NetMessage::Game(NetEvent::Warp { x: 100, y: 200, addr: 0x0100007f, port: 13000 }));
+        app.update();
+        assert!(matches!(app.world().resource::<LoginScreen>().status, Status::Entering { slot: 2, .. }));
+
+        app.world_mut().write_message(NetMessage::Game(NetEvent::MainCharacter(m2_net::phase::MainCharacter {
+            vid: 42, race: 2, empire: 1, skill_group: 1, name: "Hero".into(), x: 300, y: 400, bgm: None,
+        })));
+        app.world_mut().write_message(NetMessage::Game(NetEvent::PhaseChanged { from: Phase::Loading, to: Phase::Game }));
+        app.update();
+        let mut cursor = bevy::ecs::message::MessageCursor::<EnterWorld>::default();
+        let entries: Vec<_> = cursor.read(app.world().resource::<Messages<EnterWorld>>()).copied().collect();
+        assert_eq!(entries.len(), 1);
+        assert_eq!((entries[0].x, entries[0].y, entries[0].vid, entries[0].look), (300, 400, 42, look));
+        assert!(matches!(app.world().resource::<LoginScreen>().status, Status::InGame { x: 300, y: 400, .. }));
+    }
 
     #[test]
     fn the_row_is_centred_and_the_selection_steps_forward() {

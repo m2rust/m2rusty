@@ -70,6 +70,45 @@ pub enum Motion {
     StandUp { back: bool },
     /// `MOTION_DEAD`.
     Dead,
+    /// `MOTION_DIG` (`dig.msa`, mining).
+    Dig,
+    /// The `MOTION_MODE_FISHING` motions (`fishing/`).
+    Fishing(FishingMotion),
+}
+
+/// The motions a polymorphed player plays: the monster race's (`npclist`/`.msm`).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MobMotionFiles {
+    pub wait: Option<String>,
+    pub walk: Option<String>,
+    pub run: Option<String>,
+    pub attack: Vec<String>,
+    pub damage: Option<String>,
+    pub dead: Option<String>,
+}
+
+/// `NAME_FISHING_*` (`playersettingmodule.py`'s `## FISHING` block).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FishingMotion {
+    Throw,
+    Wait,
+    Stop,
+    React,
+    Catch,
+    Fail,
+}
+
+impl FishingMotion {
+    pub fn file(self) -> &'static str {
+        match self {
+            FishingMotion::Throw => "throw.msa",
+            FishingMotion::Wait => "fishing_wait.msa",
+            FishingMotion::Stop => "fishing_cancel.msa",
+            FishingMotion::React => "fishing_react.msa",
+            FishingMotion::Catch => "fishing_catch.msa",
+            FishingMotion::Fail => "fishing_fail.msa",
+        }
+    }
 }
 
 /// `CRaceMotionData::EMode`.
@@ -228,6 +267,10 @@ impl Motion {
                 let folder = if mode.mounted() { MotionMode::Horse.folder() } else { MotionMode::General.folder() };
                 return Some(format!("{root}{folder}dead.msa"));
             }
+            // `SetGeneralMotions` registers `dig.msa` in every unmounted mode.
+            Motion::Dig if mode.mounted() => return None,
+            Motion::Dig => "dig.msa",
+            Motion::Fishing(motion) => return Some(format!("{root}fishing/{}", motion.file())),
         };
         // The mounted melee folders only register their combos; `wait`, `walk`
         // and `run` come from `horse/` (the C++ fallback through the same
@@ -442,7 +485,7 @@ pub fn weapon_bones(race: u8) -> (Option<&'static str>, Option<&'static str>) {
 
 /// Armor vnum to body shape: each item's `value[3]` (`item_proto`).
 #[derive(Resource, Debug, Clone, Default)]
-pub struct ArmorShapes(pub HashMap<u32, u32>);
+pub struct ArmorShapes(pub HashMap<u32, u32>, pub HashMap<u32, u8>);
 
 impl ArmorShapes {
     /// Reads `<locale_path>/item_proto` (`locale/en` by default, `MULTI_LOCALE_PATH`).
@@ -450,7 +493,10 @@ impl ArmorShapes {
         let file = format!("{locale_path}/item_proto");
         let data = packs.get(file.as_bytes()).map_err(|e| format!("{file}: {e}"))?;
         let items = parse_item_proto(&data).map_err(|e| format!("{file}: {e:?}"))?;
-        Ok(ArmorShapes(items.iter().map(|item| (item.vnum, item.values[3] as u32)).collect()))
+        Ok(ArmorShapes(
+            items.iter().map(|item| (item.vnum, item.values[3] as u32)).collect(),
+            items.iter().filter(|item| item.specular > 0).map(|item| (item.vnum, item.specular)).collect(),
+        ))
     }
 
     /// `__ArmorVnumToShape` with `ARMOR_SPECULAR_ENABLE` (as `constInfo.py` sets it):
@@ -461,6 +507,15 @@ impl ArmorShapes {
             return armor;
         }
         self.0.get(&armor).copied().unwrap_or(armor)
+    }
+
+    /// `CItemData::GetSpecularPowerf` of the armor `SetArmor` passes to
+    /// `SetShape`; 0 for the bare shapes 0 and 1 and unknown vnums.
+    pub fn specular(&self, armor: u32) -> f32 {
+        if armor <= 1 {
+            return 0.0;
+        }
+        self.1.get(&armor).map_or(0.0, |&specular| f32::from(specular) / 100.0)
     }
 }
 
@@ -485,6 +540,7 @@ struct Playing {
     file: String,
     clip: Option<Handle<AnimationClip>>,
     repeat: bool,
+    speed: f32,
     started: bool,
     /// The clip's length once it loaded (`CRaceMotionData::GetMotionDuration`).
     duration: f32,
@@ -502,6 +558,8 @@ struct Playing {
 /// the race's weapon bone once both assets are loaded.
 struct Weapon {
     vnum: u32,
+    /// `CItemData::GetSpecularPowerf`: the shine of the weapon's parts.
+    specular: f32,
     right: Option<Handle<Gr2Model>>,
     left: Option<Handle<Gr2Model>>,
     /// The spawned mesh entities, despawned when the weapon changes.
@@ -515,8 +573,10 @@ pub const MOUNT_HEIGHT: f32 = 110.0;
 
 /// The mounted horse model (`CInstanceBase::SHORSE`).
 struct Mount {
-    model: Option<Handle<Gr2Model>>,
-    spawned: Option<Entity>,
+    actor: Box<Character>,
+    wait: Option<String>,
+    run: Option<String>,
+    attached_rider: Option<Entity>,
 }
 
 /// One renderable character in the world, whether player controlled or not.
@@ -525,6 +585,7 @@ pub struct Character {
     /// character. The model hangs under it once loaded.
     pub root: Entity,
     pub look: Look,
+    movement_rate: f32,
     /// The `.msm` used for this character. Non-player races are supplied by
     /// the mob race registry instead of the player race table.
     race_file: String,
@@ -538,6 +599,11 @@ pub struct Character {
     mount_vnum: u32,
     mount: Option<Mount>,
     weapon_type: u8,
+    /// `SetShape`'s `fSpecular`: the armor shine of the skinned body parts.
+    armor_specular: f32,
+    /// A polymorphed player (`IsPoly`): the monster race's motions stand in
+    /// for the player ones, in `MODE_GENERAL`.
+    mob_motions: Option<MobMotionFiles>,
     /// The race's collision attachments (`m_DefendingPointInstanceList`,
     /// `m_BodyPointInstanceList`), once the `.msm` loaded.
     collisions: Vec<RaceAttachment>,
@@ -591,7 +657,7 @@ impl Character {
         } else {
             (Stage::Race(world.resource::<AssetServer>().load(paths::asset_source_uri(race_file))), None)
         };
-        Character { root, look, race_file: race_file.to_owned(), player_appearance, stage, motion: None, motion_mode: MotionMode::General, weapon: None, mount_vnum: 0, mount: None, weapon_type: 0, collisions: Vec::new(), last_spheres: HashMap::new(), error }
+        Character { root, look, movement_rate: 1.0, race_file: race_file.to_owned(), player_appearance, stage, motion: None, motion_mode: MotionMode::General, weapon: None, mount_vnum: 0, mount: None, weapon_type: 0, armor_specular: 0.0, mob_motions: None, collisions: Vec::new(), last_spheres: HashMap::new(), error }
     }
 
     /// The model is spawned.
@@ -599,26 +665,82 @@ impl Character {
         matches!(self.stage, Stage::Spawned(_))
     }
 
+    /// Rebuild the player body for an authoritative armor or hair change.
+    pub fn change_look(&mut self, world: &mut World, look: Look, armor_specular: f32) -> bool {
+        if !self.player_appearance || (self.look == look && self.armor_specular == armor_specular) { return false; }
+        self.armor_specular = armor_specular;
+        if let Stage::Spawned(spawned) = &self.stage {
+            world.despawn(spawned.root);
+        }
+        if let Some(weapon) = &mut self.weapon {
+            for entity in weapon.attached.drain(..) {
+                if world.get_entity(entity).is_ok() { world.despawn(entity); }
+            }
+            weapon.ready = false;
+        }
+        self.look = look;
+        self.error = None;
+        self.stage = Stage::Race(world.resource::<AssetServer>().load(paths::asset_source_uri(&self.race_file)));
+        if let Some(motion) = &mut self.motion { motion.started = false; }
+        true
+    }
+
     /// Plays a `.msa` motion, looping or once (then holding its last frame).
     pub fn play(&mut self, world: &mut World, msa: &str, repeat: bool) {
         let file = msa.to_owned();
         let msa = world.resource::<AssetServer>().load(paths::asset_source_uri(msa));
-        self.motion = Some(Playing { msa, file, clip: None, repeat, started: false, duration: 0.0, started_at: 0.0, last_frame: None, then: Vec::new() });
+        self.motion = Some(Playing { msa, file, clip: None, repeat, speed: 1.0, started: false, duration: 0.0, started_at: 0.0, last_frame: None, then: Vec::new() });
     }
 
     /// Plays one of the race's normal motions in the current weapon motion mode
     /// (`CInstanceBase::RefreshState` after `SetMotionMode`).
     pub fn play_motion(&mut self, world: &mut World, motion: Motion, repeat: bool) {
+        if let Some(file) = self.mob_motion(motion) {
+            self.play(world, &file, repeat);
+            if matches!(motion, Motion::Walk | Motion::Run) && let Some(playing) = &mut self.motion {
+                playing.speed = self.movement_rate;
+            }
+            return;
+        }
         if let Some(file) = motion.file_in(self.look.race, self.motion_mode) {
             self.play(world, &file, repeat);
+            if matches!(motion, Motion::Walk | Motion::Run) && let Some(playing) = &mut self.motion {
+                playing.speed = self.movement_rate;
+            }
         }
+        if let Some(mount) = &mut self.mount {
+            let file = match motion {
+                Motion::Walk | Motion::Run => mount.run.as_deref(),
+                Motion::Wait => mount.wait.as_deref(),
+                _ => None,
+            };
+            if let Some(file) = file {
+                mount.actor.play(world, file, true);
+                if matches!(motion, Motion::Walk | Motion::Run) && let Some(playing) = &mut mount.actor.motion {
+                    playing.speed = self.movement_rate;
+                }
+            }
+        }
+    }
+
+    /// `CInstanceBase::SetMoveSpeed`: scales walking and running animations.
+    pub fn set_movement_rate(&mut self, rate: f32) -> bool {
+        let rate = if rate > 0.0 { rate } else { 1.0 };
+        if (self.movement_rate - rate).abs() < f32::EPSILON { return false; }
+        self.movement_rate = rate;
+        true
     }
 
     /// `CActorInstance::InputComboAttackCommand` -> `ComboAttack`: the `combo`th
     /// `MOTION_COMBO_ATTACK_*` of the current mode. `combo` is clamped to the
     /// mode's registered count.
     pub fn play_attack(&mut self, world: &mut World, combo: u32) -> bool {
+        if let Some(file) = self.mob_motion(Motion::Attack(combo)) {
+            self.play(world, &file, false);
+            return true;
+        }
         let Some(file) = self.motion_mode.attack_file(combo) else { return false };
+        self.idle_mount(world);
         let root = race_files(self.look.race).map(|files| files.general.strip_suffix("general/").unwrap_or(files.general)).unwrap_or("");
         self.play(world, &format!("{root}{}{file}", self.motion_mode.folder()), false);
         true
@@ -627,7 +749,12 @@ impl Character {
     /// `ComboAttack(NAME_COMBO_ATTACK_1 + n - 1)`: the `n`th combo motion of
     /// the current mode (not the `n`th step; see [`MotionMode::combo_sequence`]).
     pub fn play_combo_motion(&mut self, world: &mut World, n: u32) -> bool {
+        if let Some(file) = self.mob_motion(Motion::Attack(n)) {
+            self.play(world, &file, false);
+            return true;
+        }
         let Some(file) = self.motion_mode.combo_file(n) else { return false };
+        self.idle_mount(world);
         let Some(root) = race_files(self.look.race).map(|files| files.general.strip_suffix("general/").unwrap_or(files.general))
         else {
             return false;
@@ -638,7 +765,17 @@ impl Character {
 
     /// The file of one of the race's normal motions in the current mode.
     pub fn motion_path(&self, motion: Motion) -> Option<String> {
+        if self.mob_motions.is_some() {
+            return self.mob_motion(motion);
+        }
         motion.file_in(self.look.race, self.motion_mode)
+    }
+
+    /// Stops the horse under an attacking rider (`BlockMovement` + `EndWalking`).
+    pub fn idle_mount(&mut self, world: &mut World) {
+        if let Some(mount) = &mut self.mount && let Some(file) = mount.wait.as_deref() {
+            mount.actor.play(world, file, true);
+        }
     }
 
     /// Whether a once motion is still running (an attack, a hit reaction):
@@ -666,7 +803,7 @@ impl Character {
 
     /// `CInstanceBase::MountHorse`: loads the mount race's model and switches
     /// to its motion mode. `race_file` comes from the NPC race registry.
-    pub fn set_mount(&mut self, world: &mut World, vnum: u32, race_file: &str) -> bool {
+    pub fn set_mount(&mut self, world: &mut World, vnum: u32, race_file: &str, wait: Option<&str>, run: Option<&str>) -> bool {
         if vnum == self.mount_vnum {
             return false;
         }
@@ -675,23 +812,59 @@ impl Character {
         if vnum == 0 {
             return true;
         }
-        let model = world.resource::<AssetServer>().load(paths::asset_source_uri(race_file));
-        self.mount = Some(Mount { model: Some(model), spawned: None });
-        self.motion_mode = motion_mode((self.weapon_type != 0).then_some(self.weapon_type), true);
+        let mut actor = Box::new(Self::spawn_actor(world, vnum as u16, race_file, Transform::from_xyz(0.0, -MOUNT_HEIGHT, 0.0), Some(self.root)));
+        if let Some(file) = wait { actor.play(world, file, true); }
+        self.mount = Some(Mount { actor, wait: wait.map(str::to_owned), run: run.map(str::to_owned), attached_rider: None });
+        self.motion_mode = motion_mode(self.weapon.as_ref().map(|_| self.weapon_type), true);
         true
     }
 
     /// `CInstanceBase::DismountHorse`.
     pub fn clear_mount(&mut self, world: &mut World) -> bool {
         let Some(mount) = self.mount.take() else { return false };
-        if let Some(entity) = mount.spawned
-            && world.get_entity(entity).is_ok()
-        {
-            world.despawn(entity);
+        if let Some(rider) = mount.attached_rider && world.get_entity(rider).is_ok() {
+            world.entity_mut(rider).insert(ChildOf(self.root));
+            if let Some(mut transform) = world.get_mut::<Transform>(rider) {
+                transform.set_changed();
+            }
         }
+        if world.get_entity(mount.actor.root).is_ok() { world.despawn(mount.actor.root); }
         self.mount_vnum = 0;
-        self.motion_mode = motion_mode((self.weapon_type != 0).then_some(self.weapon_type), false);
+        self.motion_mode = motion_mode(self.weapon.as_ref().map(|_| self.weapon_type), false);
         true
+    }
+
+    /// Makes this a polymorphed body: [`Self::play_motion`] and friends use the
+    /// monster's motion files.
+    pub fn set_mob_motions(&mut self, motions: MobMotionFiles) {
+        self.mob_motions = Some(motions);
+        self.motion_mode = MotionMode::General;
+    }
+
+    /// Whether this is a polymorphed body.
+    pub fn is_poly(&self) -> bool {
+        self.mob_motions.is_some()
+    }
+
+    fn mob_motion(&self, motion: Motion) -> Option<String> {
+        let motions = self.mob_motions.as_ref()?;
+        match motion {
+            Motion::Wait => motions.wait.clone(),
+            Motion::Walk => motions.walk.clone().or_else(|| motions.run.clone()),
+            Motion::Run => motions.run.clone().or_else(|| motions.walk.clone()),
+            Motion::Attack(combo) => (!motions.attack.is_empty())
+                .then(|| motions.attack[(combo.max(1) as usize - 1) % motions.attack.len()].clone()),
+            Motion::Damage { .. } | Motion::DamageFlying { .. } => motions.damage.clone(),
+            Motion::StandUp { .. } => motions.wait.clone(),
+            Motion::Dead => motions.dead.clone(),
+            Motion::Skill(_) | Motion::Dig | Motion::Fishing(_) => None,
+        }
+    }
+
+    /// The armor's specular power (`CInstanceBase::SetArmor`); applies when the
+    /// body spawns, so set it right after [`Self::spawn`].
+    pub fn set_armor_specular(&mut self, specular: f32) {
+        self.armor_specular = specular;
     }
 
     pub fn is_mounted(&self) -> bool {
@@ -705,7 +878,7 @@ impl Character {
 
     /// The equip weapon's `bSubType`, or `None` when bare-handed.
     pub fn weapon_type(&self) -> Option<u8> {
-        (self.weapon_type != 0).then_some(self.weapon_type)
+        self.weapon.as_ref().map(|_| self.weapon_type)
     }
 
     /// `GetMotionMode` (`CRaceMotionData::EMode`).
@@ -725,6 +898,7 @@ impl Character {
         model: &str,
         sub_model: &str,
         weapon_type: u8,
+        specular: f32,
     ) -> bool {
         if vnum == self.weapon.as_ref().map_or(0, |weapon| weapon.vnum) {
             return false;
@@ -742,7 +916,7 @@ impl Character {
             .then(|| server.load(paths::asset_source_uri(model)));
         let left = matches!(hands, WeaponHands::Left | WeaponHands::Both)
             .then(|| server.load(paths::asset_source_uri(if sub_model.is_empty() { model } else { sub_model })));
-        self.weapon = Some(Weapon { vnum, right, left, attached: Vec::new(), ready: false });
+        self.weapon = Some(Weapon { vnum, specular, right, left, attached: Vec::new(), ready: false });
         true
     }
 
@@ -820,7 +994,7 @@ impl Character {
         }
         let Some(asset) = world.resource::<Assets<RaceMotionAsset>>().get(&motion.msa) else { return tick };
         let duration = if motion.duration > 0.0 { motion.duration } else { asset.duration };
-        let elapsed = now - motion.started_at;
+        let elapsed = (now - motion.started_at) * motion.speed;
         let frames = ((duration * 60.0) as u32).max(1);
         let total = (elapsed.max(0.0) * 60.0) as u32;
         let (lap, frame) = if motion.repeat { (total / frames, total % frames) } else { (0, total.min(frames)) };
@@ -909,18 +1083,22 @@ impl Character {
     /// so it follows the player. The caller lifts the root by [`MOUNT_HEIGHT`]
     /// while mounted, so the horse sits at its feet.
     fn advance_mount(&mut self, world: &mut World) {
-        let Stage::Spawned(_) = &self.stage else { return };
         let Some(mount) = &mut self.mount else { return };
-        if mount.spawned.is_some() {
-            return;
+        mount.actor.update(world);
+        let Stage::Spawned(rider) = &self.stage else { return };
+        if mount.attached_rider == Some(rider.root) { return; }
+        let Stage::Spawned(horse) = &mount.actor.stage else { return };
+        let saddle = horse.bone_by_name.iter().find(|(name, _)| name.eq_ignore_ascii_case("saddle")).map(|(_, entity)| *entity);
+        if let Some(saddle) = saddle {
+            world.entity_mut(rider.root).insert(ChildOf(saddle));
+            // Re-parenting alone does not dirty the rider's transform, so the
+            // propagation would keep its old world position (the lifted root)
+            // until the character next moved.
+            if let Some(mut transform) = world.get_mut::<Transform>(rider.root) {
+                transform.set_changed();
+            }
+            mount.attached_rider = Some(rider.root);
         }
-        let Some(handle) = &mount.model else { return };
-        let Some(model) = world.resource::<Assets<Gr2Model>>().get(handle).cloned() else { return };
-        let spawned = model::spawn_model(world, &model, Some(self.root), &[], None);
-        if let Some(mut transform) = world.get_mut::<Transform>(spawned.root) {
-            transform.translation = Vec3::new(0.0, -MOUNT_HEIGHT, 0.0);
-        }
-        mount.spawned = Some(spawned.root);
     }
 
     fn advance(&mut self, world: &mut World) -> Result<(), String> {
@@ -976,7 +1154,7 @@ impl Character {
                     None => None,
                 };
                 let (body_skins, hair_skins) = (body.1.clone(), hair.as_ref().map(|h| h.1.clone()).unwrap_or_default());
-                let spawned = model::spawn_model(world, &body_model, Some(self.root), &body_skins, None);
+                let spawned = model::spawn_model(world, &body_model, Some(self.root), &body_skins, None, Some(self.armor_specular));
                 if let Some(hair_model) = &hair_model {
                     model::attach_model(world, hair_model, &spawned, &hair_skins, None);
                 }
@@ -1016,13 +1194,14 @@ impl Character {
                 _ => return,
             }
         };
+        let specular = (weapon.specular > 0.0).then_some(weapon.specular);
         let (right_bone, left_bone) = weapon_bones(self.look.race);
         let mut parts = Vec::new();
         if let (Some(model), Some(bone)) = (&right, right_bone) {
-            parts.extend(model::attach_model_to_bone(world, model, spawned, bone, &[], None));
+            parts.extend(model::attach_model_to_bone(world, model, spawned, bone, &[], None, specular));
         }
         if let (Some(model), Some(bone)) = (&left, left_bone) {
-            parts.extend(model::attach_model_to_bone(world, model, spawned, bone, &[], None));
+            parts.extend(model::attach_model_to_bone(world, model, spawned, bone, &[], None, specular));
         }
         weapon.attached = parts;
         weapon.ready = true;
@@ -1074,6 +1253,7 @@ impl Character {
         if let Some(mut player) = root.get_mut::<AnimationPlayer>() {
             player.stop_all();
             let active = player.play(node);
+            active.set_speed(motion.speed);
             if motion.repeat {
                 active.repeat();
             }
@@ -1116,6 +1296,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn saddle_attaches_rider_and_dismount_preserves_the_rider() {
+        let mut world = World::new();
+        world.insert_resource(Time::<()>::default());
+        let mut rider = Character::spawn_actor(&mut world, 0, "", Transform::IDENTITY, None);
+        let rider_model = world.spawn((Transform::IDENTITY, ChildOf(rider.root))).id();
+        rider.stage = Stage::Spawned(Gr2Spawn { root: rider_model, bones: vec![], bone_by_name: HashMap::new(), parts: vec![] });
+        let mut horse = Character::spawn_actor(&mut world, 20104, "", Transform::IDENTITY, Some(rider.root));
+        let horse_model = world.spawn((Transform::IDENTITY, ChildOf(horse.root))).id();
+        let saddle = world.spawn((Transform::IDENTITY, ChildOf(horse_model))).id();
+        horse.stage = Stage::Spawned(Gr2Spawn { root: horse_model, bones: vec![saddle], bone_by_name: [("saddle".into(), saddle)].into(), parts: vec![] });
+        rider.mount_vnum = 20104;
+        rider.mount = Some(Mount { actor: Box::new(horse), wait: None, run: None, attached_rider: None });
+        rider.advance_mount(&mut world);
+        assert_eq!(world.get::<ChildOf>(rider_model).unwrap().parent(), saddle);
+        assert!(rider.clear_mount(&mut world));
+        assert_eq!(world.get::<ChildOf>(rider_model).unwrap().parent(), rider.root);
+        assert!(world.get_entity(saddle).is_err());
+        assert!(!rider.is_mounted());
+    }
+
+    #[test]
     fn race_files_follow_playersettingmodule() {
         assert_eq!(race_files(5).unwrap().msm, "assassin_m.msm");
         assert_eq!(IntroMotion::Wait.file(5).unwrap(), "d:/ymir work/pc2/assassin/intro/wait.msa");
@@ -1125,7 +1326,7 @@ mod tests {
 
     #[test]
     fn armor_vnums_map_to_shapes() {
-        let shapes = ArmorShapes([(11209, 3)].into_iter().collect());
+        let shapes = ArmorShapes([(11209, 3)].into_iter().collect(), HashMap::new());
         assert_eq!(shapes.shape(0), 0);
         assert_eq!(shapes.shape(1), 1);
         assert_eq!(shapes.shape(11209), 3);

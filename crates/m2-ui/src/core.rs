@@ -184,9 +184,12 @@ fn resolve_art(subs:Res<Assets<SubImage>>,mut images:Query<(&mut ImageNode,Optio
         if button.is_some(){let color=if disabled{Color::srgba(0.45,0.45,0.45,0.8)}else{Color::WHITE};if image.color!=color{image.color=color;}}
     }
 }
-fn game_focus(input:Res<InputFocus>,fields:Query<(),With<bevy::ui_widgets::TextInput>>,surfaces:Query<&Hovered,With<Surface>>,consumed:Res<Consumed>,manager:Res<WindowManager>,mut focus:ResMut<UiFocus>){
+fn game_focus(input:Res<InputFocus>,fields:Query<(),With<bevy::ui_widgets::TextInput>>,surfaces:Query<&Hovered,With<Surface>>,consumed:Res<Consumed>,manager:Res<WindowManager>,inventory:Option<Res<crate::inventory::InventoryUi>>,mut focus:ResMut<UiFocus>){
     focus.keyboard=consumed.keyboard || input.get().is_some_and(|e|fields.contains(e)) || manager.modal.is_some();
-    focus.pointer=consumed.pointer || surfaces.iter().any(|h|h.0) || manager.modal.is_some();
+    // `OnMouseLeftButtonDown` with something attached only drops it; the world
+    // is not clicked.
+    let attached=inventory.is_some_and(|ui|ui.carried.is_some()||ui.held_item().is_some());
+    focus.pointer=consumed.pointer || surfaces.iter().any(|h|h.0) || manager.modal.is_some() || attached;
 }
 #[derive(Component)] struct CoreTooltip;
 #[derive(Component)] struct CoreTooltipText;

@@ -19,8 +19,13 @@ import bevy_pbr::render::{
     skinning,
     forward_io::{Vertex, UncompressedVertex, decompress_vertex},
     view_transformations::position_world_to_clip,
-    mesh_view_bindings::view,
+    mesh_view_bindings::{view, globals},
 };
+
+// `CGrannyMaterial::TranslateSpecularMatrix(g_specularSpd, g_specularSpd, 0)`
+// runs once per frame with g_specularSpd = 0.007; at the client's 60 fps that
+// is this many units per second (time-based here, not per frame).
+const SPECULAR_SCROLL_PER_SECOND: f32 = 0.42;
 
 struct FixedFunction {
     fog_color: vec4<f32>,
@@ -41,7 +46,8 @@ struct FixedFunction {
     // x = fog mode (0 off, 1 linear, 2 exp, 3 exp2), y = alpha func (D3DCMP_*,
     // 0 = alpha test off), z = lighting on, w = texture mask (bit i: stage i has a texture).
     flags: vec4<u32>,
-    // x = alpha reference in 0..255.
+    // x = alpha reference in 0..255, y = stage 1 uses camera-space reflection
+    // coordinates (D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR).
     alpha_ref: vec4<u32>,
 }
 
@@ -95,11 +101,20 @@ fn vertex(vertex_no_morph: Vertex) -> VertexOutput {
     var diffuse = ff.material_diffuse;
 
 @if(VERTEX_NORMALS)
-    if ff.flags.z != 0u {
+    {
 @if(SKINNED)
         let world_normal = skinning::skin_normals(world_from_local, vertex.normal);
 @else
         let world_normal = mesh_functions::mesh_normal_local_to_world(vertex.normal, vertex_no_morph.instance_index);
+        if ff.alpha_ref.y != 0u {
+            // Reflection of the eye-to-vertex direction about the normal, in
+            // view space, plus the scrolling texture matrix translation.
+            let eye_to_vertex = normalize((view.view_from_world * world_position).xyz);
+            let view_normal = normalize((view.view_from_world * vec4<f32>(world_normal, 0.0)).xyz);
+            let reflected = reflect(eye_to_vertex, view_normal);
+            out.uv1 = reflected.xy + vec2<f32>(fract(globals.time * SPECULAR_SCROLL_PER_SECOND));
+        }
+    if ff.flags.z != 0u {
         // D3D9 fixed-function lighting, one directional light, Gouraud, material colours
         // taken from the material (D3DMCS_MATERIAL, as the client's StateManager sets).
         let n_dot_l = max(dot(normalize(world_normal), -normalize(ff.light_direction.xyz)), 0.0);
@@ -108,6 +123,7 @@ fn vertex(vertex_no_morph: Vertex) -> VertexOutput {
             + ff.light_ambient.rgb * ff.material_ambient.rgb
             + n_dot_l * ff.light_diffuse.rgb * ff.material_diffuse.rgb;
         diffuse = vec4<f32>(clamp(lit, vec3<f32>(0.0), vec3<f32>(1.0)), ff.material_diffuse.a);
+    }
     }
 
     out.color = diffuse;
@@ -251,7 +267,12 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
             // D3DTA_ALPHAREPLICATE
             if (ff.stage_color[i].y & 0x200u) != 0u { a1 = vec3<f32>(c1.a); }
             if (ff.stage_color[i].z & 0x200u) != 0u { a2 = vec3<f32>(c2.a); }
-            rgb = stage_op(cop, vec4<f32>(a1, 0.0), vec4<f32>(a2, 0.0), diffuse.a, tex.a, tfactor.a, current.a).rgb;
+            if cop == 18u {
+                // D3DTOP_MODULATEALPHA_ADDCOLOR reads arg1's alpha.
+                rgb = a1 + c1.a * a2;
+            } else {
+                rgb = stage_op(cop, vec4<f32>(a1, 0.0), vec4<f32>(a2, 0.0), diffuse.a, tex.a, tfactor.a, current.a).rgb;
+            }
         }
         if aop != 1u {
             let c1 = stage_arg(ff.stage_alpha[i].y, diffuse, current, tex, tfactor);

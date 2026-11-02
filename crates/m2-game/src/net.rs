@@ -99,6 +99,7 @@ pub enum NetMessage {
 
 enum Link {
     Idle,
+    WarpDelay { host: String, port: u16, until: Instant },
     Connecting(Server, Task<io::Result<TcpTransport>>),
     Online(Server, TcpTransport),
 }
@@ -257,7 +258,7 @@ impl Plugin for NetPlugin {
             .add_message::<LoginRequest>()
             .add_message::<EnterGame>()
             .add_message::<NetMessage>()
-            .add_plugins(crate::player::PlayerStatePlugin)
+            .add_plugins((crate::player::PlayerStatePlugin, crate::social::SocialPlugin))
             // Before the UI reads this frame's messages.
             .add_systems(PreUpdate, (start_login, enter_game, pump_net).chain());
     }
@@ -299,11 +300,17 @@ fn enter_game(mut requests: MessageReader<EnterGame>, mut net: ResMut<Net>) {
     }
 }
 
-fn pump_net(mut net: ResMut<Net>, mut out: MessageWriter<NetMessage>) {
+fn pump_net(mut net: ResMut<Net>, mut out: MessageWriter<NetMessage>, transition: Option<Res<crate::ingame::WarpTransition>>) {
     let now = net.now_ms();
     let net = &mut *net;
     match &mut net.link {
         Link::Idle => {}
+        Link::WarpDelay { host, port, until } => {
+            if Instant::now() >= *until && transition.as_ref().is_none_or(|transition| transition.ready_to_connect()) {
+                let (host, port) = (host.clone(), *port);
+                net.connect(Server::Game, host, port);
+            }
+        }
         Link::Connecting(server, task) => {
             let server = *server;
             let Some(result) = check_ready(task) else { return };
@@ -349,7 +356,10 @@ fn pump_net(mut net: ResMut<Net>, mut out: MessageWriter<NetMessage>) {
             }
         }
         Link::Online(Server::Game, transport) => {
+            let selected_slot = net.game.selected_slot();
             let (events, closed) = pump(&mut net.game, transport, now);
+            let framing_failed = events.iter().any(|event| matches!(event, NetEvent::Frame(_) | NetEvent::Malformed { .. }));
+            let mut warp = None;
             for event in &events {
                 match event {
                     NetEvent::Unhandled { phase, header } => warn!("unhandled packet header {header} in {phase:?}; receive buffer cleared"),
@@ -366,9 +376,20 @@ fn pump_net(mut net: ResMut<Net>, mut out: MessageWriter<NetMessage>) {
                 if let NetEvent::HandshakeReceived { server_time } = event {
                     net.server_clock = Some((*server_time, now));
                 }
+                if let NetEvent::Warp { addr, port, .. } = event {
+                    warp = Some((*addr, *port));
+                }
             }
-            out.write_batch(events.into_iter().map(NetMessage::Game));
-            if closed {
+            out.write_batch(events.into_iter().filter(|event| !framing_failed || !matches!(event, NetEvent::Warp { .. })).map(NetMessage::Game));
+            if framing_failed { warp = None; }
+            if let Some((addr, port)) = warp {
+                // The old socket may have closed in the same pump as the warp;
+                // restore direct-enter after pump's disconnect cleanup in that case.
+                net.game.set_direct_enter(selected_slot);
+                let host = std::net::Ipv4Addr::from(addr.to_le_bytes()).to_string();
+                info!("warping to game server {host}:{port} with slot {selected_slot}");
+                net.link = Link::WarpDelay { host, port, until: Instant::now() + Duration::from_secs_f32(crate::ingame::WARP_FADE_SECONDS) };
+            } else if closed {
                 net.link = Link::Idle;
                 out.write(NetMessage::Disconnected { server: Server::Game });
             }

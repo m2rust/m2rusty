@@ -123,7 +123,7 @@ fn draw(
                 continue;
             }
         };
-        set(label.guild, tag.guild.clone().unwrap_or_default(), [255, 255, 255]);
+        set(label.guild, tag.guild.clone().unwrap_or_default(), tag.guild_color);
         set(label.level, tag.level.map(|level| format!("Lv {level}")).unwrap_or_default(), LEVEL_RGB);
         let (title, title_color) = tag.title.map_or((String::new(), [255, 255, 255]), |(title, color)| (title.to_owned(), color));
         set(label.title, title, title_color);

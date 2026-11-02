@@ -8,7 +8,7 @@
 use bevy::{
     input_focus::{FocusCause, InputFocus},
     picking::{
-        events::{PointerDragDrop, PointerDragStart},
+        events::{PointerDragDrop, PointerDragEnd, PointerDragStart},
         hover::Hovered,
         pointer::PointerButton,
     },
@@ -98,6 +98,20 @@ pub struct InventoryUi {
     pub quick_page: u8,
     held: Option<Held>,
     pending: Option<Pending>,
+    /// A skill or emotion on the cursor (`mouseController.AttachObject` with
+    /// `SLOT_TYPE_SKILL`/`_EMOTION`, or a task bar slot picked up), dropped on
+    /// a quick slot to bind it.
+    pub carried: Option<Carried>,
+}
+
+/// What [`InventoryUi::carried`] holds: the binding and, when it was picked
+/// up from the task bar, the global quick slot it came from (a drop then
+/// swaps, `SLOT_TYPE_QUICK_SLOT`'s `RequestMoveGlobalQuickSlotToLocalQuickSlot`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Carried {
+    pub kind: u8,
+    pub position: u8,
+    pub from_quick: Option<u8>,
 }
 
 impl InventoryUi {
@@ -123,10 +137,11 @@ pub struct InventoryPlugin;
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InventoryUi>()
-            .add_systems(Update, actions.in_set(UiSet::Actions).in_set(InventoryActions))
+            .add_systems(Update, (actions, drop_carried_on_world).chain().in_set(UiSet::Actions).in_set(InventoryActions))
             .add_systems(Update, (refresh, tooltip).chain().in_set(UiSet::Draw))
             .add_observer(drag_start)
-            .add_observer(drag_drop);
+            .add_observer(drag_drop)
+            .add_observer(drag_end);
     }
 }
 
@@ -435,10 +450,27 @@ fn apply_slot(
     quick: &mut MessageWriter<QuickSlotUse>,
 ) {
     if let Slot::Quick(index) = slot {
-        let quick_slot = player.quickslots[(ui.quick_page * 8 + index) as usize];
+        let global = ui.quick_page * 8 + index;
+        let quick_slot = player.quickslots[global as usize];
+        if let Some(carried) = ui.carried.take() {
+            match carried.from_quick {
+                Some(source) => requests.write(PlayerAction::SwapQuickslot { source, destination: global }),
+                None => requests.write(PlayerAction::BindQuickslot { slot: global, kind: carried.kind, position: carried.position }),
+            };
+            return;
+        }
         if let Some(held) = ui.held.take() {
             if player.items.get(&held.pos).is_some_and(|item| item.vnum == held.vnum) {
                 requests.write(PlayerAction::BindItem { slot: ui.quick_page * 8 + index, position: held.pos });
+            }
+            return;
+        }
+        // `uitaskbar.SelectItemQuickSlot`: a left click picks the slot up
+        // (`SLOT_TYPE_QUICK_SLOT`) to move it; `UnselectItemQuickSlot` (the
+        // right click) and the number keys use it (`RequestUseLocalQuickSlot`).
+        if !right {
+            if quick_slot.Type != 0 {
+                ui.carried = Some(Carried { kind: quick_slot.Type, position: quick_slot.Position, from_quick: Some(global) });
             }
             return;
         }
@@ -548,14 +580,15 @@ fn actions(
                 if shift && index < 4 {
                     ui.quick_page = index as u8;
                 } else {
-                    apply_slot(Slot::Quick(index as u8), false, false, false, false, &mut ui, &player, &catalog, &mut requests, &mut quick);
+                    apply_slot(Slot::Quick(index as u8), true, false, false, false, &mut ui, &player, &catalog, &mut requests, &mut quick);
                 }
                 consumed.keyboard = true;
             }
         }
     }
-    if keys.just_pressed(KeyCode::Escape) && (ui.held.is_some() || ui.pending.is_some()) {
+    if keys.just_pressed(KeyCode::Escape) && (ui.held.is_some() || ui.pending.is_some() || ui.carried.is_some()) {
         ui.held = None;
+        ui.carried = None;
         ui.pending = None;
         manager.modal = None;
         focus.clear();
@@ -713,6 +746,17 @@ fn drag_start(
         return;
     }
     if let Ok(slot) = slots.get(event.entity) {
+        // A skill or emotion on the task bar is picked up to move it.
+        if let Slot::Quick(index) = *slot {
+            let global = ui.quick_page * 8 + index;
+            let quick = player.quickslots[global as usize];
+            if quick.Type != 0 {
+                ui.carried = Some(Carried { kind: quick.Type, position: quick.Position, from_quick: Some(global) });
+                consumed.pointer = true;
+                event.propagate(false);
+                return;
+            }
+        }
         if let Some(pos) = position(*slot, &ui, &player, &catalog) {
             if let Some(item) = player.items.get(&pos) {
                 ui.held = Some(Held { pos, vnum: item.vnum, count: 0 });
@@ -741,6 +785,44 @@ fn drag_drop(
         consumed.pointer = true;
         consumed.drag_dropped = true;
         event.propagate(false);
+    }
+}
+
+/// The end of a drag that no quick slot accepted: a skill or emotion taken off
+/// the task bar is removed from it (`uitaskbar`'s `SLOT_TYPE_QUICK_SLOT`
+/// dropped on the world), one dragged from its window is let go.
+/// `game.OnMouseLeftButtonUp` with a `SLOT_TYPE_QUICK_SLOT` attached: a task
+/// bar slot dropped on the world is removed (`RequestDeleteGlobalQuickSlot`);
+/// a skill from its window is let go.
+fn drop_carried_on_world(
+    buttons: Res<ButtonInput<MouseButton>>,
+    surfaces: Query<&Hovered, With<crate::core::Surface>>,
+    mut ui: ResMut<InventoryUi>,
+    mut requests: MessageWriter<PlayerAction>,
+) {
+    if (ui.carried.is_none() && ui.held.is_none()) || !buttons.just_pressed(MouseButton::Left) || surfaces.iter().any(|hovered| hovered.0) {
+        return;
+    }
+    // A bag item let go over the world goes back (the drop question of
+    // `__PutItem` is not ported).
+    ui.held = None;
+    if let Some(slot) = ui.carried.take().and_then(|carried| carried.from_quick) {
+        requests.write(PlayerAction::ClearQuickslot(slot));
+    }
+}
+
+fn drag_end(
+    event: On<PointerDragEnd>,
+    mut ui: ResMut<InventoryUi>,
+    mut requests: MessageWriter<PlayerAction>,
+) {
+    if event.button != PointerButton::Primary {
+        return;
+    }
+    if let Some(carried) = ui.carried.take()
+        && let Some(slot) = carried.from_quick
+    {
+        requests.write(PlayerAction::ClearQuickslot(slot));
     }
 }
 
@@ -898,7 +980,7 @@ fn money_string(value: i32) -> String {
     out
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn tooltip(
     mut commands: Commands,
     assets: Res<AssetServer>,
@@ -910,22 +992,30 @@ fn tooltip(
     ui: Res<InventoryUi>,
     hover: Query<(Entity, &Slot, &Hovered)>,
     mut tip: Query<&mut Node, With<ItemTip>>,
-    mut text: Query<&mut Text, With<ItemTipText>>,
+    mut text: Query<(Entity, &mut Text), With<ItemTipText>>,
     mut ghost: Query<(Entity, &mut Ghost, &mut Node, &mut ImageNode), Without<ItemTip>>,
-    mut last: Local<Option<(Entity, f32)>>,
+    (mut last, mut shown, locale): (
+        Local<Option<(Entity, f32)>>,
+        Local<Vec<crate::item_tooltip::Line>>,
+        Res<crate::item_tooltip::LocaleGame>,
+    ),
 ) {
     let Ok(window) = primary.single() else { return };
     let Some(cursor) = window.cursor_position().map(|point| point / scale.0) else { return };
     let viewport = Vec2::new(window.width(), window.height()) / scale.0;
 
     for (entity, mut ghost, mut node, mut image) in &mut ghost {
-        if let Some(held) = ui.held {
-            if ghost.0 != held.vnum {
-                commands.entity(entity).insert(Art::load(&assets, &icon_path(&catalog, held.vnum)));
-                ghost.0 = held.vnum;
+        // An item from the bag, or the item of a task bar slot picked up.
+        let carried_item = ui.carried.filter(|carried| carried.kind == crate::quickslots::ITEM).and_then(|carried| {
+            player.items.get(&ItemPosition::inventory(u16::from(carried.position))).map(|item| item.vnum)
+        });
+        if let Some(vnum) = ui.held.map(|held| held.vnum).or(carried_item) {
+            if ghost.0 != vnum {
+                commands.entity(entity).insert(Art::load(&assets, &icon_path(&catalog, vnum)));
+                ghost.0 = vnum;
                 image.color = Color::srgba(1., 1., 1., 0.85);
             }
-            let height = item_size(&catalog, held.vnum) * ICON;
+            let height = if carried_item.is_some() { ICON } else { item_size(&catalog, vnum) * ICON };
             core::edit_node(&mut node, |node| {
                 node.display = Display::Flex;
                 node.left = Val::Px(cursor.x + 8.);
@@ -954,26 +1044,28 @@ fn tooltip(
         });
     }
     if let (true, Some(item)) = (show, item) {
-        let details = match catalog.get(item.vnum) {
-            Some(data) => {
-                let name = data.table.locale_name_utf8(1252);
-                let mut value = name.into_owned();
-                let description = data.description_utf8(1252);
-                if !description.is_empty() {
-                    value.push('\n');
-                    value.push_str(&description);
-                }
-                let summary = data.summary_utf8(1252);
-                if !summary.is_empty() {
-                    value.push('\n');
-                    value.push_str(&summary);
-                }
-                value
-            }
-            None => format!("Item {}\nItem data is unavailable.", item.vnum),
+        let mut lines = match catalog.get(item.vnum) {
+            Some(data) => crate::item_tooltip::item_lines(data, item, &catalog, &locale, player.level),
+            None => vec![(format!("Item {}", item.vnum), crate::item_tooltip::color::NORMAL)],
         };
-        for mut label in &mut text {
-            **label = format!("{details}\nQuantity: {}", item.count);
+        if item.count > 1 {
+            lines.push((format!("Quantity: {}", item.count), crate::item_tooltip::color::NORMAL));
+        }
+        if *shown != lines {
+            for (entity, mut label) in &mut text {
+                // The first line is the root text; the rest are coloured spans.
+                **label = String::new();
+                commands.entity(entity).despawn_related::<Children>();
+                for (index, (line, color)) in lines.iter().enumerate() {
+                    let value = if index == 0 { line.clone() } else { format!("\n{line}") };
+                    commands.entity(entity).with_child((
+                        TextSpan::new(value),
+                        TextFont { font_size: bevy::text::FontSize::Px(12.), ..default() },
+                        TextColor(*color),
+                    ));
+                }
+            }
+            *shown = lines;
         }
     }
 }

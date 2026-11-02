@@ -26,6 +26,7 @@ pub mod ingame;
 pub mod net;
 pub mod player;
 pub mod render;
+pub mod social;
 pub mod world;
 
 use bevy::prelude::*;

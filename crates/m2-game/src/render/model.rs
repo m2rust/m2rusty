@@ -483,8 +483,32 @@ fn actor_layers() -> RenderLayers {
 
 /// Spawns `model` (root with an `AnimationPlayer`, bones, skinned meshes with
 /// [`part_material`]s), under `parent` when given, with `skins` applied.
-pub fn spawn_model(world: &mut World, model: &Gr2Model, parent: Option<Entity>, skins: &[RaceSkin], fog: Option<Fog>) -> Gr2Spawn {
-    let materials = materials(world, model, skins, fog, false);
+///
+/// `specular` is the armor's `CItemData::GetSpecularPowerf`: `CActorInstance::SetShape`
+/// gives the parts its shape's skins replace the sphere-map specular pass.
+pub fn spawn_model(
+    world: &mut World,
+    model: &Gr2Model,
+    parent: Option<Entity>,
+    skins: &[RaceSkin],
+    fog: Option<Fog>,
+    specular: Option<f32>,
+) -> Gr2Spawn {
+    let mut materials = materials(world, model, skins, fog, false);
+    if let Some(power) = specular.filter(|power| *power > 0.0) {
+        let skinned_parts: Vec<bool> = model
+            .meshes
+            .iter()
+            .flat_map(|mesh| &mesh.parts)
+            .map(|part| {
+                part.material.diffuse.as_deref().is_some_and(|path| {
+                    let canonical = paths::canonical_asset_path(path);
+                    skins.iter().any(|skin| paths::canonical_asset_path(&skin.src) == canonical)
+                })
+            })
+            .collect();
+        materials = with_specular(world, materials, &skinned_parts, ARMOR_SPHERE_MAP, power);
+    }
     let mut queue = CommandQueue::default();
     let mut commands = Commands::new(&mut queue, world);
     let mut next = materials.into_iter();
@@ -533,6 +557,7 @@ pub fn attach_model_to_bone(
     bone: &str,
     skins: &[RaceSkin],
     fog: Option<Fog>,
+    specular: Option<f32>,
 ) -> Vec<Entity> {
     let lowered = bone.to_ascii_lowercase();
     let Some(&target) = body
@@ -543,7 +568,10 @@ pub fn attach_model_to_bone(
         warn!("model {}: body has no attachment bone {bone}", model.name);
         return Vec::new();
     };
-    let materials = materials(world, model, skins, fog, false);
+    let mut materials = materials(world, model, skins, fog, false);
+    if let Some(power) = specular {
+        materials = specular_materials(world, materials, power);
+    }
     let mut queue = CommandQueue::default();
     let mut commands = Commands::new(&mut queue, world);
     let mut next = materials.into_iter();
@@ -554,6 +582,48 @@ pub fn attach_model_to_bone(
     });
     queue.apply(world);
     parts
+}
+
+/// `CGrannyMaterial::CreateSphereMap`: index 0 for armor (`CActorInstance::SetShape`),
+/// index 1 for weapons (`CActorInstance::AttachWeapon`).
+const ARMOR_SPHERE_MAP: &str = "d:/ymir work/special/spheremap.jpg";
+const WEAPON_SPHERE_MAP: &str = "d:/ymir work/special/spheremap01.jpg";
+
+/// `USE_WEAPON_SPECULAR`'s `SetMaterialData`: every weapon part gets the
+/// specular pass with `CItemData::GetSpecularPowerf`.
+fn specular_materials(
+    world: &mut World,
+    materials: Vec<Handle<FixedFunctionMaterial>>,
+    power: f32,
+) -> Vec<Handle<FixedFunctionMaterial>> {
+    let parts = vec![true; materials.len()];
+    with_specular(world, materials, &parts, WEAPON_SPHERE_MAP, power)
+}
+
+/// The specular pass on the parts flagged in `parts` (in material order).
+/// Blended parts keep their diffuse states (`__ApplySpecularRenderState` falls
+/// back when `ALPHABLENDENABLE` is on).
+fn with_specular(
+    world: &mut World,
+    materials: Vec<Handle<FixedFunctionMaterial>>,
+    parts: &[bool],
+    sphere_map: &str,
+    power: f32,
+) -> Vec<Handle<FixedFunctionMaterial>> {
+    let Some(sphere) = Textures::new(world, &[]).load(sphere_map) else { return materials };
+    materials
+        .into_iter()
+        .zip(parts.iter().copied().chain(std::iter::repeat(false)))
+        .map(|(handle, shiny)| {
+            let Some(material) = world.resource::<Assets<FixedFunctionMaterial>>().get(&handle).cloned() else {
+                return handle;
+            };
+            if !shiny || material.blend.is_some() || material.textures[0].is_none() {
+                return handle;
+            }
+            super::cached_material(world, material.specular(sphere.clone(), power))
+        })
+        .collect()
 }
 
 #[cfg(test)]

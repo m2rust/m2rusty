@@ -196,7 +196,7 @@ fn draw(
     let wanted = state.dialog.as_ref().map(|_| (state.serial, state.page));
     for (entity, root) in &roots {
         if Some((root.0, root.1)) != wanted {
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
             if windows.modal == Some(entity) {
                 windows.modal = None;
             }

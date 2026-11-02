@@ -51,7 +51,26 @@ pub struct GroundItems {
     next_pick: f32,
 }
 
+impl GroundItem {
+    /// The spawned drop model, once its `.gr2` loaded.
+    pub fn entity(&self) -> Option<Entity> {
+        self.entity
+    }
+}
+
 impl GroundItems {
+    /// Remove ground items from the previous map when its scene is cleared.
+    pub(crate) fn clear_scene(world: &mut World) {
+        let Some(mut items) = world.remove_resource::<GroundItems>() else { return };
+        for item in items.by_vid.drain().map(|(_, item)| item) {
+            if let Some(entity) = item.entity {
+                world.despawn(entity);
+            }
+        }
+        items.next_pick = 0.0;
+        world.insert_resource(items);
+    }
+
     /// `GetCloseItem`: the nearest item within `distance` of `local`
     /// (map-local coordinates).
     pub fn closest(&self, base: (u32, u32), local: Vec2, distance: f32) -> Option<u32> {
@@ -168,13 +187,6 @@ fn track_ground_items(
                     item.owner = String::from_utf8_lossy(&p.szName[..end]).into_owned();
                 }
             }
-            NetEvent::Warp { .. } => {
-                for item in items.by_vid.drain().map(|(_, item)| item) {
-                    if let Some(entity) = item.entity {
-                        commands.entity(entity).despawn();
-                    }
-                }
-            }
             _ => {}
         }
     }
@@ -225,7 +237,7 @@ fn draw_ground_items(world: &mut World) {
                 Visibility::Visible,
             ))
             .id();
-        crate::render::model::spawn_model(world, &model, Some(parent), &[], None);
+        crate::render::model::spawn_model(world, &model, Some(parent), &[], None, None);
         if let Some(item) = world.resource_mut::<GroundItems>().by_vid.get_mut(&vid) {
             item.entity = Some(parent);
             item.model = None;
