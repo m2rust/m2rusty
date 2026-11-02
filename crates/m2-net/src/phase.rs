@@ -994,4 +994,44 @@ impl NetMachine {
             bCRCMagicCubeFilePiece: 0,
         })
     }
+
+    /// `SendUseSkillPacket`: the skill vnum and the target's VID (0 when the
+    /// skill needs no target).
+    pub fn send_use_skill(&mut self, vnum: u32, target: u32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGUseSkill {
+            bHeader: cg::USE_SKILL,
+            dwVnum: vnum,
+            dwTargetVID: target,
+        })
+    }
+
+    /// `SendGuildUseSkillPacket`: `CG_GUILD` subheader 9 followed by two u32s.
+    pub fn send_guild_use_skill(&mut self, skill: u32, target: u32) -> bool {
+        const GUILD_SUBHEADER_CG_USE_SKILL: u8 = 9;
+        self.stream.send(&wire::TPacketCGGuild { byHeader: cg::GUILD, bySubHeader: GUILD_SUBHEADER_CG_USE_SKILL }.encode())
+            && self.stream.send(&skill.to_le_bytes())
+            && self.stream.send(&target.to_le_bytes())
+            && self.stream.send_sequence()
+    }
+
+    /// `SendShootPacket`: the fly event's skill index (0 for a normal bow shot).
+    pub fn send_shoot(&mut self, skill: u32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGShoot { bHeader: cg::SHOOT, bType: skill as u8 })
+    }
+
+    /// `SendTargetPacket`: the selected target's VID (0 clears it).
+    pub fn send_target(&mut self, vid: u32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGTarget { header: cg::TARGET, dwVID: vid })
+    }
+
+    /// `SendFlyTargetingPacket`; `(x, y)` are already map-global coordinates, as
+    /// the C++ converts them with `__LocalPositionToGlobalPosition` first.
+    pub fn send_fly_targeting(&mut self, vid: u32, x: i32, y: i32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGFlyTargeting { bHeader: cg::FLY_TARGETING, dwTargetVID: vid, lX: x, lY: y })
+    }
+
+    /// `SendAddFlyTargetingPacket`: one extra victim of a fan/circle skill.
+    pub fn send_add_fly_targeting(&mut self, vid: u32, x: i32, y: i32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGFlyTargeting { bHeader: cg::ADD_FLY_TARGETING, dwTargetVID: vid, lX: x, lY: y })
+    }
 }

@@ -31,9 +31,10 @@ use m2_formats::proto::parse_mob_proto;
 use m2_net::phase::NetEvent;
 
 use crate::SceneCamera;
+use crate::combat::{self, ActorCombat, AttackContext, SkillCheck, SkillError, SkillExt};
 use crate::net::{Net, NetMessage};
 use crate::player::{ItemCatalog, PlayerState};
-use crate::render::character::{ArmorShapes, Character, Look, Motion};
+use crate::render::character::{ArmorShapes, Character, Look, MOUNT_HEIGHT, Motion};
 use crate::render::{environment_fog, soften_fog};
 use crate::world::{MapScene, WarpedMap, prepare_map_at};
 
@@ -99,12 +100,42 @@ pub struct Actor {
     pub x: i32,
     pub y: i32,
     pub rotation: f32,
+    /// `CharacterAdditionalInfo`/`CharacterUpdate` combat metadata.
+    pub empire: u8,
+    pub pk_mode: u8,
+    pub guild_id: u32,
+    pub alignment: i16,
+    pub state_flags: u8,
+    pub affect_flags: u64,
+    pub mount_vnum: u32,
     move_from: Vec2,
     move_to: Vec2,
     move_elapsed: f32,
     move_duration: f32,
     moving: bool,
     rendered_moving: Option<bool>,
+}
+
+impl Actor {
+    /// The actor as the combat predicates see it, in map-local coordinates
+    /// (`base` is the map's global origin).
+    pub fn combat(&self, vid: u32, base: (u32, u32)) -> crate::combat::ActorCombat {
+        crate::combat::ActorCombat {
+            vid,
+            kind: self.kind,
+            race: self.race,
+            empire: self.empire,
+            pk_mode: self.pk_mode,
+            guild_id: self.guild_id,
+            alignment: self.alignment,
+            dead: self.state_flags & crate::combat::STATE_DEAD != 0,
+            state_flags: self.state_flags,
+            affect_flags: self.affect_flags,
+            in_safe: false,
+            x: self.x - base.0 as i32,
+            y: self.y - base.1 as i32,
+        }
+    }
 }
 
 /// The actors other than the main character, by VID.
@@ -170,6 +201,7 @@ pub enum MoveState {
     Idle,
     Moving,
     Attacking,
+    Casting,
 }
 
 /// The in-game controls and their state.
@@ -192,6 +224,16 @@ pub struct PlayerControl {
     pub target_distance: Option<f32>,
     /// The ground point to run to, in map coordinates.
     pub destination: Option<Vec2>,
+    /// `m_dwcurComboIndex`: the combo step reached by the last attack.
+    pub combo: u32,
+    /// When the last combo step ended, for the input window.
+    pub combo_time: f32,
+    /// When the current attack/cast started (a stuck motion falls back).
+    pub action_started: f32,
+    /// `MODE_USE_SKILL`: (vnum, target VID, range) while running in range.
+    pub reserved_skill: Option<(u32, u32, u32)>,
+    /// `MODE_CLICK_ACTOR`: attack this VID once it is in reach.
+    pub reserved_attack: Option<u32>,
 }
 
 impl Default for PlayerControl {
@@ -207,6 +249,11 @@ impl Default for PlayerControl {
             target: None,
             target_distance: None,
             destination: None,
+            combo: 0,
+            combo_time: 0.0,
+            action_started: 0.0,
+            reserved_skill: None,
+            reserved_attack: None,
         }
     }
 }
@@ -306,6 +353,7 @@ impl Plugin for InGamePlugin {
             .init_resource::<ArmorShapes>()
             .init_resource::<UiFocus>()
             .add_message::<EnterWorld>()
+            .add_message::<combat::UseSkillRequest>()
             .add_systems(Update, (start_entering, track_actors, sync_actor_entities, drive_world.in_set(GameControl)).chain());
     }
 }
@@ -572,6 +620,13 @@ fn track_actors(
                         rotation: actor.rotation,
                         armor: actor.armor,
                         hair: actor.hair,
+                        empire: actor.empire,
+                        pk_mode: actor.pk_mode,
+                        guild_id: actor.guild_id,
+                        alignment: actor.alignment,
+                        state_flags: actor.state_flags,
+                        affect_flags: actor.affect_flags,
+                        mount_vnum: actor.mount_vnum,
                         move_from: Vec2::new(actor.x as f32, actor.y as f32),
                         move_to: Vec2::new(actor.x as f32, actor.y as f32),
                         move_elapsed: 0.0,
@@ -610,6 +665,12 @@ fn track_actors(
                         && (actor.armor != update.armor || actor.hair != update.hair);
                     actor.armor = update.armor;
                     actor.hair = update.hair;
+                    actor.guild_id = update.guild_id;
+                    actor.alignment = update.alignment;
+                    actor.pk_mode = update.pk_mode;
+                    actor.state_flags = update.state_flags;
+                    actor.affect_flags = update.affect_flags;
+                    actor.mount_vnum = update.mount_vnum;
                     if changed {
                         actor.rendered_moving = None;
                     }
@@ -834,21 +895,106 @@ fn drive_world(world: &mut World) {
             }
             last_pointer = cursor;
 
-            // Left click: run to the ground under the cursor.
+            // The player's own combat state (`CPythonPlayer` + the main actor).
+            let in_safe = map_attr(scene, local, ATTR_BANPK);
+            let (mut me, combat_world, points, arrows, riding_grade, riding_level, mount_vnum, ) = {
+                let player = world.get_resource::<PlayerState>();
+                let skills = world.get_resource::<combat::SkillState>();
+                let mut me = player.map(PlayerState::combat_self).unwrap_or_default();
+                me.x = local.x.round() as i32;
+                me.y = local.y.round() as i32;
+                me.in_safe = in_safe;
+                (
+                    me,
+                    player.map(PlayerState::combat_world).unwrap_or_default(),
+                    player.map(|player| combat::Points::from_points(&player.points)).unwrap_or_default(),
+                    player.map_or(0, PlayerState::arrow_count),
+                    skills.map_or(0, |skills| skills.grade(109)),
+                    skills.map_or(0, |skills| skills.level(109)),
+                    player.map_or(0, |player| player.mount_vnum),
+                )
+            };
+            me.in_safe = in_safe;
+
+            // The tracked actors as combat sees them, in map-local coordinates.
+            let candidates: Vec<(u32, ActorCombat)> = world
+                .get_resource::<Actors>()
+                .map(|actors| {
+                    actors
+                        .by_vid
+                        .iter()
+                        .map(|(&vid, actor)| {
+                            let mut combat = actor.combat(vid, base);
+                            combat.in_safe = map_attr(scene, Vec2::new(combat.x as f32, combat.y as f32), ATTR_BANPK);
+                            (vid, combat)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let attackable = |vid: u32| {
+                candidates
+                    .iter()
+                    .find(|(candidate, _)| *candidate == vid)
+                    .is_some_and(|(_, candidate)| combat::is_attackable(&combat_world, &me, candidate))
+            };
+            let distance_to = |vid: u32, local: Vec2| {
+                candidates.iter().find(|(candidate, _)| *candidate == vid).map(|(_, candidate)| {
+                    (Vec2::new(candidate.x as f32, candidate.y as f32) - local).length()
+                })
+            };
+
+            // `CPythonPlayer::SetTarget`: keep the current target while it can
+            // still be picked, else take the nearest pickable actor.
+            let still_targetable = control.target.and_then(|vid| candidates.iter().find(|(candidate, _)| *candidate == vid))
+                .is_some_and(|(_, actor)| actor.can_pick());
+            let new_target = if still_targetable {
+                control.target
+            } else {
+                nearest_actor(&world.resource::<Actors>().by_vid, base, local, main_vid, TARGET_RANGE)
+                    .map(|(vid, _)| vid)
+                    .filter(|vid| candidates.iter().find(|(candidate, _)| candidate == vid).is_some_and(|(_, actor)| actor.can_pick()))
+            };
+            if new_target != control.target {
+                control.target = new_target;
+                if let Some(mut net) = world.get_resource_mut::<Net>() {
+                    net.send_target(new_target.unwrap_or(0));
+                }
+            }
+            control.target_distance = control.target.and_then(|vid| distance_to(vid, local));
+
+            // Left click: an actor under the pointer is targeted (and attacked
+            // when in reach), otherwise the ground point is a move order.
+            let mut click_attack = false;
             if !focus.pointer
                 && buttons.just_pressed(MouseButton::Left)
                 && let Some(cursor) = cursor
             {
-                let height = |x: f32, y: f32| scene.map.map.terrain_height(x, y);
-                if let Some(point) = pick_terrain(world, cursor, height, extent) {
-                    control.destination = Some(point);
-                    info!("walk to {:.0},{:.0}", point.x, point.y);
+                if let Some(vid) = pick_actor(world, cursor, base) {
+                    control.target = Some(vid);
+                    control.target_distance = distance_to(vid, local);
+                    if let Some(mut net) = world.get_resource_mut::<Net>() {
+                        net.send_target(vid);
+                    }
+                    let in_reach = control.target_distance.is_some_and(|distance| {
+                        let bow = matches!(character.motion_mode(), crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow);
+                        distance <= if bow { bow_range(&points) } else { ATTACK_RANGE }
+                    });
+                    if attackable(vid) && in_reach {
+                        click_attack = true;
+                    } else if let Some((_, actor)) = candidates.iter().find(|(candidate, _)| *candidate == vid) {
+                        let destination = Vec2::new(actor.x as f32, actor.y as f32);
+                        control.destination = Some(destination);
+                        control.reserved_attack = Some(vid);
+                        info!("walk to actor {vid} at {:.0},{:.0}", destination.x, destination.y);
+                    }
+                } else {
+                    let height = |x: f32, y: f32| scene.map.map.terrain_height(x, y);
+                    if let Some(point) = pick_terrain(world, cursor, height, extent) {
+                        control.destination = Some(point);
+                        info!("walk to {:.0},{:.0}", point.x, point.y);
+                    }
                 }
             }
-
-            let target = nearest_actor(&world.resource::<Actors>().by_vid, base, local, main_vid, TARGET_RANGE);
-            control.target = target.map(|(vid, _)| vid);
-            control.target_distance = target.map(|(_, distance)| distance);
 
             // The demo run: walk to the nearest actor, then swing at it.
             if *demo {
@@ -870,12 +1016,13 @@ fn drive_world(world: &mut World) {
                     let victim = attack_victim(&control);
                     face_actor(world, &mut control, base, local, victim);
                     start_attack(world, &mut control, character, victim);
+                    attack_ready = now + ATTACK_COOLDOWN;
                 }
             }
 
             let mut moved = false;
             let mut direction = None;
-            if control.state != MoveState::Attacking {
+            if !matches!(control.state, MoveState::Attacking | MoveState::Casting) {
                 if let Some(destination) = control.destination {
                     let (next, arrived) = advance_towards(local, destination, RUN_SPEED * delta);
                     if (next - local).length() > f32::EPSILON {
@@ -912,17 +1059,229 @@ fn drive_world(world: &mut World) {
                 }
             }
 
-            // Space: normal attack, with the nearest actor as the victim.
-            if !focus.keyboard
-                && keys.just_pressed(KeyCode::Space)
-                && now >= attack_ready
-                && control.state != MoveState::Attacking
-            {
-                control.destination = None;
-                attack_ready = now + ATTACK_COOLDOWN;
-                let victim = attack_victim(&control);
-                face_actor(world, &mut control, base, local, victim);
-                start_attack(world, &mut control, character, victim);
+            // `MODE_CLICK_ACTOR`: attack a clicked target once it is in reach.
+            if let Some(vid) = control.reserved_attack {
+                let in_reach = distance_to(vid, local).is_some_and(|distance| {
+                    let bow = matches!(
+                        character.motion_mode(),
+                        crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow
+                    );
+                    distance <= if bow { bow_range(&points) } else { ATTACK_RANGE }
+                });
+                if !attackable(vid) {
+                    control.reserved_attack = None;
+                } else if in_reach {
+                    control.reserved_attack = None;
+                    click_attack = true;
+                }
+            }
+
+            // `MODE_USE_SKILL`: keep running towards the reserved target and
+            // cast as soon as the skill's range is reached.
+            if let Some((vnum, vid, range)) = control.reserved_skill {
+                if let Some((_, actor)) = candidates.iter().find(|(candidate, _)| *candidate == vid) {
+                    if skill_distance(&me, actor) < range as f32 {
+                        control.reserved_skill = None;
+                        use_skill(
+                            world,
+                            &mut control,
+                            character,
+                            vnum,
+                            &me,
+                            &combat_world,
+                            &points,
+                            arrows,
+                            (riding_grade, riding_level),
+                            mount_vnum,
+                            &candidates,
+                            &attackable,
+                            local,
+                            now,
+                            base,
+                        );
+                    } else if control.destination.is_none() {
+                        control.destination = Some(Vec2::new(actor.x as f32, actor.y as f32));
+                    }
+                } else {
+                    control.reserved_skill = None;
+                }
+            }
+
+            // Horse commands (`game.py`'s Ctrl+H/J/B/F/G).
+            if !focus.keyboard {
+                let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+                if ctrl {
+                    let command = if keys.just_pressed(KeyCode::KeyH) {
+                        Some("/user_horse_ride")
+                    } else if keys.just_pressed(KeyCode::KeyJ) {
+                        if mount_vnum != 0 {
+                            Some("/unmount")
+                        } else {
+                            // `game.py` Ctrl+J uses the first horse item.
+                            let cell = world.get_resource::<PlayerState>().and_then(|player| {
+                                player.items.iter().find(|(position, item)| {
+                                    position.window == 1
+                                        && matches!(item.vnum, 71114 | 71116 | 71118 | 71120)
+                                }).map(|(position, _)| position.cell)
+                            });
+                            if let Some(cell) = cell
+                                && let Some(mut net) = world.get_resource_mut::<Net>()
+                            {
+                                net.game.send_item_use(cell);
+                            }
+                            None
+                        }
+                    } else if keys.just_pressed(KeyCode::KeyB) {
+                        Some("/user_horse_back")
+                    } else if keys.just_pressed(KeyCode::KeyF) {
+                        Some("/user_horse_feed")
+                    } else if keys.just_pressed(KeyCode::KeyG) {
+                        Some("/ride")
+                    } else {
+                        None
+                    };
+                    if let Some(command) = command
+                        && let Some(mut net) = world.get_resource_mut::<Net>()
+                    {
+                        net.game.send_chat(command, 0);
+                    }
+                }
+            }
+
+            // Space (held): `CPythonPlayer::NEW_Attack` every frame the attack
+            // key is down and no attack is running.
+            let can_act = !matches!(control.state, MoveState::Attacking | MoveState::Casting);
+            if !focus.keyboard && (keys.pressed(KeyCode::Space) || click_attack) && now >= attack_ready && can_act {
+                let mode = character.motion_mode();
+                let hand_mode = matches!(
+                    mode,
+                    crate::render::character::MotionMode::General | crate::render::character::MotionMode::Horse
+                );
+                let bow = matches!(
+                    mode,
+                    crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow
+                );
+                let context = AttackContext {
+                    world: combat_world.clone(),
+                    me,
+                    mounted: mount_vnum,
+                    riding_grade,
+                    riding_level,
+                    observer: combat_world.observer,
+                    in_safe,
+                    hand_mode,
+                    arrows,
+                };
+                let result = if bow {
+                    let victim = control
+                        .target
+                        .filter(|vid| attackable(*vid))
+                        .or_else(|| nearest_attackable(&candidates, &attackable, local, bow_range(&points)));
+                    match victim {
+                        None => Err(combat::AttackError::NeedTarget),
+                        Some(victim) => {
+                            let victim_safe = candidates
+                                .iter()
+                                .find(|(candidate, _)| *candidate == victim)
+                                .is_some_and(|(_, actor)| actor.in_safe);
+                            context.can_shoot(victim_safe).and_then(|()| {
+                                if distance_to(victim, local).is_some_and(|distance| distance > bow_range(&points)) {
+                                    control.destination = candidates
+                                        .iter()
+                                        .find(|(candidate, _)| *candidate == victim)
+                                        .map(|(_, actor)| Vec2::new(actor.x as f32, actor.y as f32));
+                                    Err(combat::AttackError::NeedTarget)
+                                } else {
+                                    Ok(victim)
+                                }
+                            })
+                        }
+                    }
+                    .map(|victim| {
+                        face_actor(world, &mut control, base, local, victim);
+                        control.destination = None;
+                        control.state = MoveState::Attacking;
+                        control.combo = 1;
+                        control.action_started = now;
+                        character.play_attack(world, 1);
+                        if let Some(mut net) = world.get_resource_mut::<Net>() {
+                            if let Some((_, actor)) = candidates.iter().find(|(candidate, _)| *candidate == victim) {
+                                net.send_fly_targeting(victim, actor.x + base.0 as i32, actor.y + base.1 as i32, false);
+                            }
+                            net.send_attack(victim);
+                            net.send_shoot(0);
+                        }
+                    })
+                } else {
+                    context
+                        .can_attack()
+                        .and_then(|()| context.mounted_hand_attack())
+                        .map(|()| {
+                            let victim = control
+                                .target
+                                .filter(|vid| attackable(*vid) && distance_to(*vid, local).is_some_and(|distance| distance <= ATTACK_RANGE))
+                                .or_else(|| nearest_attackable(&candidates, &attackable, local, ATTACK_RANGE))
+                                .unwrap_or(0);
+                            if now - control.combo_time > 2.0 {
+                                control.combo = 0;
+                            }
+                            control.combo = if control.combo == 0 {
+                                1
+                            } else {
+                                control.combo % mode.combo_count().max(1) + 1
+                            };
+                            control.combo_time = now;
+                            face_actor(world, &mut control, base, local, victim);
+                            control.destination = None;
+                            control.state = MoveState::Attacking;
+                            control.action_started = now;
+                            if !character.play_attack(world, control.combo) {
+                                control.combo = 1;
+                                character.play_attack(world, 1);
+                            }
+                            if let Some(mut net) = world.get_resource_mut::<Net>() {
+                                net.send_attack(victim);
+                            }
+                            info!("attack: combo {}, victim {victim}, facing {:.0}", control.combo, control.advancing);
+                        })
+                };
+                if let Err(error) = result {
+                    if keys.just_pressed(KeyCode::Space)
+                        && let Some(player) = world.get_resource_mut::<PlayerState>()
+                    {
+                        let mut player = player;
+                        player.line(1, format!("Cannot attack: {}", error.reason()));
+                    }
+                } else {
+                    let duration = character.motion_duration();
+                    attack_ready = now + if duration > 0.05 { duration * 0.9 } else { ATTACK_COOLDOWN };
+                }
+            }
+
+            // Skill requests from the skill page or the task bar.
+            let requests: Vec<u32> = world
+                .resource_mut::<Messages<combat::UseSkillRequest>>()
+                .drain()
+                .map(|request| request.vnum)
+                .collect();
+            for vnum in requests {
+                use_skill(
+                    world,
+                    &mut control,
+                    character,
+                    vnum,
+                    &me,
+                    &combat_world,
+                    &points,
+                    arrows,
+                    (riding_grade, riding_level),
+                    mount_vnum,
+                    &candidates,
+                    &attackable,
+                    local,
+                    now,
+                    base,
+                );
             }
 
             // Face where we run, keep the feet on the ground.
@@ -934,33 +1293,47 @@ fn drive_world(world: &mut World) {
             }
             // `CInstanceBase::Update`: walk the rendered rotation towards the
             // advancing one at `m_fRotSpd`, taking the short way round.
-            if moved || control.state == MoveState::Attacking {
+            if moved || matches!(control.state, MoveState::Attacking | MoveState::Casting) {
                 turn_towards(&mut control, delta);
                 if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
                     transform.rotation = Quat::from_rotation_y(-control.facing.to_radians());
                 }
             }
-            let height = scene.map.map.terrain_height(local.x, local.y);
+            let mut height = scene.map.map.terrain_height(local.x, local.y);
+            if character.is_mounted() {
+                height += MOUNT_HEIGHT;
+            }
             if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
                 transform.translation = local_to_world(local.x, local.y, height);
             }
             game.local = Some((local.x.round() as i32, local.y.round() as i32));
 
-            // `CInstanceBase::ChangeWeapon`: the server's equipment cell drives
-            // the model, motion mode and the wait/run motion.
+            // `CInstanceBase::ChangeWeapon`/`MountHorse`: the server's
+            // equipment and mount cells drive the model, motion mode and the
+            // wait/run motion.
             if sync_main_weapon(world, character) {
                 match control.state {
                     MoveState::Idle => character.play_motion(world, Motion::Wait, true),
                     MoveState::Moving => character.play_motion(world, Motion::Run, true),
-                    MoveState::Attacking => {}
+                    MoveState::Attacking | MoveState::Casting => {}
+                }
+            }
+            if sync_main_mount(world, character) {
+                match control.state {
+                    MoveState::Idle => character.play_motion(world, Motion::Wait, true),
+                    MoveState::Moving => character.play_motion(world, Motion::Run, true),
+                    MoveState::Attacking | MoveState::Casting => {}
                 }
             }
 
             // Motions and position packets.
             match control.state {
-                MoveState::Attacking => {
-                    if character.motion_started() && character.motion_finished(world) {
+                MoveState::Attacking | MoveState::Casting => {
+                    if (character.motion_started() && character.motion_finished(world))
+                        || now - control.action_started > 4.0
+                    {
                         control.state = MoveState::Idle;
+                        control.combo_time = now;
                         character.play_motion(world, Motion::Wait, true);
                         send_stop(world, base, local, control.advancing);
                     }
@@ -986,6 +1359,7 @@ fn drive_world(world: &mut World) {
 
             place_camera(world, local_to_world(local.x, local.y, height), &control);
         }
+
         world.insert_resource(control);
         game.last_pointer = last_pointer;
         game.attack_ready = attack_ready;
@@ -1020,6 +1394,385 @@ fn sync_main_weapon(world: &mut World, character: &mut Character) -> bool {
     }
 }
 
+/// `CPythonPlayer::__UseSkill` (`PythonPlayerSkill.cpp:475`). The UI and the
+/// task bar only say *which* skill; target choice, checks, motion and the
+/// packet are the C++ player's job and live here.
+#[allow(clippy::too_many_arguments)]
+fn use_skill(
+    world: &mut World,
+    control: &mut PlayerControl,
+    character: &mut Character,
+    vnum: u32,
+    me: &ActorCombat,
+    combat_world: &combat::CombatWorld,
+    points: &combat::Points,
+    arrows: u32,
+    riding: (u8, u8),
+    mount: u32,
+    candidates: &[(u32, ActorCombat)],
+    attackable: &impl Fn(u32) -> bool,
+    local: Vec2,
+    now: f32,
+    base: (u32, u32),
+) {
+    let Some(data) = world.get_resource::<combat::SkillCatalog>().and_then(|catalog| catalog.get(vnum).cloned()) else {
+        warn!("skill {vnum}: no skill data loaded");
+        return;
+    };
+    let (level, grade, cool_left) = world
+        .get_resource::<combat::SkillState>()
+        .map(|state| (state.level(vnum), state.grade(vnum), state.cool_time_left(vnum, now)))
+        .unwrap_or((0, 0, 0.0));
+    let fail = |world: &mut World, error: SkillError| {
+        if let Some(player) = world.get_resource_mut::<PlayerState>() {
+            let mut player = player;
+            player.line(1, format!("Cannot use skill: {}", error.reason()));
+        }
+    };
+
+    // `CanAct` (`CActorInstance::CanUseSkill`): dead and stunned actors cannot
+    // start a skill.
+    if combat_world.observer {
+        fail(world, SkillError::Observer);
+        return;
+    }
+    if me.is_dead() {
+        fail(world, SkillError::Dead);
+        return;
+    }
+    if combat::has_affect(me.affect_flags, combat::AFFECT_STUN) {
+        fail(world, SkillError::Stunned);
+        return;
+    }
+
+    // `ClickSkillSlot` sends guild skills through `UseGuildSkill`, not
+    // `__UseSkill`: the guild packet, cooldown and motion only.
+    if data.skill_type == m2_formats::proto::SkillType::Guild as u8 {
+        if cool_left > 0.0 {
+            fail(world, SkillError::WaitCooltime);
+            return;
+        }
+        if !data.no_motion {
+            let motion = combat::skill_motion_index(&data, grade);
+            character.play_skill(world, motion);
+        }
+        control.state = MoveState::Casting;
+        control.action_started = now;
+        if let Some(mut net) = world.get_resource_mut::<Net>() {
+            net.send_guild_use_skill(vnum, 0);
+        }
+        let cooldown = combat::skill_cooldown(&data, f32::from(level), points, points.casting_speed);
+        if let Some(mut state) = world.get_resource_mut::<combat::SkillState>() {
+            state.run_cool_time(vnum, cooldown, now);
+        }
+        return;
+    }
+
+    // `__CanUseSkill`: the riding skill gates mounted skills.
+    if mount != 0 && riding.0 < 1 && riding.1 < 20 {
+        fail(world, SkillError::MountSkillLevel);
+        return;
+    }
+    let check = SkillCheck {
+        level,
+        grade,
+        level_limit_enforced: false,
+        mounted: mount,
+        in_safe: me.in_safe,
+        fishing: false,
+        weapon_type: character.weapon_type().unwrap_or(combat::weapon::NONE),
+        arrows,
+        cool_time_enforced: true,
+        cool_time_left: cool_left,
+        empty_bottles: world.get_resource::<PlayerState>().map_or(0, |player| u32::from(player.has_item(27995))),
+        poison_bottles: world.get_resource::<PlayerState>().map_or(0, |player| u32::from(player.has_item(27996))),
+        affected_by_dash: false,
+        is_charge_reserved: control.reserved_skill.is_some(),
+    };
+    if let Err(error) = combat::check_skill_usable(&data, &check, points) {
+        fail(world, error);
+        return;
+    }
+    // `__UseSkill`'s toggle branch: an active toggle only sends the packet to
+    // turn it off, and does not play the motion again.
+    let toggle_active = (vnum as usize) < 255
+        && world.get_resource::<combat::SkillState>().is_some_and(|state| state.active[vnum as usize]);
+    if data.is_toggle() && toggle_active {
+        if let Some(mut net) = world.get_resource_mut::<Net>() {
+            net.send_use_skill(vnum, 0);
+        }
+        if (vnum as usize) < 255
+            && let Some(mut state) = world.get_resource_mut::<combat::SkillState>()
+        {
+            state.active[vnum as usize] = false;
+        }
+        return;
+    }
+
+    let candidate = |vid: u32| candidates.iter().find(|(candidate, _)| *candidate == vid).map(|(_, actor)| *actor);
+    let mut target = control.target.and_then(candidate);
+    let needs_target = data.needs_target() || data.can_change_direction() || data.is_auto_search_target();
+    if needs_target {
+        if let Some(actor) = target {
+            let acceptable = if data.needs_corpse() { actor.is_dead() } else { !actor.is_dead() };
+            if !acceptable {
+                target = None;
+            }
+        }
+        if target.is_none() && data.is_auto_search_target() {
+            let found = combat::front_target(me, combat_world, control.facing, &candidates.iter().map(|(_, actor)| *actor).collect::<Vec<_>>(), 2000.0);
+            if let Some(vid) = found {
+                control.target = Some(vid);
+                target = candidate(vid);
+            }
+        }
+        match target {
+            Some(actor) if actor.is_dead() && !data.needs_corpse() => {
+                fail(world, SkillError::NeedTarget);
+                return;
+            }
+            Some(actor) if !actor.is_dead() && data.needs_corpse() => {
+                fail(world, SkillError::OnlyForCorpse);
+                return;
+            }
+            Some(actor) => {
+                if data.only_for_alliance() {
+                    if actor.vid == me.vid && !data.can_use_for_me() {
+                        fail(world, SkillError::CannotUseSelf);
+                        return;
+                    }
+                    if actor.is_pc() && !attackable(actor.vid) {
+                        let range = combat::skill_target_range(&data, points.bow_distance);
+                        if range > 0 && skill_distance(me, &actor) >= range as f32 {
+                            reserve_skill(control, &actor, vnum, range, local);
+                            return;
+                        }
+                    } else if data.can_use_for_me() {
+                        target = candidate(me.vid);
+                    } else {
+                        fail(world, SkillError::OnlyForAlliance);
+                        return;
+                    }
+                } else {
+                    if actor.in_safe {
+                        fail(world, SkillError::CannotAttackEnemyInSafe);
+                        return;
+                    }
+                    if !attackable(actor.vid) {
+                        fail(world, SkillError::CannotAttack);
+                        return;
+                    }
+                    let range = combat::skill_target_range(&data, points.bow_distance);
+                    if range > 0 && skill_distance(me, &actor) >= range as f32 {
+                        // `__ProcessEnemySkillTargetRange`: charge skills send
+                        // the packet now and then run into range.
+                        if data.is_charge() && !check.is_charge_reserved
+                            && let Some(mut net) = world.get_resource_mut::<Net>()
+                        {
+                            net.send_use_skill(vnum, actor.vid);
+                        }
+                        reserve_skill(control, &actor, vnum, range, local);
+                        return;
+                    }
+                }
+            }
+            None => {
+                if data.can_use_for_me() {
+                    target = candidate(me.vid);
+                } else if data.needs_corpse() {
+                    fail(world, SkillError::OnlyForCorpse);
+                    return;
+                } else {
+                    fail(world, SkillError::NeedTarget);
+                    return;
+                }
+            }
+        }
+    }
+
+    let target = target.or_else(|| data.can_use_for_me().then(|| candidate(me.vid)).flatten());
+    let target_vid = target.map_or(0, |actor| actor.vid);
+
+    // `CanChangeDirection`: look at the picked actor/target.
+    if let Some(actor) = target
+        && actor.vid != me.vid
+    {
+        face_actor(world, control, base, local, actor.vid);
+    }
+
+    // Fan/circle multi-target skills (`GetTargetCount`).
+    if let Some(actor) = target {
+        let count = combat::skill_target_count(&data, f32::from(level), points);
+        if count > 1 {
+            let range = combat::skill_target_range(&data, points.bow_distance) as f32;
+            let extra = combat::skill_targets(
+                me,
+                combat_world,
+                &candidates.iter().map(|(_, actor)| *actor).collect::<Vec<_>>(),
+                (actor.x as f32, actor.y as f32),
+                range,
+                data.is_fan_range(),
+            );
+            for vid in extra.into_iter().filter(|vid| *vid != actor.vid).take(count as usize - 1) {
+                if let Some(other) = candidate(vid)
+                    && let Some(mut net) = world.get_resource_mut::<Net>()
+                {
+                    net.send_fly_targeting(vid, other.x + base.0 as i32, other.y + base.1 as i32, true);
+                }
+            }
+        }
+    }
+
+    // `NEW_UseSkill`: the skill's registered motion, unless the data says none.
+    if !data.no_motion {
+        let motion = combat::skill_motion_index(&data, grade);
+        if !character.play_skill(world, motion) {
+            trace!("skill {vnum}: no motion for index {motion}");
+        }
+    }
+    control.reserved_skill = None;
+    control.destination = None;
+    control.combo = 0;
+    control.state = MoveState::Casting;
+    control.action_started = now;
+    if let Some(mut net) = world.get_resource_mut::<Net>() {
+        net.send_use_skill(vnum, target_vid);
+    }
+    let cooldown = combat::skill_cooldown(&data, f32::from(level), points, points.casting_speed);
+    if let Some(mut state) = world.get_resource_mut::<combat::SkillState>() {
+        state.run_cool_time(vnum, cooldown, now);
+        if data.is_toggle() && (vnum as usize) < state.active.len() {
+            state.active[vnum as usize] = true;
+        }
+    }
+    info!("skill {vnum} level {level} on target {target_vid} (cooldown {cooldown:.1}s)");
+}
+
+fn distance_between(a: &ActorCombat, b: &ActorCombat) -> f32 {
+    ((b.x - a.x) as f32).hypot((b.y - a.y) as f32)
+}
+
+/// `IS_HUGE_RACE` (`ActorInstanceBattle.cpp`): the huge race is 2493 and
+/// the client fakes 200 units of extra reach for it.
+fn skill_distance(a: &ActorCombat, b: &ActorCombat) -> f32 {
+    let distance = distance_between(a, b);
+    if b.race == 2493 { distance - 200.0 } else { distance }
+}
+
+/// `__ReserveUseSkill`: run towards the target and cast when in range.
+fn reserve_skill(control: &mut PlayerControl, target: &ActorCombat, vnum: u32, range: u32, local: Vec2) {
+    control.reserved_skill = Some((vnum, target.vid, range));
+    let destination = Vec2::new(target.x as f32, target.y as f32);
+    let towards = (local - destination).normalize_or_zero();
+    control.destination = Some(destination + towards * (range as f32 * 0.8));
+}
+
+/// `CInstanceBase::SHORSE`: the server's mount packet drives the horse model
+/// and the mounted motion mode.
+fn sync_main_mount(world: &mut World, character: &mut Character) -> bool {
+    let Some(player) = world.get_resource::<PlayerState>() else { return false };
+    let vnum = player.mount_vnum;
+    if vnum == character.mount_vnum() {
+        return false;
+    }
+    if vnum == 0 {
+        return character.clear_mount(world);
+    }
+    let file = world
+        .get_resource::<MobCatalog>()
+        .and_then(|mobs| mobs.by_race.get(&(vnum as u16)))
+        .and_then(|mob| mob.race_file.clone());
+    match file {
+        Some(file) => character.set_mount(world, vnum, &file),
+        None => {
+            warn!("mount vnum {vnum} has no registered MSM race");
+            false
+        }
+    }
+}
+
+
+
+/// `CTerrainImpl::ATTRIBUTE_BANPK` (`IsInSafe`).
+const ATTR_BANPK: u8 = 1 << 2;
+
+/// `CInstanceBase::__GetBowRange`: 2500 - 100 plus `POINT_BOW_DISTANCE`.
+fn bow_range(points: &combat::Points) -> f32 {
+    2400.0 + points.bow_distance.max(0) as f32
+}
+
+/// `CMapOutdoor::isAttrOn` on the loaded map, in map-local coordinates.
+fn map_attr(scene: &MapScene, local: Vec2, flag: u8) -> bool {
+    let x = local.x.floor() as i32;
+    let y = local.y.floor() as i32;
+    if x < 0 || y < 0 {
+        return false;
+    }
+    let cell = (x / TERRAIN_WORLD as i32) as u16;
+    let row = (y / TERRAIN_WORLD as i32) as u16;
+    scene
+        .map
+        .map
+        .terrains
+        .iter()
+        .find(|terrain| terrain.x == cell && terrain.y == row)
+        .is_some_and(|terrain| {
+            terrain.is_attr_on(
+                ((x % TERRAIN_WORLD as i32) / 100) as u16,
+                ((y % TERRAIN_WORLD as i32) / 100) as u16,
+                flag,
+            )
+        })
+}
+
+/// The nearest attackable actor within `range` of `local`.
+fn nearest_attackable(
+    candidates: &[(u32, ActorCombat)],
+    attackable: &impl Fn(u32) -> bool,
+    local: Vec2,
+    range: f32,
+) -> Option<u32> {
+    candidates
+        .iter()
+        .filter(|(vid, actor)| attackable(*vid) && !actor.is_dead())
+        .map(|(vid, actor)| ((Vec2::new(actor.x as f32, actor.y as f32) - local).length(), *vid))
+        .filter(|(distance, _)| *distance <= range)
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, vid)| vid)
+}
+
+/// The actor under the pointer: `CPythonCharacterManager::OLD_GetPickedInstance`
+/// with a screen-space test against the tracked actors.
+fn pick_actor(world: &mut World, cursor: Vec2, base: (u32, u32)) -> Option<u32> {
+    let actors: Vec<(u32, f32, f32)> = world
+        .get_resource::<Actors>()
+        .map(|actors| {
+            actors
+                .by_vid
+                .iter()
+                .map(|(&vid, actor)| {
+                    (vid, (actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let camera = {
+        let mut query = world.query_filtered::<(&Camera, &GlobalTransform), With<SceneCamera>>();
+        query.single(world).ok().map(|(camera, transform)| (camera.clone(), *transform))
+    };
+    let (camera, transform) = camera?;
+    let mut best: Option<(f32, u32)> = None;
+    for (vid, x, y) in actors {
+        let position = Vec3::new(x, 80.0, -y);
+        let Ok(screen) = camera.world_to_viewport(&transform, position) else { continue };
+        let distance = screen.distance(cursor);
+        if distance <= 60.0 && best.is_none_or(|(best_distance, _)| distance < best_distance) {
+            best = Some((distance, vid));
+        }
+    }
+    best.map(|(_, vid)| vid)
+}
+
 /// The VID an attack goes to: the target when it is within reach, else 0 (a
 /// swing at nothing; the C++ client only sends a hit when it connects).
 fn attack_victim(control: &PlayerControl) -> u32 {
@@ -1047,7 +1800,9 @@ fn face_actor(world: &mut World, control: &mut PlayerControl, base: (u32, u32), 
 fn start_attack(world: &mut World, control: &mut PlayerControl, character: &mut Character, victim: u32) {
     control.state = MoveState::Attacking;
     control.destination = None;
-    character.play_motion(world, Motion::Attack, false);
+    control.combo = 1;
+    control.action_started = world.resource::<Time>().elapsed_secs();
+    character.play_attack(world, 1);
     if let Some(mut net) = world.get_resource_mut::<Net>() {
         net.send_attack(victim);
     }
@@ -1286,6 +2041,7 @@ mod tests {
         for (vid, kind) in [(10, ACTOR_TYPE_NPC), (11, ACTOR_TYPE_PC)] {
             let actor = Actor {
                 name: String::new(), race: 0, kind, level: 0, armor: 0, hair: 0,
+                empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
                 x: 0, y: 0, rotation: 0.0, move_from: Vec2::ZERO, move_to: Vec2::ZERO,
                 move_elapsed: 0.0, move_duration: 0.0, moving: false, rendered_moving: Some(false),
             };
@@ -1388,6 +2144,7 @@ mod tests {
                     level: 0,
                     armor: 0,
                     hair: 0,
+                    empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
                     x,
                     y,
                     rotation: 0.0,

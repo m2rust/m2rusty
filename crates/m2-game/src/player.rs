@@ -1,9 +1,10 @@
 //! Server-owned player data and UI requests. Widgets never predict item moves.
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use bevy::{prelude::*, tasks::{IoTaskPool, Task, futures::check_ready}};
 use m2_assets::{M2Packs, paths};
 use m2_formats::proto::{ItemData, ItemTables, parse_item_proto};
 use m2_net::{phase::{NetEvent, Phase}, wire::{self, GcPacket, TItemPos, TPlayerItemAttribute, TQuickSlot, cg}};
+use crate::combat::{self, ActorCombat, CombatWorld};
 use crate::{ingame::LOCALE_PATH, net::{Net, NetMessage}};
 
 /// `c_Equipment_Start` (`client/include/Client/UI/GameType.h`): equipment cells
@@ -32,14 +33,32 @@ pub struct ItemStack {
 }
 #[derive(Clone, Debug)]
 pub struct ChatLine { pub kind: u8, pub text: String }
+/// `GcPacket::PartyLink`/`Unlink` key: the player id behind a party member.
+#[derive(Clone, Debug, Default)]
+pub struct PartyMember {
+    pub pid: u32,
+    pub vid: u32,
+}
+
 #[derive(Resource)]
 pub struct PlayerState {
     pub vid: u32, pub name: String, pub race: u16, pub skill_group: u8, pub points: [i32; 255],
     pub items: BTreeMap<ItemPosition, ItemStack>, pub quickslots: [TQuickSlot; 32],
     pub chat: VecDeque<ChatLine>,
+    /// The main actor's `CharacterAdditionalInfo` (`CInstanceBase` fields the
+    /// combat predicates read).
+    pub kind: u8, pub empire: u8, pub alignment: i16, pub pk_mode: u8, pub guild_id: u32,
+    pub level: u32, pub state_flags: u8, pub affect_flags: u64,
+    /// `TPacketGCMount.mount_vid`; 0 when not mounted.
+    pub mount_vnum: u32,
+    /// `CPythonPlayer::m_dwDuelMode` and the `InsertDUELKey` pairs.
+    pub duel_mode: u8, pub duel_keys: HashSet<(u32, u32)>,
+    /// Party members by player id (`CPythonPlayer::m_PartyMemberMap`).
+    pub party: BTreeMap<u32, PartyMember>,
+    pub observer: bool,
 }
 impl Default for PlayerState {
-    fn default() -> Self { Self { vid:0, name:String::new(), points:[0;255], items:BTreeMap::new(), quickslots:[TQuickSlot::default();32], chat:VecDeque::new(), race:0, skill_group:0 } }
+    fn default() -> Self { Self { vid:0, name:String::new(), points:[0;255], items:BTreeMap::new(), quickslots:[TQuickSlot::default();32], chat:VecDeque::new(), race:0, skill_group:0, kind:0, empire:0, alignment:0, pk_mode:0, guild_id:0, level:0, state_flags:0, affect_flags:0, mount_vnum:0, duel_mode:0, duel_keys:HashSet::new(), party:BTreeMap::new(), observer:false } }
 }
 impl PlayerState {
     pub fn line(&mut self, kind:u8, text:String) {
@@ -51,11 +70,62 @@ impl PlayerState {
             // `CPythonPlayer::SetMainCharacterIndex` only stores the index; it does
             // not clear the item array. Equipment packets may arrive before
             // `MainCharacter`, so keep them (`MainCharacter` is not a reset).
-            NetEvent::MainCharacter(main) => { self.vid=main.vid; self.name=main.name.clone(); self.race=main.race; self.skill_group=main.skill_group; }
+            NetEvent::MainCharacter(main) => {
+                self.vid=main.vid; self.name=main.name.clone(); self.race=main.race; self.skill_group=main.skill_group;
+                self.kind=m2_net::phase::ACTOR_TYPE_PC;
+            }
+            NetEvent::Empire(empire) => self.empire = *empire,
+            NetEvent::ActorAppend(actor) if actor.vid==self.vid => {
+                self.kind=actor.kind;
+                self.empire=actor.empire;
+                self.alignment=actor.alignment;
+                self.pk_mode=actor.pk_mode;
+                self.guild_id=actor.guild_id;
+                self.level=actor.level;
+                self.state_flags=actor.state_flags;
+                self.affect_flags=actor.affect_flags;
+                if actor.mount_vnum!=0 { self.mount_vnum=actor.mount_vnum; }
+            }
+            NetEvent::ActorUpdate(update) if update.vid==self.vid => {
+                self.alignment=update.alignment;
+                self.pk_mode=update.pk_mode;
+                self.guild_id=update.guild_id;
+                self.state_flags=update.state_flags;
+                self.affect_flags=update.affect_flags;
+                if update.mount_vnum!=0 { self.mount_vnum=update.mount_vnum; }
+            }
             NetEvent::Chat{kind,text,..} if *kind != 5 => self.line(*kind,text.clone()),
             NetEvent::Packet(packet) => match packet {
                 GcPacket::PlayerPoints(p) => self.points=p.points,
                 GcPacket::PlayerPointChange(p) if p.dwVID==self.vid => self.points[p.Type as usize]=p.value,
+                GcPacket::Mount(p) if p.vid==self.vid => self.mount_vnum=p.mount_vid,
+                GcPacket::AffectAdd(p) => {
+                    // `BINARY_NEW_AddAffect`: the packet is about the main actor.
+                    let bit=1u64<<(p.elem.dwType%64);
+                    self.affect_flags|=bit;
+                }
+                GcPacket::AffectRemove(p) => {
+                    let bit=1u64<<(p.dwType%64);
+                    self.affect_flags&=!bit;
+                }
+                GcPacket::DuelStart { tail, .. } => {
+                    self.duel_keys.clear();
+                    let target=self.vid;
+                    for chunk in tail.as_chunks::<4>().0 {
+                        let vid=u32::from_le_bytes([chunk[0],chunk[1],chunk[2],chunk[3]]);
+                        if vid!=0 { self.duel_keys.insert((target,vid)); }
+                    }
+                    self.duel_mode=if self.duel_keys.is_empty() { combat::DUEL_CANNOTATTACK } else { combat::DUEL_START };
+                }
+                GcPacket::PartyLink(p) => {
+                    self.party.insert(p.pid, PartyMember{pid:p.pid, vid:p.vid});
+                }
+                GcPacket::PartyUnlink(p) => {
+                    self.party.remove(&p.pid);
+                }
+                GcPacket::PartyRemove(p) => {
+                    self.party.retain(|_, member| member.pid!=p.pid);
+                }
                 GcPacket::ItemSet(p) => {
                     debug!("item set cell {:?} vnum {} count {}", p.Cell, p.vnum, p.count);
                     self.set_item(p.Cell, ItemStack{vnum:p.vnum,count:p.count,flags:0,anti_flags:0,sockets:p.alSockets,attributes:p.aAttr})
@@ -77,6 +147,37 @@ impl PlayerState {
             },
             _=>{}
         }
+    }
+
+    /// The main actor as [`combat`] sees it.
+    pub fn combat_self(&self) -> ActorCombat {
+        ActorCombat {
+            vid:self.vid, kind:self.kind, race:self.race, empire:self.empire, pk_mode:self.pk_mode,
+            guild_id:self.guild_id, alignment:self.alignment, dead:self.state_flags&combat::STATE_DEAD!=0,
+            state_flags:self.state_flags, affect_flags:self.affect_flags, in_safe:false, x:0, y:0,
+        }
+    }
+
+    /// The party, duel and war state `IsAttackableInstance` reads.
+    pub fn combat_world(&self) -> CombatWorld {
+        CombatWorld {
+            observer:self.observer,
+            duel_mode:self.duel_mode,
+            party:self.party.values().map(|member| member.vid).collect(),
+            duel_keys:self.duel_keys.clone(),
+            ..CombatWorld::default()
+        }
+    }
+
+    /// The number of arrows in the arrow equipment cell (`c_Equipment_Arrow`,
+    /// `c_Equipment_Start + 6`).
+    pub fn arrow_count(&self) -> u32 {
+        self.items.get(&ItemPosition::equipment(EQUIPMENT_START+9)).map_or(0, |item| u32::from(item.count))
+    }
+
+    /// `CPythonPlayer::__HasItem`.
+    pub fn has_item(&self, vnum: u32) -> bool {
+        self.items.values().any(|item| item.vnum==vnum)
     }
     fn set_item(&mut self,pos:TItemPos,item:ItemStack) {
         let pos=ItemPosition::from_wire(pos);
@@ -228,6 +329,20 @@ fn dispatch(mut actions:MessageReader<PlayerAction>,mut net:ResMut<Net>,mut play
         state.apply(&NetEvent::MainCharacter(main));
         assert_eq!(state.vid,7);
         assert_eq!(state.weapon().map(|item|item.vnum),Some(4010));
+        // `MainCharacter` creates the main instance as `TYPE_PC`.
+        assert!(state.combat_self().is_pc());
+    }
+    #[test] fn own_actor_metadata_and_mount_come_from_the_packets() {
+        let mut state=PlayerState { vid: 7, ..PlayerState::default() };
+        let actor=m2_net::phase::ActorData{vid:7,kind:6,race:5,move_speed:0,attack_speed:0,state_flags:0,rotation:0.0,x:10,y:20,affect_flags:0,name:None,guild_id:12,level:30,alignment:-5000,pk_mode:2,empire:1,armor:0,weapon:0,hair:0,mount_vnum:0};
+        state.apply(&NetEvent::ActorAppend(actor));
+        assert_eq!((state.pk_mode,state.empire,state.guild_id,state.alignment),(2,1,12,-5000));
+        state.apply(&NetEvent::Packet(GcPacket::Mount(wire::TPacketGCMount{vid:7,mount_vid:20104,..default()})));
+        assert_eq!(state.mount_vnum,20104);
+        state.apply(&NetEvent::Packet(GcPacket::AffectAdd(wire::TPacketGCAffectAdd{elem:wire::TPacketAffectElement{dwType:combat::AFFECT_INVISIBILITY,..default()},..default()})));
+        assert!(combat::has_affect(state.affect_flags,combat::AFFECT_INVISIBILITY));
+        state.apply(&NetEvent::Packet(GcPacket::AffectRemove(wire::TPacketGCAffectRemove{dwType:combat::AFFECT_INVISIBILITY,..default()})));
+        assert!(!combat::has_affect(state.affect_flags,combat::AFFECT_INVISIBILITY));
     }
     #[test] fn weapon_cell_is_the_cpp_equipment_weapon_slot() {
         // GameType.h: `c_Equipment_Start = c_ItemSlot_Count` (90),

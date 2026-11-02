@@ -4,7 +4,7 @@ Living log of the port described in [docs/bevy-port-plan.md](docs/bevy-port-plan
 The plan says *what we intend*; this file says *what is done, what we learned
 and what we decided*. Update it as work lands.
 
-Last updated: 2026-11-01.
+Last updated: 2026-11-02.
 
 ## 1. Status
 
@@ -91,7 +91,9 @@ accepted.
   dragging or Ctrl+click, and used with the 1-4/F1-F4 keys. Non-UTF-8 and
   `.sub` sprite regions are decoded by `m2-assets`.
 - **`crates/m2-game`**: the game-side Bevy library shared by the client and the
-  viewer. `render::{model, tree, effect, terrain, sky, cloud}` draw with the
+  viewer. `combat` ports the combat rules (`IsAttackableInstance`, target
+  selection, `CanAttack`/`CanShot`, mount levels, `__CheckSkillUsable`,
+  skill formulas/motion indices and the skill vnum tables). `render::{model, tree, effect, terrain, sky, cloud}` draw with the
   client's render states; `render::character` dresses a race in its shape and
   hair and plays `.msa` motions (the select scene). `world::prepare_map` loads a
   map (`m2_world::load_map` plus the ground texture array and effect instances)
@@ -100,10 +102,19 @@ accepted.
   resolves the map from the global position in `AtlasInfo.txt`
   (`world::prepare_map_at`), loads it off the main thread and spawns the map, the
   player character at its terrain height and a third-person camera. The same
-  module drives the controls: left-click ground picking (heightfield ray march),
+  module drives the controls: left-click ground picking (heightfield ray march)
+  or actor picking (screen-space, then the C++ click-distance rules),
   `WASD`/arrows relative to the camera, `FUNC_MOVE`/`FUNC_WAIT` position reports
-  every 300 ms, and space attacks the nearest actor (`CG_ATTACK`). The character
-  turns towards its movement direction at the client's rotation speed
+  every 300 ms, and space attacks (held, with the mode's combo) the nearest
+  attackable actor (`CG_ATTACK`). Bows send `CG_FLY_TARGETING` + `CG_ATTACK` +
+  `CG_SHOOT` when the target is inside `__GetBowRange`; mounted characters use
+  the `horse*` motion modes and the mount-level/riding-skill restrictions, and
+  Ctrl+H/J/B/F/G send the horse chat commands. Skill page/task-bar clicks send
+  `UseSkillRequest`s; `combat::use_skill` ports `CPythonPlayer::__UseSkill`
+  (target search, skill attributes, horse/safe-area/arrow/SP/HP/cooldown checks,
+  fan/circle extra targets, `CG_USE_SKILL`) and plays the registered
+  `MOTION_SKILL` clip. The character turns towards its movement direction at
+  the client's rotation speed
   (`SetAdvancingRotation`: 1200°/s, 5/12 of that under 45°), and motion clips
   switch without blending, as the client does. The game lightens the
   environment's fog (`soften_fog`: it starts at 100 m and is stretched) so the
@@ -165,6 +176,9 @@ accepted.
 - **Networking:** `m2-net` contains packet structs/codecs, packet framing,
   sequence handling, transport abstractions, the game phase machine and
   `auth` (a port of `CAccountConnector`: handshake, `CG_LOGIN3`, login key).
+  Combat sends are `send_attack`, `send_use_skill`, `send_shoot`, `send_target`,
+  `send_fly_targeting`/`send_add_fly_targeting` and `send_guild_use_skill`,
+  byte-tested in `crates/m2-net/tests/combat_packets.rs`.
   `transport::pump` drives either machine. `cargo run -p m2-net --example login`
   is a headless login (auth, then channel) against a real server. It drives the
   `m2-client` login; game entities are not connected yet.
@@ -338,8 +352,15 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
 - **Movement has no collision or pathfinding.** Click-to-move runs in a straight
   line and only the terrain height is sampled: the character can walk through
   buildings, trees and water (`m2_world`'s attribute maps are ported but not
-  wired). Attacks target any tracked actor inside 320 units (NPCs included) and
-  the server's damage replies are ignored.
+  wired). Attacks use the ported `IsAttackableInstance` rules and the server's
+  damage replies are still ignored. Only the main character's mount is drawn;
+  other actors' `mount_vnum` is tracked but not rendered.
+- **Combat visuals are partial.** Attack and skill motions, horse motions and
+  the horse model are played, and the protocol packets are sent, but hit
+  effects (`.mse` blow/critical/skill effects), motion sound scripts and the
+  flying arrow/`CG_SHOOT` projectile are not spawned yet. Skill damage numbers
+  and the server's `GC_DAMAGE_INFO` are ignored, and only the main character's
+  mount is drawn.
 - **Superseded by D17, still in the tree:** `m2-script`, `m2-modgen`, the C ABI
   (`neoeter_python_abi`, CMake option `M2_BUILD_PYTHON_ABI`) and the module
   specs in `modules/`. Nothing in the client uses them any more; remove them
@@ -412,8 +433,15 @@ Next, in order. Each milestone ends with something visible against the server.
      third-person camera (orbit/zoom).~~ Done: ground picking, `WASD`/arrows,
      `FUNC_MOVE` every 300 ms and `FUNC_WAIT` on stop, the server accepts and
      persists the reported position.
-   - ~~Attack~~ Done for the player: space plays `attack.msa` and sends
-     `CG_ATTACK` to the nearest tracked actor inside `ATTACK_RANGE`.
+   - ~~Attack~~ Done for the player: space plays the mode's combo
+     (`attack.msa`/`combo_0N.msa`) and sends `CG_ATTACK` to the nearest
+     attackable actor inside reach. The C++ combat rules are in
+     `m2_game::combat`: `IsAttackableInstance` (empire/PK mode/duel/guild/
+     party/alignment/actor type), `SetTarget`/`CanPickInstance` validation,
+     `CanAttack`/`CanShot`, mount levels and the bow range. Bows, skills,
+     mounted attacks/motions (with the horse model) and the Ctrl+H/J/B/F/G
+     horse commands are wired; `CG_USE_SKILL`, `CG_SHOOT`, `CG_TARGET` and
+     fly-targeting packets are sent from `m2-game`, not the UI.
    - Actors from `ActorAppend`/`Update`/`Move`/`Remove`/`Sync` are tracked (VID,
      race, name, position) but not drawn yet: NPCs, monsters and other players
      with their motions (`.msa` wait/run/attack, blending) are the next step.

@@ -25,11 +25,11 @@ use bevy::window::PrimaryWindow;
 
 use m2_assets::{M2Packs, paths, subimage::SubImage};
 use m2_formats::proto::{SkillData, SkillTables, SkillType};
-use m2_game::ingame::{LOCALE_PATH, PlayerControl};
+use m2_game::ingame::LOCALE_PATH;
 use m2_game::net::{Net, NetMessage};
 use m2_game::player::{PlayerAction, PlayerState};
-use m2_net::phase::{NetEvent, Phase};
-use m2_net::wire::{self, GcPacket, TQuickSlot, cg};
+use m2_net::phase::NetEvent;
+use m2_net::wire::{GcPacket, TQuickSlot};
 
 use crate::character::{CharacterTab, PageRoot};
 use crate::core::{self, Art, Click, Consumed, Control, Selected, Surface, UiSet};
@@ -69,59 +69,13 @@ const SHAMAN_GROUP2: [u32; 14] = [106, 107, 108, 109, 110, 111, 0, 0, 137, 0, 13
 const SUPPORT: [u32; 12] = [122, 123, 121, 124, 125, 129, 0, 0, 130, 131, 141, 142];
 
 /// `CPythonSkill::m_SkillDataMap`, loaded in the background at startup.
-#[derive(Resource, Default)]
-pub struct SkillCatalog(pub SkillTables);
-
-impl SkillCatalog {
-    pub fn get(&self, vnum: u32) -> Option<&SkillData> {
-        self.0.skills.get(&vnum)
-    }
-}
+pub use m2_game::combat::{SkillCatalog, SkillState};
 
 #[derive(Resource)]
 struct SkillCatalogTask(Task<Result<SkillTables, String>>);
 
-/// The player's skill levels, indexed by skill vnum
-/// (`CPythonPlayer::SetSkillLevel_`'s `dwSkillIndex`).
-#[derive(Resource, Clone)]
-pub struct SkillState {
-    pub levels: [u8; 255],
-    pub grades: [u8; 255],
-}
-
-impl Default for SkillState {
-    fn default() -> Self {
-        Self { levels: [0; 255], grades: [0; 255] }
-    }
-}
-
-impl SkillState {
-    pub fn reset(&mut self) {
-        *self = Self::default();
-    }
-
-    /// `CPythonPlayer::GetSkillGrade`.
-    pub fn grade(&self, vnum: u32) -> u8 {
-        self.grades.get(vnum as usize).copied().unwrap_or(0)
-    }
-
-    /// `CPythonPlayer::GetSkillLevel`: `SetSkillLevel_` turns the raw packet
-    /// level of a mastered grade back into a level within that grade.
-    pub fn level(&self, vnum: u32) -> u8 {
-        let Some(&raw) = self.levels.get(vnum as usize) else {
-            return 0;
-        };
-        match self.grade(vnum) {
-            0 => raw,
-            // `level - 20 + 1`, `- 30 + 1`, `- 40 + 1`.
-            1 => raw.saturating_sub(19),
-            2 => raw.saturating_sub(29),
-            3 => raw.saturating_sub(39),
-            _ => raw,
-        }
-    }
-}
-
+/// The player's skill levels live in `m2_game::combat` (ported from the
+/// same packets); the page only reads them.
 /// The page's radios: which skill group is shown and whether the Riding page
 /// is selected.
 #[derive(Resource, Default)]
@@ -401,14 +355,10 @@ fn resolve(player: &PlayerState, state: &SkillState, group: u8, slot: u32) -> Op
     (vnum != 0).then(|| (vnum, state.level(vnum)))
 }
 
-/// `CPythonNetworkStream::SendUseSkillPacket`.
-fn send_use_skill(net: &mut Net, vnum: u32, target: Option<u32>) -> bool {
-    net.game.phase() == Phase::Game
-        && net.game.stream.send_packet(&wire::TPacketCGUseSkill {
-            bHeader: cg::USE_SKILL,
-            dwVnum: vnum,
-            dwTargetVID: target.unwrap_or(0),
-        })
+/// The skill page and the task bar hand the vnum to `m2-game`, which runs
+/// `CPythonPlayer::__UseSkill` (target choice, checks, motion and packet).
+fn send_use_skill(requests: &mut MessageWriter<m2_game::combat::UseSkillRequest>, vnum: u32) {
+    requests.write(m2_game::combat::UseSkillRequest { vnum });
 }
 
 pub fn build(commands: &mut Commands, assets: &AssetServer, parent: Entity) -> Entity {
@@ -670,15 +620,14 @@ fn actions(
     mut ui: ResMut<SkillUi>,
     player: Res<PlayerState>,
     state: Res<SkillState>,
-    control: Option<Res<PlayerControl>>,
     mut net: ResMut<Net>,
     mut quick_uses: MessageReader<QuickSlotUse>,
     mut requests: MessageWriter<PlayerAction>,
+    mut use_skill: MessageWriter<m2_game::combat::UseSkillRequest>,
     mut consumed: ResMut<Consumed>,
 ) {
     let typing = focus.get().is_some() || chat.typing;
     let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
-    let target = control.as_deref().and_then(|control| control.target);
 
     for click in clicks.read() {
         if click.button != PointerButton::Primary {
@@ -720,7 +669,7 @@ fn actions(
                 quickslots::bind(&mut net, slot, quickslots::SKILL, cell.slot as u8);
             }
         } else {
-            send_use_skill(&mut net, vnum, target);
+            send_use_skill(&mut use_skill, vnum);
         }
         consumed.pointer = true;
     }
@@ -737,7 +686,7 @@ fn actions(
         if let Some((vnum, level)) = resolve(&player, &state, group, position)
             && level != 0
         {
-            send_use_skill(&mut net, vnum, target);
+            send_use_skill(&mut use_skill, vnum);
         }
     }
 }

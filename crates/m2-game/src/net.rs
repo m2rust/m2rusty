@@ -159,6 +159,35 @@ impl Net {
         self.game.send_attack(0, victim)
     }
 
+    /// `SendUseSkillPacket` (`CPythonPlayer::__SendUseSkill`).
+    pub fn send_use_skill(&mut self, vnum: u32, target: u32) -> bool {
+        self.game.send_use_skill(vnum, target)
+    }
+
+    /// `SendShootPacket` (`CPythonPlayerEventHandler::CNormalBowAttack...::OnShoot`).
+    pub fn send_shoot(&mut self, skill: u32) -> bool {
+        self.game.send_shoot(skill)
+    }
+
+    /// `SendGuildUseSkillPacket` (`CPythonPlayer::UseGuildSkill`).
+    pub fn send_guild_use_skill(&mut self, skill: u32, target: u32) -> bool {
+        self.game.send_guild_use_skill(skill, target)
+    }
+
+    /// `SendTargetPacket` (`CPythonPlayer::__SetTargetVID`).
+    pub fn send_target(&mut self, vid: u32) -> bool {
+        self.game.send_target(vid)
+    }
+
+    /// `SendFlyTargetingPacket`/`SendAddFlyTargetingPacket`, global coordinates.
+    pub fn send_fly_targeting(&mut self, vid: u32, x: i32, y: i32, add: bool) -> bool {
+        if add {
+            self.game.send_add_fly_targeting(vid, x, y)
+        } else {
+            self.game.send_fly_targeting(vid, x, y)
+        }
+    }
+
     /// `SendEnterGame` (`net.SendEnterGamePacket`, sent by the game window when it
     /// opens): the server answers with the Game phase.
     pub fn start_game(&mut self) -> bool {

@@ -18,6 +18,7 @@
 //! billboard towards it and the sky is installed on it.
 
 pub mod audio;
+pub mod combat;
 pub mod ingame;
 pub mod net;
 pub mod player;

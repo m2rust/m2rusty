@@ -58,10 +58,13 @@ pub enum Motion {
     Wait,
     Walk,
     Run,
-    Attack,
+    /// The `combo`th step of the mode's combo (1-based; bows only have one).
+    Attack(u32),
+    /// `MOTION_SKILL + index` (`CRaceMotionData::NAME_SKILL + uMot`).
+    Skill(u16),
 }
 
-/// `CRaceMotionData::EMode` as selected by `CInstanceBase::RefreshState`.
+/// `CRaceMotionData::EMode`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MotionMode {
     General,
@@ -71,6 +74,13 @@ pub enum MotionMode {
     Bow,
     Fan,
     Bell,
+    Horse,
+    HorseOneHandSword,
+    HorseTwoHandSword,
+    HorseDualHandSword,
+    HorseBow,
+    HorseFan,
+    HorseBell,
 }
 
 impl MotionMode {
@@ -85,16 +95,57 @@ impl MotionMode {
             MotionMode::Bow => "bow/",
             MotionMode::Fan => "fan/",
             MotionMode::Bell => "bell/",
+            MotionMode::Horse => "horse/",
+            MotionMode::HorseOneHandSword => "horse_onehand_sword/",
+            MotionMode::HorseTwoHandSword => "horse_twohand_sword/",
+            MotionMode::HorseDualHandSword => "horse_dualhand_sword/",
+            MotionMode::HorseBow => "horse_bow/",
+            MotionMode::HorseFan => "horse_fan/",
+            MotionMode::HorseBell => "horse_bell/",
         }
     }
 
-    /// The attack motion registered as `MOTION_COMBO_ATTACK_1` for the mode.
-    /// Only `GENERAL` registers `MOTION_NORMAL_ATTACK`; players attack with
-    /// combos (`CInstanceBase::NEW_Attack` -> `InputComboAttack`).
-    pub fn attack_file(self) -> &'static str {
+    /// `CInstanceBase::SHORSE` mounted motion mode for a weapon subtype
+    /// (`InstanceBase.cpp:2885`).
+    pub fn mounted(self) -> bool {
+        matches!(
+            self,
+            MotionMode::Horse
+                | MotionMode::HorseOneHandSword
+                | MotionMode::HorseTwoHandSword
+                | MotionMode::HorseDualHandSword
+                | MotionMode::HorseBow
+                | MotionMode::HorseFan
+                | MotionMode::HorseBell
+        )
+    }
+
+    /// `CRaceData::ReserveComboAttackNew`'s count for combo type 1.
+    pub fn combo_count(self) -> u32 {
         match self {
-            MotionMode::General | MotionMode::Bow => "attack.msa",
-            _ => "combo_01.msa",
+            MotionMode::General | MotionMode::Bow | MotionMode::HorseBow => 1,
+            MotionMode::Horse => 0,
+            MotionMode::OneHandSword | MotionMode::TwoHandSword | MotionMode::DualHandSword => 4,
+            MotionMode::Fan | MotionMode::Bell => 3,
+            MotionMode::HorseOneHandSword
+            | MotionMode::HorseTwoHandSword
+            | MotionMode::HorseDualHandSword
+            | MotionMode::HorseFan
+            | MotionMode::HorseBell => 3,
+        }
+    }
+
+    /// The `MOTION_COMBO_ATTACK_1..` `.msa` of a combo step, 1-based. Mounted
+    /// modes without a combo (`Horse`) have none.
+    pub fn attack_file(self, combo: u32) -> Option<String> {
+        let combo = combo.clamp(1, self.combo_count().max(1));
+        match self {
+            MotionMode::General | MotionMode::Bow => {
+                Some(if combo == 1 { "attack.msa".into() } else { format!("attack_{}.msa", combo - 1) })
+            }
+            MotionMode::HorseBow => Some("attack.msa".into()),
+            MotionMode::Horse => None,
+            _ => Some(format!("combo_{combo:02}.msa")),
         }
     }
 }
@@ -102,7 +153,7 @@ impl MotionMode {
 impl Motion {
     /// The `.msa` of this motion for `race` in `mode`. `SetGeneralMotions`
     /// registers `wait`/`walk`/`run`; the attack is the mode's
-    /// `MOTION_COMBO_ATTACK_1` file.
+    /// `MOTION_COMBO_ATTACK_*` file.
     pub fn file_in(self, race: u8, mode: MotionMode) -> Option<String> {
         let files = race_files(race)?;
         let root = files.general.strip_suffix("general/").unwrap_or(files.general);
@@ -110,15 +161,121 @@ impl Motion {
             Motion::Wait => "wait.msa",
             Motion::Walk => "walk.msa",
             Motion::Run => "run.msa",
-            Motion::Attack => mode.attack_file(),
+            Motion::Skill(index) => return skill_motion_file(race, index),
+            Motion::Attack(combo) => return mode.attack_file(combo).map(|file| format!("{root}{}{file}", mode.folder())),
         };
-        Some(format!("{root}{}{name}", mode.folder()))
+        // The mounted melee folders only register their combos; `wait`, `walk`
+        // and `run` come from `horse/` (the C++ fallback through the same
+        // race data).
+        let folder = if mode.mounted() && mode != MotionMode::HorseBow {
+            MotionMode::Horse.folder()
+        } else {
+            mode.folder()
+        };
+        Some(format!("{root}{folder}{name}"))
     }
 
     /// The `.msa` of this motion in the general (no weapon) mode.
     pub fn file(self, race: u8) -> Option<String> {
         self.file_in(race, MotionMode::General)
     }
+}
+
+/// The `MOTION_SKILL` file of a race in a motion mode. `playersettingmodule.py`
+/// registers the class skills in `GENERAL` (`skill/`), the guild skills as
+/// `MOTION_SKILL+101..106` and the mounted skills as `+121..123` in the
+/// `horse*` folders.
+pub fn skill_motion_file(race: u8, index: u16) -> Option<String> {
+    skill_motion_file_in(race, MotionMode::General, index)
+}
+
+/// [`skill_motion_file`] with an explicit mode for the mounted and guild
+/// skills.
+pub fn skill_motion_file_in(race: u8, mode: MotionMode, index: u16) -> Option<String> {
+    let files = race_files(race)?;
+    let root = files.general.strip_suffix("general/").unwrap_or(files.general);
+    if matches!(index, 121..=123) {
+        let name = match index {
+            121 => "skill_wildattack.msa",
+            122 => "skill_charge.msa",
+            _ => "skill_splash.msa",
+        };
+        return Some(format!("{root}{}{name}", mode.folder()));
+    }
+    if matches!(index, 101..=106) {
+        let name = match index {
+            101 => "guild_yongsinuipi.msa",
+            102 => "guild_yongsinuichukbok.msa",
+            103 => "guild_seonghwigap.msa",
+            104 => "guild_gasokhwa.msa",
+            105 => "guild_yongsinuibunno.msa",
+            _ => "guild_jumumsul.msa",
+        };
+        return Some(format!("{root}{}{name}", MotionMode::General.folder()));
+    }
+    let grade = index / 25;
+    let base = index % 25;
+    let names: &[(&str, &str)] = match race % 4 {
+        0 => &[
+            ("1", "samyeon"),
+            ("2", "palbang"),
+            ("3", "jeongwi"),
+            ("4", "geomgyeong"),
+            ("5", "tanhwan"),
+            ("6", "gihyeol"),
+            ("16", "gigongcham"),
+            ("17", "gyeoksan"),
+            ("18", "daejin"),
+            ("19", "cheongeun"),
+            ("20", "geompung"),
+            ("21", "noegeom"),
+        ],
+        1 => &[
+            ("1", "amseup"),
+            ("2", "gungsin"),
+            ("3", "charyun"),
+            ("4", "eunhyeong"),
+            ("5", "sangong"),
+            ("6", "seomjeon"),
+            ("16", "yeonsa"),
+            ("17", "gwangyeok"),
+            ("18", "hwajo"),
+            ("19", "gyeonggong"),
+            ("20", "dokgigung"),
+            ("21", "seomgwang"),
+        ],
+        2 => &[
+            ("1", "swaeryeong"),
+            ("2", "yonggwon"),
+            ("3", "gwigeom"),
+            ("4", "gongpo"),
+            ("5", "jumagap"),
+            ("6", "pabeop"),
+            ("16", "maryeong"),
+            ("17", "hwayeom"),
+            ("18", "muyeong"),
+            ("19", "heuksin"),
+            ("20", "tusok"),
+            ("21", "mahwan"),
+        ],
+        _ => &[
+            ("1", "bipabu"),
+            ("2", "yongpa"),
+            ("3", "paeryong"),
+            ("4", "hosin"),
+            ("5", "boho"),
+            ("6", "gicheon"),
+            ("16", "noejeon"),
+            ("17", "byeorak"),
+            ("18", "pokroe"),
+            ("19", "jeongeop"),
+            ("20", "kwaesok"),
+            ("21", "jeungryeok"),
+        ],
+    };
+    let key = base.to_string();
+    let stem = names.iter().find(|(slot, _)| *slot == key).map(|(_, name)| *name)?;
+    Some(format!("{root}skill/{stem}{}.msa", if grade == 0 { String::new() } else { format!("_{}", grade + 1) }))
 }
 
 /// The select-screen motions (`chr.MOTION_INTRO_*`).
@@ -176,6 +333,23 @@ pub fn weapon_hands(weapon_type: u8) -> WeaponHands {
 
 /// `CInstanceBase::RefreshState`'s motion-mode switch for an unmounted actor.
 pub fn weapon_motion_mode(weapon_type: Option<u8>) -> MotionMode {
+    motion_mode(weapon_type, false)
+}
+
+/// `CInstanceBase::RefreshState`'s switch with the mounted branch
+/// (`InstanceBase.cpp:2885`).
+pub fn motion_mode(weapon_type: Option<u8>, mounted: bool) -> MotionMode {
+    if mounted {
+        return match weapon_type {
+            Some(WEAPON_SWORD) => MotionMode::HorseOneHandSword,
+            Some(WEAPON_TWO_HANDED) => MotionMode::HorseTwoHandSword,
+            Some(WEAPON_DAGGER) => MotionMode::HorseDualHandSword,
+            Some(WEAPON_FAN) => MotionMode::HorseFan,
+            Some(WEAPON_BELL) => MotionMode::HorseBell,
+            Some(WEAPON_BOW) => MotionMode::HorseBow,
+            _ => MotionMode::Horse,
+        };
+    }
     match weapon_type {
         Some(WEAPON_SWORD) => MotionMode::OneHandSword,
         Some(WEAPON_TWO_HANDED) => MotionMode::TwoHandSword,
@@ -247,6 +421,8 @@ struct Playing {
     clip: Option<Handle<AnimationClip>>,
     repeat: bool,
     started: bool,
+    /// The clip's length once it loaded (`CRaceMotionData::GetMotionDuration`).
+    duration: f32,
 }
 
 /// The equipped weapon models (`CActorInstance::AttachWeapon`). The right hand
@@ -259,6 +435,16 @@ struct Weapon {
     /// The spawned mesh entities, despawned when the weapon changes.
     attached: Vec<Entity>,
     ready: bool,
+}
+
+/// How far the rider's root sits above the ground when mounted, in world
+/// units (`CInstanceBase::SHORSE` attaches the rider to the saddle bone).
+pub const MOUNT_HEIGHT: f32 = 110.0;
+
+/// The mounted horse model (`CInstanceBase::SHORSE`).
+struct Mount {
+    model: Option<Handle<Gr2Model>>,
+    spawned: Option<Entity>,
 }
 
 /// One renderable character in the world, whether player controlled or not.
@@ -276,6 +462,10 @@ pub struct Character {
     /// `m_wcurMotionMode` (`CActorInstance::SetMotionMode`).
     motion_mode: MotionMode,
     weapon: Option<Weapon>,
+    /// The mount vnum and its model (`m_kHorse`); zero is unmounted.
+    mount_vnum: u32,
+    mount: Option<Mount>,
+    weapon_type: u8,
     /// Why the character cannot be drawn (unknown race, a missing file).
     pub error: Option<String>,
 }
@@ -314,7 +504,7 @@ impl Character {
         } else {
             (Stage::Race(world.resource::<AssetServer>().load(paths::asset_source_uri(race_file))), None)
         };
-        Character { root, look, race_file: race_file.to_owned(), player_appearance, stage, motion: None, motion_mode: MotionMode::General, weapon: None, error }
+        Character { root, look, race_file: race_file.to_owned(), player_appearance, stage, motion: None, motion_mode: MotionMode::General, weapon: None, mount_vnum: 0, mount: None, weapon_type: 0, error }
     }
 
     /// The model is spawned.
@@ -326,7 +516,7 @@ impl Character {
     pub fn play(&mut self, world: &mut World, msa: &str, repeat: bool) {
         let file = msa.to_owned();
         let msa = world.resource::<AssetServer>().load(paths::asset_source_uri(msa));
-        self.motion = Some(Playing { msa, file, clip: None, repeat, started: false });
+        self.motion = Some(Playing { msa, file, clip: None, repeat, started: false, duration: 0.0 });
     }
 
     /// Plays one of the race's normal motions in the current weapon motion mode
@@ -335,6 +525,78 @@ impl Character {
         if let Some(file) = motion.file_in(self.look.race, self.motion_mode) {
             self.play(world, &file, repeat);
         }
+    }
+
+    /// `CActorInstance::InputComboAttackCommand` -> `ComboAttack`: the `combo`th
+    /// `MOTION_COMBO_ATTACK_*` of the current mode. `combo` is clamped to the
+    /// mode's registered count.
+    pub fn play_attack(&mut self, world: &mut World, combo: u32) -> bool {
+        let Some(file) = self.motion_mode.attack_file(combo) else { return false };
+        let root = race_files(self.look.race).map(|files| files.general.strip_suffix("general/").unwrap_or(files.general)).unwrap_or("");
+        self.play(world, &format!("{root}{}{file}", self.motion_mode.folder()), false);
+        true
+    }
+
+    /// `CInstanceBase::NEW_UseSkill`: the `MOTION_SKILL` clip of a skill's
+    /// registered motion index.
+    pub fn play_skill(&mut self, world: &mut World, motion_index: u16) -> bool {
+        let Some(file) = skill_motion_file_in(self.look.race, self.motion_mode, motion_index) else { return false };
+        self.play(world, &file, false);
+        true
+    }
+
+    /// The length of the motion playing now, once its clip has loaded.
+    pub fn motion_duration(&self) -> f32 {
+        self.motion.as_ref().map_or(0.0, |motion| motion.duration)
+    }
+
+    /// `CInstanceBase::MountHorse`: loads the mount race's model and switches
+    /// to its motion mode. `race_file` comes from the NPC race registry.
+    pub fn set_mount(&mut self, world: &mut World, vnum: u32, race_file: &str) -> bool {
+        if vnum == self.mount_vnum {
+            return false;
+        }
+        self.clear_mount(world);
+        self.mount_vnum = vnum;
+        if vnum == 0 {
+            return true;
+        }
+        let model = world.resource::<AssetServer>().load(paths::asset_source_uri(race_file));
+        self.mount = Some(Mount { model: Some(model), spawned: None });
+        self.motion_mode = motion_mode((self.weapon_type != 0).then_some(self.weapon_type), true);
+        true
+    }
+
+    /// `CInstanceBase::DismountHorse`.
+    pub fn clear_mount(&mut self, world: &mut World) -> bool {
+        let Some(mount) = self.mount.take() else { return false };
+        if let Some(entity) = mount.spawned
+            && world.get_entity(entity).is_ok()
+        {
+            world.despawn(entity);
+        }
+        self.mount_vnum = 0;
+        self.motion_mode = motion_mode((self.weapon_type != 0).then_some(self.weapon_type), false);
+        true
+    }
+
+    pub fn is_mounted(&self) -> bool {
+        self.mount_vnum != 0
+    }
+
+    /// The mounted race vnum, or 0.
+    pub fn mount_vnum(&self) -> u32 {
+        self.mount_vnum
+    }
+
+    /// The equip weapon's `bSubType`, or `None` when bare-handed.
+    pub fn weapon_type(&self) -> Option<u8> {
+        (self.weapon_type != 0).then_some(self.weapon_type)
+    }
+
+    /// `GetMotionMode` (`CRaceMotionData::EMode`).
+    pub fn motion_mode(&self) -> MotionMode {
+        self.motion_mode
     }
 
     /// Equips `vnum`'s weapon model (`CInstanceBase::SetWeapon` /
@@ -354,8 +616,10 @@ impl Character {
             return false;
         }
         self.clear_weapon(world);
-        self.motion_mode = weapon_motion_mode((vnum != 0).then_some(weapon_type));
-        if vnum == 0 || model.is_empty() {
+        let equipped = vnum != 0;
+        self.weapon_type = if equipped { weapon_type } else { 0 };
+        self.motion_mode = motion_mode(equipped.then_some(weapon_type), self.is_mounted());
+        if !equipped || model.is_empty() {
             return true;
         }
         let hands = weapon_hands(weapon_type);
@@ -382,7 +646,7 @@ impl Character {
                 world.despawn(entity);
             }
         }
-        self.motion_mode = MotionMode::General;
+        self.motion_mode = motion_mode(None, self.is_mounted());
         true
     }
 
@@ -407,7 +671,26 @@ impl Character {
             self.stage = Stage::Failed;
         }
         self.advance_weapon(world);
+        self.advance_mount(world);
         self.update_motion(world);
+    }
+
+    /// Spawns the horse model once its `.gr2` loaded, under the character root
+    /// so it follows the player. The caller lifts the root by [`MOUNT_HEIGHT`]
+    /// while mounted, so the horse sits at its feet.
+    fn advance_mount(&mut self, world: &mut World) {
+        let Stage::Spawned(_) = &self.stage else { return };
+        let Some(mount) = &mut self.mount else { return };
+        if mount.spawned.is_some() {
+            return;
+        }
+        let Some(handle) = &mount.model else { return };
+        let Some(model) = world.resource::<Assets<Gr2Model>>().get(handle).cloned() else { return };
+        let spawned = model::spawn_model(world, &model, Some(self.root), &[], None);
+        if let Some(mut transform) = world.get_mut::<Transform>(spawned.root) {
+            transform.translation = Vec3::new(0.0, -MOUNT_HEIGHT, 0.0);
+        }
+        mount.spawned = Some(spawned.root);
     }
 
     fn advance(&mut self, world: &mut World) -> Result<(), String> {
@@ -516,6 +799,7 @@ impl Character {
         }
         if motion.clip.is_none() {
             let Some(msa) = world.resource::<Assets<RaceMotionAsset>>().get(&motion.msa) else { return };
+            motion.duration = msa.duration;
             let clip = world.resource::<AssetServer>().load(paths::asset_source_uri(&msa.motion_file));
             motion.clip = Some(clip);
         }
@@ -523,7 +807,7 @@ impl Character {
         if world.resource::<Assets<AnimationClip>>().get(&clip).is_none() {
             return;
         }
-        let (graph, node) = AnimationGraph::from_clip(clip);
+        let (graph, node) = AnimationGraph::from_clip(clip.clone());
         let graph = world.resource_mut::<Assets<AnimationGraph>>().add(graph);
         let mut root = world.entity_mut(spawned.root);
         root.insert(AnimationGraphHandle(graph));
@@ -534,6 +818,10 @@ impl Character {
                 active.repeat();
             }
         }
+        motion.duration = world
+            .resource::<Assets<RaceMotionAsset>>()
+            .get(&motion.msa)
+            .map_or(motion.duration, |msa| msa.duration);
         motion.started = true;
         info!("motion {} started", motion.file);
     }
@@ -593,19 +881,19 @@ mod tests {
             "d:/ymir work/pc2/assassin/dualhand_sword/wait.msa"
         );
         assert_eq!(
-            Motion::Attack.file_in(5, MotionMode::DualHandSword).unwrap(),
+            Motion::Attack(1).file_in(5, MotionMode::DualHandSword).unwrap(),
             "d:/ymir work/pc2/assassin/dualhand_sword/combo_01.msa"
         );
         assert_eq!(
-            Motion::Attack.file_in(0, MotionMode::OneHandSword).unwrap(),
+            Motion::Attack(1).file_in(0, MotionMode::OneHandSword).unwrap(),
             "d:/ymir work/pc/warrior/onehand_sword/combo_01.msa"
         );
         assert_eq!(
-            Motion::Attack.file_in(5, MotionMode::Bow).unwrap(),
+            Motion::Attack(1).file_in(5, MotionMode::Bow).unwrap(),
             "d:/ymir work/pc2/assassin/bow/attack.msa"
         );
         // No weapon keeps the general folder and `attack.msa`.
-        assert_eq!(Motion::Attack.file(0).unwrap(), "d:/ymir work/pc/warrior/general/attack.msa");
+        assert_eq!(Motion::Attack(1).file(0).unwrap(), "d:/ymir work/pc/warrior/general/attack.msa");
     }
 
     #[test]
@@ -613,5 +901,32 @@ mod tests {
         assert_eq!(weapon_bones(0), (Some("equip_right_hand"), None));
         assert_eq!(weapon_bones(5), (Some("equip_right"), Some("equip_left")));
         assert_eq!(weapon_bones(3), (Some("equip_right"), Some("equip_left")));
+    }
+
+    #[test]
+    fn mounted_modes_use_the_horse_folders_and_three_step_combos() {
+        assert_eq!(motion_mode(Some(WEAPON_SWORD), true), MotionMode::HorseOneHandSword);
+        assert_eq!(motion_mode(Some(WEAPON_BOW), true), MotionMode::HorseBow);
+        assert_eq!(motion_mode(None, true), MotionMode::Horse);
+        assert_eq!(Motion::Wait.file_in(0, MotionMode::HorseOneHandSword).unwrap(), "d:/ymir work/pc/warrior/horse/wait.msa");
+        assert_eq!(
+            Motion::Attack(2).file_in(0, MotionMode::HorseOneHandSword).unwrap(),
+            "d:/ymir work/pc/warrior/horse_onehand_sword/combo_02.msa"
+        );
+        assert_eq!(Motion::Attack(1).file_in(0, MotionMode::HorseBow).unwrap(), "d:/ymir work/pc/warrior/horse_bow/attack.msa");
+        assert!(Motion::Attack(1).file_in(0, MotionMode::Horse).is_none());
+        assert_eq!(MotionMode::OneHandSword.combo_count(), 4);
+        assert_eq!(MotionMode::HorseOneHandSword.combo_count(), 3);
+        assert_eq!(MotionMode::HorseBow.combo_count(), 1);
+    }
+
+    #[test]
+    fn skill_motions_follow_the_playersettingmodule_table() {
+        assert_eq!(skill_motion_file(0, 1).unwrap(), "d:/ymir work/pc/warrior/skill/samyeon.msa");
+        assert_eq!(skill_motion_file(0, 26).unwrap(), "d:/ymir work/pc/warrior/skill/samyeon_2.msa");
+        assert_eq!(skill_motion_file(0, 51).unwrap(), "d:/ymir work/pc/warrior/skill/samyeon_3.msa");
+        assert_eq!(skill_motion_file(5, 2).unwrap(), "d:/ymir work/pc2/assassin/skill/gungsin.msa");
+        assert_eq!(skill_motion_file(3, 17).unwrap(), "d:/ymir work/pc/shaman/skill/byeorak.msa");
+        assert_eq!(skill_motion_file(0, 99), None);
     }
 }
