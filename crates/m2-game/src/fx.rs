@@ -43,6 +43,10 @@ pub struct CombatFx {
     hover: Option<(u32, Vec3, m2_effect::EffectInstance)>,
     /// `__AttachEffect(EFFECT_AFFECT + n)` loops, keyed by `(vid, affect)`.
     attached: Vec<((u32, u32), m2_effect::EffectInstance)>,
+    /// Finite motion effects attached to a bone or actor until they expire.
+    following: Vec<(Entity, Vec3, m2_effect::EffectInstance)>,
+    /// Weapon auras and quest arrows keep full bone/world transforms.
+    oriented: Vec<((u32, u32), m2_effect::EffectInstance)>,
     /// Ground items' `dropitem.mse` glows.
     ground: Vec<((u32, u32), m2_effect::EffectInstance)>,
     /// `CFlyingManager`'s live flying objects (`RecvCreateFlyPacket`).
@@ -59,6 +63,8 @@ impl CombatFx {
         self.hover = None;
         self.attached.clear();
         self.ground.clear();
+        self.oriented.clear();
+        self.following.clear();
         self.flies.clear();
         self.sounds.clear();
     }
@@ -81,8 +87,8 @@ impl CombatFx {
             *slot = None;
             return;
         };
-        if let Some((current, at, _)) = slot
-            && *current == vid
+        if let Some((current, at, instance)) = slot
+            && *current == vid && instance.is_alive()
         {
             *at = position;
             return;
@@ -113,6 +119,18 @@ impl CombatFx {
         );
         m.set_translation(position.to_array());
         self.spawn_matrix(packs, file, m);
+    }
+
+    /// `AttachEffectByID`: a finite motion effect keeps following its bone.
+    pub fn spawn_following(&mut self, packs: Option<&M2Packs>, file: &str, entity: Entity, offset: Vec3) {
+        let (Some(packs), false) = (packs, self.failed.contains(file)) else { return };
+        match load_instance(&packs.packs, file.as_bytes(), Mat4::IDENTITY.to_cols_array()) {
+            Ok(instance) => self.following.push((entity, offset, instance)),
+            Err(error) => {
+                warn!("motion effect {file}: {error}");
+                self.failed.insert(file.to_owned());
+            }
+        }
     }
 
     /// Creates `file` with a full world matrix (row-major, Metin2 space).
@@ -197,6 +215,16 @@ impl CombatFx {
             }
             kept.extend(fx.attached.iter_mut().map(|(_, instance)| instance));
             kept.extend(fx.ground.iter_mut().map(|(_, instance)| instance));
+            kept.extend(fx.oriented.iter_mut().map(|(_, instance)| instance));
+            fx.following.retain_mut(|(entity, offset, instance)| {
+                if !instance.is_alive() { return false; }
+                let Some(transform) = world.get::<GlobalTransform>(*entity) else { return false };
+                let matrix = transform.to_matrix() * Mat4::from_translation(*offset);
+                let swap = Mat4::from_mat3(coords::SWAP_YZ);
+                instance.set_global_matrix(m2_effect::Mat4::from_array((swap * matrix * swap).to_cols_array()));
+                true
+            });
+            kept.extend(fx.following.iter_mut().map(|(_, _, instance)| instance));
             kept.extend(fx.flies.iter_mut().flat_map(|fly| fly.attach.iter_mut().map(|(_, instance)| instance)));
             fx.renderer.instances.extend(kept.iter().map(|instance| (**instance).clone()));
             fx.renderer.update(world);
@@ -210,6 +238,29 @@ impl CombatFx {
     /// that should be on and where (Metin2 space). Others are detached.
     pub fn sync_attached(&mut self, packs: Option<&M2Packs>, wanted: &[((u32, u32), &'static str, Vec3)]) {
         sync_effects(&mut self.attached, &mut self.failed, packs, wanted);
+    }
+
+    /// Loops attached with an entire bone transform, plus quest target arrows.
+    pub fn sync_oriented(&mut self, packs: Option<&M2Packs>, wanted: &[((u32, u32), &'static str, Mat4)]) {
+        self.oriented.retain(|(key, instance)| instance.is_alive() && wanted.iter().any(|(wanted, ..)| wanted == key));
+        for (key, file, matrix) in wanted {
+            // Bevy and the effect simulator use opposite matrix conventions
+            // and swapped up axes. The swap is its own inverse.
+            let swap = Mat4::from_mat3(coords::SWAP_YZ);
+            let flat = (swap * *matrix * swap).to_cols_array();
+            if let Some((_, instance)) = self.oriented.iter_mut().find(|(current, _)| current == key) {
+                instance.set_global_matrix(m2_effect::Mat4::from_array(flat));
+                continue;
+            }
+            let (Some(packs), false) = (packs, self.failed.contains(*file)) else { continue };
+            match load_instance(&packs.packs, file.as_bytes(), flat) {
+                Ok(instance) => self.oriented.push((*key, instance)),
+                Err(error) => {
+                    warn!("attached effect {file}: {error}");
+                    self.failed.insert((*file).to_owned());
+                }
+            }
+        }
     }
 
     /// The `dropitem.mse` glow of every ground item, keyed by `(item vid, 0)`.
@@ -257,8 +308,9 @@ impl CombatFx {
     /// `CFlyingInstance::Update` for every flying object, homing on its
     /// target's current position (`None` once the target is gone). A hit
     /// spawns the data's bomb effect.
-    pub fn update_flies(&mut self, packs: Option<&M2Packs>, dt: f32, target_position: impl Fn(u32) -> Option<Vec3>) {
+    pub fn update_flies(&mut self, packs: Option<&M2Packs>, dt: f32, target_position: impl Fn(u32) -> Option<Vec3>) -> Vec<u32> {
         let mut bombs = Vec::new();
+        let mut hits = Vec::new();
         self.flies.retain_mut(|fly| {
             let target = target_position(fly.target);
             if let Some(target) = target {
@@ -267,6 +319,7 @@ impl CombatFx {
             match fly.update(dt) {
                 FlyState::Flying => true,
                 FlyState::Hit => {
+                    if fly.target != 0 && target.is_some() { hits.push(fly.target); }
                     if !fly.data.bomb_effect_name.is_empty() {
                         bombs.push((String::from_utf8_lossy(&fly.data.bomb_effect_name).into_owned(), fly.position));
                     }
@@ -278,6 +331,7 @@ impl CombatFx {
         for (file, position) in bombs {
             self.spawn(packs, &file, position, Vec3::ZERO);
         }
+        hits
     }
 }
 
@@ -356,6 +410,14 @@ pub fn affect_effect(affect: u32) -> Option<(&'static str, &'static str)> {
         _ => return None,
     })
 }
+
+/// `__Warrior_SetGeomgyeongAffect`: the right-hand aura for the weapon mode.
+pub fn sword_aura(two_handed: bool) -> &'static str {
+    if two_handed { "d:/ymir work/pc/warrior/effect/geom_spear_loop.mse" }
+    else { "d:/ymir work/pc/warrior/effect/geom_sword_loop.mse" }
+}
+
+pub const EFFECT_QUEST_TARGET: &str = "d:/ymir work/effect/etc/direction/direction_land.mse";
 
 /// `AFFECT_GYEONGGONG`/`AFFECT_KWAESOK` are attached only while running.
 pub fn affect_effect_needs_walking(affect: u32) -> bool {
@@ -591,7 +653,7 @@ fn sync_effects(
     packs: Option<&M2Packs>,
     wanted: &[((u32, u32), &'static str, Vec3)],
 ) {
-    list.retain(|(key, _)| wanted.iter().any(|(k, ..)| k == key));
+    list.retain(|(key, instance)| instance.is_alive() && wanted.iter().any(|(k, ..)| k == key));
     for (key, file, position) in wanted {
         let mut matrix = m2_effect::Mat4::rotation_yaw_pitch_roll(0.0, 0.0, 0.0);
         matrix.set_translation(position.to_array());

@@ -308,7 +308,10 @@ pub fn skill_motion_file_in(race: u8, mode: MotionMode, index: u16) -> Option<St
             122 => "skill_charge.msa",
             _ => "skill_splash.msa",
         };
-        return Some(format!("{root}{}{name}", mode.folder()));
+        let folder = if index == 122 || (index == 123 && matches!(race % 4, 2 | 3)) {
+            MotionMode::Horse.folder()
+        } else { mode.folder() };
+        return Some(format!("{root}{folder}{name}"));
     }
     if matches!(index, 101..=106) {
         let name = match index {
@@ -317,9 +320,9 @@ pub fn skill_motion_file_in(race: u8, mode: MotionMode, index: u16) -> Option<St
             103 => "guild_seonghwigap.msa",
             104 => "guild_gasokhwa.msa",
             105 => "guild_yongsinuibunno.msa",
-            _ => "guild_jumumsul.msa",
+            _ => "guild_jumunsul.msa",
         };
-        return Some(format!("{root}{}{name}", MotionMode::General.folder()));
+        return Some(format!("{root}skill/{name}"));
     }
     let grade = index / 25;
     let base = index % 25;
@@ -383,7 +386,11 @@ pub fn skill_motion_file_in(race: u8, mode: MotionMode, index: u16) -> Option<St
     };
     let key = base.to_string();
     let stem = names.iter().find(|(slot, _)| *slot == key).map(|(_, name)| *name)?;
-    Some(format!("{root}skill/{stem}{}.msa", if grade == 0 { String::new() } else { format!("_{}", grade + 1) }))
+    let suffix = if grade == 0 {
+        // Python registers the target-cast motions for grade-zero shaman buffs.
+        if race % 4 == 3 && matches!(base, 4..=6 | 19..=21) { "_target".to_owned() } else { String::new() }
+    } else { format!("_{}", grade + 1) };
+    Some(format!("{root}skill/{stem}{suffix}.msa"))
 }
 
 /// The select-screen motions (`chr.MOTION_INTRO_*`).
@@ -534,12 +541,17 @@ enum Stage {
     Failed,
 }
 
+/// Temporary invisibility from a skill motion's Hide/Show events.
+#[derive(Component)]
+pub struct MotionHidden;
+
 struct Playing {
     msa: Handle<RaceMotionAsset>,
     /// The `.msa` path, for the log.
     file: String,
     clip: Option<Handle<AnimationClip>>,
     repeat: bool,
+    loop_count: Option<u32>,
     speed: f32,
     started: bool,
     /// The clip's length once it loaded (`CRaceMotionData::GetMotionDuration`).
@@ -687,9 +699,10 @@ impl Character {
 
     /// Plays a `.msa` motion, looping or once (then holding its last frame).
     pub fn play(&mut self, world: &mut World, msa: &str, repeat: bool) {
+        world.entity_mut(self.root).remove::<MotionHidden>();
         let file = msa.to_owned();
         let msa = world.resource::<AssetServer>().load(paths::asset_source_uri(msa));
-        self.motion = Some(Playing { msa, file, clip: None, repeat, speed: 1.0, started: false, duration: 0.0, started_at: 0.0, last_frame: None, then: Vec::new() });
+        self.motion = Some(Playing { msa, file, clip: None, repeat, loop_count: None, speed: 1.0, started: false, duration: 0.0, started_at: 0.0, last_frame: None, then: Vec::new() });
     }
 
     /// Plays one of the race's normal motions in the current weapon motion mode
@@ -794,6 +807,12 @@ impl Character {
         let Some(file) = skill_motion_file_in(self.look.race, self.motion_mode, motion_index) else { return false };
         self.play(world, &file, false);
         true
+    }
+
+    /// `SetMotionLoopCount`: zero keeps the `.msa` default; a positive value
+    /// repeats its LoopData section that many times, then plays the outro.
+    pub fn set_motion_loop_count(&mut self, count: u32) {
+        if let Some(motion) = &mut self.motion { motion.loop_count = (count > 0).then_some(count); }
     }
 
     /// The length of the motion playing now, once its clip has loaded.
@@ -940,10 +959,9 @@ impl Character {
 
     /// The last played motion has ended. False while it is still loading.
     pub fn motion_finished(&self, world: &World) -> bool {
-        match &self.stage {
-            Stage::Spawned(spawned) => world.get::<AnimationPlayer>(spawned.root).is_some_and(|player| player.all_finished()),
-            _ => false,
-        }
+        let Some(motion) = &self.motion else { return false };
+        motion.started && !motion.repeat
+            && (world.resource::<Time>().elapsed_secs() - motion.started_at) * motion.speed >= motion.duration
     }
 
     /// The requested motion has started playing (its clip is loaded).
@@ -980,7 +998,7 @@ impl Character {
     /// `GetAttackingElapsedTime`: seconds since the current clip started,
     /// once it has.
     pub fn motion_elapsed(&self, now: f32) -> Option<f32> {
-        self.motion.as_ref().filter(|motion| motion.started).map(|motion| now - motion.started_at)
+        self.motion.as_ref().filter(|motion| motion.started).map(|motion| (now - motion.started_at) * motion.speed)
     }
 
     /// The sounds and motion events whose 60 FPS frame passed since the last
@@ -1005,10 +1023,12 @@ impl Character {
             return tick;
         }
         motion.last_frame = Some(current);
-        // A long hitch covers at most one lap.
-        let first = first.max(current.saturating_sub(frames - 1));
+        // A long hitch covers at most one second; preserve repeated fly events.
+        let first = first.max(current.saturating_sub(60));
         for absolute in first..=current {
-            let frame = if motion.repeat { absolute % frames } else { absolute };
+            let frame = if motion.repeat { absolute % frames } else {
+                (motion_sample(asset, absolute as f32 / 60.0, motion.loop_count).0 * 60.0 + 0.001) as u32
+            };
             tick.sounds.extend(asset.sounds.iter().filter(|(f, _)| *f == frame).map(|(_, file)| file.clone()));
             tick.events.extend(asset.events.iter().filter(|event| event.frame == frame).cloned());
         }
@@ -1059,6 +1079,11 @@ impl Character {
         self.collisions.iter().any(
             |a| matches!(&a.kind, RaceAttachmentKind::Collision { collision_type: kind, .. } if *kind == collision_type),
         )
+    }
+
+    pub fn bone_entity(&self, name: &str) -> Option<Entity> {
+        let Stage::Spawned(spawned) = &self.stage else { return None };
+        spawned.bone_by_name.get(name).copied()
     }
 
     /// The world transform of bone `name`, when the model is spawned.
@@ -1222,6 +1247,16 @@ impl Character {
         let now = world.resource::<Time>().elapsed_secs();
         let (Stage::Spawned(spawned), Some(motion)) = (&self.stage, &mut self.motion) else { return };
         if motion.started {
+            if let Some(msa) = world.resource::<Assets<RaceMotionAsset>>().get(&motion.msa)
+                && msa.is_loop && !motion.repeat
+            {
+                let sample = motion_sample(msa, (now - motion.started_at) * motion.speed, motion.loop_count).0;
+                if let Some(mut player) = world.get_mut::<AnimationPlayer>(spawned.root) {
+                    for (_, active) in player.playing_animations_mut() {
+                        active.pause().set_seek_time(sample);
+                    }
+                }
+            }
             return;
         }
         motion.started_at = now;
@@ -1261,10 +1296,25 @@ impl Character {
         motion.duration = world
             .resource::<Assets<RaceMotionAsset>>()
             .get(&motion.msa)
-            .map_or(motion.duration, |msa| msa.duration);
+            .map_or(motion.duration, |msa| motion_sample(msa, 0.0, motion.loop_count).1);
         motion.started = true;
         info!("motion {} started", motion.file);
     }
+}
+
+/// C++ `CurrentMotionProcess`: repeat `[LoopStartTime, LoopEndTime)`
+/// before proceeding into the outro. Returns (clip time, total duration).
+fn motion_sample(asset: &RaceMotionAsset, elapsed: f32, count: Option<u32>) -> (f32, f32) {
+    let length = asset.loop_end - asset.loop_start;
+    let count = count.unwrap_or(asset.loop_count.max(1) as u32).max(1);
+    if !asset.is_loop || length <= 0.0 || count <= 1 {
+        return (elapsed.min(asset.duration), asset.duration);
+    }
+    let extra = length * (count - 1) as f32;
+    let time = if elapsed < asset.loop_start { elapsed }
+        else if elapsed < asset.loop_end + extra { asset.loop_start + (elapsed - asset.loop_start) % length }
+        else { elapsed - extra };
+    (time.min(asset.duration), asset.duration + extra)
 }
 
 /// One-clip animation graphs, shared by every character that plays the clip:
@@ -1294,6 +1344,34 @@ fn failed(world: &World, id: UntypedAssetId) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn loop_sections_repeat_shots_and_then_play_the_outro() {
+        let mut asset = RaceMotionAsset {
+            duration: 2.0, is_loop: true, loop_start: 1.25, loop_end: 1.425791,
+            events: vec![m2_assets::race::RaceMotionEvent {
+                frame: 80, start: 80.0 / 60.0, duration: 0.0,
+                kind: m2_assets::race::RaceMotionEventKind::Fly { file: "arrow.msf".into(), bone: None, position: Vec3::ZERO },
+            }], ..Default::default()
+        };
+        let total = motion_sample(&asset, 0.0, Some(9)).1;
+        assert!((total - (2.0 + (asset.loop_end - asset.loop_start) * 8.0)).abs() < 1e-5);
+        assert!((motion_sample(&asset, total - 0.1, Some(9)).0 - 1.9).abs() < 1e-5);
+        let mut world = World::new();
+        world.insert_resource(Time::<()>::default());
+        world.init_resource::<Assets<RaceMotionAsset>>();
+        let handle = world.resource_mut::<Assets<RaceMotionAsset>>().add(asset.clone());
+        let mut character = Character::spawn_actor(&mut world, 0, "", Transform::IDENTITY, None);
+        character.motion = Some(Playing {
+            msa: handle, file: "yeonsa.msa".into(), clip: None, repeat: false, loop_count: Some(9), speed: 1.0,
+            started: true, duration: total, started_at: 0.0, last_frame: None, then: vec![],
+        });
+        let shots: usize = (0..=(total * 60.0).ceil() as u32)
+            .map(|frame| character.take_motion_tick(&world, frame as f32 / 60.0).events.len()).sum();
+        assert_eq!(shots, 9);
+        asset.is_loop = false;
+        assert_eq!(motion_sample(&asset, 1.8, Some(9)), (1.8, 2.0));
+    }
 
     #[test]
     fn saddle_attaches_rider_and_dismount_preserves_the_rider() {

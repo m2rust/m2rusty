@@ -310,6 +310,8 @@ impl PlayerState {
             NetEvent::Empire(empire) => self.empire = *empire,
             NetEvent::ActorAppend(actor) if actor.vid==self.vid => {
                 self.kind=actor.kind;
+                self.points[combat::point::MOV_SPEED]=i32::from(actor.move_speed);
+                self.points[combat::point::ATT_SPEED]=i32::from(actor.attack_speed);
                 self.empire=actor.empire;
                 self.alignment=actor.alignment;
                 self.pk_mode=actor.pk_mode;
@@ -323,6 +325,8 @@ impl PlayerState {
             }
             NetEvent::ActorUpdate(update) if update.vid==self.vid => {
                 self.alignment=update.alignment;
+                self.points[combat::point::MOV_SPEED]=i32::from(update.move_speed);
+                self.points[combat::point::ATT_SPEED]=i32::from(update.attack_speed);
                 self.pk_mode=update.pk_mode;
                 self.guild_id=update.guild_id;
                 self.state_flags=update.state_flags;

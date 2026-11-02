@@ -101,6 +101,31 @@ mod tests {
     use super::*;
 
     #[test]
+    fn short_effect_keeps_its_lifetime_until_its_texture_is_loaded() {
+        use bevy::asset::{AssetApp, AssetPlugin};
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default())).init_asset::<Image>();
+        let world = app.world_mut();
+        world.insert_resource(Time::<()>::default());
+        world.resource_mut::<Time>().advance_by(std::time::Duration::from_millis(100));
+        world.spawn((SceneCamera, GlobalTransform::IDENTITY));
+        let mut data = EffectData::default();
+        let mut particle = m2_formats::effect::ParticleSystemData::default();
+        particle.emitter.cycle_length = 0.01;
+        particle.particle.textures.push(b"waiting.png".to_vec());
+        data.particles.push(particle);
+        let mut renderer = EffectRenderer::default();
+        renderer.instances.push(EffectInstance::new(Arc::new(data), &m2_effect::instance::NoMeshes, 0.0));
+        renderer.update(world);
+        assert!(renderer.instances[0].is_alive());
+        assert_eq!(renderer.instances[0].particle_systems()[0].local_time(), 0.0);
+        let handle = renderer.textures[b"waiting.png".as_slice()].clone();
+        world.resource_mut::<Assets<Image>>().insert(handle.id(), Image::default()).unwrap();
+        renderer.update(world);
+        assert!(!renderer.instances[0].is_alive());
+    }
+
+    #[test]
     fn camera_facing_particle_textures_are_not_mirrored() {
         let mut particle = m2_effect::particle::Particle::default();
         particle.half_size = [1.0, 1.0];
@@ -140,6 +165,22 @@ impl EffectRenderer {
         let view = m2_effect::Mat4 { m: (swap * camera.to_matrix().inverse() * swap).to_cols_array_2d() };
         let mut jobs = Vec::new();
         for instance in &mut self.instances {
+            // C++ loads effect textures synchronously. Our images load in the
+            // background: starting a short effect before them can consume its
+            // entire visible interval. Request every frame and hold its clock
+            // until the available textures are ready.
+            let mut ready = true;
+            for name in instance.texture_names().filter(|name| !name.is_empty()) {
+                let handle = self.textures.entry(name.to_vec()).or_insert_with(|| {
+                    world.resource::<AssetServer>().load(paths::asset_source_uri(&String::from_utf8_lossy(name)))
+                });
+                if world.resource::<Assets<Image>>().get(handle.id()).is_none()
+                    && !matches!(world.resource::<AssetServer>().get_load_state(handle.id()), Some(bevy::asset::LoadState::Failed(_)))
+                {
+                    ready = false;
+                }
+            }
+            if !ready { continue; }
             instance.update(dt, &mut self.rng);
             let draw = instance.render(&camera_basis, &view, dt);
             for system in draw.particle_systems {

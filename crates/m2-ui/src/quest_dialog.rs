@@ -6,7 +6,7 @@ use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::Button;
 use m2_game::net::NetMessage;
-use m2_game::player::PlayerAction;
+use m2_game::player::{PlayerAction, PlayerState};
 use m2_net::{phase::NetEvent, wire::GcPacket};
 use crate::core::Control;
 use crate::core::{self, Click, Consumed, Surface, UiSet, WindowManager};
@@ -61,13 +61,15 @@ impl Plugin for QuestDialogPlugin {
     }
 }
 
-fn receive_scripts(mut messages: MessageReader<NetMessage>, mut state: ResMut<DialogState>) {
+fn receive_scripts(mut messages: MessageReader<NetMessage>, mut state: ResMut<DialogState>, mut player: ResMut<PlayerState>) {
     for message in messages.read() {
         match message {
             NetMessage::Game(NetEvent::Packet(GcPacket::Script { head, tail })) => {
                 state.serial = state.serial.wrapping_add(1);
                 state.page = 0;
-                state.dialog = Some(parse_dialog(head.skin, tail));
+                let source = m2_formats::utf8::decode(1252, tail);
+                apply_quest_buttons(&source, &mut player);
+                state.dialog = parse_dialog(head.skin, tail);
             }
             NetMessage::Disconnected { .. } => {
                 state.serial = state.serial.wrapping_add(1);
@@ -78,14 +80,14 @@ fn receive_scripts(mut messages: MessageReader<NetMessage>, mut state: ResMut<Di
     }
 }
 
-fn parse_dialog(_skin: u8, bytes: &[u8]) -> Dialog {
+fn parse_dialog(skin: u8, bytes: &[u8]) -> Option<Dialog> {
     // The server uses the active locale's legacy code page, as the C++
     // `CPythonEventManager` does before passing strings to Python.
     let source = m2_formats::utf8::decode(1252, bytes).into_owned();
     let mut text = String::new();
     let mut answers = Vec::new();
     let mut end = EndAction::Continue;
-    let mut rest = source.as_str();
+    let mut rest = source.trim_end_matches('\0');
     while let Some(open) = rest.find('[') {
         text.push_str(&rest[..open]);
         let command_start = open + 1;
@@ -99,6 +101,9 @@ fn parse_dialog(_skin: u8, bytes: &[u8]) -> Dialog {
         let command = parts.next().unwrap_or_default().trim_start_matches('/').to_ascii_uppercase();
         let args = parts.next().unwrap_or_default();
         match command.as_str() {
+            "LETTER" => {
+                if let Some(value) = script_argument(args, "value") { text.push_str(value); }
+            }
             "ENTER" => text.push('\n'),
             "CLEAR" | "CLEAR_TEXT" => text.clear(),
             "QUESTION" => answers = script_values(args),
@@ -122,7 +127,35 @@ fn parse_dialog(_skin: u8, bytes: &[u8]) -> Dialog {
         .filter(|line| !answers.iter().any(|answer| answer == line.trim()))
         .collect::<Vec<_>>()
         .join("\n");
-    Dialog { text: text.trim().to_owned(), answers, end }
+    let text = text.trim().to_owned();
+    // `uiquest.SKIN_NONE` scripts perform interface actions (quest letters,
+    // map signals, etc.). They do not create a modal quest board. Empty DONE
+    // scripts likewise must not steal focus on login or level-up.
+    if skin == 0 || (text.is_empty() && answers.is_empty()) { return None; }
+    Some(Dialog { text, answers, end })
+}
+
+fn script_argument<'a>(args: &'a str, name: &str) -> Option<&'a str> {
+    args.split('|').filter_map(|arg| arg.split_once(';'))
+        .find_map(|(key, value)| (key.trim() == name).then_some(value))
+}
+
+/// `EVENT_TYPE_QUEST_BUTTON(_CLOSE)` updates the task bar's quest letters,
+/// independently of the quest dialog's skin and its visible text.
+fn apply_quest_buttons(source: &str, player: &mut PlayerState) {
+    for block in source.split('[').skip(1).filter_map(|part| part.split_once(']').map(|(block, _)| block)) {
+        let mut parts = block.splitn(2, char::is_whitespace);
+        let command = parts.next().unwrap_or_default();
+        let args = parts.next().unwrap_or_default();
+        let Some(index) = script_argument(args, "idx").and_then(|value| value.parse::<u16>().ok()) else { continue };
+        if command.eq_ignore_ascii_case("QUESTBUTTON_CLOSE") {
+            player.quests.remove(&index);
+        } else if command.eq_ignore_ascii_case("QUESTBUTTON") {
+            let quest = player.quests.entry(index).or_default();
+            if let Some(name) = script_argument(args, "name") { quest.title = name.to_owned(); }
+            if let Some(icon) = script_argument(args, "icon_name") { quest.icon = icon.to_owned(); }
+        }
+    }
 }
 
 /// Extracts the values from the event parser's `name;value|...` argument list.
@@ -295,5 +328,30 @@ fn choice_hover(mut buttons: Query<(&Hovered, &mut BackgroundColor), With<Choice
         } else {
             Color::srgba(0.12, 0.10, 0.08, 0.94)
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn login_and_level_up_letter_scripts_update_letters_without_opening_a_dialog() {
+        let script = "[QUESTBUTTON idx;42|name;Visit the captain|icon_type;scroll][DONE]";
+        let mut player = PlayerState::default();
+        apply_quest_buttons(script, &mut player);
+        assert_eq!(player.quests[&42].title, "Visit the captain");
+        assert!(parse_dialog(0, script.as_bytes()).is_none());
+        assert!(parse_dialog(1, b"[DONE]\0").is_none());
+        apply_quest_buttons("[QUESTBUTTON_CLOSE idx;42][DONE]", &mut player);
+        assert!(!player.quests.contains_key(&42));
+    }
+
+    #[test]
+    fn letter_commands_and_questions_produce_visible_dialog_content() {
+        let dialog = parse_dialog(1, b"[LETTER value;Hello][ENTER][LETTER value;Adventurer][QUESTION resume;Continue|leave;Leave]").unwrap();
+        assert_eq!(dialog.text, "Hello\nAdventurer");
+        assert_eq!(dialog.answers, ["Continue", "Leave"]);
+        assert!(parse_dialog(1, b"[QUESTION yes;Yes|no;No]").is_some());
     }
 }

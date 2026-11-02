@@ -107,6 +107,8 @@ struct MiniMapDisc;
 #[derive(Component)]
 struct MiniMapMarkSlot;
 #[derive(Component)]
+struct MiniMapTargetSlot;
+#[derive(Component)]
 struct MiniMapPlayer;
 #[derive(Component)]
 struct MiniMapCamera;
@@ -172,6 +174,10 @@ fn build(commands: &mut Commands, assets: &AssetServer, materials: &mut Assets<M
     });
     let disc = commands.spawn((MiniMapDisc, MaterialNode(material), core::rect(4.0, 5.0, DISC, DISC), Pickable::IGNORE)).id();
     commands.entity(open).add_child(disc);
+    for _ in 0..32 {
+        let mark = core::picture(commands, assets, disc, &format!("{ROOT}targetmark01.sub"), core::rect(0.0, 0.0, MARK, MARK));
+        commands.entity(mark).insert((MiniMapTargetSlot, ZIndex(2)));
+    }
     // `minimap_camera.dds`: the camera's view, under the marks.
     let camera = core::picture(commands, assets, disc, "d:/ymir work/ui/minimap_camera.dds", core::rect(0.0, 0.0, DISC, DISC));
     commands.entity(camera).insert(MiniMapCamera);
@@ -242,9 +248,11 @@ fn draw(
     images: Res<Assets<Image>>,
     mut materials: ResMut<Assets<MiniMapMaterial>>,
     disc: Query<&MaterialNode<MiniMapMaterial>, With<MiniMapDisc>>,
-    mut open: Query<&mut Node, (With<MiniMapOpen>, Without<MiniMapClosed>, Without<MiniMapMarkSlot>)>,
-    mut closed: Query<&mut Node, (With<MiniMapClosed>, Without<MiniMapOpen>, Without<MiniMapMarkSlot>)>,
-    mut marks: Query<(&mut Node, &mut ImageNode), (With<MiniMapMarkSlot>, Without<MiniMapOpen>, Without<MiniMapClosed>)>,
+    mut open: Query<&mut Node, (With<MiniMapOpen>, Without<MiniMapClosed>, Without<MiniMapMarkSlot>, Without<MiniMapTargetSlot>)>,
+    mut closed: Query<&mut Node, (With<MiniMapClosed>, Without<MiniMapOpen>, Without<MiniMapMarkSlot>, Without<MiniMapTargetSlot>)>,
+    mut marks: Query<(&mut Node, &mut ImageNode), (With<MiniMapMarkSlot>, Without<MiniMapOpen>, Without<MiniMapClosed>, Without<MiniMapTargetSlot>)>,
+    mut targets: Query<(&mut Node, &mut Art), (With<MiniMapTargetSlot>, Without<MiniMapOpen>, Without<MiniMapClosed>, Without<MiniMapMarkSlot>)>,
+    time: Res<Time>,
     mut player: Query<&mut UiTransform, (With<MiniMapPlayer>, Without<MiniMapCamera>)>,
     mut camera: Query<&mut UiTransform, (With<MiniMapCamera>, Without<MiniMapPlayer>)>,
     mut position: Query<&mut Text, With<MiniMapPosition>>,
@@ -330,6 +338,19 @@ fn draw(
     for (mut node, _) in slots {
         if node.display != Display::None {
             node.display = Display::None;
+        }
+    }
+    let frame = (time.elapsed_secs() / 0.08) as usize % 2 + 1;
+    let target_art = Art::load(&assets, &format!("{ROOT}targetmark{frame:02}.sub"));
+    let mut target_positions = minimap.targets.iter();
+    for (mut node, mut art) in &mut targets {
+        let Some(at) = target_positions.next() else { node.display = Display::None; continue };
+        let px = ((*at - minimap.center) / units_per_px).clamp_length_max(55.0);
+        node.display = Display::Flex;
+        node.left = Val::Px((DISC / 2.0 + px.x - MARK / 2.0).round());
+        node.top = Val::Px((DISC / 2.0 + px.y - MARK / 2.0).round());
+        if !matches!((&*art, &target_art), (Art::Sub(current), Art::Sub(next)) if current == next) {
+            *art = target_art.clone();
         }
     }
     if let Ok(mut transform) = player.single_mut() {

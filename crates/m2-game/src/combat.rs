@@ -101,8 +101,15 @@ pub const AFFECT_INVISIBILITY: u32 = 1;
 pub const AFFECT_EUNHYEONG: u32 = 18;
 pub const AFFECT_REVIVE_INVISIBILITY: u32 = 27;
 pub const AFFECT_DASH: u32 = 31;
+pub const AFFECT_GEOMGYEONG: u32 = 15;
+
+/// `__Warrior_SetGeomgyeongAffect` extends the weapon sweep by half.
+pub fn attack_reach(flags: u64) -> f32 {
+    if has_affect(flags, AFFECT_GEOMGYEONG) { 1.5 } else { 1.0 }
+}
 pub const AFFECT_STUN: u32 = 5;
-pub const AFFECT_SLEEP: u32 = 33;
+pub const AFFECT_CHEONGEUN: u32 = 16;
+pub const AFFECT_FALLEN_CHEONGEUN: u32 = 33;
 
 /// Whether affect `id` is set in the two-word flag container. This is
 /// `CAffectFlagContainer::IsSet`: the id picks a bit in its 32-bit word.
@@ -858,6 +865,20 @@ impl Parser<'_> {
             }
             Token::Name(name) => {
                 self.at += 1;
+                if self.eat('(') {
+                    let value = self.expression()?;
+                    let other = self.eat(',').then(|| self.expression()).flatten();
+                    if !self.eat(')') { return None; }
+                    return Some(match name.to_ascii_lowercase().as_str() {
+                        "floor" => value.floor(),
+                        "ceil" => value.ceil(),
+                        "abs" => value.abs(),
+                        "sqrt" => value.sqrt(),
+                        "min" => value.min(other?),
+                        "max" => value.max(other?),
+                        _ => return None,
+                    });
+                }
                 if name.eq_ignore_ascii_case("k") || name.eq_ignore_ascii_case("skillpoint") {
                     Some(self.skill_point)
                 } else {
@@ -875,6 +896,16 @@ impl Parser<'_> {
             _ => None,
         }
     }
+}
+
+/// International `LocaleService_GetSkillPower` / 100 (the English locale).
+pub fn skill_power(level: u8, grade: u8) -> f32 {
+    const POWERS: [u8; 41] = [
+        0, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40,
+        50, 52, 54, 56, 58, 60, 63, 66, 69, 72, 82, 85, 88, 91, 94, 98, 102, 106, 110, 115, 125,
+    ];
+    let raw = usize::from(level) + match grade { 1 => 19, 2 => 29, 3 => 39, _ => 0 };
+    POWERS.get(raw).copied().map_or(0.0, |power| f32::from(power) / 100.0)
 }
 
 /// `CPythonSkill::SSkillData::GetNeedSP`: the `SP_COST_POLY` formula.
@@ -1062,14 +1093,14 @@ pub fn check_skill_usable(data: &SkillData, check: &SkillCheck, points: &Points)
     if check.cool_time_enforced && check.cool_time_left > 0.0 {
         return Err(SkillError::WaitCooltime);
     }
-    if data.has(attribute::USE_HP) && skill_need_sp(data, f32::from(check.level), points) > points.hp {
+    if data.has(attribute::USE_HP) && skill_need_sp(data, skill_power(check.level, check.grade), points) > points.hp {
         return Err(SkillError::NotEnoughHp);
     }
     // `__CheckShortMana`: the summon skill (vnum 200?) is exempt; the shipped
     // table marks the summon with index 0 and the client tests the explicit
     // constant, so the same value is kept here.
     if data.skill_index != 0 {
-        let need = skill_need_sp(data, f32::from(check.level), points);
+        let need = skill_need_sp(data, skill_power(check.level, check.grade), points);
         if !data.is_toggle() && need == 0 {
             return Err(SkillError::NotEnoughSp);
         }
@@ -1213,6 +1244,12 @@ impl Default for SkillState {
 }
 
 impl SkillState {
+    /// `LocaleService_GetSkillPower` uses the absolute packet level, including
+    /// the mastered grades (20..40), rather than the UI's 1..10 grade level.
+    pub fn power(&self, vnum: u32) -> f32 {
+        skill_power(self.level(vnum), self.grade(vnum))
+    }
+
     pub fn reset(&mut self) {
         *self = Self::default();
     }

@@ -272,6 +272,10 @@ impl FlyTargets {
         targets.push_back(target);
     }
 
+    fn peek(&self, shooter: u32) -> Option<ShotTarget> {
+        self.0.get(&shooter)?.front().copied()
+    }
+
     fn shot(&mut self, shooter: u32) -> Option<ShotTarget> {
         let targets = self.0.get_mut(&shooter)?;
         if targets.len() > 1 { targets.pop_front() } else { targets.front().copied() }
@@ -286,6 +290,10 @@ struct ActorFight {
     /// Its attack motion is running: the hits are tested against the main
     /// character (`CInstanceBase::AttackProcess` of every instance).
     attacking: bool,
+    using_skill: bool,
+    skill_cancelable: bool,
+    knocked_down: bool,
+    splash: Option<battle::SplashArea>,
     hits: battle::HitTracker,
     /// `m_fInvisibleTime`: cannot be hit again until then.
     invisible_until: f32,
@@ -312,7 +320,7 @@ enum ActorAction {
     /// `FUNC_MOB_SKILL`: `NAME_SPECIAL_1 + n`.
     Special(u8),
     /// `FUNC_SKILL | n`: a PC's `NAME_SKILL + n`.
-    Skill(u16),
+    Skill { index: u16, loops: u8, moving: bool },
     /// `__HitGood`: `NAME_DAMAGE` or `NAME_DAMAGE_BACK`.
     Damage { back: bool },
     /// `__HitGreate`: `NAME_DAMAGE_FLYING(_BACK)`, then standing up.
@@ -641,6 +649,9 @@ impl GameWorld {
     }
 }
 
+#[derive(Resource, Default)]
+struct ScreenWave { until: f32, power: f32 }
+
 pub struct InGamePlugin;
 
 impl Plugin for InGamePlugin {
@@ -656,6 +667,7 @@ impl Plugin for InGamePlugin {
             .init_resource::<TargetBoard>()
             .init_resource::<GradeNames>()
             .init_resource::<CombatFx>()
+            .init_resource::<ScreenWave>()
             .add_message::<EnterWorld>()
             .add_message::<combat::UseSkillRequest>()
             .add_message::<DamageShown>()
@@ -1535,7 +1547,10 @@ fn advance_actor_states(actors: &mut Actors, delta: f32, server_now: Option<u32>
             }
         }
         // `__CanProcessNetworkStatePacket`: the dead keep their commands queued.
-        if !actors.fights.get(&vid).is_some_and(|fight| fight.dead) {
+        let locked = actors.fights.get(&vid).is_some_and(|fight| {
+            fight.dead || (fight.using_skill && !fight.skill_cancelable) || fight.knocked_down || matches!(fight.pending, Some(ActorAction::Knockdown { .. }))
+        });
+        if !locked {
             while let Some((check, _)) = actor.remote.commands.front() {
                 if server_now.is_some_and(|now| (now.wrapping_sub(*check) as i32) < 0) {
                     break;
@@ -1546,7 +1561,7 @@ fn advance_actor_states(actors: &mut Actors, delta: f32, server_now: Option<u32>
                 }
             }
         }
-        if let Some(action) = remote_movement_process(actor, delta) {
+        if !locked && let Some(action) = remote_movement_process(actor, delta) {
             arrived_actions.push((vid, action));
         }
     }
@@ -1559,6 +1574,30 @@ fn advance_actor_states(actors: &mut Actors, delta: f32, server_now: Option<u32>
 }
 
 fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
+    let now = world.resource::<Time>().elapsed_secs();
+    let delta = world.resource::<Time>().delta_secs().min(0.1);
+    world.resource_scope(|world, mut actors: Mut<Actors>| {
+        let motions = world.resource::<Assets<m2_assets::race::RaceMotionAsset>>();
+        let steps: Vec<_> = actors.characters.iter().filter_map(|(&vid, character)| {
+            let fight = actors.fights.get(&vid)?;
+            if !fight.attacking || fight.dead || (character.is_mounted() && !fight.using_skill) { return None; }
+            let elapsed = character.motion_elapsed(now)?;
+            let motion = motions.get(character.motion_handle()?)?;
+            let accumulation = motion.accumulation?;
+            if motion.duration <= 0.0 || elapsed >= motion.duration { return None; }
+            let rotation = actors.by_vid.get(&vid)?.rotation;
+            let step = Vec3::from_array(m2_assets::coords::vec3_back(accumulation)) * delta.min(elapsed) / motion.duration;
+            let step = battle::rotate_local(step, rotation);
+            Some((vid, Vec2::new(step.x, -step.y)))
+        }).collect();
+        for (vid, step) in steps {
+            if let Some(actor) = actors.by_vid.get_mut(&vid) {
+                actor.remote.position += step;
+                actor.x = actor.remote.position.x.round() as i32;
+                actor.y = actor.remote.position.y.round() as i32;
+            }
+        }
+    });
     let (base, heights) = {
         let actors = world.resource::<Actors>();
         let game = world.resource::<GameWorld>();
@@ -1656,7 +1695,20 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
             .filter_map(|(vid, fight)| {
                 let action = fight.pending.take()?;
                 let actor = actors.by_vid.get_mut(vid)?;
-                fight.attacking = matches!(action, ActorAction::Attack | ActorAction::Combo(_) | ActorAction::Special(_));
+                fight.attacking = matches!(action, ActorAction::Attack | ActorAction::Combo(_) | ActorAction::Special(_) | ActorAction::Skill { .. });
+                fight.using_skill = matches!(action, ActorAction::Skill { .. });
+                fight.skill_cancelable = false;
+                fight.knocked_down = matches!(action, ActorAction::Knockdown { .. });
+                if matches!(action, ActorAction::Skill { moving: true, .. }) {
+                    actor.moving = true;
+                    actor.remote.going = true;
+                    actor.remote.after_move = true;
+                    actor.remote.dst_rotation = actor.rotation;
+                    actor.move_from = actor.remote.position;
+                    let heading = actor.rotation.to_radians();
+                    actor.move_to = actor.move_from + Vec2::new(heading.sin(), heading.cos()) * RUN_SPEED;
+                }
+                fight.splash = None;
                 fight.hits.clear();
                 actor.rendered_moving = Some(actor.moving);
                 Some((*vid, action, actor.clone()))
@@ -1686,19 +1738,19 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
                 }
                 ActorAction::Combo(_) => pick(&motions.attack),
                 ActorAction::Special(n) => motions.special.get(usize::from(n)).cloned().flatten(),
-                ActorAction::Skill(index) if pc => crate::render::character::skill_motion_file_in(
+                ActorAction::Skill { index, .. } if pc => crate::render::character::skill_motion_file_in(
                     actor.race as u8,
                     character.motion_mode(),
                     index,
                 ),
-                ActorAction::Skill(_) => None,
+                ActorAction::Skill { .. } => None,
                 ActorAction::Damage { back } if pc => character.motion_path(Motion::Damage { back }),
                 ActorAction::Damage { back } => {
                     if back { motions.damage_back.clone().or(motions.damage.clone()) } else { motions.damage.clone() }
                 }
                 ActorAction::Knockdown { back } if pc => character.motion_path(Motion::DamageFlying { back }),
                 ActorAction::Knockdown { back } => {
-                    if back { motions.knockdown_back.clone().or(motions.knockdown.clone()) } else { motions.knockdown.clone() }
+                    if back { motions.knockdown_back.clone().or(motions.knockdown.clone()).or(motions.damage.clone()) } else { motions.knockdown.clone().or(motions.damage.clone()) }
                 }
                 ActorAction::Dead if pc => character.motion_path(Motion::Dead),
                 ActorAction::Dead => motions.dead.clone(),
@@ -1708,10 +1760,18 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
             };
             let Some(once) = once else { return };
             // A rider attacks or casts from a standing horse.
-            if matches!(action, ActorAction::Attack | ActorAction::Combo(_) | ActorAction::Skill(_)) {
+            if matches!(action, ActorAction::Attack | ActorAction::Combo(_) | ActorAction::Skill { moving: false, .. }) {
                 character.idle_mount(world);
             }
             match action {
+                ActorAction::Skill { loops, .. } => {
+                    match idle.as_deref() {
+                        Some(idle) => character.play_then(world, &once, idle),
+                        None => character.play(world, &once, false),
+                    }
+                    let targets = world.get_resource::<FlyTargets>().and_then(|targets| targets.0.get(&vid)).map_or(1, VecDeque::len) as u32;
+                    character.set_motion_loop_count(if targets > 1 { u32::from(loops).max(1) + targets - 1 } else { u32::from(loops) });
+                }
                 ActorAction::Dead => character.play(world, &once, false),
                 ActorAction::Dig(count) => {
                     let mut then: Vec<(&str, bool)> = vec![(once.as_str(), false); usize::from(count.max(1)) - 1];
@@ -1765,8 +1825,16 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
             .map(|(vid, _)| *vid)
             .collect();
         for (vid, fight) in &mut actors.fights {
-            if fight.attacking && !busy.contains(vid) {
+            if fight.using_skill {
+                fight.skill_cancelable = actors.characters.get(vid).and_then(Character::motion_handle)
+                    .and_then(|handle| world.resource::<Assets<m2_assets::race::RaceMotionAsset>>().get(handle))
+                    .is_some_and(|motion| motion.cancel_enable_skill);
+            }
+            if !busy.contains(vid) {
                 fight.attacking = false;
+                fight.using_skill = false;
+                fight.knocked_down = false;
+                fight.splash = None;
             }
         }
         actors
@@ -1839,12 +1907,43 @@ fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
         actors.characters.iter_mut().map(|(vid, character)| (*vid, character.take_motion_tick(world, now))).collect()
     });
     for (vid, tick) in ticks {
-        let Some(actor) = world.resource::<Actors>().by_vid.get(&vid).cloned() else { continue };
+        let Some(mut actor) = world.resource::<Actors>().by_vid.get(&vid).cloned() else { continue };
         let local = Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32);
         let height = heights.get(&vid).copied().unwrap_or_default();
-        let position = local_to_world(local.x, local.y, height);
-        let metin2 = Vec3::new(local.x, -local.y, height);
+        let mut metin2 = Vec3::new(local.x, -local.y, height);
         let target = shot_target(world, vid, None, base, height, &tick);
+        if tick.events.iter().any(|event| matches!(event.kind, m2_assets::race::RaceMotionEventKind::Warp))
+            && let Some((_, target)) = target
+        {
+            let destination = skill_warp_position(metin2, target);
+            let at = Vec2::new(destination.x, -destination.y);
+            let game = world.resource::<GameWorld>();
+            if !game.scene().is_some_and(|scene| scene.is_attr_on(at, ATTR_BLOCK)) {
+                metin2 = Vec3::new(at.x, -at.y, game.terrain_height(at.x, at.y));
+                let global = at + Vec2::new(base.0 as f32, base.1 as f32);
+                actor.x = global.x.round() as i32;
+                actor.y = global.y.round() as i32;
+                actor.rotation = facing_degrees(Vec2::new(target.x - metin2.x, metin2.y - target.y));
+                let entity = world.resource::<Actors>().entities.get(&vid).copied();
+                if let Some(entity) = entity && let Some(mut transform) = world.get_mut::<Transform>(entity) {
+                    transform.translation = fx::bevy_position(metin2);
+                }
+                if let Some(current) = world.resource_mut::<Actors>().by_vid.get_mut(&vid) {
+                    current.x = actor.x;
+                    current.y = actor.y;
+                    current.rotation = actor.rotation;
+                    current.remote.position = global;
+                }
+            }
+        }
+        let position = fx::bevy_position(metin2);
+        for event in &tick.events {
+            if let m2_assets::race::RaceMotionEventKind::SpecialAttacking(splash) = &event.kind {
+                world.resource_mut::<Actors>().fights.entry(vid).or_default().splash = Some(battle::SplashArea::new(
+                    splash, metin2, actor.rotation, now, event.duration, 0,
+                ));
+            }
+        }
         world.resource_scope(|world, mut actors: Mut<Actors>| {
             let Some(character) = actors.characters.get_mut(&vid) else { return };
             motion_tick_effects(world, character, &tick, position, metin2, actor.rotation, true, target);
@@ -1921,10 +2020,10 @@ fn shake_offset(seed: u32) -> Vec3 {
 
 /// Resolve an actor's current server-provided fly target when its motion fires.
 fn shot_target(world: &mut World, shooter: u32, fallback: Option<u32>, base: (u32, u32), height: f32, tick: &MotionTick) -> Option<(u32, Vec3)> {
-    if !tick.events.iter().any(|event| matches!(event.kind, m2_assets::race::RaceMotionEventKind::Fly { .. })) {
-        return None;
-    }
-    let target = world.resource_mut::<FlyTargets>().shot(shooter).or(fallback.map(ShotTarget::Actor))?;
+    let shoots = tick.events.iter().any(|event| matches!(event.kind, m2_assets::race::RaceMotionEventKind::Fly { .. }));
+    let target = if shoots { world.resource_mut::<FlyTargets>().shot(shooter) }
+        else { world.resource::<FlyTargets>().peek(shooter) }
+        .or(fallback.map(ShotTarget::Actor))?;
     match target {
         ShotTarget::Position(at) => Some((0, at)),
         ShotTarget::Actor(vid) => {
@@ -1954,7 +2053,7 @@ fn motion_tick_effects(
     tick: &MotionTick,
     position: Vec3,
     metin2: Vec3,
-    rotation: f32,
+    _rotation: f32,
     check_frequency: bool,
     fly_target: Option<(u32, Vec3)>,
 ) {
@@ -1963,20 +2062,43 @@ fn motion_tick_effects(
         for sound in &tick.sounds {
             fx.sound(position, sound, check_frequency);
         }
-        let packs = world.get_resource::<M2Packs>();
+        let packs = world.get_resource::<M2Packs>().cloned();
         for event in &tick.events {
             match &event.kind {
-                RaceMotionEventKind::Effect { file, bone, position: offset, .. } => {
-                    // The event offset is in the actor's frame (Bevy space in
-                    // the asset); turn it with the actor.
-                    let local = Vec3::from_array(m2_assets::coords::vec3_back(Vec3::from_array(offset.to_array())));
-                    let at = match bone.as_deref().and_then(|bone| character.bone_transform(world, bone)) {
-                        Some(bone) => Vec3::from_array(m2_assets::coords::vec3_back(bone.translation()))
-                            + battle::rotate_local(local, rotation),
-                        None => metin2 + battle::rotate_local(local, rotation),
-                    };
-                    fx.spawn(packs, file, at, Vec3::new(0.0, 0.0, rotation));
+                RaceMotionEventKind::Effect { file, bone, position: offset, following, independent } => {
+                    let entity = bone.as_deref().and_then(|name| character.bone_entity(name)).unwrap_or(character.root);
+                    if !independent && (bone.is_none() || *following) {
+                        fx.spawn_following(packs.as_ref(), file, entity, *offset);
+                    } else {
+                        let transform = world.get::<GlobalTransform>(if *independent { character.root } else { entity })
+                            .map(GlobalTransform::to_matrix).unwrap_or(Mat4::from_translation(position));
+                        let matrix = transform * Mat4::from_translation(*offset);
+                        let swap = Mat4::from_mat3(m2_assets::coords::SWAP_YZ);
+                        fx.spawn_matrix(packs.as_ref(), file, m2_effect::Mat4::from_array((swap * matrix * swap).to_cols_array()));
+                    }
                 }
+                RaceMotionEventKind::EffectToTarget { file, position: offset, following } => {
+                    let Some((vid, at)) = fly_target else { continue };
+                    let entity = if vid != 0 {
+                        world.get_resource::<Actors>().and_then(|actors| actors.characters.get(&vid)).map(|chr| chr.root)
+                            .or_else(|| (vid == world.get_resource::<PlayerState>()?.vid).then_some(character.root))
+                    } else { None };
+                    if *following && let Some(entity) = entity {
+                        fx.spawn_following(packs.as_ref(), file, entity, *offset);
+                    } else {
+                        let at = at + Vec3::from_array(m2_assets::coords::vec3_back(*offset));
+                        fx.spawn(packs.as_ref(), file, at, Vec3::ZERO);
+                    }
+                }
+                RaceMotionEventKind::ScreenWaving { power, range } => {
+                    let center = world.get_resource::<crate::render::shadow::SceneCameraTarget>().and_then(|target| target.0);
+                    if center.is_some_and(|center| center.distance_squared(position) <= (*range as f32).powi(2)) {
+                        let now = world.resource::<Time>().elapsed_secs();
+                        world.insert_resource(ScreenWave { until: now + event.duration, power: *power as f32 });
+                    }
+                }
+                RaceMotionEventKind::CharacterHide => { world.entity_mut(character.root).insert(crate::render::character::MotionHidden); }
+                RaceMotionEventKind::CharacterShow => { world.entity_mut(character.root).remove::<crate::render::character::MotionHidden>(); }
                 RaceMotionEventKind::Sound { file } => fx.sound(position, file, false),
                 RaceMotionEventKind::Fly { file, bone, position: offset } => {
                     let Some((target, target_at)) = fly_target else { continue };
@@ -1984,7 +2106,7 @@ fn motion_tick_effects(
                     let start = bone.as_deref().and_then(|name| character.bone_transform(world, name))
                         .map(|matrix| Vec3::from_array(m2_assets::coords::vec3_back(matrix.translation())))
                         .unwrap_or(metin2) + offset;
-                    fx.fly(packs, file, start, target, target_at);
+                    fx.fly(packs.as_ref(), file, start, target, target_at);
                 }
                 _ => {}
             }
@@ -2157,11 +2279,12 @@ fn drive_world(world: &mut World) {
                         .collect()
                 })
                 .unwrap_or_default();
+            let attackable_me = me;
             let attackable = |vid: u32| {
                 candidates
                     .iter()
                     .find(|(candidate, _)| *candidate == vid)
-                    .is_some_and(|(_, candidate)| combat::is_attackable(&combat_world, &me, candidate))
+                    .is_some_and(|(_, candidate)| combat::is_attackable(&combat_world, &attackable_me, candidate))
             };
             let distance_to = |vid: u32, local: Vec2| {
                 candidates.iter().find(|(candidate, _)| *candidate == vid).map(|(_, candidate)| {
@@ -2351,7 +2474,7 @@ fn drive_world(world: &mut World) {
 
             // Flying objects home on their targets; affect loops follow their
             // actors (`__SetAffect` -> `__AttachEffect(EFFECT_AFFECT + n)`).
-            let (targets, affects) = {
+            let (targets, affects, oriented) = {
                 let actors = world.resource::<Actors>();
                 let actor_local = |actor: &Actor| Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32);
                 let feet = |p: Vec2| Vec3::new(p.x, -p.y, scene.ground_height(p.x, p.y));
@@ -2364,6 +2487,7 @@ fn drive_world(world: &mut World) {
                     .collect();
                 let main_flags = world.get_resource::<PlayerState>().map_or(0, |player| player.affect_flags);
                 let mut affects = Vec::new();
+                let mut oriented = Vec::new();
                 let mut attach = |vid: u32, flags: u64, walking: bool, at: Vec3, chr: Option<&Character>| {
                     // Others under stealth hide their effects too (`HideAllAttachingEffect`).
                     let hidden_other = vid != main_vid
@@ -2371,6 +2495,13 @@ fn drive_world(world: &mut World) {
                             || combat::has_affect(flags, combat::AFFECT_REVIVE_INVISIBILITY));
                     if combat::has_affect(flags, combat::AFFECT_INVISIBILITY) || hidden_other {
                         return;
+                    }
+                    if combat::has_affect(flags, combat::AFFECT_GEOMGYEONG)
+                        && let Some(chr) = chr
+                        && let Some(bone) = chr.bone_transform(world, "equip_right_hand")
+                    {
+                        let two_handed = chr.weapon_type() == Some(combat::weapon::TWO_HANDED);
+                        oriented.push(((vid, 0x10000 + u32::from(two_handed)), fx::sword_aura(two_handed), bone.to_matrix()));
                     }
                     for affect in 0..64 {
                         if !combat::has_affect(flags, affect) || (fx::affect_effect_needs_walking(affect) && !walking) {
@@ -2416,11 +2547,43 @@ fn drive_world(world: &mut World) {
                         refine(vid, u32::from(actor.armor), at, chr);
                     }
                 }
-                (targets, affects)
+                if let Some(social) = world.get_resource::<crate::social::SocialState>() {
+                    for (&id, target) in &social.targets {
+                        if let Some(at) = quest_target_position(target, &actors, base) {
+                            let at = local_to_world(at.x, at.y, scene.ground_height(at.x, at.y));
+                            oriented.push(((id as u32, 0x20000), fx::EFFECT_QUEST_TARGET, Mat4::from_translation(at)));
+                        }
+                    }
+                }
+                (targets, affects, oriented)
             };
             let mut fx = world.resource_mut::<CombatFx>();
-            fx.update_flies(packs.as_ref(), delta, |vid| targets.get(&vid).copied());
+            let impacts = fx.update_flies(packs.as_ref(), delta, |vid| targets.get(&vid).copied());
             fx.sync_attached(packs.as_ref(), &affects);
+            fx.sync_oriented(packs.as_ref(), &oriented);
+            drop(fx);
+            // `CFlyingInstance::Update` calls OnShootDamage on an object target.
+            for vid in impacts {
+                if vid == main_vid {
+                    control.shake_until = now + 0.1;
+                    if control.state == MoveState::Idle {
+                        if let (Some(damage), Some(wait)) = (character.motion_path(Motion::Damage { back: false }), character.motion_path(Motion::Wait)) {
+                            character.play_then(world, &damage, &wait);
+                        }
+                    }
+                } else {
+                    let mut actors = world.resource_mut::<Actors>();
+                    let fight = actors.fights.entry(vid).or_default();
+                    if fight.dead { continue; }
+                    fight.shake_until = now + 0.1;
+                    if fight.stunned {
+                        fight.dead = true;
+                        fight.pending = Some(ActorAction::Dead);
+                    } else if !fight.attacking && !fight.knocked_down {
+                        fight.pending = Some(ActorAction::Damage { back: false });
+                    }
+                }
+            }
 
             // The demo run: walk to the nearest actor, then swing at it.
             if *demo {
@@ -2449,7 +2612,7 @@ fn drive_world(world: &mut World) {
 
             let mut moved = false;
             let mut direction = None;
-            if character.is_mounted() && control.state == MoveState::Attacking && !focus.keyboard {
+            if control.state == MoveState::Attacking && !focus.keyboard {
                 let mut input = Vec2::ZERO;
                 if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) { input.y += 1.0; }
                 if keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown) { input.y -= 1.0; }
@@ -2458,10 +2621,14 @@ fn drive_world(world: &mut World) {
                 if input != Vec2::ZERO {
                     let forward = Vec2::new(-control.yaw.sin(), control.yaw.cos());
                     let right = Vec2::new(control.yaw.cos(), control.yaw.sin());
-                    direction = Some((forward * input.y + right * input.x).normalize());
+                    let heading = (forward * input.y + right * input.x).normalize();
+                    control.attack_rotation = facing_degrees(heading);
+                    if character.is_mounted() { direction = Some(heading); }
                 }
             }
-            if !matches!(control.state, MoveState::Attacking | MoveState::Casting) && !control.dead {
+            let moving_skill = control.state == MoveState::Casting && world.get_resource::<combat::SkillCatalog>()
+                .and_then(|catalog| catalog.get(control.motion_skill)).is_some_and(SkillExt::is_moving_skill);
+            if (!matches!(control.state, MoveState::Attacking | MoveState::Casting) || moving_skill) && !control.dead {
                 let mut input = Vec2::ZERO;
                 if !focus.keyboard {
                     if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) {
@@ -2580,12 +2747,13 @@ fn drive_world(world: &mut World) {
                 }
             }
 
+            me.x = local.x.round() as i32;
+            me.y = local.y.round() as i32;
             // `MODE_USE_SKILL`: keep running towards the reserved target and
             // cast as soon as the skill's range is reached.
             if let Some((vnum, vid, range)) = control.reserved_skill {
                 if let Some((_, actor)) = candidates.iter().find(|(candidate, _)| *candidate == vid) {
                     if skill_distance(&me, actor) < range as f32 {
-                        control.reserved_skill = None;
                         use_skill(
                             world,
                             &mut control,
@@ -2717,12 +2885,11 @@ fn drive_world(world: &mut World) {
                                     net.send_target(victim);
                                 }
                             }
+                            world.resource_mut::<FlyTargets>().set(control.main_vid, ShotTarget::Actor(victim), false);
                             if let Some(mut net) = world.get_resource_mut::<Net>() {
                                 if let Some((_, actor)) = candidates.iter().find(|(candidate, _)| *candidate == victim) {
                                     net.send_fly_targeting(victim, actor.x + base.0 as i32, actor.y + base.1 as i32, false);
                                 }
-                                net.send_attack(victim);
-                                net.send_shoot(0);
                             }
                             let duration = character.motion_duration();
                             attack_ready = now + if duration > 0.05 { duration * 0.9 } else { ATTACK_COOLDOWN };
@@ -2743,6 +2910,8 @@ fn drive_world(world: &mut World) {
                                 face_actor(world, &mut control, base, local, victim);
                             }
                             control.attack_rotation = control.advancing;
+                        } else if direction.is_some() {
+                            control.attack_rotation = facing_degrees(direction.unwrap());
                         }
                         input_combo_attack(world, &mut control, character, now, base, local);
                     })
@@ -2753,6 +2922,10 @@ fn drive_world(world: &mut World) {
                 {
                     player.line(1, format!("Cannot attack: {}", error.reason()));
                 }
+            }
+            if moving_skill && moved && now >= next_move_packet {
+                next_move_packet = now + MOVE_PACKET_SECONDS;
+                send_move(world, base, local, control.advancing);
             }
             // `ComboProcess`: a remembered input fires at `DirectInputTime`.
             combo_process(world, &mut control, character, now, base, local);
@@ -2899,12 +3072,21 @@ fn drive_world(world: &mut World) {
             // The fight this frame: the main character's motion events and
             // hits, then the other actors' swings at it.
             let ground = scene.ground_height(local.x, local.y);
-            let me_position = Vec3::new(local.x, -local.y, ground);
+            let mut me_position = Vec3::new(local.x, -local.y, ground);
             let heights = |x: f32, y: f32| scene.ground_height(x, y);
-            main_motion_events(world, &mut control, character, me_position, now);
             let blocked = |p: Vec2| map_attr(scene, p, ATTR_BLOCK);
+            let warped = main_motion_events(world, &mut control, character, me_position, now, &blocked);
+            if warped != me_position {
+                local = Vec2::new(warped.x, -warped.y);
+                me_position = Vec3::new(local.x, -local.y, scene.ground_height(local.x, local.y));
+                game.local = Some((local.x.round() as i32, local.y.round() as i32));
+                if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
+                    transform.translation = fx::bevy_position(me_position);
+                }
+            }
             main_attack_process(world, &mut control, character, &candidates, &attackable, me_position, now, delta, &heights, &blocked);
             actor_attacks_on_main(world, &mut control, character, &candidates, &me, &combat_world, base, me_position, now, delta, &heights);
+            actor_attacks_on_actors(world, &candidates, &combat_world, now, delta, &heights);
 
             // `GC_DEAD`: the death motion once, then nothing until revived
             // (the server restores the HP on restart).
@@ -2928,7 +3110,7 @@ fn drive_world(world: &mut World) {
                 MoveState::Dead => {}
                 MoveState::Attacking | MoveState::Casting => {
                     if (character.motion_started() && character.motion_finished(world))
-                        || now - control.action_started > 4.0
+                        || (!character.motion_started() && now - control.action_started > 4.0)
                     {
                         // Back to wait: a non-combo motion resets the combo
                         // (`SetMotion` -> `m_dwcurComboIndex = 0`).
@@ -2978,28 +3160,16 @@ fn drive_world(world: &mut World) {
 
 /// `CRaceMotionData::NAME_COMBO_ATTACK_1`: the motion index of combo motion 1.
 const NAME_COMBO_ATTACK_1: u32 = 14;
-/// Hides the cursor and keeps it at `anchor` while the camera is dragged
-/// (`SetCursorVisible(FALSE)` + `CCamera::Drag`'s `SetCursorPos` back to the
-/// drag start); `None` releases it there.
+/// Camera dragging uses relative mouse motion with a locked pointer. Bevy
+/// falls back to confinement on X11. Wayland forbids ordinary pointer warps,
+/// so do not call Window::set_cursor_position here (even on the first frame
+/// when the lock request has not reached the compositor yet).
 fn set_cursor_lock(world: &mut World, anchor: Option<Vec2>) {
     use bevy::window::{CursorGrabMode, CursorOptions};
-    let Ok((mut window, mut options)) =
-        world.query_filtered::<(&mut Window, &mut CursorOptions), With<PrimaryWindow>>().single_mut(world)
-    else {
-        return;
-    };
-    let (visible, grab) = if anchor.is_some() { (false, CursorGrabMode::Confined) } else { (true, CursorGrabMode::None) };
-    if options.visible != visible {
-        options.visible = visible;
-    }
-    if options.grab_mode != grab {
-        options.grab_mode = grab;
-    }
-    if let Some(anchor) = anchor
-        && window.cursor_position().is_some_and(|cursor| cursor.distance(anchor) > 0.5)
-    {
-        window.set_cursor_position(Some(anchor));
-    }
+    let Ok(mut options) = world.query_filtered::<&mut CursorOptions, With<PrimaryWindow>>().single_mut(world) else { return };
+    let (visible, grab) = if anchor.is_some() { (false, CursorGrabMode::Locked) } else { (true, CursorGrabMode::None) };
+    if options.visible != visible { options.visible = visible; }
+    if options.grab_mode != grab { options.grab_mode = grab; }
 }
 
 /// A monster's motion files for a polymorphed player body.
@@ -3026,7 +3196,7 @@ fn command_action(motion: &ActorMove) -> Option<ActorAction> {
         FUNC_ATTACK => Some(ActorAction::Attack),
         FUNC_COMBO => Some(ActorAction::Combo(u32::from(motion.arg))),
         FUNC_MOB_SKILL => Some(ActorAction::Special(motion.arg)),
-        func if func & FUNC_SKILL != 0 => Some(ActorAction::Skill(u16::from(func & !FUNC_SKILL))),
+        func if func & FUNC_SKILL != 0 => Some(ActorAction::Skill { index: u16::from(func & !FUNC_SKILL), loops: motion.arg & 15, moving: motion.arg & 16 != 0 }),
         _ => None,
     }
 }
@@ -3295,59 +3465,8 @@ fn attack_success(
     if attack.hitting_type == battle::HIT_TYPE_NONE {
         return;
     }
-    let (rotation, pc, huge) = {
-        let actors = world.resource::<Actors>();
-        let actor = actors.by_vid.get(&victim.vid);
-        (actor.map_or(0.0, |a| a.rotation), victim.is_pc(), victim.race == HUGE_RACE)
-    };
-    // Hit spark: at the victim, turned to face the attacker.
-    let spark = if huge { (attacker + victim_position) * 0.5 } else { victim_position };
-    let height = (attacker.x - spark.x).atan2(spark.y - attacker.y).to_degrees();
-    let packs = world.get_resource::<M2Packs>().cloned();
-    {
-        let mut fx = world.resource_mut::<CombatFx>();
-        if victim.is_building() || victim.is_door() {
-            let towards = (spark - attacker).normalize_or_zero() * 30.0;
-            fx.spawn(packs.as_ref(), fx::EFFECT_HIT, attacker + towards, Vec3::ZERO);
-        } else {
-            fx.spawn(packs.as_ref(), fx::EFFECT_HIT, spark, Vec3::new(0.0, 0.0, height));
-        }
-    }
-    // Reaction.
-    {
-        let mut actors = world.resource_mut::<Actors>();
-        let fight = actors.fights.entry(victim.vid).or_default();
-        fight.invisible_until = now + attack.invisible_time;
-        let facing = |r: f32| Vec2::new(r.to_radians().sin(), r.to_radians().cos());
-        let back = facing(attacker_rotation).dot(facing(rotation)) >= 0.0;
-        if victim.is_building() {
-        } else if victim.is_stone() || victim.is_door() {
-            // `__HitStone`.
-            if fight.stunned {
-                fight.dead = true;
-                fight.pending = Some(ActorAction::Dead);
-            } else {
-                fight.shake_until = now + 0.1;
-            }
-        } else if !fight.dead {
-            fight.shake_until = now + 0.1;
-            if fight.stunned {
-                fight.dead = true;
-                fight.pending = Some(if attack.hitting_type == battle::HIT_TYPE_GREAT {
-                    ActorAction::Knockdown { back }
-                } else {
-                    ActorAction::Dead
-                });
-            } else if !fight.attacking {
-                // `isLock`: an attacking victim keeps swinging.
-                fight.pending = Some(if attack.hitting_type == battle::HIT_TYPE_GREAT && !pc {
-                    ActorAction::Knockdown { back }
-                } else {
-                    ActorAction::Damage { back }
-                });
-            }
-        }
-    }
+    attack_feedback(world, attack, attacker, attacker_rotation, victim, victim_position, now);
+    let huge = victim.race == HUGE_RACE;
     // `__CanPushDestActor` + `__PushCircle` + `IncreaseExternalForce`: a hit
     // with an external force (the combo's last steps) pushes a victim the
     // server made ours to sync (`GC_OWNERSHIP`, under 3 s ago) or a stunned
@@ -3397,6 +3516,84 @@ fn attack_success(
         net.send_skill_attack(skill, victim.vid);
     }
     debug!("hit {} (skill {skill})", victim.vid);
+}
+
+/// Shared `__ProcessDataAttackSuccess` feedback. Remote attackers use this
+/// without invoking the main player's targeting, damage or position packets.
+#[allow(clippy::too_many_arguments)]
+fn attack_feedback(
+    world: &mut World,
+    attack: &m2_assets::race::MotionAttack,
+    attacker: Vec3,
+    attacker_rotation: f32,
+    victim: &ActorCombat,
+    victim_position: Vec3,
+    now: f32,
+) {
+    if attack.hitting_type == battle::HIT_TYPE_NONE { return; }
+    let (rotation, huge) = {
+        let actors = world.resource::<Actors>();
+        let actor = actors.by_vid.get(&victim.vid);
+        (actor.map_or(0.0, |a| a.rotation), victim.race == HUGE_RACE)
+    };
+    // Hit spark: at the victim, turned to face the attacker.
+    let spark = if huge { (attacker + victim_position) * 0.5 } else { victim_position };
+    let height = (attacker.x - spark.x).atan2(spark.y - attacker.y).to_degrees();
+    let packs = world.get_resource::<M2Packs>().cloned();
+    {
+        let mut fx = world.resource_mut::<CombatFx>();
+        if victim.is_building() || victim.is_door() {
+            let towards = (spark - attacker).normalize_or_zero() * 30.0;
+            fx.spawn(packs.as_ref(), fx::EFFECT_HIT, attacker + towards, Vec3::ZERO);
+        } else {
+            fx.spawn(packs.as_ref(), fx::EFFECT_HIT, spark, Vec3::new(0.0, 0.0, height));
+        }
+    }
+    // Strong Body and mounted actors resist falling (`IsResistFallen`).
+    let resist_fallen = combat::has_affect(victim.affect_flags, combat::AFFECT_CHEONGEUN)
+        || world.resource::<Actors>().by_vid.get(&victim.vid).is_some_and(|actor| actor.mount_vnum != 0);
+    // Reaction.
+    {
+        let mut actors = world.resource_mut::<Actors>();
+        let fight = actors.fights.entry(victim.vid).or_default();
+        fight.invisible_until = now + attack.invisible_time;
+        let facing = |r: f32| Vec2::new(r.to_radians().sin(), r.to_radians().cos());
+        let back = facing(attacker_rotation).dot(facing(rotation)) >= 0.0;
+        if victim.is_building() {
+        } else if victim.is_stone() || victim.is_door() {
+            // `__HitStone`.
+            if fight.stunned {
+                fight.dead = true;
+                fight.pending = Some(ActorAction::Dead);
+            } else {
+                fight.shake_until = now + 0.1;
+            }
+        } else if !fight.dead && !fight.knocked_down {
+            fight.shake_until = now + 0.1;
+            if fight.stunned {
+                fight.dead = true;
+                fight.pending = Some(if attack.hitting_type == battle::HIT_TYPE_GREAT && !resist_fallen {
+                    ActorAction::Knockdown { back }
+                } else {
+                    ActorAction::Dead
+                });
+            } else if !fight.using_skill && (!fight.attacking || attack.hitting_type == battle::HIT_TYPE_GREAT && !resist_fallen) {
+                // Great hits interrupt attacks; ordinary hits respect `isLock`.
+                fight.pending = Some(if attack.hitting_type == battle::HIT_TYPE_GREAT && !resist_fallen {
+                    ActorAction::Knockdown { back }
+                } else {
+                    ActorAction::Damage { back }
+                });
+            }
+        }
+    }
+    if matches!(world.resource::<Actors>().fights.get(&victim.vid).and_then(|fight| fight.pending), Some(ActorAction::Knockdown { .. }))
+        && let Some(actor) = world.resource_mut::<Actors>().by_vid.get_mut(&victim.vid)
+    {
+        actor.remote.going = false;
+        actor.moving = false;
+        actor.move_action = None;
+    }
 }
 
 /// `CInstanceBase::AttackProcess` for the main character: the playing attack
@@ -3455,7 +3652,7 @@ fn main_attack_process(
             continue;
         }
         if let Some(attack) = &attack
-            && battle::normal_attack_hit(attack, &mut control.hits, elapsed, frame, position, rotation, 1.0, *vid, &spheres, now)
+            && battle::normal_attack_hit(attack, &mut control.hits, elapsed, frame, position, rotation, combat::attack_reach(world.get_resource::<PlayerState>().map_or(0, |player| player.affect_flags)), *vid, &spheres, now)
         {
             attack_success(world, control, &attack.attack, position, rotation, actor, victim_position, skill, true, blocked, now);
         }
@@ -3472,9 +3669,23 @@ fn main_attack_process(
 /// The main character's own motion events: sounds (no frequency check, as
 /// `SoundEventProcess(!IsMain)`), effects, and the `SpecialAttacking` splash
 /// areas of skills.
-fn main_motion_events(world: &mut World, control: &mut PlayerControl, character: &mut Character, position: Vec3, now: f32) {
+fn main_motion_events(world: &mut World, control: &mut PlayerControl, character: &mut Character, mut position: Vec3, now: f32, blocked: &dyn Fn(Vec2) -> bool) -> Vec3 {
     let tick = character.take_motion_tick(world, now);
+    let own_target = world.resource::<FlyTargets>().peek(control.main_vid) == Some(ShotTarget::Actor(control.main_vid));
+    let target = if own_target { Some((control.main_vid, position + Vec3::Z * fx::FLY_TARGET_HEIGHT)) }
+        else { shot_target(world, control.main_vid, control.target, control.base, position.z, &tick) };
     for event in &tick.events {
+        if matches!(event.kind, m2_assets::race::RaceMotionEventKind::Warp)
+            && let Some((_, target)) = target
+        {
+            let destination = skill_warp_position(position, target);
+            if !blocked(Vec2::new(destination.x, -destination.y)) {
+                position = destination;
+                let heading = Vec2::new(target.x - position.x, position.y - target.y);
+                set_advancing_rotation(control, facing_degrees(heading));
+                send_stop(world, control.base, Vec2::new(position.x, -position.y), control.advancing);
+            }
+        }
         if let m2_assets::race::RaceMotionEventKind::SpecialAttacking(splash) = &event.kind {
             control.splash = Some(battle::SplashArea::new(
                 splash,
@@ -3486,8 +3697,25 @@ fn main_motion_events(world: &mut World, control: &mut PlayerControl, character:
             ));
         }
     }
-    let target = shot_target(world, control.main_vid, control.target, control.base, position.z, &tick);
+    dispatch_motion_shots(world, &tick, control.motion_skill, target.is_some());
     motion_tick_effects(world, character, &tick, fx::bevy_position(position), position, control.facing, false, target);
+    position
+}
+
+/// `CNormalBowAttack_FlyEventHandler::OnShoot`, exactly once per fly event.
+fn dispatch_motion_shots(world: &mut World, tick: &MotionTick, skill: u32, has_target: bool) {
+    if !has_target { return; }
+    for event in &tick.events {
+        if matches!(event.kind, m2_assets::race::RaceMotionEventKind::Fly { .. })
+            && let Some(mut net) = world.get_resource_mut::<Net>()
+        {
+            net.send_shoot(skill);
+        }
+    }
+}
+
+fn skill_warp_position(from: Vec3, target: Vec3) -> Vec3 {
+    target - (target - from).normalize_or_zero() * 270.0
 }
 
 /// Monsters' and other players' swings against the main character
@@ -3522,7 +3750,7 @@ fn actor_attacks_on_main(
             .find(|(candidate, _)| *candidate == vid)
             .is_some_and(|(_, attacker)| !attacker.in_safe && combat::is_attackable(&remote_world, attacker, me))
     };
-    let attackers: Vec<(u32, Vec3, f32, f32, m2_assets::race::MotionAttackData)> = {
+    let attackers: Vec<(u32, Vec3, f32, f32, f32, Option<m2_assets::race::MotionAttackData>)> = {
         let actors = world.resource::<Actors>();
         let motions = world.resource::<Assets<m2_assets::race::RaceMotionAsset>>();
         actors
@@ -3533,10 +3761,11 @@ fn actor_attacks_on_main(
                 let actor = actors.by_vid.get(vid)?;
                 let character = actors.characters.get(vid)?;
                 let elapsed = character.motion_elapsed(now)?;
-                let attack = motions.get(character.motion_handle()?)?.attack.clone()?;
+                let attack = motions.get(character.motion_handle()?)?.attack.clone();
                 let local = Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32);
                 let at = Vec3::new(local.x, -local.y, heights(local.x, local.y));
-                ((at - position).truncate().length_squared() < 300.0 * 300.0).then_some((*vid, at, actor.rotation, elapsed, attack))
+                ((at - position).truncate().length_squared() < 300.0 * 300.0 || actors.fights.get(vid)?.splash.is_some())
+                    .then_some((*vid, at, actor.rotation, elapsed, combat::attack_reach(actor.affect_flags), attack))
             })
             .collect()
     };
@@ -3547,14 +3776,18 @@ fn actor_attacks_on_main(
     if spheres.is_empty() {
         spheres.push(DynamicSphere::still(position + Vec3::Z * 100.0, 70.0));
     }
-    for (vid, at, rotation, elapsed, attack) in attackers {
+    for (vid, at, rotation, elapsed, reach, attack) in attackers {
         let hit = world.resource_scope(|_, mut actors: Mut<Actors>| {
             let fight = actors.fights.entry(vid).or_default();
-            battle::normal_attack_hit(&attack, &mut fight.hits, elapsed, frame, at, rotation, 1.0, main_vid, &spheres, now)
+            if let Some(splash) = &mut fight.splash && splash.hit(main_vid, &spheres, now, None) {
+                return Some(splash.splash.attack);
+            }
+            if let Some(attack) = &attack
+                && battle::normal_attack_hit(attack, &mut fight.hits, elapsed, frame, at, rotation, reach, main_vid, &spheres, now)
+            { return Some(attack.attack); }
+            None
         });
-        if !hit || attack.attack.hitting_type == battle::HIT_TYPE_NONE {
-            continue;
-        }
+        let Some(attack) = hit.filter(|attack| attack.hitting_type != battle::HIT_TYPE_NONE) else { continue };
         let height = (at.x - position.x).atan2(position.y - at.y).to_degrees();
         let packs = world.get_resource::<M2Packs>().cloned();
         world.resource_mut::<CombatFx>().spawn(packs.as_ref(), fx::EFFECT_HIT, position, Vec3::new(0.0, 0.0, height));
@@ -3562,7 +3795,7 @@ fn actor_attacks_on_main(
         if control.state == MoveState::Idle && !control.dead {
             let facing = |r: f32| Vec2::new(r.to_radians().sin(), r.to_radians().cos());
             let back = facing(rotation).dot(facing(control.facing)) >= 0.0;
-            let motion = if attack.attack.hitting_type == battle::HIT_TYPE_GREAT && !character.is_mounted() {
+            let motion = if attack.hitting_type == battle::HIT_TYPE_GREAT && !character.is_mounted() && !combat::has_affect(me.affect_flags, combat::AFFECT_CHEONGEUN) {
                 Motion::DamageFlying { back }
             } else {
                 Motion::Damage { back }
@@ -3575,6 +3808,64 @@ fn actor_attacks_on_main(
                 } else {
                     character.play_then(world, &once, &wait);
                 }
+            }
+        }
+    }
+}
+
+/// Every remote instance also tests its swings against other remote actors.
+/// This produces local feedback only; damage remains the server's decision.
+#[allow(clippy::too_many_arguments)]
+fn actor_attacks_on_actors(
+    world: &mut World,
+    candidates: &[(u32, ActorCombat)],
+    combat_world: &combat::CombatWorld,
+    now: f32,
+    frame: f32,
+    heights: &dyn Fn(f32, f32) -> f32,
+) {
+    let remote_world = combat::CombatWorld { observer: false, duel_mode: combat::DUEL_NONE, ..combat_world.clone() };
+    let attackers: Vec<_> = {
+        let actors = world.resource::<Actors>();
+        let motions = world.resource::<Assets<m2_assets::race::RaceMotionAsset>>();
+        candidates.iter().filter_map(|(vid, attacker)| {
+            let fight = actors.fights.get(vid)?;
+            if !fight.attacking || fight.dead || attacker.in_safe { return None; }
+            let character = actors.characters.get(vid)?;
+            let elapsed = character.motion_elapsed(now)?;
+            let attack = motions.get(character.motion_handle()?)?.attack.clone();
+            let rotation = actors.by_vid.get(vid)?.rotation;
+            Some((*vid, *attacker, rotation, elapsed, attack))
+        }).collect()
+    };
+    for (vid, attacker, rotation, elapsed, attack) in attackers {
+        let at = Vec3::new(attacker.x as f32, -attacker.y as f32, heights(attacker.x as f32, attacker.y as f32));
+        let has_splash = world.resource::<Actors>().fights.get(&vid).is_some_and(|fight| fight.splash.is_some());
+        for (victim_vid, victim) in candidates {
+            if *victim_vid == vid || victim.in_safe || !combat::is_attackable(&remote_world, &attacker, victim) { continue; }
+            let position = Vec3::new(victim.x as f32, -victim.y as f32, heights(victim.x as f32, victim.y as f32));
+            let normal_reach = if victim.race == HUGE_RACE { 500.0 } else { 300.0 };
+            if !has_splash && (position - at).truncate().length_squared() >= normal_reach * normal_reach { continue; }
+            let hit = world.resource_scope(|world, mut actors: Mut<Actors>| {
+                if actors.fights.get(victim_vid).is_some_and(|fight| fight.dead || fight.invisible_until > now) { return None; }
+                let spheres = victim_spheres(world, &mut actors, *victim_vid, position);
+                let fight = actors.fights.entry(vid).or_default();
+                if let Some(splash) = &mut fight.splash
+                    && splash.hit(*victim_vid, &spheres, now, None)
+                {
+                    return Some(splash.splash.attack);
+                }
+                if (position - at).truncate().length_squared() < normal_reach * normal_reach
+                    && let Some(attack) = &attack
+                    && battle::normal_attack_hit(attack, &mut fight.hits, elapsed, frame, at, rotation,
+                        combat::attack_reach(attacker.affect_flags), *victim_vid, &spheres, now)
+                {
+                    return Some(attack.attack);
+                }
+                None
+            });
+            if let Some(attack) = hit {
+                attack_feedback(world, &attack, at, rotation, victim, position, now);
             }
         }
     }
@@ -3776,7 +4067,7 @@ fn use_skill(
         if let Some(mut net) = world.get_resource_mut::<Net>() {
             net.send_guild_use_skill(vnum, 0);
         }
-        let cooldown = combat::skill_cooldown(&data, f32::from(level), points, points.casting_speed);
+        let cooldown = combat::skill_cooldown(&data, combat::skill_power(level, grade), points, points.casting_speed);
         if let Some(mut state) = world.get_resource_mut::<combat::SkillState>() {
             state.run_cool_time(vnum, cooldown, now);
         }
@@ -3788,30 +4079,10 @@ fn use_skill(
         fail(world, SkillError::MountSkillLevel);
         return;
     }
-    let check = SkillCheck {
-        level,
-        grade,
-        level_limit_enforced: false,
-        mounted: mount,
-        in_safe: me.in_safe,
-        fishing: false,
-        weapon_type: character.weapon_type().unwrap_or(combat::weapon::NONE),
-        arrows,
-        cool_time_enforced: true,
-        cool_time_left: cool_left,
-        empty_bottles: world.get_resource::<PlayerState>().map_or(0, |player| u32::from(player.has_item(27995))),
-        poison_bottles: world.get_resource::<PlayerState>().map_or(0, |player| u32::from(player.has_item(27996))),
-        affected_by_dash: false,
-        is_charge_reserved: control.reserved_skill.is_some(),
-    };
-    if let Err(error) = combat::check_skill_usable(&data, &check, points) {
-        fail(world, error);
-        return;
-    }
     // `__UseSkill`'s toggle branch: an active toggle only sends the packet to
     // turn it off, and does not play the motion again.
-    let toggle_active = (vnum as usize) < 255
-        && world.get_resource::<combat::SkillState>().is_some_and(|state| state.active[vnum as usize]);
+    let toggle_affect = match vnum { 63 => Some(19), 78 => Some(26), 79 => Some(25), _ => None };
+    let toggle_active = toggle_affect.is_some_and(|affect| combat::has_affect(me.affect_flags, affect));
     if data.is_toggle() && toggle_active {
         if let Some(mut net) = world.get_resource_mut::<Net>() {
             net.send_use_skill(vnum, 0);
@@ -3823,10 +4094,31 @@ fn use_skill(
         }
         return;
     }
+    if control.state == MoveState::Casting { return; }
+    let check = SkillCheck {
+        level,
+        grade,
+        level_limit_enforced: true,
+        mounted: mount,
+        in_safe: me.in_safe,
+        fishing: false,
+        weapon_type: character.weapon_type().unwrap_or(combat::weapon::NONE),
+        arrows,
+        cool_time_enforced: true,
+        cool_time_left: cool_left,
+        empty_bottles: world.get_resource::<PlayerState>().map_or(0, |player| u32::from(player.has_item(27995))),
+        poison_bottles: world.get_resource::<PlayerState>().map_or(0, |player| u32::from(player.has_item(27996))),
+        affected_by_dash: combat::has_affect(me.affect_flags, combat::AFFECT_DASH),
+        is_charge_reserved: control.reserved_skill.is_some_and(|(skill, _, _)| skill == vnum),
+    };
+    if let Err(error) = combat::check_skill_usable(&data, &check, points) {
+        fail(world, error);
+        return;
+    }
 
-    let candidate = |vid: u32| candidates.iter().find(|(candidate, _)| *candidate == vid).map(|(_, actor)| *actor);
-    let mut target = control.target.and_then(candidate);
+    let candidate = |vid: u32| if vid == me.vid { Some(*me) } else { candidates.iter().find(|(candidate, _)| *candidate == vid).map(|(_, actor)| *actor) };
     let needs_target = data.needs_target() || data.can_change_direction() || data.is_auto_search_target();
+    let mut target = needs_target.then(|| control.target.and_then(candidate)).flatten();
     if needs_target {
         if let Some(actor) = target {
             let acceptable = if data.needs_corpse() { actor.is_dead() } else { !actor.is_dead() };
@@ -3881,10 +4173,10 @@ fn use_skill(
                     if range > 0 && skill_distance(me, &actor) >= range as f32 {
                         // `__ProcessEnemySkillTargetRange`: charge skills send
                         // the packet now and then run into range.
-                        if data.is_charge() && !check.is_charge_reserved
-                            && let Some(mut net) = world.get_resource_mut::<Net>()
-                        {
-                            net.send_use_skill(vnum, actor.vid);
+                        if data.is_charge() && !check.is_charge_reserved {
+                            if let Some(mut net) = world.get_resource_mut::<Net>() { net.send_use_skill(vnum, 0); }
+                            let cooldown = combat::skill_cooldown(&data, combat::skill_power(level, grade), points, points.casting_speed);
+                            if let Some(mut state) = world.get_resource_mut::<combat::SkillState>() { state.run_cool_time(vnum, cooldown, now); }
                         }
                         reserve_skill(control, &actor, vnum, range, local);
                         return;
@@ -3915,9 +4207,17 @@ fn use_skill(
         face_actor(world, control, base, local, actor.vid);
     }
 
+    if let Some(actor) = target {
+        world.resource_mut::<FlyTargets>().set(control.main_vid, ShotTarget::Actor(actor.vid), false);
+        if let Some(mut net) = world.get_resource_mut::<Net>() {
+            net.send_fly_targeting(actor.vid, actor.x + base.0 as i32, actor.y + base.1 as i32, false);
+        }
+    }
+
+    let mut extra_shots = 0;
     // Fan/circle multi-target skills (`GetTargetCount`).
     if let Some(actor) = target {
-        let count = combat::skill_target_count(&data, f32::from(level), points);
+        let count = combat::skill_target_count(&data, combat::skill_power(level, grade), points);
         if count > 1 {
             let range = combat::skill_target_range(&data, points.bow_distance) as f32;
             let extra = combat::skill_targets(
@@ -3929,11 +4229,23 @@ fn use_skill(
                 data.is_fan_range(),
             );
             for vid in extra.into_iter().filter(|vid| *vid != actor.vid).take(count as usize - 1) {
-                if let Some(other) = candidate(vid)
-                    && let Some(mut net) = world.get_resource_mut::<Net>()
-                {
-                    net.send_fly_targeting(vid, other.x + base.0 as i32, other.y + base.1 as i32, true);
+                if let Some(other) = candidate(vid) {
+                    world.resource_mut::<FlyTargets>().set(control.main_vid, ShotTarget::Actor(vid), true);
+                    extra_shots += 1;
+                    if let Some(mut net) = world.get_resource_mut::<Net>() {
+                        net.send_fly_targeting(vid, other.x + base.0 as i32, other.y + base.1 as i32, true);
+                    }
                 }
+            }
+            while extra_shots + 1 < count.min(16) {
+                let offset = ((now * 977.0 + extra_shots as f32 * 137.5).sin()) * 10.0;
+                let heading = (control.advancing + offset).to_radians();
+                let at = local + Vec2::new(heading.sin(), heading.cos()) * 8000.0;
+                world.resource_mut::<FlyTargets>().set(control.main_vid, ShotTarget::Position(Vec3::new(at.x, -at.y, 0.0)), true);
+                if let Some(mut net) = world.get_resource_mut::<Net>() {
+                    net.send_fly_targeting(0, at.x as i32 + base.0 as i32, at.y as i32 + base.1 as i32, true);
+                }
+                extra_shots += 1;
             }
         }
     }
@@ -3945,23 +4257,33 @@ fn use_skill(
     {
         trace!("skill {vnum}: no motion for index {motion}");
     }
+    if motion.is_some() {
+        let loops = combat::skill_motion_loop_count(&data, combat::skill_power(level, grade), points);
+        character.set_motion_loop_count(if extra_shots > 0 { loops.max(1) + extra_shots } else { loops });
+    }
     control.reserved_skill = None;
-    control.destination = None;
-    control.combo = 0;
-    control.pre_input = false;
-    control.state = MoveState::Casting;
-    control.action_started = now;
-    // `m_kCurMotNode.uSkill`: the motion's hits are this skill's.
-    control.motion_skill = vnum;
-    control.hits.clear();
-    control.splash = None;
+    control.reserved_attack = None;
+    control.reserved_talk = None;
+    control.reserved_item = None;
+    control.smart_held = false;
+    if !data.is_moving_skill() { control.destination = None; }
+    if motion.is_some() {
+        control.combo = 0;
+        control.pre_input = false;
+        control.state = MoveState::Casting;
+        control.action_started = now;
+        // `m_kCurMotNode.uSkill`: the motion's hits are this skill's.
+        control.motion_skill = vnum;
+        control.hits.clear();
+        control.splash = None;
+    }
     if let Some(mut net) = world.get_resource_mut::<Net>() {
         // `NEW_UseSkill` -> `__OnUseSkill` -> `OnUseSkill`: `FUNC_SKILL |
         // motion` with the loop count (and bit 4 for the moving skill, horse
         // dash 137), then `__SendUseSkill`.
         if let Some(motion) = motion {
-            let mut arg = combat::skill_motion_loop_count(&data, f32::from(level), points).min(15) as u8;
-            if vnum == 137 {
+            let mut arg = combat::skill_motion_loop_count(&data, combat::skill_power(level, grade), points).min(15) as u8;
+            if data.is_moving_skill() {
                 arg |= 1 << 4;
             }
             let (x, y) = global_of(base, local);
@@ -3969,7 +4291,7 @@ fn use_skill(
         }
         net.send_use_skill(vnum, target_vid);
     }
-    let cooldown = combat::skill_cooldown(&data, f32::from(level), points, points.casting_speed);
+    let cooldown = combat::skill_cooldown(&data, combat::skill_power(level, grade), points, points.casting_speed);
     if let Some(mut state) = world.get_resource_mut::<combat::SkillState>() {
         state.run_cool_time(vnum, cooldown, now);
         if data.is_toggle() && (vnum as usize) < state.active.len() {
@@ -3992,6 +4314,10 @@ fn skill_distance(a: &ActorCombat, b: &ActorCombat) -> f32 {
 
 /// `__ReserveUseSkill`: run towards the target and cast when in range.
 fn reserve_skill(control: &mut PlayerControl, target: &ActorCombat, vnum: u32, range: u32, local: Vec2) {
+    control.reserved_attack = None;
+    control.reserved_talk = None;
+    control.reserved_item = None;
+    control.smart_held = false;
     control.reserved_skill = Some((vnum, target.vid, range));
     let destination = Vec2::new(target.x as f32, target.y as f32);
     let towards = (local - destination).normalize_or_zero();
@@ -4239,7 +4565,10 @@ fn place_camera(world: &mut World, position: Vec3, control: &PlayerControl) {
     let (sin_pitch, cos_pitch) = control.pitch.sin_cos();
     let offset = Vec3::new(sin_yaw * cos_pitch, sin_pitch, cos_yaw * cos_pitch) * control.distance;
     let target = position + Vec3::Y * CAMERA_TARGET_UP;
-    let eye = target + offset;
+    let now = world.get_resource::<Time>().map_or(0.0, Time::elapsed_secs);
+    let shake = world.get_resource::<ScreenWave>().filter(|wave| wave.until > now)
+        .map_or(Vec3::ZERO, |wave| Vec3::new((now * 97.0).sin(), (now * 131.0).sin(), 0.0) * wave.power);
+    let eye = target + offset + shake;
     if let Some(mut shadow_target) = world.get_resource_mut::<crate::render::shadow::SceneCameraTarget>() {
         shadow_target.0 = Some(target);
     }
@@ -4529,7 +4858,7 @@ mod tests {
         assert_eq!(actors.by_vid[&9].weapon, 19);
     }
 
-    fn remote_pc(x: i32) -> Actor {
+    pub(super) fn remote_pc(x: i32) -> Actor {
         Actor {
             name: String::new(), race: 0, kind: m2_net::phase::ACTOR_TYPE_PC, level: 0, armor: 0, weapon: 0, hair: 0, move_speed: 100, attack_speed: 100, walk_mode: false,
             empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
@@ -4539,7 +4868,7 @@ mod tests {
         }
     }
 
-    fn command(func: u8, x: i32, time: u32) -> ActorMove {
+    pub(super) fn command(func: u8, x: i32, time: u32) -> ActorMove {
         ActorMove { vid: 9, func, arg: 0, rotation: 90.0, x, y: 0, time, duration: 0 }
     }
 
@@ -4960,6 +5289,14 @@ pub struct MiniMap {
     pub camera: f32,
     /// Map-local positions of the other characters.
     pub marks: Vec<(Vec2, MiniMapMark)>,
+    pub targets: Vec<Vec2>,
+}
+
+/// Target updates carry global map coordinates; actor targets follow the
+/// visible actor, falling back to their last server-provided position.
+fn quest_target_position(target: &crate::social::QuestTarget, actors: &Actors, base: (u32, u32)) -> Option<Vec2> {
+    let global = actors.by_vid.get(&target.vid).map(|actor| (actor.x, actor.y)).or(target.position)?;
+    Some(Vec2::new((global.0 - base.0 as i32) as f32, (global.1 - base.1 as i32) as f32))
 }
 
 fn update_minimap(world: &mut World) {
@@ -4997,7 +5334,11 @@ fn update_minimap(world: &mut World) {
             Some((Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32), kind))
         })
         .collect();
+    let targets = world.get_resource::<crate::social::SocialState>().map(|social| {
+        social.targets.values().filter_map(|target| quest_target_position(target, actors, base)).collect()
+    }).unwrap_or_default();
     let mut minimap = world.resource_mut::<MiniMap>();
+    minimap.targets = targets;
     minimap.map = Some(map);
     minimap.center = center;
     minimap.global = (local.0 + base.0 as i32, local.1 + base.1 as i32);
@@ -5036,13 +5377,13 @@ fn apply_stealth(world: &mut World, mut applied: Local<HashMap<Entity, f32>>) {
     let mut wanted: Vec<(Entity, f32)> = Vec::new();
     if let Some(State::Ready { character, .. }) = world.resource::<GameWorld>().state.as_ref() {
         let flags = world.get_resource::<PlayerState>().map_or(0, |player| player.affect_flags);
-        wanted.push((character.root, if stealthy(flags) { 0.5 } else { 1.0 }));
+        wanted.push((character.root, if world.get::<crate::render::character::MotionHidden>(character.root).is_some() { 0.0 } else if stealthy(flags) { 0.5 } else { 1.0 }));
     }
     {
         let actors = world.resource::<Actors>();
         for (vid, character) in &actors.characters {
             let flags = actors.by_vid.get(vid).map_or(0, |actor| actor.affect_flags);
-            let hidden = stealthy(flags) || combat::has_affect(flags, combat::AFFECT_INVISIBILITY);
+            let hidden = world.get::<crate::render::character::MotionHidden>(character.root).is_some() || stealthy(flags) || combat::has_affect(flags, combat::AFFECT_INVISIBILITY);
             wanted.push((character.root, if hidden { 0.0 } else { 1.0 }));
         }
     }
@@ -5098,3 +5439,7 @@ fn apply_stealth(world: &mut World, mut applied: Local<HashMap<Entity, f32>>) {
         applied.insert(root, alpha);
     }
 }
+
+#[cfg(test)]
+#[path = "skill_tests.rs"]
+mod skill_tests;

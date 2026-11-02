@@ -22,7 +22,7 @@ ones below keep state or raise a `SocialEvent`, but nothing draws or answers it:
 | `GC_DRAGON_SOUL_REFINE` | `uidragonsoul.py` | event only |
 | `GC_VIEW_EQUIP` | `uiequipmentdialog.py` (inspect another player) | state only |
 | `GC_SHOP_SIGN` | `BINARY_PrivateShop_Appear` (sign board over the seller) | state only; signs not drawn; no private shop builder (`uiprivateshopbuilder.py`) |
-| `GC_NPC_POSITION`, `GC_LAND_LIST`, `GC_TARGET_*` | atlas marks, guild areas, quest target arrows (`CPythonMiniMap`, `CreateTargetEffect`) | state only; the mini map/atlas does not draw them; no ground arrow effect |
+| `GC_NPC_POSITION`, `GC_LAND_LIST` | atlas marks, guild areas (`CPythonMiniMap`) | state only; atlas/guild areas are not drawn. `GC_TARGET_*` now drives world arrows and flashing minimap dots |
 | `GC_DUNGEON` | `SetDungeonDestinationPosition` (mini map arrow) | state only |
 | `GC_LOVER_INFO`, `GC_LOVE_POINT_UPDATE` | marriage gauge | state only |
 | `GC_AFFECT_ADD/REMOVE` | `uiaffectshower.py` (buff icons with timers) | icons, names and time left shown; the auto-potion gauge image and the horse/lover icons are not |
@@ -85,15 +85,15 @@ have partial coverage.)
 
 - **Main character fishing and mining** (`__OnClickActor` with a rod/pick,
   `MOTION_MODE_FISHING`, `CG_FISHING`, `CG_DIG`).
-- **Horse skills and horse state gauge**, mounted dust effects
+- **Horse state gauge**, mounted dust effects
   (`EFFECT_HORSE_DUST`, `__IsInDustRange`) and walking dust.
 - **Remote monsters** now use `StateProcess`/`MovementProcess` like players,
   but walk at the pace their packet implies (distance over `dwDuration`)
   rather than their run motion's accumulation. Pushes are a separate
   offset, as in C++.
 - **`CActorInstance` push collision**: `__Push` from `GC_SYNC_POSITION` now
-  blends like C++, but without `IsResistFallen` and without the per-step
-  `isPhysicalCollision` test.
+  blends like C++; hit reactions now honor `IsResistFallen`. The per-step
+  `isPhysicalCollision` test remains missing.
 - **Target lock** after a hit now follows `SetTarget(vid, FALSE)` (1 s);
   `CanChangeTarget` while casting is not checked.
 - **Night/day environment** (`DayMode`), weather and seasonal effects.
@@ -127,3 +127,6 @@ hidden cursor, right-click targeting), the task bar's pick-up/use split,
 HP/SP recovery bars, own stealth at half opacity and others hidden, the
 affect shower, monsters on the command queue with additive pushes, and
 polymorph bodies.
+
+PC skill parity and the remaining validation limits are documented in
+[`docs/pc-skills-audit.md`](docs/pc-skills-audit.md).

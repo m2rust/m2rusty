@@ -115,6 +115,12 @@ impl EffectMeshInstance {
         self.mesh_controller.current_frame()
     }
 
+    /// Every texture frame needed before this finite effect starts playing.
+    pub fn texture_names(&self) -> impl Iterator<Item = &[u8]> {
+        self.mesh.iter().flat_map(|mesh| &mesh.meshes)
+            .flat_map(|element| &element.textures).map(Vec::as_slice)
+    }
+
     /// `(current frame, still active)` of each mesh's texture controller.
     pub fn texture_frames(&self) -> Vec<(u8, bool)> {
         let main = u32::from(self.mesh_controller.current_frame());

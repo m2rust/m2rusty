@@ -179,6 +179,12 @@ impl EffectInstance {
         ([t[0] + p[0], t[1] + p[1], t[2] + p[2]], self.data.bounding_sphere_radius)
     }
 
+    /// Particle and mesh texture frames, including ones not emitted yet.
+    pub fn texture_names(&self) -> impl Iterator<Item = &[u8]> {
+        self.data.particles.iter().flat_map(|system| &system.particle.textures).map(Vec::as_slice)
+            .chain(self.meshes.iter().flat_map(EffectMeshInstance::texture_names))
+    }
+
     pub fn particle_systems(&self) -> &[ParticleSystemInstance] {
         &self.particles
     }
