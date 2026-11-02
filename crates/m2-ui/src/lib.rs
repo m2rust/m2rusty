@@ -30,6 +30,7 @@ pub mod hud;
 pub mod inventory;
 pub mod login;
 pub mod quickslots;
+pub mod quest_dialog;
 pub mod select;
 pub mod skills;
 pub mod sound;
@@ -54,6 +55,7 @@ impl Plugin for M2UiPlugin {
             emotes::EmotesPlugin,
             sound::UiSoundPlugin,
             target::TargetBoardPlugin,
+            quest_dialog::QuestDialogPlugin,
         ));
     }
 }

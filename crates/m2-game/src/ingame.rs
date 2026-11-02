@@ -335,6 +335,8 @@ pub struct PlayerControl {
     pub reserved_skill: Option<(u32, u32, u32)>,
     /// `MODE_CLICK_ACTOR`: attack this VID once it is in reach.
     pub reserved_attack: Option<u32>,
+    /// `MODE_CLICK_ACTOR`: request this NPC's quest script once in reach.
+    reserved_talk: Option<u32>,
     /// `m_isPreInput`: space was pressed inside the combo's pre-input window.
     pub pre_input: bool,
     /// `m_wcurComboType` (`SetComboType`, the combo skill); 0 is the basic combo.
@@ -371,6 +373,7 @@ impl Default for PlayerControl {
             action_started: 0.0,
             reserved_skill: None,
             reserved_attack: None,
+            reserved_talk: None,
             pre_input: false,
             combo_type: 0,
             attack_rotation: 0.0,
@@ -1574,24 +1577,56 @@ fn drive_world(world: &mut World) {
                 && let Some(cursor) = cursor
             {
                 if let Some(vid) = pick_actor(world, cursor, base) {
+                    info!("clicked actor {vid}");
                     control.target = Some(vid);
                     control.target_distance = distance_to(vid, local);
+                    control.reserved_talk = None;
+                    control.reserved_attack = None;
                     if let Some(mut net) = world.get_resource_mut::<Net>() {
                         net.send_target(vid);
                     }
-                    let in_reach = control.target_distance.is_some_and(|distance| {
-                        let bow = matches!(character.motion_mode(), crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow);
-                        distance <= if bow { bow_range(&points) } else { ATTACK_RANGE }
-                    });
-                    if attackable(vid) && in_reach {
-                        click_attack = true;
-                    } else if let Some((_, actor)) = candidates.iter().find(|(candidate, _)| *candidate == vid) {
-                        let destination = Vec2::new(actor.x as f32, actor.y as f32);
-                        control.destination = Some(destination);
-                        control.reserved_attack = Some(vid);
-                        info!("walk to actor {vid} at {:.0},{:.0}", destination.x, destination.y);
+                    let actor = candidates
+                        .iter()
+                        .find(|(candidate, _)| *candidate == vid)
+                        .map(|(_, actor)| *actor)
+                        .unwrap_or_default();
+                    if actor.is_npc() {
+                        if control.target_distance.is_some_and(|distance| distance <= 250.0) {
+                            control.destination = None;
+                            if let Some(mut net) = world.get_resource_mut::<Net>() {
+                                if net.send_on_click(vid) {
+                                    info!("requested NPC dialog from {vid}");
+                                } else {
+                                    warn!("could not send NPC click for {vid}");
+                                }
+                            }
+                        } else {
+                            let destination = Vec2::new(actor.x as f32, actor.y as f32);
+                            let direction = (destination - local).normalize_or_zero();
+                            control.destination = Some(destination - direction * 180.0);
+                            control.reserved_talk = Some(vid);
+                            info!("walking into click range of NPC {vid}");
+                        }
+                    } else {
+                        let in_reach = control.target_distance.is_some_and(|distance| {
+                            let bow = matches!(
+                                character.motion_mode(),
+                                crate::render::character::MotionMode::Bow | crate::render::character::MotionMode::HorseBow
+                            );
+                            distance <= if bow { bow_range(&points) } else { ATTACK_RANGE }
+                        });
+                        if attackable(vid) && in_reach {
+                            click_attack = true;
+                        } else {
+                            let destination = Vec2::new(actor.x as f32, actor.y as f32);
+                            control.destination = Some(destination);
+                            control.reserved_attack = Some(vid);
+                            info!("walk to actor {vid} at {:.0},{:.0}", destination.x, destination.y);
+                        }
                     }
                 } else {
+                    control.reserved_talk = None;
+                    control.reserved_attack = None;
                     let height = |x: f32, y: f32| scene.ground_height(x, y);
                     if let Some(point) = pick_terrain(world, cursor, height, extent) {
                         control.destination = Some(point);
@@ -1599,6 +1634,26 @@ fn drive_world(world: &mut World) {
                     }
                 }
             }
+
+            // `CInstanceBase::OnTargeted` attaches the registered
+            // `EFFECT_TARGET` (`click_glow_select.mse`) and follows the actor.
+            let hover_vid = (!focus.pointer)
+                .then_some(cursor)
+                .flatten()
+                .and_then(|cursor| pick_actor(world, cursor, base))
+                .filter(|vid| Some(*vid) != control.target);
+            let marker_position = |vid: u32| {
+                let actor = world.resource::<Actors>().by_vid.get(&vid)?;
+                let x = (actor.x - base.0 as i32) as f32;
+                let y = (actor.y - base.1 as i32) as f32;
+                Some(Vec3::new(x, -y, scene.ground_height(x, y)))
+            };
+            let target_marker = control.target.and_then(|vid| marker_position(vid).map(|position| (vid, position)));
+            let hover_marker = hover_vid.and_then(|vid| marker_position(vid).map(|position| (vid, position)));
+            let packs = world.get_resource::<M2Packs>().cloned();
+            let mut fx = world.resource_mut::<CombatFx>();
+            fx.set_target(packs.as_ref(), target_marker);
+            fx.set_hover(packs.as_ref(), hover_marker);
 
             // The demo run: walk to the nearest actor, then swing at it.
             if *demo {
@@ -1689,6 +1744,26 @@ fn drive_world(world: &mut World) {
                 } else if in_reach {
                     control.reserved_attack = None;
                     click_attack = true;
+                }
+            }
+
+            // `__ReserveClickActor`: stop within the NPC's clickable distance,
+            // then ask the server for the quest script with `HEADER_CG_ON_CLICK`.
+            if let Some(vid) = control.reserved_talk {
+                if let Some(distance) = distance_to(vid, local) {
+                    if distance <= 250.0 {
+                        control.reserved_talk = None;
+                        control.destination = None;
+                        if let Some(mut net) = world.get_resource_mut::<Net>() {
+                            if net.send_on_click(vid) {
+                                info!("requested NPC dialog from {vid}");
+                            } else {
+                                warn!("could not send NPC click for {vid}");
+                            }
+                        }
+                    }
+                } else {
+                    control.reserved_talk = None;
                 }
             }
 
@@ -2917,15 +2992,12 @@ fn nearest_attackable(
 /// The actor under the pointer: `CPythonCharacterManager::OLD_GetPickedInstance`
 /// with a screen-space test against the tracked actors.
 fn pick_actor(world: &mut World, cursor: Vec2, base: (u32, u32)) -> Option<u32> {
-    let actors: Vec<(u32, f32, f32)> = world
+    let actors: Vec<(u32, Entity)> = world
         .get_resource::<Actors>()
         .map(|actors| {
-            actors
-                .by_vid
-                .iter()
-                .map(|(&vid, actor)| {
-                    (vid, (actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32)
-                })
+            actors.entities.iter()
+                .filter(|(vid, _)| actors.by_vid.get(*vid).is_some_and(|actor| actor.combat(**vid, base).can_pick()))
+                .map(|(&vid, &entity)| (vid, entity))
                 .collect()
         })
         .unwrap_or_default();
@@ -2935,12 +3007,18 @@ fn pick_actor(world: &mut World, cursor: Vec2, base: (u32, u32)) -> Option<u32> 
     };
     let (camera, transform) = camera?;
     let mut best: Option<(f32, u32)> = None;
-    for (vid, x, y) in actors {
-        let position = Vec3::new(x, 80.0, -y);
-        let Ok(screen) = camera.world_to_viewport(&transform, position) else { continue };
-        let distance = screen.distance(cursor);
-        if distance <= 60.0 && best.is_none_or(|(best_distance, _)| distance < best_distance) {
-            best = Some((distance, vid));
+    for (vid, entity) in actors {
+        let Some(transform_actor) = world.get::<Transform>(entity) else { continue };
+        let root = transform_actor.translation;
+        // Test several points up the actor's rendered height. The old fixed
+        // map-origin point missed actors on raised terrain and taller NPCs.
+        for height in [40.0, 100.0, 170.0, 250.0] {
+            let position = root + Vec3::Y * height;
+            let Ok(screen) = camera.world_to_viewport(&transform, position) else { continue };
+            let distance = screen.distance(cursor);
+            if distance <= 78.0 && best.is_none_or(|(best_distance, _)| distance < best_distance) {
+                best = Some((distance, vid));
+            }
         }
     }
     best.map(|(_, vid)| vid)

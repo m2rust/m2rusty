@@ -185,6 +185,11 @@ impl Net {
         self.game.send_target(vid)
     }
 
+    /// Requests an NPC script (`CPythonPlayer::__SendClickActorPacket`).
+    pub fn send_on_click(&mut self, vid: u32) -> bool {
+        self.game.send_on_click(vid)
+    }
+
     /// `SendFlyTargetingPacket`/`SendAddFlyTargetingPacket`, global coordinates.
     pub fn send_fly_targeting(&mut self, vid: u32, x: i32, y: i32, add: bool) -> bool {
         if add {

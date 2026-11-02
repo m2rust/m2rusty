@@ -47,7 +47,7 @@ impl Plugin for TargetBoardPlugin {
 
 /// A `ThinBoard`'s corners, edges and translucent base, stretched with the
 /// node.
-fn thin_board(commands: &mut Commands, assets: &AssetServer, parent: Entity) {
+pub(crate) fn thin_board(commands: &mut Commands, assets: &AssetServer, parent: Entity) {
     let tiled = |x: bool, y: bool| ImageNode {
         image_mode: NodeImageMode::Tiled { tile_x: x, tile_y: y, stretch_value: 1.0 },
         ..default()

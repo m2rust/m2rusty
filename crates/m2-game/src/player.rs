@@ -252,6 +252,10 @@ fn item_sub_model(packs:&m2_formats::pack::PackManager,vnum:u32,model:&str)->Opt
 #[derive(Message,Clone,Debug)]
 pub enum PlayerAction {
     Chat {text:String,kind:u8},
+    /// Selects a server-provided NPC quest dialog answer (`254` continues).
+    QuestAnswer(u8),
+    /// Clicks a quest letter/button offered by an NPC script.
+    QuestButton(u32),
     UseItem(ItemPosition),
     MoveItem {source:ItemPosition,destination:ItemPosition,count:u8},
     BindItem {slot:u8,position:ItemPosition},
@@ -291,6 +295,8 @@ fn dispatch(mut actions:MessageReader<PlayerAction>,mut net:ResMut<Net>,mut play
         if net.game.phase()!=Phase::Game { continue; }
         let ok=match action {
             PlayerAction::Chat{text,kind} => !text.is_empty() && text.len()<512 && !text.chars().any(char::is_control) && matches!(kind,0|3|4|6) && net.game.send_chat(text,*kind),
+            PlayerAction::QuestAnswer(answer) => net.game.send_script_answer(*answer),
+            PlayerAction::QuestButton(index) => net.game.send_script_button(*index),
             PlayerAction::UseItem(pos) => pos.valid() && player.items.contains_key(pos) && net.game.stream.send_packet(&wire::TPacketCGItemUse{header:cg::ITEM_USE,pos:pos.wire()}),
             PlayerAction::MoveItem{source,destination,count} => {
                 source!=destination && source.valid() && destination.valid() && player.items.get(source).is_some_and(|i|*count<=i.count) && net.game.stream.send_packet(&wire::TPacketCGItemMove{header:cg::ITEM_MOVE,pos:source.wire(),change_pos:destination.wire(),num:*count})

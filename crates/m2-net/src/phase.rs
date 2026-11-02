@@ -1024,6 +1024,21 @@ impl NetMachine {
         self.stream.send_packet(&wire::TPacketCGTarget { header: cg::TARGET, dwVID: vid })
     }
 
+    /// `SendOnClickPacket`, used to request an NPC's quest script.
+    pub fn send_on_click(&mut self, vid: u32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGOnClick { header: cg::ON_CLICK, vid })
+    }
+
+    /// `SendScriptAnswerPacket`; 254 advances or cancels the current script.
+    pub fn send_script_answer(&mut self, answer: u8) -> bool {
+        self.stream.send_packet(&wire::TPacketCGScriptAnswer { header: cg::SCRIPT_ANSWER, answer })
+    }
+
+    /// `SendScriptButtonPacket`, used by quest letter buttons.
+    pub fn send_script_button(&mut self, index: u32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGScriptButton { header: cg::SCRIPT_BUTTON, idx: index })
+    }
+
     /// `SendFlyTargetingPacket`; `(x, y)` are already map-global coordinates, as
     /// the C++ converts them with `__LocalPositionToGlobalPosition` first.
     pub fn send_fly_targeting(&mut self, vid: u32, x: i32, y: i32) -> bool {
