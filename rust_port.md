@@ -349,18 +349,29 @@ See also [c++_rust_bugs.md](c++_rust_bugs.md) for the C++ bugs found along the w
   `ymir work/zone/<CP949 dir>/hay_01.gr2`/`hay_02.gr2`; the `m2://` source takes
   UTF-8 names, so those two fail to load (logged by Bevy). The reversible
   canonical mapping promised in §9 is now needed for full map objects.
-- **Movement has no collision or pathfinding.** Click-to-move runs in a straight
-  line and only the terrain height is sampled: the character can walk through
-  buildings, trees and water (`m2_world`'s attribute maps are ported but not
-  wired). Attacks use the ported `IsAttackableInstance` rules and the server's
-  damage replies are still ignored. Only the main character's mount is drawn;
-  other actors' `mount_vnum` is tracked but not rendered.
-- **Combat visuals are partial.** Attack and skill motions, horse motions and
-  the horse model are played, and the protocol packets are sent, but hit
-  effects (`.mse` blow/critical/skill effects), motion sound scripts and the
-  flying arrow/`CG_SHOOT` projectile are not spawned yet. Skill damage numbers
-  and the server's `GC_DAMAGE_INFO` are ignored, and only the main character's
-  mount is drawn.
+- **Collision and combat (`m2_game::battle`, `fx`).** Movement ports
+  `CheckAdvancing`: `ATTRIBUTE_BLOCK` cells stop the main character, building
+  `.mdatr` shapes (`m2_formats::attribute`; all 1,170 shipped files parse:
+  7,793 planes, 297 spheres, 456 cylinders) and SpeedTree spheres/cylinders
+  slide it or stop it, and other actors' body spheres stop it. There is no
+  pathfinding, and other actors are not collision-checked. Melee hits are
+  decided client-side as in C++: the `.msa` `HitPosition` sweep against the
+  victim's `.msm` defending spheres (`__NormalAttackProcess`), plus skill
+  `SpecialAttacking` splash areas; only a hit sends `CG_ATTACK` (with the skill
+  for skill motions). Holding space chains the combo on each step's
+  `ComboInputData` (pre-input, direct input, input limit), with the
+  `RegisterComboAttackNew` tables; each step sends `FUNC_COMBO` and skills send
+  `FUNC_SKILL`. Victims shake and play damage/knockdown motions, monsters' and
+  players' `FUNC_ATTACK`/`COMBO`/`MOB_SKILL`/`SKILL` moves play their motions
+  and their swings hit the main character. `GC_DEAD`/`GC_STUN` play deaths,
+  `GC_TARGET` drives the target board (`m2_ui::target`), and `GC_DAMAGE_INFO`
+  shows the original `damagevalue/*.mse` digits. Motion `.mss` sounds and motion
+  effect events, plus the `blow_1_low.mse` hit spark, are played.
+  Not yet: knock-back push (`fExternalForce`), stiffen delays, attack speed,
+  the combo skill's `SetComboType`, the arrow projectile, effects that follow
+  a bone after spawning, and the restart dialog after death.
+  The `--demo` run was checked on 2026-11-02 (the combo motion starts); a hit
+  on a monster has not been verified against a live server yet.
 - **Superseded by D17, still in the tree:** `m2-script`, `m2-modgen`, the C ABI
   (`neoeter_python_abi`, CMake option `M2_BUILD_PYTHON_ABI`) and the module
   specs in `modules/`. Nothing in the client uses them any more; remove them

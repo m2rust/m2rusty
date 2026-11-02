@@ -159,6 +159,12 @@ impl Net {
         self.game.send_attack(0, victim)
     }
 
+    /// `SendAttackPacket(uSkill, victim)`: a hit of skill `skill`'s motion
+    /// (`bType` is the skill vnum's low byte).
+    pub fn send_skill_attack(&mut self, skill: u32, victim: u32) -> bool {
+        self.game.send_attack(skill as u8, victim)
+    }
+
     /// `SendUseSkillPacket` (`CPythonPlayer::__SendUseSkill`).
     pub fn send_use_skill(&mut self, vnum: u32, target: u32) -> bool {
         self.game.send_use_skill(vnum, target)

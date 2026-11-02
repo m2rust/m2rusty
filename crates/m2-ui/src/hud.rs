@@ -101,6 +101,7 @@ fn lifecycle(
     build_chat(&mut commands);
     build_windows(&mut commands, &assets);
     inventory::build(&mut commands, &assets);
+    crate::target::build(&mut commands, &assets);
 }
 
 /// The character status panel and the system menu behind the task bar's right

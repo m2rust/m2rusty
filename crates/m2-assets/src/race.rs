@@ -178,8 +178,10 @@ pub enum RaceMotionEventKind {
     EffectToTarget { file: String, position: Vec3, following: bool },
     Sound { file: String },
     ScreenWaving { power: i32, range: i32 },
-    /// Special attack: damage window starting at the event.
-    SpecialAttacking,
+    /// Special attack (`MOTION_EVENT_TYPE_SPECIAL_ATTACKING`): a splash area
+    /// that hits for the event's duration. Kept in Metin2 space, as the
+    /// battle code works there.
+    SpecialAttacking(MotionSplash),
     Fly { file: String, bone: Option<String>, position: Vec3 },
     CharacterShow,
     CharacterHide,
@@ -195,6 +197,75 @@ pub struct RaceMotionEvent {
     pub start: f32,
     pub duration: f32,
     pub kind: RaceMotionEventKind,
+}
+
+/// `NRaceData::SAttackData`, the part of an attack the victim feels.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct MotionAttack {
+    /// `iAttackType` (0 splash, 1 snipe).
+    pub attack_type: i32,
+    /// `iHittingType` (`HIT_TYPE_NONE`/`GREAT`/`GOOD`).
+    pub hitting_type: i32,
+    pub stiffen_time: f32,
+    pub invisible_time: f32,
+    pub external_force: f32,
+    /// `iHitLimitCount`; 0 means the default limit.
+    pub hit_limit_count: i32,
+}
+
+impl From<&fmt::AttackData> for MotionAttack {
+    fn from(a: &fmt::AttackData) -> Self {
+        MotionAttack {
+            attack_type: a.attack_type,
+            hitting_type: a.hitting_type,
+            stiffen_time: a.stiffen_time,
+            invisible_time: a.invisible_time,
+            external_force: a.external_force,
+            hit_limit_count: a.hit_limit_count,
+        }
+    }
+}
+
+/// One `NRaceData::SHitData`: a weapon sweep between two times, sampled as
+/// `HitPosition` segments (actor-local, Metin2 space, before rotation).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MotionHit {
+    pub start: f32,
+    pub end: f32,
+    /// `mapHitPosition`: ascending times, each with the sweep's previous and
+    /// current point.
+    pub positions: Vec<(f32, [f32; 3], [f32; 3])>,
+}
+
+/// `NRaceData::SMotionAttackData`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MotionAttackData {
+    pub attack: MotionAttack,
+    /// `iMotionType` (`MOTION_TYPE_NORMAL`/`COMBO`/`SKILL`).
+    pub motion_type: i32,
+    pub hits: Vec<MotionHit>,
+}
+
+/// A `SpecialAttacking` event: spheres around the actor (Metin2 space,
+/// actor-local) and the attack they deal.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MotionSplash {
+    pub attack: MotionAttack,
+    /// `(radius, position)`.
+    pub spheres: Vec<(f32, [f32; 3])>,
+    /// `isEnableHitProcess`: whether a hit sends `CG_ATTACK`.
+    pub enable_hit_process: bool,
+}
+
+/// `CRaceMotionData::SComboInputData`, in motion seconds.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ComboInput {
+    /// `PreInputTime`: input from here on is remembered.
+    pub input_start: f32,
+    /// `DirectInputTime`: the next combo step may start.
+    pub next_combo: f32,
+    /// `InputLimitTime`: input after this is ignored.
+    pub input_end: f32,
 }
 
 /// A `.msa` motion script.
@@ -213,6 +284,14 @@ pub struct RaceMotionAsset {
     pub is_combo: bool,
     pub is_attacking: bool,
     pub events: Vec<RaceMotionEvent>,
+    /// `ComboInputData`, when the motion is a combo step.
+    pub combo_input: Option<ComboInput>,
+    /// `AttackingData`, when the motion attacks.
+    pub attack: Option<MotionAttackData>,
+    /// `LoopCancelEnable` (`m_bCancelEnableSkill`).
+    pub cancel_enable_skill: bool,
+    /// The sound script (`sound/<motion>.mss`): `(60 FPS frame, file)`.
+    pub sounds: Vec<(u32, String)>,
 }
 
 fn opt(bytes: &[u8], attaching: bool) -> Option<String> {
@@ -236,7 +315,11 @@ fn event(e: &fmt::MotionEvent) -> Option<RaceMotionEvent> {
         },
         D::Sound(x) => RaceMotionEventKind::Sound { file: path(&x.sound_file_name) },
         D::ScreenWaving(x) => RaceMotionEventKind::ScreenWaving { power: x.power, range: x.affecting_range },
-        D::SpecialAttacking(_) => RaceMotionEventKind::SpecialAttacking,
+        D::SpecialAttacking(x) => RaceMotionEventKind::SpecialAttacking(MotionSplash {
+            attack: MotionAttack::from(&x.attack),
+            spheres: x.collision.spheres.iter().map(|s| (s.radius, s.position)).collect(),
+            enable_hit_process: x.is_enable_hit_process != 0,
+        }),
         D::Fly(x) => RaceMotionEventKind::Fly {
             file: path(&x.fly_file_name),
             bone: opt(&x.attaching_bone_name, x.is_attaching != 0),
@@ -262,6 +345,27 @@ pub fn motion_from_data(m: &fmt::RaceMotionData) -> RaceMotionAsset {
         is_combo: m.is_combo_motion,
         is_attacking: m.is_attacking_motion,
         events: m.events.iter().filter_map(event).collect(),
+        combo_input: m.is_combo_motion.then_some(ComboInput {
+            input_start: m.combo_input.input_start_time,
+            next_combo: m.combo_input.next_combo_time,
+            input_end: m.combo_input.input_end_time,
+        }),
+        attack: m.is_attacking_motion.then(|| MotionAttackData {
+            attack: MotionAttack::from(&m.motion_attack_data.attack),
+            motion_type: m.motion_attack_data.motion_type,
+            hits: m
+                .motion_attack_data
+                .hit_data
+                .iter()
+                .map(|hit| MotionHit {
+                    start: hit.attack_start_time,
+                    end: hit.attack_end_time,
+                    positions: hit.hit_positions.iter().map(|(t, p)| (*t, p.last_position, p.position)).collect(),
+                })
+                .collect(),
+        }),
+        cancel_enable_skill: m.cancel_enable_skill != 0,
+        sounds: m.sound_instances.iter().map(|s| (s.frame, path(&s.file_name))).collect(),
     }
 }
 
@@ -283,8 +387,21 @@ impl AssetLoader for RaceMotionLoader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let script = script::parse(&bytes);
-        let data = fmt::RaceMotionData::from_script(&script)
+        let mut data = fmt::RaceMotionData::from_script(&script)
             .ok_or_else(|| Error::Decode(format!("{}: invalid motion script", load_context.path())))?;
+        // `LoadMotionData` -> `LoadSoundScriptData`: `sound/<motion>.mss`,
+        // named from the `d:/ymir work/...` spelling; a missing script is fine.
+        let motion = format!("d:/{}", paths::canonical_asset_path(&load_context.path().path().to_string_lossy()));
+        if let Some(sound) = fmt::sound_script_file_name(motion.as_bytes())
+            && let Some(sound) = paths::asset_path(&sound)
+        {
+            let sound_path = load_context.path().resolve(&bevy::asset::AssetPath::parse(&format!("/{sound}")));
+            if let Ok(bytes) = load_context.read_asset_bytes(sound_path).await
+                && let Some(sounds) = fmt::sound::parse_sound_information(&script::parse(&bytes), None)
+            {
+                fmt::sound::data_to_instance(&sounds, &mut data.sound_instances);
+            }
+        }
         Ok(motion_from_data(&data))
     }
 

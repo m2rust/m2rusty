@@ -15,7 +15,7 @@ use bevy::asset::{AssetServer, Assets, LoadState, UntypedAssetId};
 use bevy::prelude::*;
 use m2_assets::gr2::{Gr2Model, Gr2Spawn};
 use m2_assets::paths;
-use m2_assets::race::{RaceAsset, RaceMotionAsset, RaceSkin};
+use m2_assets::race::{RaceAsset, RaceAttachment, RaceAttachmentKind, RaceMotionAsset, RaceMotionEvent, RaceSkin};
 use m2_formats::pack::PackManager;
 use m2_formats::proto::parse_item_proto;
 
@@ -62,6 +62,14 @@ pub enum Motion {
     Attack(u32),
     /// `MOTION_SKILL + index` (`CRaceMotionData::NAME_SKILL + uMot`).
     Skill(u16),
+    /// `MOTION_DAMAGE` (`damage.msa`) or `MOTION_DAMAGE_BACK` (`damage_2.msa`).
+    Damage { back: bool },
+    /// `MOTION_DAMAGE_FLYING(_BACK)`: knocked down.
+    DamageFlying { back: bool },
+    /// `MOTION_STAND_UP(_BACK)`: getting up after a knockdown.
+    StandUp { back: bool },
+    /// `MOTION_DEAD`.
+    Dead,
 }
 
 /// `CRaceMotionData::EMode`.
@@ -135,6 +143,43 @@ impl MotionMode {
         }
     }
 
+    /// `RegisterComboAttackNew`: the `MOTION_COMBO_ATTACK_n` (1-based) of
+    /// each step of combo type `combo_type` (0..=2; `SetComboType`). Hand,
+    /// bow and mounted modes only have type 0 (`__GetCurrentComboType`).
+    pub fn combo_sequence(self, combo_type: u32) -> &'static [u32] {
+        match self {
+            MotionMode::General | MotionMode::Bow | MotionMode::HorseBow => &[1],
+            MotionMode::Horse => &[],
+            MotionMode::HorseOneHandSword
+            | MotionMode::HorseTwoHandSword
+            | MotionMode::HorseDualHandSword
+            | MotionMode::HorseFan
+            | MotionMode::HorseBell => &[1, 2, 3],
+            MotionMode::DualHandSword => match combo_type {
+                1 => &[1, 2, 3, 5, 7],
+                2 => &[1, 2, 3, 5, 6, 8],
+                _ => &[1, 2, 3, 4],
+            },
+            MotionMode::OneHandSword | MotionMode::TwoHandSword | MotionMode::Fan | MotionMode::Bell => {
+                match combo_type {
+                    1 => &[1, 2, 3, 5, 7],
+                    2 => &[1, 2, 3, 5, 6, 4],
+                    _ => &[1, 2, 3, 4],
+                }
+            }
+        }
+    }
+
+    /// The `.msa` of `MOTION_COMBO_ATTACK_n` in this mode (`combo_0n.msa`;
+    /// `attack.msa` in the hand and bow modes).
+    pub fn combo_file(self, n: u32) -> Option<String> {
+        match self {
+            MotionMode::General | MotionMode::Bow | MotionMode::HorseBow => Some("attack.msa".into()),
+            MotionMode::Horse => None,
+            _ => Some(format!("combo_{n:02}.msa")),
+        }
+    }
+
     /// The `MOTION_COMBO_ATTACK_1..` `.msa` of a combo step, 1-based. Mounted
     /// modes without a combo (`Horse`) have none.
     pub fn attack_file(self, combo: u32) -> Option<String> {
@@ -163,6 +208,26 @@ impl Motion {
             Motion::Run => "run.msa",
             Motion::Skill(index) => return skill_motion_file(race, index),
             Motion::Attack(combo) => return mode.attack_file(combo).map(|file| format!("{root}{}{file}", mode.folder())),
+            // `SetGeneralMotions` registers these in `general/`; the weapon
+            // modes only add their own damage motions, the horse its damage
+            // and death. Anything else falls back to the general mode.
+            Motion::Damage { back } => {
+                let folder = if mode.mounted() { MotionMode::Horse.folder() } else { mode.folder() };
+                let name = if back && !mode.mounted() { "damage_2.msa" } else { "damage.msa" };
+                return Some(format!("{root}{folder}{name}"));
+            }
+            Motion::DamageFlying { back } => {
+                let name = if back { "back_damage_flying.msa" } else { "damage_flying.msa" };
+                return Some(format!("{root}general/{name}"));
+            }
+            Motion::StandUp { back } => {
+                let name = if back { "back_falling_stand.msa" } else { "falling_stand.msa" };
+                return Some(format!("{root}general/{name}"));
+            }
+            Motion::Dead => {
+                let folder = if mode.mounted() { MotionMode::Horse.folder() } else { MotionMode::General.folder() };
+                return Some(format!("{root}{folder}dead.msa"));
+            }
         };
         // The mounted melee folders only register their combos; `wait`, `walk`
         // and `run` come from `horse/` (the C++ fallback through the same
@@ -423,6 +488,13 @@ struct Playing {
     started: bool,
     /// The clip's length once it loaded (`CRaceMotionData::GetMotionDuration`).
     duration: f32,
+    /// `m_kCurMotNode.fStartTime`: when the clip started, in `Time` seconds.
+    started_at: f32,
+    /// The last 60 FPS frame whose sounds and events were handed out.
+    last_frame: Option<u32>,
+    /// `PushOnceMotion`/`PushLoopMotion` after a once motion: the `.msa`s
+    /// to play when it ends, and whether each loops.
+    then: Vec<(String, bool)>,
 }
 
 /// The equipped weapon models (`CActorInstance::AttachWeapon`). The right hand
@@ -466,8 +538,23 @@ pub struct Character {
     mount_vnum: u32,
     mount: Option<Mount>,
     weapon_type: u8,
+    /// The race's collision attachments (`m_DefendingPointInstanceList`,
+    /// `m_BodyPointInstanceList`), once the `.msm` loaded.
+    collisions: Vec<RaceAttachment>,
+    /// The previous frame's sphere centres per collision type, for the
+    /// spheres' `v3LastPosition`.
+    last_spheres: HashMap<i32, Vec<Vec3>>,
     /// Why the character cannot be drawn (unknown race, a missing file).
     pub error: Option<String>,
+}
+
+/// What a motion did between two frames: the sounds of its `.mss` and the
+/// motion events (`MotionEventProcess`/`SoundEventProcess`) whose frame
+/// passed.
+#[derive(Debug, Default)]
+pub struct MotionTick {
+    pub sounds: Vec<String>,
+    pub events: Vec<RaceMotionEvent>,
 }
 
 impl Character {
@@ -504,7 +591,7 @@ impl Character {
         } else {
             (Stage::Race(world.resource::<AssetServer>().load(paths::asset_source_uri(race_file))), None)
         };
-        Character { root, look, race_file: race_file.to_owned(), player_appearance, stage, motion: None, motion_mode: MotionMode::General, weapon: None, mount_vnum: 0, mount: None, weapon_type: 0, error }
+        Character { root, look, race_file: race_file.to_owned(), player_appearance, stage, motion: None, motion_mode: MotionMode::General, weapon: None, mount_vnum: 0, mount: None, weapon_type: 0, collisions: Vec::new(), last_spheres: HashMap::new(), error }
     }
 
     /// The model is spawned.
@@ -516,7 +603,7 @@ impl Character {
     pub fn play(&mut self, world: &mut World, msa: &str, repeat: bool) {
         let file = msa.to_owned();
         let msa = world.resource::<AssetServer>().load(paths::asset_source_uri(msa));
-        self.motion = Some(Playing { msa, file, clip: None, repeat, started: false, duration: 0.0 });
+        self.motion = Some(Playing { msa, file, clip: None, repeat, started: false, duration: 0.0, started_at: 0.0, last_frame: None, then: Vec::new() });
     }
 
     /// Plays one of the race's normal motions in the current weapon motion mode
@@ -535,6 +622,33 @@ impl Character {
         let root = race_files(self.look.race).map(|files| files.general.strip_suffix("general/").unwrap_or(files.general)).unwrap_or("");
         self.play(world, &format!("{root}{}{file}", self.motion_mode.folder()), false);
         true
+    }
+
+    /// `ComboAttack(NAME_COMBO_ATTACK_1 + n - 1)`: the `n`th combo motion of
+    /// the current mode (not the `n`th step; see [`MotionMode::combo_sequence`]).
+    pub fn play_combo_motion(&mut self, world: &mut World, n: u32) -> bool {
+        let Some(file) = self.motion_mode.combo_file(n) else { return false };
+        let Some(root) = race_files(self.look.race).map(|files| files.general.strip_suffix("general/").unwrap_or(files.general))
+        else {
+            return false;
+        };
+        self.play(world, &format!("{root}{}{file}", self.motion_mode.folder()), false);
+        true
+    }
+
+    /// The file of one of the race's normal motions in the current mode.
+    pub fn motion_path(&self, motion: Motion) -> Option<String> {
+        motion.file_in(self.look.race, self.motion_mode)
+    }
+
+    /// Whether a once motion is still running (an attack, a hit reaction):
+    /// the caller should not switch to wait/run yet.
+    pub fn is_acting(&self, world: &World) -> bool {
+        match &self.motion {
+            None => false,
+            Some(motion) if !motion.then.is_empty() => true,
+            Some(motion) => !motion.repeat && !(motion.started && self.motion_finished(world)),
+        }
     }
 
     /// `CInstanceBase::NEW_UseSkill`: the `MOTION_SKILL` clip of a skill's
@@ -663,6 +777,122 @@ impl Character {
         self.motion.as_ref().is_some_and(|motion| motion.started)
     }
 
+    /// `InterceptOnceMotion(once)` + `PushLoopMotion(then)`: plays `once`,
+    /// then loops `then` when it ends.
+    pub fn play_then(&mut self, world: &mut World, once: &str, then: &str) {
+        self.play_sequence(world, once, &[(then, true)]);
+    }
+
+    /// `InterceptOnceMotion(once)` followed by `Push*Motion`s: each `(file,
+    /// loops)` starts when the one before it ended.
+    pub fn play_sequence(&mut self, world: &mut World, once: &str, then: &[(&str, bool)]) {
+        self.play(world, once, false);
+        if let Some(motion) = &mut self.motion {
+            motion.then = then.iter().map(|(file, repeat)| ((*file).to_owned(), *repeat)).collect();
+        }
+    }
+
+    /// The `.msa` playing now (or requested), for its attack, combo and
+    /// event data.
+    pub fn motion_handle(&self) -> Option<&Handle<RaceMotionAsset>> {
+        self.motion.as_ref().map(|motion| &motion.msa)
+    }
+
+    /// The `.msa` path playing now.
+    pub fn motion_file(&self) -> Option<&str> {
+        self.motion.as_ref().map(|motion| motion.file.as_str())
+    }
+
+    /// `GetAttackingElapsedTime`: seconds since the current clip started,
+    /// once it has.
+    pub fn motion_elapsed(&self, now: f32) -> Option<f32> {
+        self.motion.as_ref().filter(|motion| motion.started).map(|motion| now - motion.started_at)
+    }
+
+    /// The sounds and motion events whose 60 FPS frame passed since the last
+    /// call (`SoundEventProcess`, `MotionEventProcess`). A looping motion
+    /// starts over at frame 0 each lap; a once motion stops at its end.
+    pub fn take_motion_tick(&mut self, world: &World, now: f32) -> MotionTick {
+        let mut tick = MotionTick::default();
+        let Some(motion) = &mut self.motion else { return tick };
+        if !motion.started {
+            return tick;
+        }
+        let Some(asset) = world.resource::<Assets<RaceMotionAsset>>().get(&motion.msa) else { return tick };
+        let duration = if motion.duration > 0.0 { motion.duration } else { asset.duration };
+        let elapsed = now - motion.started_at;
+        let frames = ((duration * 60.0) as u32).max(1);
+        let total = (elapsed.max(0.0) * 60.0) as u32;
+        let (lap, frame) = if motion.repeat { (total / frames, total % frames) } else { (0, total.min(frames)) };
+        let current = lap * frames + frame;
+        // Frames in `(last, current]`, as positions within the motion.
+        let first = motion.last_frame.map_or(0, |last| last + 1);
+        if motion.last_frame.is_some_and(|last| last >= current) {
+            return tick;
+        }
+        motion.last_frame = Some(current);
+        // A long hitch covers at most one lap.
+        let first = first.max(current.saturating_sub(frames - 1));
+        for absolute in first..=current {
+            let frame = if motion.repeat { absolute % frames } else { absolute };
+            tick.sounds.extend(asset.sounds.iter().filter(|(f, _)| *f == frame).map(|(_, file)| file.clone()));
+            tick.events.extend(asset.events.iter().filter(|event| event.frame == frame).cloned());
+        }
+        tick
+    }
+
+    /// The race's spheres of `collision_type` (`COLLISION_TYPE_BODY` = 1,
+    /// `COLLISION_TYPE_DEFENDING` = 3) in Metin2 world space, with last
+    /// frame's centres as their last positions (`UpdatePointInstance`).
+    /// Attached spheres follow their bone; the others the character root.
+    pub fn spheres(&mut self, world: &World, collision_type: i32) -> Vec<crate::battle::DynamicSphere> {
+        let bones = match &self.stage {
+            Stage::Spawned(spawned) => Some(&spawned.bone_by_name),
+            _ => None,
+        };
+        let root = world.get::<GlobalTransform>(self.root).copied();
+        let mut out = Vec::new();
+        for attachment in &self.collisions {
+            let RaceAttachmentKind::Collision { collision_type: kind, spheres } = &attachment.kind else { continue };
+            if *kind != collision_type {
+                continue;
+            }
+            let frame = if attachment.is_attaching {
+                bones
+                    .and_then(|bones| bones.get(&attachment.bone))
+                    .and_then(|bone| world.get::<GlobalTransform>(*bone).copied())
+                    .or(root)
+            } else {
+                root
+            };
+            let Some(frame) = frame else { continue };
+            for (radius, offset) in spheres {
+                let point = m2_assets::coords::vec3_back(frame.transform_point(*offset));
+                out.push(crate::battle::DynamicSphere::still(Vec3::from_array(point), *radius));
+            }
+        }
+        let last = self.last_spheres.insert(collision_type, out.iter().map(|sphere| sphere.position).collect());
+        if let Some(last) = last.filter(|last| last.len() == out.len()) {
+            for (sphere, last) in out.iter_mut().zip(last) {
+                sphere.last = last;
+            }
+        }
+        out
+    }
+
+    /// Whether the race has spheres of `collision_type`.
+    pub fn has_spheres(&self, collision_type: i32) -> bool {
+        self.collisions.iter().any(
+            |a| matches!(&a.kind, RaceAttachmentKind::Collision { collision_type: kind, .. } if *kind == collision_type),
+        )
+    }
+
+    /// The world transform of bone `name`, when the model is spawned.
+    pub fn bone_transform(&self, world: &World, name: &str) -> Option<GlobalTransform> {
+        let Stage::Spawned(spawned) = &self.stage else { return None };
+        spawned.bone_by_name.get(name).and_then(|bone| world.get::<GlobalTransform>(*bone).copied())
+    }
+
     /// Advances loading and starts the requested motion once everything is in.
     pub fn update(&mut self, world: &mut World) {
         if let Err(error) = self.advance(world) {
@@ -699,6 +929,12 @@ impl Character {
                 let Some(race) = world.resource::<Assets<RaceAsset>>().get(handle).cloned() else {
                     return failed(world, handle.id().untyped());
                 };
+                self.collisions = race
+                    .attachments
+                    .iter()
+                    .filter(|a| matches!(a.kind, RaceAttachmentKind::Collision { .. }))
+                    .cloned()
+                    .collect();
                 let server = world.resource::<AssetServer>().clone();
                 // `SetShape`: the shape's model (the base model when it names none) with its
                 // skins. C++ draws nothing for a shape the race does not define; the port
@@ -793,10 +1029,23 @@ impl Character {
     }
 
     fn update_motion(&mut self, world: &mut World) {
+        // `PushLoopMotion`: the queued loop starts once the once motion ended.
+        if self.motion.as_ref().is_some_and(|motion| motion.started && !motion.then.is_empty())
+            && self.motion_finished(world)
+            && let Some(mut queue) = self.motion.as_mut().map(|motion| std::mem::take(&mut motion.then))
+        {
+            let (file, repeat) = queue.remove(0);
+            self.play(world, &file, repeat);
+            if let Some(motion) = &mut self.motion {
+                motion.then = queue;
+            }
+        }
+        let now = world.resource::<Time>().elapsed_secs();
         let (Stage::Spawned(spawned), Some(motion)) = (&self.stage, &mut self.motion) else { return };
         if motion.started {
             return;
         }
+        motion.started_at = now;
         if motion.clip.is_none() {
             let Some(msa) = world.resource::<Assets<RaceMotionAsset>>().get(&motion.msa) else { return };
             motion.duration = msa.duration;

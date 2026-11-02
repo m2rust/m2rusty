@@ -16,6 +16,7 @@
 //!   quests), with [`skills`] and [`emotes`] for the two large pages.
 //! - [`quickslots`]: the shared quick-slot actions.
 //! - [`sound`]: screen music, login sounds and button clicks (`m2-audio`).
+//! - [`target`]: the target board (name and HP of the selected actor).
 //!
 //! Everything is drawn with `bevy_ui` from the original `.sub`/`.tga` artwork
 //! (D18); `core` has the shared widgets (boards, title bars, buttons, tooltips
@@ -32,6 +33,7 @@ pub mod quickslots;
 pub mod select;
 pub mod skills;
 pub mod sound;
+pub mod target;
 
 use bevy::prelude::*;
 
@@ -51,6 +53,7 @@ impl Plugin for M2UiPlugin {
             skills::SkillsPlugin,
             emotes::EmotesPlugin,
             sound::UiSoundPlugin,
+            target::TargetBoardPlugin,
         ));
     }
 }

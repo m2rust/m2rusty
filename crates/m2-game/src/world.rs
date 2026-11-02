@@ -8,6 +8,7 @@
 //! is no quadtree culling. The game's 3×3 streaming around the player and the
 //! LOD 1/2 index buffers come with the game world.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use bevy::asset::{AssetServer, Assets, LoadState, RenderAssetUsages, UntypedAssetId};
@@ -23,6 +24,7 @@ use m2_world::LoadedMap;
 use m2_world::area::{PlacedKind, PlacedObject, rotation_yaw_pitch_roll};
 use m2_world::mesh::{DEFAULT_OPAQUE_WATER_DEPTH, build_index_buffers, build_terrain_patches};
 
+use crate::battle::{self, D3dTransform, StaticCollision};
 use crate::render::effect::{EffectRenderer, load_instance};
 use crate::render::lighting::{self, MapLighting};
 use crate::render::terrain::{TerrainMaterial, ground, masks, patch_uniform, set_fog, set_light};
@@ -42,6 +44,8 @@ pub struct PreparedMap {
     pub effects: Vec<EffectInstance>,
     /// Effect and ground-texture errors (the load's own are in `map`).
     pub errors: Vec<String>,
+    /// The buildings' collision shapes (`.mdatr`), Metin2 world space.
+    pub collisions: Vec<StaticCollision>,
 }
 
 /// Loads and prepares map `name`. Blocking and slow (seconds): run it on
@@ -60,7 +64,49 @@ pub fn prepare_map(packs: &PackManager, name: &str) -> Result<PreparedMap, Strin
     }
     let (ground_image, texture_errors) = ground(packs, &map.textures);
     errors.extend(texture_errors);
-    Ok(PreparedMap { map, ground_image, effects, errors })
+    let collisions = building_collisions(packs, &map.objects, &mut errors);
+    Ok(PreparedMap { map, ground_image, effects, errors, collisions })
+}
+
+/// `CArea::__UpdateAniThingList`'s `UpdateCollisionData` for buildings and
+/// dungeon blocks: each `.mdatr` shape placed by the object's matrix.
+fn building_collisions(packs: &PackManager, objects: &[PlacedObject], errors: &mut Vec<String>) -> Vec<StaticCollision> {
+    let mut files: HashMap<Vec<u8>, Option<m2_formats::attribute::AttributeData>> = HashMap::new();
+    let mut out = Vec::new();
+    for object in objects {
+        let (PlacedKind::Building { attribute_file, attribute_exists: true, .. }
+        | PlacedKind::DungeonBlock { attribute_file, attribute_exists: true, .. }) = &object.kind
+        else {
+            continue;
+        };
+        let data = files.entry(attribute_file.clone()).or_insert_with(|| {
+            let parsed = packs.get(attribute_file).map_err(|e| e.to_string()).and_then(|bytes| {
+                m2_formats::attribute::parse_attribute_data(&bytes).map_err(|e| format!("{e:?}"))
+            });
+            match parsed {
+                Ok(data) => Some(data),
+                Err(error) => {
+                    errors.push(format!("{}: {error}", String::from_utf8_lossy(attribute_file)));
+                    None
+                }
+            }
+        });
+        let Some(data) = data else { continue };
+        let [yaw, pitch, roll] = object.rotation.map(f32::to_radians);
+        let mut m = rotation_yaw_pitch_roll(yaw, pitch, roll);
+        (m[12], m[13], m[14]) = (object.position[0], object.position[1], object.position[2]);
+        let transform = D3dTransform::from_row_major(&m);
+        for c in &data.collisions {
+            out.extend(StaticCollision::build(
+                c.kind,
+                Vec3::from_array(c.position),
+                c.dimensions,
+                c.rotation,
+                &transform,
+            ));
+        }
+    }
+    out
 }
 
 /// A map chosen by a global position: the client's `net.Warp`.
@@ -122,6 +168,8 @@ pub struct MapScene {
     pub effects: EffectRenderer,
     pending_objects: Vec<(PlacedObject, ObjectAsset)>,
     trees: Vec<Tree>,
+    /// The SpeedTrees' collision shapes, added as the trees spawn.
+    tree_collisions: Vec<StaticCollision>,
     water: Handle<FixedFunctionMaterial>,
     water_frames: Vec<Handle<Image>>,
 }
@@ -210,6 +258,7 @@ impl MapScene {
             effects,
             pending_objects,
             trees: Vec::new(),
+            tree_collisions: Vec::new(),
             water,
             water_frames,
         }
@@ -218,6 +267,21 @@ impl MapScene {
     /// Objects still waiting for their asset.
     pub fn pending_objects(&self) -> usize {
         self.pending_objects.len()
+    }
+
+    /// The building and tree collision shapes whose bounds come within
+    /// `radius` of `point` (Metin2 space) in the ground plane
+    /// (`CCullingManager::ForInRange` around the actor's bounding sphere).
+    pub fn collisions_near(&self, point: Vec3, radius: f32) -> Vec<&StaticCollision> {
+        self.map
+            .collisions
+            .iter()
+            .chain(&self.tree_collisions)
+            .filter(|shape| {
+                let (centre, extent) = shape.bounds();
+                (centre.truncate() - point.truncate()).length() <= extent + radius
+            })
+            .collect()
     }
 
     /// Per frame: spawns objects whose assets arrived, steps the effects,
@@ -251,6 +315,22 @@ impl MapScene {
                     let tree = world.resource::<Assets<SptTree>>().get(handle).cloned();
                     let ready = tree.is_some();
                     if let Some(tree) = tree {
+                        // `CSpeedTreeWrapper::OnUpdateCollisionData`: spheres
+                        // and cylinders at the tree's position (boxes skipped).
+                        let at = D3dTransform {
+                            rotation: bevy::math::Mat3::IDENTITY,
+                            translation: Vec3::from_array(object.position),
+                        };
+                        for c in &tree.collisions {
+                            let position = Vec3::from_array(coords::vec3_back(c.position));
+                            let d = coords::vec3_back(c.dimensions);
+                            let kind = match c.kind {
+                                0 => battle::COLLISION_SPHERE,
+                                1 => battle::COLLISION_CYLINDER,
+                                _ => continue,
+                            };
+                            self.tree_collisions.extend(StaticCollision::build(kind, position, d, [0.0, 0.0, 0.0, 1.0], &at));
+                        }
                         self.trees.push(Tree::spawn(world, tree, transform, Some(self.root), self.fog));
                     }
                     (ready, handle.id().untyped())

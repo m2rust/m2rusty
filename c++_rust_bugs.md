@@ -53,6 +53,8 @@ as a module path, not a line number.
 | R27 | `image` | `CTGAImage` RLE decode | An RLE packet running past the pixel count fails the load | Mirrored; `image::tga` |
 | R28 | `net` | `CNetworkStream` / phase handlers | A header not handled by the current phase clears the whole receive buffer, so packets queued behind it are lost; a zero byte between packets is skipped | Mirrored; `NetEvent::Unhandled`, `stream::NetStream` |
 | R29 | `net` | `CPythonNetworkStream` actor add | A player/NPC add waits for the additional-info packet; monsters are appended at once | Mirrored |
+| R30 (SEG-RB) | `battle` | `IntersectLineSegments` (`D3DXVECTOR3` overload, `lineintersect_utils.cpp`) | Drops the minus of `rb = -Lb·AB`, so for two moving segments the closest points are wrong | Mirrored (hit and body tests depend on it); `m2_game::battle::intersect_line_segments` |
+| R31 (AABB-Y) | `battle` | `CAABBCollisionInstance::OnMovementCollisionDynamicSphere` | Clamps `y` into `v.x` and compares a squared ground distance with `radius²` | Mirrored; no shipped `.mdatr` uses AABBs |
 
 ## 2. Not replicated: C++ bug, Rust differs
 
