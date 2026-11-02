@@ -68,6 +68,7 @@ impl Machine for AuthMachine {
 /// closed (the machine is then `Offline`, like `OnRemoteDisconnect` + `Clear`).
 pub fn pump<M: Machine, T: Transport>(machine: &mut M, transport: &mut T, now_ms: u32) -> (Vec<M::Event>, bool) {
     let mut closed = false;
+    let mut events = Vec::new();
     if transport.state() == ConnState::Closed {
         closed = true;
     } else if transport.state() == ConnState::Online {
@@ -80,13 +81,22 @@ pub fn pump<M: Machine, T: Transport>(machine: &mut M, transport: &mut T, now_ms
                     while off < n {
                         let taken = machine.stream().feed(&buf[off..n]);
                         if taken == 0 {
-                            // Receive buffer full: dispatch what we have first.
-                            break;
+                            // Dispatch complete frames before feeding the rest of
+                            // this socket read. Dropping that remainder would put
+                            // the next read in the middle of a packet.
+                            let before = machine.stream().recv_len();
+                            let batch = machine.poll(now_ms);
+                            events.extend(batch);
+                            if machine.stream().recv_len() >= before {
+                                // A single incomplete packet cannot fit at all.
+                                closed = true;
+                                break;
+                            }
+                            continue;
                         }
                         off += taken;
                     }
                     if off < n {
-                        // Cannot happen with a sane capacity (the C++ would also stall).
                         break;
                     }
                 }
@@ -97,7 +107,8 @@ pub fn pump<M: Machine, T: Transport>(machine: &mut M, transport: &mut T, now_ms
             }
         }
     }
-    let events = machine.poll(now_ms);
+    let batch = machine.poll(now_ms);
+    events.extend(batch);
     if !closed && transport.state() == ConnState::Online {
         loop {
             let out = machine.stream().take_output(8192);

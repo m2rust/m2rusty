@@ -154,7 +154,26 @@ impl NetStream {
             self.clear_recv();
             return Err(FrameError::UnknownHeader(header));
         };
-        let size = if info.dynamic || header == crate::wire::gc::WHISPER {
+        let size = if header == crate::wire::gc::QUEST_INFO {
+            // The server writes the header before increasing its size field for
+            // the optional quest fields. The C++ handler consumes those fields
+            // according to the flags even when the advertised size is only 6.
+            const QUEST_HEADER: usize = 6;
+            if !self.peek(QUEST_HEADER) { return Ok(None); }
+            let p = self.recv_pos;
+            let advertised = u16::from_le_bytes([self.recv[p + 1], self.recv[p + 2]]) as usize;
+            let flags = self.recv[p + 5];
+            let field_sizes = [1usize, 31, 17, 4, 17, 4, 25];
+            let actual = QUEST_HEADER + field_sizes.iter().enumerate()
+                .filter(|(bit, _)| flags & (1 << bit) != 0)
+                .map(|(_, size)| *size).sum::<usize>();
+            let size = advertised.max(actual);
+            if advertised < QUEST_HEADER || size > self.recv_cap {
+                self.clear_recv();
+                return Err(FrameError::BadDynamicSize { header, size });
+            }
+            size
+        } else if info.dynamic || header == crate::wire::gc::WHISPER {
             if !self.peek(DYNAMIC_HEADER_SIZE) {
                 return Ok(None);
             }

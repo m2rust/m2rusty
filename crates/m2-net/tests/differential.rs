@@ -153,10 +153,10 @@ fn script(seed: u64, with_unknown: bool) -> Vec<Vec<u8>> {
         for _ in 0..rng.below(3) {
             stream.push(0);
         }
-        // The four headers whose handlers read more than the map announces are framed differently on purpose.
+        // These handlers can consume more than the map or advertised size.
         let h = loop {
             let h = &GC_HEADER_MAP[rng.below(GC_HEADER_MAP.len())];
-            if !matches!(h.header, wire::gc::WHISPER | wire::gc::PLAYER_DELETE_SUCCESS | wire::gc::SAFEBOX_SET | wire::gc::MALL_SET) {
+            if !matches!(h.header, wire::gc::WHISPER | wire::gc::PLAYER_DELETE_SUCCESS | wire::gc::SAFEBOX_SET | wire::gc::MALL_SET | wire::gc::QUEST_INFO) {
                 break h;
             }
         };

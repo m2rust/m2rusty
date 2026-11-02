@@ -470,6 +470,11 @@ impl NetMachine {
         self.direct_enter
     }
 
+    /// The character selected on the current game connection.
+    pub fn selected_slot(&self) -> u8 {
+        self.selected_slot
+    }
+
     /// `ConnectGameServer`'s state change: enter the game with `slot` after the next
     /// connection (its address is the slot's `lAddr`/`wPort`). The login then keeps the
     /// character list, and the driver sends [`Self::send_select_character`] when the

@@ -12,6 +12,35 @@ fn gc_phase(p: u8) -> Vec<u8> {
     TPacketGCPhase { header: gc::PHASE, phase: p }.encode()
 }
 
+#[test]
+fn receive_burst_larger_than_buffer_preserves_every_packet() {
+    let (mut client_transport, mut server) = mem::pair();
+    let mut client = NetMachine::new(NetConfig { recv_capacity: 64, ..Default::default() });
+    server.write(&gc_phase(phase_id::HANDSHAKE)).unwrap();
+    assert!(!pump(&mut client, &mut client_transport, 0).1);
+    let packets = vec![gc::PING; 512];
+    server.write(&packets).unwrap();
+    let (events, closed) = pump(&mut client, &mut client_transport, 1);
+    assert!(!closed);
+    assert_eq!(events.iter().filter(|event| matches!(event, NetEvent::Ping)).count(), packets.len());
+}
+
+#[test]
+fn quest_info_uses_flag_fields_when_server_leaves_header_size_at_six() {
+    let mut stream = m2_net::stream::NetStream::new(1024, 1024);
+    let mut packet = vec![gc::QUEST_INFO, 6, 0, 106, 0, 0b0000_0011, 1];
+    let mut title = [0u8; 31];
+    title[..5].copy_from_slice(b"Title");
+    packet.extend(title);
+    packet.push(gc::PING);
+    assert_eq!(stream.feed(&packet[..12]), 12);
+    assert!(stream.poll_frame().unwrap().is_none());
+    assert_eq!(stream.feed(&packet[12..]), packet.len() - 12);
+    let quest = stream.poll_frame().unwrap().unwrap();
+    assert_eq!(quest.bytes, packet[..packet.len() - 1]);
+    assert_eq!(stream.poll_frame().unwrap().unwrap().header, gc::PING);
+}
+
 struct Rig {
     client: NetMachine,
     ct: MemTransport,
@@ -264,11 +293,11 @@ fn walks_handshake_login_select_loading_game() {
     // main character packets are loading-only
     let ev = r.send(&mc.encode());
     assert_eq!(ev, vec![NetEvent::Unhandled { phase: Phase::Game, header: gc::MAIN_CHARACTER4_BGM_VOL }]);
-    // header 35 (HEADER_GC_ALERT) is not in the header map: framing error
-    let ev = r.send(&[35, 0, 0]);
-    assert_eq!(ev, vec![NetEvent::Frame(m2_net::stream::FrameError::UnknownHeader(35))]);
-
     // warp: reconnect request, direct-enter mode
+    // A level change is a point packet, even when its payload contains byte 65
+    // (the warp header); it must never be mistaken for a transfer.
+    let level = TPacketGCPointChange { header: gc::PLAYER_POINT_CHANGE, dwVID: 100, Type: 1, amount: 65, value: 2 };
+    assert_eq!(r.send(&level.encode()), vec![NetEvent::Packet(GcPacket::PlayerPointChange(level))]);
     let ev = r.send(&TPacketGCWarp { bHeader: gc::WARP, lX: 1, lY: 2, lAddr: 0x0100_007f, wPort: 13001 }.encode());
     assert_eq!(ev, vec![NetEvent::Warp { x: 1, y: 2, addr: 0x0100_007f, port: 13001 }]);
     assert_eq!(r.client.direct_enter_slot(), Some(1));
@@ -279,10 +308,12 @@ fn walks_handshake_login_select_loading_game() {
     assert_eq!(out.len(), TPacketCGChat::SIZE + 3 + 1);
     assert_eq!(u16::from_le_bytes([out[1], out[2]]) as usize, TPacketCGChat::SIZE + 3);
 
-    // disconnect
+    // Match the original client's buffer recovery after an unknown header.
+    let ev = r.send(&[35, 0, 0]);
+    assert_eq!(ev, vec![NetEvent::Frame(m2_net::stream::FrameError::UnknownHeader(35))]);
+    assert_eq!(r.send(&[gc::PING]), vec![NetEvent::Ping]);
     r.server.close();
-    let (_, closed) = pump(&mut r.client, &mut r.ct, 0);
-    assert!(closed);
+    assert!(pump(&mut r.client, &mut r.ct, 0).1);
     assert_eq!(r.client.phase(), Phase::Offline);
 }
 
