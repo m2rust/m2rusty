@@ -10,7 +10,9 @@ mod material;
 mod projection;
 mod state;
 
-use bevy::app::{App, Plugin};
+use bevy::app::{App, Plugin, Startup};
+use bevy::ecs::system::ResMut;
+use bevy::light::cluster::GlobalClusterSettings;
 use bevy::asset::embedded_asset;
 use bevy::camera::ClearColorConfig;
 use bevy::render::view::Msaa;
@@ -19,7 +21,7 @@ use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 use bevy::pbr::MaterialPlugin;
 use bevy::prelude::Camera3d;
 
-pub use material::{FixedFunctionMaterial, FixedFunctionUniform, SHADER_PATH};
+pub use material::{ATTRIBUTE_BILLBOARD, FixedFunctionMaterial, FixedFunctionUniform, SHADER_PATH};
 pub use projection::FixedFunctionProjection;
 pub use state::*;
 
@@ -30,7 +32,18 @@ pub struct M2RenderPlugin;
 impl Plugin for M2RenderPlugin {
     fn build(&self, app: &mut App) {
         embedded_asset!(app, "fixed_function.wesl");
-        app.add_plugins(MaterialPlugin::<FixedFunctionMaterial>::default());
+        app.add_plugins(MaterialPlugin::<FixedFunctionMaterial>::default())
+            .add_systems(Startup, disable_gpu_clustering);
+    }
+}
+
+/// The fixed-function shader never reads Bevy's clustered lights, so the GPU
+/// light clustering (a compute pass plus its buffer uploads every frame) is
+/// wasted. Bevy then clusters on the CPU, which for a single-cluster camera
+/// without point lights is next to free.
+fn disable_gpu_clustering(settings: Option<ResMut<GlobalClusterSettings>>) {
+    if let Some(mut settings) = settings {
+        settings.gpu_clustering = None;
     }
 }
 

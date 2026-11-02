@@ -6,6 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+# Writes a Chrome trace (`trace-*.json`) for diagnosing frame cost.
+profiling = ["bevy/trace", "bevy/trace_chrome"]
+
 [dependencies]
 bevy.workspace = true
 m2-assets.workspace = true

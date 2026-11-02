@@ -5,9 +5,12 @@
 //! `TaskBar.tga` atlas through its `.sub` regions. The inventory itself lives in
 //! [`crate::inventory`].
 
+use std::time::Duration;
+
 use bevy::input::{ButtonState, keyboard::KeyboardInput};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::time::Real;
 use crate::core::{self, Click, Consumed, FloatingWindow, Surface, Tooltip, UiSet};
 use crate::inventory::{self, Slot};
 use crate::login::{LoginScreen, Status};
@@ -28,6 +31,8 @@ pub struct ChatState {
 
 #[derive(Component)]
 struct TaskBar;
+#[derive(Component)]
+struct FpsCounter;
 #[derive(Component)]
 struct ChatLog;
 #[derive(Component)]
@@ -69,6 +74,7 @@ impl Plugin for PlayerHudPlugin {
                     refresh.in_set(UiSet::Draw),
                 ),
             );
+        app.add_systems(Update, update_fps.in_set(UiSet::Draw));
     }
 }
 
@@ -102,12 +108,75 @@ fn lifecycle(
         return;
     }
     build_taskbar(&mut commands, &assets);
+    build_fps_counter(&mut commands);
     build_chat(&mut commands);
     build_windows(&mut commands, &assets);
     inventory::build(&mut commands, &assets);
     crate::storage::build(&mut commands, &assets);
     crate::shop::build(&mut commands, &assets);
     crate::target::build(&mut commands, &assets);
+}
+
+fn build_fps_counter(commands: &mut Commands) {
+    commands.spawn((
+        GameUiRoot,
+        FpsCounter,
+        Text::new("FPS: --"),
+        TextFont { font_size: bevy::text::FontSize::Px(14.), ..default() },
+        TextColor(Color::WHITE),
+        TextShadow::default(),
+        Node { position_type: PositionType::Absolute, right: Val::Px(12.), top: Val::Px(10.), ..default() },
+        GlobalZIndex(1000),
+        Pickable::IGNORE,
+    ));
+}
+
+#[derive(Default)]
+struct FpsSample {
+    elapsed: Duration,
+    frames: u64,
+}
+
+impl FpsSample {
+    fn record(&mut self, delta: Duration) -> Option<f64> {
+        if delta.is_zero() { return None; }
+        self.elapsed += delta;
+        self.frames += 1;
+        if self.elapsed < Duration::from_millis(500) { return None; }
+        let fps = self.frames as f64 / self.elapsed.as_secs_f64();
+        *self = Self::default();
+        Some(fps)
+    }
+}
+
+fn update_fps(time: Res<Time<Real>>, mut sample: Local<FpsSample>, mut counters: Query<&mut Text, With<FpsCounter>>) {
+    if counters.is_empty() {
+        *sample = FpsSample::default();
+        return;
+    }
+    let Some(fps) = sample.record(time.delta()) else { return };
+    let value = if fps < 10. { format!("FPS: {fps:.1}") } else { format!("FPS: {fps:.0}") };
+    for mut counter in &mut counters {
+        if counter.0 != value { counter.0.clone_from(&value); }
+    }
+}
+
+#[cfg(test)]
+mod fps_tests {
+    use super::*;
+
+    #[test]
+    fn fps_counts_frames_over_real_elapsed_time() {
+        let mut sample = FpsSample::default();
+        assert!(sample.record(Duration::ZERO).is_none());
+        assert!(sample.record(Duration::from_millis(490)).is_none());
+        assert_eq!(sample.record(Duration::from_millis(10)), Some(4.));
+        for _ in 0..49 {
+            assert!(sample.record(Duration::from_millis(10)).is_none());
+        }
+        assert_eq!(sample.record(Duration::from_millis(10)), Some(100.));
+        assert_eq!(sample.record(Duration::from_secs(2)), Some(0.5));
+    }
 }
 
 /// The character status panel and the system menu behind the task bar's right
@@ -469,9 +538,11 @@ fn refresh(
         };
         let ratio = if max > 0 { (value.max(0) as f32 / max as f32).clamp(0., 1.) } else { 0. };
         let width = GAUGE_WIDTH * ratio;
-        node.width = Val::Px(width);
-        if let Some(rect) = &mut image.rect {
-            rect.max.x = width;
+        if node.width != Val::Px(width) {
+            node.width = Val::Px(width);
+        }
+        if image.rect.is_some_and(|rect| rect.max.x != width) {
+            image.rect.as_mut().unwrap().max.x = width;
         }
     }
     for mut text in &mut log {
@@ -491,7 +562,10 @@ fn refresh(
         }
     }
     for (mut text, mut node) in &mut line {
-        node.display = if chat.typing { Display::Flex } else { Display::None };
+        let display = if chat.typing { Display::Flex } else { Display::None };
+        if node.display != display {
+            node.display = display;
+        }
         if chat.typing {
             let value = format!("> {}_", chat.input);
             if **text != value {

@@ -14,8 +14,8 @@
 //!
 //! Everything spawned here hangs under a root entity the caller owns, so the
 //! caller tags and despawns that root. The camera the scene is drawn for
-//! carries [`SceneCamera`]: tree leaves face it, clouds follow it, effects
-//! billboard towards it and the sky is installed on it.
+//! carries [`SceneCamera`]: animated models are culled against it, clouds
+//! follow it, effects billboard towards it and the sky is installed on it.
 
 pub mod audio;
 pub mod battle;
@@ -42,6 +42,7 @@ impl Plugin for M2GamePlugin {
             render::terrain::TerrainPlugin,
             render::cloud::CloudPlugin,
             render::lighting::LightingPlugin,
+            render::model::ModelCullPlugin,
             ingame::InGamePlugin,
             audio::GameAudioPlugin,
         ));

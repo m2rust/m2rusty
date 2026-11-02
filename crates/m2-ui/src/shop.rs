@@ -206,13 +206,23 @@ fn sync_window(shop: Res<ShopState>, mut ui: ResMut<ShopUi>, mut windows: Query<
         ui.dismissed = true;
         actions.write(PlayerAction::ShopEnd);
     }
-    if !shop.open { ui.dismissed = false; ui.tab = 0; ui.sell_mode = false; }
-    window.open = shop.open && !ui.dismissed;
-    ui.was_open = window.open;
+    if !shop.open && (ui.dismissed || ui.tab != 0 || ui.sell_mode) {
+        ui.dismissed = false;
+        ui.tab = 0;
+        ui.sell_mode = false;
+    }
+    let open = shop.open && !ui.dismissed;
+    if window.open != open {
+        window.open = open;
+    }
+    if ui.was_open != open {
+        ui.was_open = open;
+    }
 }
 
 fn refresh_icons(assets: Res<AssetServer>, catalog: Res<ItemCatalog>, shop: Res<ShopState>, ui: Res<ShopUi>,
     mut icons: Query<(&ShopIcon, &mut Node, &mut ImageNode)>, mut slot_z: Query<&mut ZIndex, With<ShopCell>>) {
+    if !shop.is_changed() && !ui.is_changed() && !catalog.is_changed() { return; }
     let tab = shop.tabs.get(usize::from(ui.tab));
     for (icon, mut node, mut image) in &mut icons {
         let item = tab.and_then(|tab| tab.items.get(usize::from(icon.cell))).filter(|item| item.vnum != 0);
@@ -229,6 +239,7 @@ fn refresh_icons(assets: Res<AssetServer>, catalog: Res<ItemCatalog>, shop: Res<
 
 fn refresh_cells(catalog: Res<ItemCatalog>, shop: Res<ShopState>, ui: Res<ShopUi>,
     mut cells: Query<(&ShopCell, &mut Tooltip)>, mut counts: Query<(&ShopCount, &mut Text, &mut Node)>) {
+    if !shop.is_changed() && !ui.is_changed() && !catalog.is_changed() { return; }
     let tab = shop.tabs.get(usize::from(ui.tab));
     for (cell, mut tooltip) in &mut cells {
         tooltip.0 = tab.and_then(|tab| anchor_for_cell(tab, &catalog, usize::from(cell.0)).map(|anchor| (&tab.items[anchor], tab.coin_type)))
@@ -245,18 +256,19 @@ fn refresh_controls(shop: Res<ShopState>, ui: Res<ShopUi>,
     mut buttons: Query<(&ShopButton, &mut Node, &mut Selected)>,
     mut names: Query<(&TabName, &mut Text), Without<ShopNotice>>,
     mut notices: Query<&mut Text, (With<ShopNotice>, Without<TabName>)>) {
+    if !shop.is_changed() && !ui.is_changed() { return; }
     for (button, mut node, mut selected) in &mut buttons {
         match *button {
             ShopButton::Buy | ShopButton::Sell => {
                 node.display = if shop.tabs.len() <= 1 { Display::Flex } else { Display::None };
-                selected.0 = matches!(*button, ShopButton::Sell) == ui.sell_mode;
+                selected.set_if_neq(Selected(matches!(*button, ShopButton::Sell) == ui.sell_mode));
             }
             ShopButton::Tab(tab) => {
                 let count = shop.tabs.len();
                 node.display = if count > 1 && usize::from(tab) < count { Display::Flex } else { Display::None };
                 let (x, width) = if count == 2 { (21. + f32::from(tab) * 83., 61.) } else { (21. + f32::from(tab) * 50., 43.) };
                 node.left = Val::Px(x); node.width = Val::Px(width);
-                selected.0 = ui.tab == tab;
+                selected.set_if_neq(Selected(ui.tab == tab));
             }
             _ => {}
         }
@@ -273,6 +285,7 @@ fn item_name(catalog: &ItemCatalog, vnum: u32) -> String {
 }
 
 fn refresh_purchase(catalog: Res<ItemCatalog>, shop: Res<ShopState>, ui: Res<ShopUi>, mut prompts: Query<&mut Text, With<PurchaseText>>) {
+    if !shop.is_changed() && !ui.is_changed() && !catalog.is_changed() { return; }
     let text = ui.pending.map_or_else(String::new, |purchase| {
         let coin = shop.tabs.get(usize::from(purchase.tab)).map_or("Yang", |tab| if tab.coin_type == 1 { "Won" } else { "Yang" });
         format!("Buy {} x{}?\n{} {}", item_name(&catalog, purchase.vnum), purchase.count, purchase.price, coin)

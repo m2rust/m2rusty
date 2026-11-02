@@ -13,7 +13,7 @@ Last updated: 2026-11-02.
 | 0. Groundwork | done (`1b5b551`) |
 | 1. Formats, no Bevy | **done**: all 12 format families merged and verified against C++ |
 | 2. Asset viewer in Bevy | **done**: asset loaders, fixed-function material, viewer shell, texture + Granny model/motion + SpeedTree + effect (`.mse`) viewers, and the render harness merged; golden-image suite passes, a model plays `.msa` motions with skinning, and effects simulate and draw |
-| 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). LOD 1/2, quadtree culling and 3×3 streaming belong to the game-world integration |
+| 3. World | **partial**: world queries/meshes, effect simulation and the `.msenv` environment (fog, lights, gradient sky, clouds) are merged; `m2-viewer --map` draws whole outdoor maps as a preview (LOD 0, splat layers, animated water, buildings/trees, map effects, environment fog, sky and clouds). The game streams the player's 3×3 terrain sectors with LOD 1/2 and frustum culling |
 | 4. Game logic and networking | **partial**: packet layouts, transport, framing, phase machine and the account (auth) connection merged; **`m2-client` logs in to a real server** (account server, then channel) through a native login screen, selects a character, enters the game and walks/attacks with a third-person camera. Actors are tracked but not drawn; movement and warps streaming and the bot gate remain |
 | 5. UI in Rust (D17; was "Python bridge and UI") | **in progress**: `m2-ui` is all `bevy_ui` (D18): login, character select, in-game task bar/chat and the inventory/equipment/costume windows, from the original `.sub`/`.tga` artwork. The Python bridge is dropped; layouts follow the original `uiscript` data files (roadmap §8) |
 | 6. Parity and cut-over | not started |
@@ -122,14 +122,37 @@ accepted.
   tracked from `ActorAppend`/`Move`/`Sync`/`Remove`.
   Map lighting comes from the `.msenv` environment (`render::lighting`): two
   directional lights (background and character) and the D3D9 material ambient,
-  with the original terrain formula `ambient·light.ambient + |N·L|·diffuse` and
-  a 2048 shadow map on the background light, instead of the old hard-coded
-  sun. Everything spawns under a caller-owned root; the scene camera carries
-  `m2_game::SceneCamera`. `net::NetPlugin` is the
+  with the original terrain formula `ambient·light.ambient + |N·L|·diffuse`,
+  instead of the old hard-coded sun. The light does not cast Bevy shadows: the
+  game's fixed-function materials do not receive them and the client had no
+  dynamic map shadows. Everything spawns under a caller-owned root; the scene
+  camera carries `m2_game::SceneCamera`. `net::NetPlugin` is the
   server connection: `m2-net` over a non-blocking `TcpTransport`, pumped in
   `PreUpdate`, driven by `LoginRequest`/`EnterGame` and reported as
   `NetMessage`s; the open game connection is `Net::game`. `m2-world` stays
   free of Bevy (D3), so loading is there and spawning here.
+  Terrain patches of a cell that share a texture-layer set are merged into one
+  mesh and material, water patches are merged per cell, and the map's static
+  objects are baked from their rest pose into plain meshes (no bones, no
+  `AnimationPlayer`, no `NoFrustumCulling`). The baked object meshes are cached
+  per model asset, so repeated buildings still batch. Fixed-function materials
+  are shared by value, so trees and objects reuse one material/bind group per
+  distinct state. Hidden storage/shop/target windows only refresh when their
+  data changes (they used to rewrite every text and node each frame), and the
+  3D camera uses CPU batching (`NoIndirectDrawing`), which is faster than
+  indirect drawing at this draw count. SpeedTree leaves face the camera in the
+  vertex shader (`m2_render::ATTRIBUTE_BILLBOARD`), so every tree of a species
+  shares one leaf mesh and batches instead of re-uploading a mesh per tree.
+  Animated models (actors, mounts) are culled against the scene camera with a
+  rest-pose sphere (`AnimationCull`): off-screen ones are hidden and their bones
+  are not evaluated, while their `AnimationPlayer` keeps time. Skinned parts of
+  the same race share mesh and material handles, so Bevy instances them. UI
+  writers only touch `Node`s that change, and `UiSystems::Layout` runs only when
+  a layout input changed (Bevy otherwise walks all ~1300 nodes every frame).
+  Light clustering is off (CPU path, `ClusterConfig::None`): no shader reads
+  Bevy lights. Terrain LOD has hysteresis. The b1 village now runs at
+  ~370-390 fps uncapped (~2.6 ms/frame) and at the display's frame rate when
+  composited; it started at ~40 fps with one draw per patch/object.
 - **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
   D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,

@@ -1,5 +1,5 @@
 //! Native widgets, original artwork, focus and independent floating windows.
-use bevy::{input_focus::{InputFocus, tab_navigation::TabNavigationPlugin}, picking::{events::{PointerClick,PointerDrag,PointerPress}, hover::Hovered, pointer::PointerButton}, prelude::*, ui::{InteractionDisabled,Pressed,widget::NodeImageMode}, ui_widgets::Button, window::PrimaryWindow};
+use bevy::{input_focus::{InputFocus, tab_navigation::TabNavigationPlugin}, picking::{events::{PointerClick,PointerDrag,PointerPress}, hover::Hovered, pointer::PointerButton}, prelude::*, ui::{ComputedUiRenderTargetInfo,ComputedUiTargetCamera,ContentSize,InteractionDisabled,LayoutConfig,Pressed,widget::NodeImageMode}, ui_widgets::Button, window::PrimaryWindow};
 use m2_assets::{paths, subimage::SubImage};
 use m2_game::ingame::UiFocus;
 
@@ -22,7 +22,7 @@ impl Art {
     }
 }
 #[derive(Component)] pub struct ButtonArt(pub [Art;3]);
-#[derive(Component)] pub struct Selected(pub bool);
+#[derive(Component, PartialEq)] pub struct Selected(pub bool);
 /// Where an un-moved floating window sticks to the screen.
 #[derive(Clone,Copy,PartialEq)]
 pub enum Anchor {
@@ -49,9 +49,33 @@ impl Plugin for UiCorePlugin {
             .add_systems(First,|mut c:ResMut<Consumed>|*c=Consumed::default())
             .add_observer(pointer_click).add_observer(window_press).add_observer(window_drag)
             .add_systems(Startup,spawn_tooltip)
-            .add_systems(Update,(resize_scale,close_windows,position_windows,resolve_art,game_focus,tooltip).chain().in_set(UiSet::Draw));
+            .add_systems(Update,(resize_scale,close_windows,position_windows,resolve_art,game_focus,tooltip).chain().in_set(UiSet::Draw))
+            .configure_sets(PostUpdate,bevy::ui::UiSystems::Layout.run_if(ui_layout_needed));
     }
 }
+/// Whether any input of `ui_layout_system` changed since it last ran; gates
+/// `UiSystems::Layout` (Bevy forbids conditions on the system alone, and the
+/// set's other members, the scrollbar and popover widgets, are unused). Bevy runs
+/// that system (taffy plus a walk over every node, hidden windows included) every
+/// frame; with all game windows built up front that cost most of a millisecond
+/// while the UI stood still. These are the components and resources it reads;
+/// text and image changes reach it through `ContentSize`. A removal runs it in
+/// the same frame, so its own removal readers never miss one.
+#[allow(clippy::type_complexity)]
+fn ui_layout_needed(
+    changed:Query<(),Or<(Changed<Node>,Changed<ContentSize>,Changed<ComputedUiRenderTargetInfo>,Changed<ComputedUiTargetCamera>,Changed<bevy::text::EmSize>,Changed<UiTransform>,Changed<ScrollPosition>,Changed<Outline>,Changed<LayoutConfig>,Changed<ChildOf>,Changed<Children>)>>,
+    (mut removed_nodes,mut removed_children,mut removed_parents,mut removed_content):(RemovedComponents<Node>,RemovedComponents<Children>,RemovedComponents<ChildOf>,RemovedComponents<ContentSize>),
+    rem:Res<bevy::text::RemSize>,scale:Res<UiScale>,
+)->bool{
+    let removed=removed_nodes.read().count()+removed_children.read().count()+removed_parents.read().count()+removed_content.read().count();
+    removed>0 || rem.is_changed() || scale.is_changed() || !changed.is_empty()
+}
+/// Edits `node` through a copy and marks it changed only when it differs. Any
+/// changed `Node` makes Bevy re-run the whole UI layout, so systems that refresh
+/// every frame must not touch nodes whose values stay the same.
+pub fn edit_node(node:&mut Mut<Node>,edit:impl FnOnce(&mut Node)){let mut next=node.clone();edit(&mut next);node.set_if_neq(next);}
+/// [`edit_node`] for the common case of showing or hiding a node.
+pub fn set_display(node:&mut Mut<Node>,display:Display){if node.display!=display{node.display=display;}}
 pub fn rect(x:f32,y:f32,w:f32,h:f32)->Node {Node{position_type:PositionType::Absolute,left:Val::Px(x),top:Val::Px(y),width:Val::Px(w),height:Val::Px(h),..default()}}
 pub fn picture(commands:&mut Commands,assets:&AssetServer,parent:Entity,path:&str,node:Node)->Entity {
     let id=commands.spawn((node,Art::load(assets,path),ImageNode::default(),Pickable::IGNORE)).id();commands.entity(parent).add_child(id);id
@@ -135,24 +159,29 @@ fn close_windows(mut clicks:MessageReader<Click>,close:Query<&CloseWindow>,mut w
 fn position_windows(primary:Query<&Window,With<PrimaryWindow>>,scale:Res<UiScale>,mut windows:Query<(&mut FloatingWindow,&mut Node)>){
     let Ok(primary)=primary.single()else{return;};let viewport=Vec2::new(primary.width(),primary.height())/scale.0;
     for (mut window,mut node) in &mut windows {
+        let mut position=window.position;
         if !window.moved {
             match window.anchor {
                 Anchor::TopLeft => {}
-                Anchor::BottomRight(margin)=>{window.position=(viewport-window.size-margin).max(Vec2::ZERO);}
+                Anchor::BottomRight(margin)=>{position=(viewport-window.size-margin).max(Vec2::ZERO);}
                 Anchor::LeftCenter(offset)=>{
-                    window.position=Vec2::new(window.position.x,(viewport.y-window.size.y)/2.+offset).max(Vec2::ZERO);
+                    position=Vec2::new(position.x,(viewport.y-window.size.y)/2.+offset).max(Vec2::ZERO);
                 }
             }
         }
-        window.position=window.position.clamp(Vec2::ZERO,(viewport-window.size).max(Vec2::ZERO));
-        node.left=Val::Px(window.position.x);node.top=Val::Px(window.position.y);node.display=if window.open{Display::Flex}else{Display::None};
+        position=position.clamp(Vec2::ZERO,(viewport-window.size).max(Vec2::ZERO));
+        if window.position!=position{window.position=position;}
+        let (left,top,display)=(Val::Px(position.x),Val::Px(position.y),if window.open{Display::Flex}else{Display::None});
+        if node.left!=left || node.top!=top || node.display!=display {
+            node.left=left;node.top=top;node.display=display;
+        }
     }
 }
 fn resolve_art(subs:Res<Assets<SubImage>>,mut images:Query<(&mut ImageNode,Option<&Art>,Option<&ButtonArt>,Option<&Hovered>,Has<Pressed>,Option<&Selected>,Has<InteractionDisabled>)>){
     for (mut image,art,button,hover,pressed,selected,disabled) in &mut images {
         let art=button.map(|b|&b.0[if !disabled&&(pressed||selected.is_some_and(|s|s.0)){2}else if !disabled&&hover.is_some_and(|h|h.0){1}else{0}]).or(art);
         if let Some((handle,rect))=art.and_then(|a|a.resolve(&subs)){if image.image!=handle || image.rect!=rect{image.image=handle;image.rect=rect;}}
-        if button.is_some(){image.color=if disabled{Color::srgba(0.45,0.45,0.45,0.8)}else{Color::WHITE};}
+        if button.is_some(){let color=if disabled{Color::srgba(0.45,0.45,0.45,0.8)}else{Color::WHITE};if image.color!=color{image.color=color;}}
     }
 }
 fn game_focus(input:Res<InputFocus>,fields:Query<(),With<bevy::ui_widgets::TextInput>>,surfaces:Query<&Hovered,With<Surface>>,consumed:Res<Consumed>,manager:Res<WindowManager>,mut focus:ResMut<UiFocus>){
@@ -174,12 +203,12 @@ fn tooltip(primary:Query<&Window,With<PrimaryWindow>>,scale:Res<UiScale>,time:Re
     let entity=hovered.iter().enumerate().find(|(_, (tip,h))|h.0&&!tip.0.is_empty()).map(|(i,_)|i);
     if entity!=last.as_ref().map(|(e,_)|*e){*last=entity.map(|e|(e,time.elapsed_secs()));}
     let Some(tooltip)=current else{
-        for mut node in &mut tip{node.display=Display::None;}
+        for mut node in &mut tip{set_display(&mut node,Display::None);}
         return;
     };
     if !last.is_some_and(|(_,at)|time.elapsed_secs()-at>0.3){return;}
     let Some(cursor)=window.cursor_position().map(|p|p/scale.0)else{return;};
     let viewport=Vec2::new(window.width(),window.height())/scale.0;
-    for mut node in &mut tip{node.display=Display::Flex;node.left=Val::Px((cursor.x+16.).min(viewport.x-240.).max(0.));node.top=Val::Px((cursor.y+18.).min((viewport.y-60.).max(0.)).max(0.));}
+    for mut node in &mut tip{edit_node(&mut node,|node|{node.display=Display::Flex;node.left=Val::Px((cursor.x+16.).min(viewport.x-240.).max(0.));node.top=Val::Px((cursor.y+18.).min((viewport.y-60.).max(0.)).max(0.));});}
     for mut text in &mut labels{if **text!=tooltip.0{**text=tooltip.0.clone();}}
 }

@@ -63,9 +63,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         let id = terrain.layers[i / 4u][i % 4u];
         let transform = terrain.transforms[id];
         let texel = textureSample(ground, ground_sampler, in.uv * transform.xy + transform.zw, i32(id)).rgb;
-        let mask = textureSample(masks, mask_sampler, in.alpha_uv, i32(id)).r;
-        // First used texture is the opaque base, just as in the original terrain pass.
-        color = mix(color, texel, select(mask, 1.0, i == 0u));
+        // The base is opaque; only later layers need a mask sample.
+        if i == 0u {
+            color = texel;
+        } else {
+            let mask = textureSample(masks, mask_sampler, in.alpha_uv, i32(id)).r;
+            color = mix(color, texel, mask);
+        }
     }
     color *= in.light;
     // Fog on the view-axis distance, exactly as fixed_function.wesl does it.

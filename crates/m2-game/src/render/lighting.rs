@@ -210,11 +210,9 @@ fn direction_rotation(direction: Vec3) -> Quat {
 
 /// Installs `environment`'s lighting (or the neutral fallback) and spawns its
 /// Bevy lights under `parent`, so despawning the map's root removes them.
-/// Shadows use three 2048² cascades over the near 9 m (the camera's far
-/// plane), which is cheap enough per frame and keeps blocky terrain shadow
-/// edges out of the near view. The game's own materials are fixed-function
-/// and do not sample the shadow maps yet; the client had no dynamic map
-/// shadows either, only the blob character shadow.
+/// Shadows are off: the game's own materials are fixed-function and do not
+/// sample the shadow maps, and the client had no dynamic map shadows either,
+/// only the blob character shadow.
 pub fn install(world: &mut World, environment: Option<&EnvironmentData>, parent: Entity) {
     let lighting = environment.map_or_else(MapLighting::default, MapLighting::from_environment);
     world.insert_resource(lighting);
@@ -225,8 +223,11 @@ pub fn install(world: &mut World, environment: Option<&EnvironmentData>, parent:
     });
     // Only the background light casts shadows: the client enables one light
     // at a time (background for the map, character for actors), never both.
+    // The game's own materials are fixed-function and do not receive Bevy
+    // shadows, and the client had no dynamic map shadows (only the blob
+    // character shadow), so shadow maps would only cost a clear every frame.
     for (name, light, shadows) in [
-        ("environment light: background", lighting.background, true),
+        ("environment light: background", lighting.background, false),
         ("environment light: character", lighting.character, false),
     ] {
         if !light.is_enabled() {

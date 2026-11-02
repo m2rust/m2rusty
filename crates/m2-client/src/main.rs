@@ -5,7 +5,7 @@
 //! ```text
 //! m2-client [--client <dir>] [--host <addr>] [--auth-port <port>]
 //!           [--login <id> <password>] [--enter <slot>] [--demo]
-//!           [--screenshot <out.png>]
+//!           [--screenshot <out.png>] [--vsync]
 //! ```
 //!
 //! `--client` is the folder with `pack/` (default `bin`).
@@ -28,6 +28,7 @@ struct Args {
     host: Option<String>,
     auth_port: Option<u16>,
     autologin: Autologin,
+    vsync: bool,
 }
 
 impl Default for Args {
@@ -37,6 +38,7 @@ impl Default for Args {
             host: None,
             auth_port: None,
             autologin: Autologin::default(),
+            vsync: false,
         }
     }
 }
@@ -62,6 +64,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> Result<Args, String> {
                 a.autologin.enter = Some(slot.parse().map_err(|_| format!("bad slot {slot}"))?);
             }
             "--demo" => a.autologin.demo = true,
+            "--vsync" => a.vsync = true,
             "--screenshot" => {
                 a.autologin.screenshot = Some(PathBuf::from(
                     it.next().ok_or("--screenshot needs <out.png>")?,
@@ -101,6 +104,7 @@ fn main() -> AppExit {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "m2rusty".into(),
+                present_mode: if args.vsync { bevy::window::PresentMode::AutoVsync } else { bevy::window::PresentMode::AutoNoVsync },
                 ..default()
             }),
             ..default()
@@ -132,10 +136,20 @@ fn setup(mut commands: Commands) {
         // The custom materials write display-space colours.
         bevy::core_pipeline::tonemapping::Tonemapping::None,
         bevy::core_pipeline::tonemapping::DebandDither::Disabled,
+        bevy::render::view::Msaa::Off,
         bevy::camera::Exposure {
             ev100: -(1.2f32).log2(),
         },
         SceneCamera,
+        // CPU batching is faster here than indirect drawing: the scene has a
+        // few hundred draws and the GPU is far from saturated, while Bevy's
+        // indirect-draw preparation shows up on the CPU side.
+        bevy::render::view::NoIndirectDrawing,
+        // The fixed-function materials never read Bevy's clustered lights, so
+        // cluster assignment would be wasted per-frame work. `None` needs the
+        // CPU clustering path that `M2RenderPlugin` selects (Bevy 0.20's GPU
+        // clustering makes a zero-sized texture for it).
+        bevy::light::cluster::ClusterConfig::None,
         Transform::from_xyz(0.0, 150.0, -520.0).looking_at(Vec3::new(0.0, 90.0, 0.0), Vec3::Y),
     ));
     commands.spawn((

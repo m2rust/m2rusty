@@ -12,6 +12,7 @@
 //   UV_1      location 3   optional stage 1 coordinates (falls back to UV_0)
 //   COLOR     location 5   Float32x4 gamma-space diffuse, white when absent
 //   JOINT_INDEX / JOINT_WEIGHT (6, 7) with a SkinnedMesh component: GPU skinning
+//   BILLBOARD location 8   camera-facing cards, drawn by `billboard_vertex`
 
 import bevy_pbr::render::{
     mesh_functions,
@@ -110,6 +111,57 @@ fn vertex(vertex_no_morph: Vertex) -> VertexOutput {
     }
 
     out.color = diffuse;
+    return out;
+}
+
+
+// Camera-facing cards (SpeedTree leaves, `CSpeedTreeWrapper`'s per-frame
+// billboarding moved to the GPU). POSITION is the card centre in mesh space and
+// BILLBOARD (location 8) the corner as coefficients of the camera basis
+// `right * x + up * y`, the card's own rotation already applied. The basis is
+// the one `leaf_billboards` builds in source space (z up), from the camera
+// towards the mesh origin, so every instance faces the camera with one shared
+// mesh. Unlit: cards have no normals.
+struct BillboardVertex {
+    @builtin(instance_index) instance_index: u32,
+    @location(0) position: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(5) color: vec4<f32>,
+    @location(8) corner: vec2<f32>,
+}
+
+@vertex
+fn billboard_vertex(vertex: BillboardVertex) -> VertexOutput {
+    var out: VertexOutput;
+    let world_from_local = mesh_functions::get_world_from_local(vertex.instance_index);
+    let local_from_world = mesh_functions::get_local_from_world(vertex.instance_index);
+    // Bevy space is source space with y and z swapped.
+    let camera = (local_from_world * vec4<f32>(view.world_position, 1.0)).xzy;
+    var v = -camera;
+    let vl = length(v);
+    if vl < 1e-4 {
+        v = vec3<f32>(0.0, 1.0, 0.0);
+    } else {
+        v = v / vl;
+    }
+    // right = normalize(cross(world up, view)), up = cross(view, right).
+    var right = vec3<f32>(-v.y, v.x, 0.0);
+    let rl = length(right);
+    if rl < 1e-4 {
+        right = vec3<f32>(1.0, 0.0, 0.0);
+    } else {
+        right = right / rl;
+    }
+    let up = cross(v, right);
+    let offset = right * vertex.corner.x + up * vertex.corner.y;
+    let local = vertex.position + offset.xzy;
+
+    let world_position = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(local, 1.0));
+    out.position = position_world_to_clip(world_position.xyz);
+    out.view_depth = -(view.view_from_world * world_position).z;
+    out.uv = vertex.uv;
+    out.uv1 = vertex.uv;
+    out.color = vertex.color;
     return out;
 }
 

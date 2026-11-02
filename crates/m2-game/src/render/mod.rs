@@ -10,8 +10,32 @@ pub mod terrain;
 pub mod tree;
 
 use bevy::math::Vec4;
+use bevy::prelude::*;
 use m2_formats::map::EnvironmentData;
 use m2_render::{Fog, FogMode};
+
+/// Identical fixed-function materials are shared by every mesh that needs
+/// them. Map objects, trees and characters otherwise create a fresh material
+/// (and bind group) per instance; that both wastes GPU resources and defeats
+/// Bevy's automatic batching of repeated meshes.
+#[derive(Resource, Default)]
+pub struct MaterialCache {
+    entries: Vec<(m2_render::FixedFunctionMaterial, Handle<m2_render::FixedFunctionMaterial>)>,
+}
+
+/// Returns a shared handle for `material`, adding it on first use.
+pub fn cached_material(world: &mut World, material: m2_render::FixedFunctionMaterial) -> Handle<m2_render::FixedFunctionMaterial> {
+    let existing = {
+        let cache = world.get_resource_or_init::<MaterialCache>();
+        cache.entries.iter().find(|(cached, _)| *cached == material).map(|(_, handle)| handle.clone())
+    };
+    if let Some(handle) = existing {
+        return handle;
+    }
+    let handle = world.resource_mut::<Assets<m2_render::FixedFunctionMaterial>>().add(material.clone());
+    world.resource_mut::<MaterialCache>().entries.push((material, handle.clone()));
+    handle
+}
 
 /// `CMapManager::SetEnvironmentData`'s fog state as the fixed-function fog of
 /// `m2-render`. Density fog is exponential at the client's fixed 0.00015.

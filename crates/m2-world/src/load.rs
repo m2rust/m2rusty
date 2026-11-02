@@ -1,10 +1,8 @@
 //! Loading a whole outdoor map: `MapProperty.txt`, `Setting.txt`, the
 //! environment, every terrain and the placed area objects.
 //!
-//! This follows `CMapOutdoor::LoadMap` closely enough for drawing the map: a
-//! file that fails is recorded and skipped, the rest still loads. It loads every
-//! terrain at once; the game's 3×3 streaming around the player is not here yet.
-//! Rendering (meshes, textures, materials) belongs to the Bevy side.
+//! A full-map load supports the viewer; the sector loader reads only one cell
+//! for the game's streaming window. Rendering belongs to the Bevy side.
 
 use m2_formats::map::{
     Area, AreaPropertyError, AtlasEntry, EnvironmentData, MapProperty, MapSetting, PropertyError, SettingError,
@@ -28,6 +26,8 @@ pub struct LoadedMap {
     /// The first terrain that failed to load.
     pub terrain_error: Option<String>,
     pub height_scale: f32,
+    /// View radius in terrain cells from Setting.txt.
+    pub view_radius: i64,
     /// The texture set; entry 0 is the client's unused placeholder slot.
     pub textures: Vec<TerrainTexture>,
     /// Buildings, trees, effects, ambience and dungeon blocks of every area.
@@ -45,6 +45,15 @@ pub struct LoadedMap {
 /// `MapProperty.txt` may redirect the data to its `ParentMapName`). Fails only
 /// when the map has no size or no terrain loads.
 pub fn load_map(packs: &PackManager, name: &str) -> Result<LoadedMap, String> {
+    load_map_impl(packs, name, None)
+}
+
+/// Loads one terrain and its area objects, retaining the map-wide metadata.
+pub fn load_map_sector(packs: &PackManager, name: &str, x: u16, y: u16) -> Result<LoadedMap, String> {
+    load_map_impl(packs, name, Some((x, y)))
+}
+
+fn load_map_impl(packs: &PackManager, name: &str, sector: Option<(u16, u16)>) -> Result<LoadedMap, String> {
     let map_name = name.as_bytes().to_vec();
     let property = MapProperty::load(packs, &map_name);
     let property_error = property.error.as_ref().map(describe_property_error);
@@ -71,6 +80,7 @@ pub fn load_map(packs: &PackManager, name: &str) -> Result<LoadedMap, String> {
     let mut terrain_error = None;
     for ty in 0..count_y as u16 {
         for tx in 0..count_x as u16 {
+            if sector.is_some_and(|coord| coord != (tx, ty)) { continue; }
             let dir = area_dir_name(&data_directory, tx, ty);
             let area = Area::load(packs, &dir, |_| true);
             if let Some(error) = area.object_error {
@@ -110,6 +120,7 @@ pub fn load_map(packs: &PackManager, name: &str) -> Result<LoadedMap, String> {
         terrain_failed,
         terrain_error,
         height_scale: setting.height_scale,
+        view_radius: setting.view_radius,
         textures,
         objects,
         environment,

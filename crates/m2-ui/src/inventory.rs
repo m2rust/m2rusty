@@ -774,6 +774,12 @@ fn refresh(
     mut tabs: Query<(&Action, &mut Selected)>,
     mut pages: Query<&mut Text, (With<QuickPageLabel>, Without<Money>, Without<Count>, Without<Prompt>)>,
 ) {
+    // Newly spawned icons still need initialization when reopening the UI.
+    if !player.is_changed() && !catalog.is_changed() && !ui.is_changed()
+        && icons.iter_mut().all(|(_, icon, _, _)| !icon.is_added())
+    {
+        return;
+    }
     for (entity, mut icon, mut node, mut image) in &mut icons {
         let Ok(slot) = slots.get(icon.slot) else { continue };
         let pos = position(*slot, &ui, &player, &catalog);
@@ -785,17 +791,17 @@ fn refresh(
         let vnum = match item.filter(|_| anchored) {
             Some(item) => item.vnum,
             None => {
-                node.display = Display::None;
+                core::set_display(&mut node, Display::None);
                 icon.vnum = 0;
                 if let Ok(mut z) = slot_z.get_mut(icon.slot) {
-                    z.0 = 0;
+                    z.set_if_neq(ZIndex(0));
                 }
                 continue;
             }
         };
         // A multi-cell item draws over the cells below its origin.
         if let Ok(mut z) = slot_z.get_mut(icon.slot) {
-            z.0 = 5;
+            z.set_if_neq(ZIndex(5));
         }
         if icon.vnum != vnum {
             let art = Art::load(&assets, &icon_path(&catalog, vnum));
@@ -808,13 +814,19 @@ fn refresh(
             commands.entity(entity).insert(art);
             icon.vnum = vnum;
         }
-        node.display = Display::Flex;
-        node.height = Val::Px(if matches!(slot, Slot::Quick(_)) { ICON } else { item_size(&catalog, vnum) * ICON });
-        image.color = if ui.held.is_some_and(|held| Some(held.pos) == pos) {
+        let height = if matches!(slot, Slot::Quick(_)) { ICON } else { item_size(&catalog, vnum) * ICON };
+        core::edit_node(&mut node, |node| {
+            node.display = Display::Flex;
+            node.height = Val::Px(height);
+        });
+        let color = if ui.held.is_some_and(|held| Some(held.pos) == pos) {
             Color::srgba(1., 1., 1., 0.45)
         } else {
             Color::WHITE
         };
+        if image.color != color {
+            image.color = color;
+        }
     }
     for (count, mut text, mut node) in &mut counts {
         let value = slots
@@ -835,7 +847,10 @@ fn refresh(
             **text = value;
         }
         // The count sits at the bottom-right of the whole item icon.
-        node.top = Val::Px((height - 15.).max(0.));
+        let top = Val::Px((height - 15.).max(0.));
+        if node.top != top {
+            node.top = top;
+        }
     }
     for mut text in &mut money {
         let value = money_string(player.points[11]);
@@ -860,7 +875,7 @@ fn refresh(
     }
     for (action, mut selected) in &mut tabs {
         if let Action::Page(page) = action {
-            selected.0 = *page == ui.page;
+            selected.set_if_neq(Selected(*page == ui.page));
         }
     }
     for mut text in &mut pages {
@@ -910,12 +925,15 @@ fn tooltip(
                 ghost.0 = held.vnum;
                 image.color = Color::srgba(1., 1., 1., 0.85);
             }
-            node.display = Display::Flex;
-            node.left = Val::Px(cursor.x + 8.);
-            node.top = Val::Px(cursor.y + 8.);
-            node.height = Val::Px(item_size(&catalog, held.vnum) * ICON);
+            let height = item_size(&catalog, held.vnum) * ICON;
+            core::edit_node(&mut node, |node| {
+                node.display = Display::Flex;
+                node.left = Val::Px(cursor.x + 8.);
+                node.top = Val::Px(cursor.y + 8.);
+                node.height = Val::Px(height);
+            });
         } else {
-            node.display = Display::None;
+            core::set_display(&mut node, Display::None);
         }
     }
 
@@ -929,9 +947,11 @@ fn tooltip(
         .and_then(|pos| player.items.get(&pos));
     let show = ui.held.is_none() && last.is_some_and(|(_, at)| time.elapsed_secs() - at > 0.3) && item.is_some();
     for mut node in &mut tip {
-        node.display = if show { Display::Flex } else { Display::None };
-        node.left = Val::Px((cursor.x + 16.).min(viewport.x - 280.).max(0.));
-        node.top = Val::Px((cursor.y + 18.).max(0.));
+        core::edit_node(&mut node, |node| {
+            node.display = if show { Display::Flex } else { Display::None };
+            node.left = Val::Px((cursor.x + 16.).min(viewport.x - 280.).max(0.));
+            node.top = Val::Px((cursor.y + 18.).max(0.));
+        });
     }
     if let (true, Some(item)) = (show, item) {
         let details = match catalog.get(item.vnum) {

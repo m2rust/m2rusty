@@ -9,9 +9,9 @@
 
 use std::collections::HashMap;
 
-use bevy::animation::graph::{AnimationGraph, AnimationGraphHandle};
+use bevy::animation::graph::{AnimationGraph, AnimationGraphHandle, AnimationNodeIndex};
 use bevy::animation::{AnimationClip, AnimationPlayer};
-use bevy::asset::{AssetServer, Assets, LoadState, UntypedAssetId};
+use bevy::asset::{AssetId, AssetServer, Assets, LoadState, UntypedAssetId};
 use bevy::prelude::*;
 use m2_assets::gr2::{Gr2Model, Gr2Spawn};
 use m2_assets::paths;
@@ -1056,8 +1056,7 @@ impl Character {
         if world.resource::<Assets<AnimationClip>>().get(&clip).is_none() {
             return;
         }
-        let (graph, node) = AnimationGraph::from_clip(clip.clone());
-        let graph = world.resource_mut::<Assets<AnimationGraph>>().add(graph);
+        let (graph, node) = clip_graph(world, &clip);
         let mut root = world.entity_mut(spawned.root);
         root.insert(AnimationGraphHandle(graph));
         if let Some(mut player) = root.get_mut::<AnimationPlayer>() {
@@ -1074,6 +1073,22 @@ impl Character {
         motion.started = true;
         info!("motion {} started", motion.file);
     }
+}
+
+/// One-clip animation graphs, shared by every character that plays the clip:
+/// a motion change reuses the graph instead of adding a new asset (and having
+/// Bevy rebuild its threaded graph) each time.
+#[derive(Resource, Default)]
+struct ClipGraphs(HashMap<AssetId<AnimationClip>, (Handle<AnimationGraph>, AnimationNodeIndex)>);
+
+fn clip_graph(world: &mut World, clip: &Handle<AnimationClip>) -> (Handle<AnimationGraph>, AnimationNodeIndex) {
+    if let Some(cached) = world.get_resource::<ClipGraphs>().and_then(|graphs| graphs.0.get(&clip.id())) {
+        return cached.clone();
+    }
+    let (graph, node) = AnimationGraph::from_clip(clip.clone());
+    let graph = world.resource_mut::<Assets<AnimationGraph>>().add(graph);
+    world.get_resource_or_init::<ClipGraphs>().0.insert(clip.id(), (graph.clone(), node));
+    (graph, node)
 }
 
 /// `Ok` while the asset is loading, the load error once it failed.

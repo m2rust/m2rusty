@@ -68,8 +68,16 @@ pub struct EffectRenderer {
     /// The map environment's fog, when these are map effects.
     pub fog: Option<Fog>,
     rng: GlibcRandom,
-    draws: Vec<(Entity, Handle<Mesh>, Handle<FixedFunctionMaterial>)>,
+    draws: Vec<(Entity, Handle<Mesh>, Handle<FixedFunctionMaterial>, MaterialKey)>,
     textures: HashMap<Vec<u8>, Handle<Image>>,
+}
+
+#[derive(PartialEq)]
+struct MaterialKey {
+    texture: Option<Handle<Image>>,
+    blend: Option<(u8, u8)>,
+    operation: u8,
+    fog: Option<Fog>,
 }
 
 struct Draw {
@@ -105,8 +113,10 @@ impl EffectRenderer {
             let draw = instance.render(&camera_basis, &view, dt);
             for system in draw.particle_systems {
                 // Batch each texture frame, preserving the simulator's quad order.
-                for (frame, texture) in system.textures.iter().enumerate() {
-                    let mut job = Draw {
+                let mut batches: Vec<Option<Draw>> = (0..system.textures.len()).map(|_| None).collect();
+                for quad in &system.quads {
+                    let Some(texture) = system.textures.get(quad.texture) else { continue };
+                    let job = batches[quad.texture].get_or_insert_with(|| Draw {
                         positions: Vec::new(),
                         uvs: Vec::new(),
                         colors: Vec::new(),
@@ -114,18 +124,14 @@ impl EffectRenderer {
                         texture: Some(texture.clone()),
                         blend: Some((system.src_blend, system.dest_blend)),
                         operation: system.color_operation,
-                    };
-                    for quad in system.quads.iter().filter(|q| q.texture == frame) {
-                        let base = job.positions.len() as u32;
-                        job.positions.extend(quad.positions.map(|p| coords::vec3(p).to_array()));
-                        job.uvs.extend(m2_effect::particle::QUAD_UV);
-                        job.colors.extend([d3d_color(quad.color).to_array(); 4]);
-                        job.indices.extend([0, 2, 1, 2, 3, 1].map(|i| i + base));
-                    }
-                    if !job.positions.is_empty() {
-                        jobs.push(job);
-                    }
+                    });
+                    let base = job.positions.len() as u32;
+                    job.positions.extend(quad.positions.map(|p| coords::vec3(p).to_array()));
+                    job.uvs.extend(m2_effect::particle::QUAD_UV);
+                    job.colors.extend([d3d_color(quad.color).to_array(); 4]);
+                    job.indices.extend([0, 2, 1, 2, 3, 1].map(|i| i + base));
                 }
+                jobs.extend(batches.into_iter().flatten());
             }
             for mesh in draw.meshes {
                 let mut indices: Vec<u32> = (0..mesh.vertices.len() as u32).collect();
@@ -156,6 +162,7 @@ impl EffectRenderer {
                     })
                     .clone()
             });
+            let key = MaterialKey { texture: texture.clone(), blend: job.blend, operation: job.operation, fog };
             let mut material = texture
                 .map(FixedFunctionMaterial::opaque)
                 .unwrap_or_default()
@@ -178,10 +185,15 @@ impl EffectRenderer {
             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, job.uvs);
             mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, job.colors);
             mesh.insert_indices(Indices::U32(job.indices));
-            if let Some((entity, mesh_handle, material_handle)) = self.draws.get(index) {
+            if let Some((entity, mesh_handle, material_handle, old_key)) = self.draws.get_mut(index) {
                 *world.resource_mut::<Assets<Mesh>>().get_mut(mesh_handle).unwrap() = mesh;
-                *world.resource_mut::<Assets<FixedFunctionMaterial>>().get_mut(material_handle).unwrap() = material;
-                world.entity_mut(*entity).insert(Visibility::Visible);
+                if *old_key != key {
+                    *world.resource_mut::<Assets<FixedFunctionMaterial>>().get_mut(material_handle).unwrap() = material;
+                    *old_key = key;
+                }
+                if world.get::<Visibility>(*entity) != Some(&Visibility::Visible) {
+                    world.entity_mut(*entity).insert(Visibility::Visible);
+                }
             } else {
                 let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
                 let material = world.resource_mut::<Assets<FixedFunctionMaterial>>().add(material);
@@ -198,11 +210,13 @@ impl EffectRenderer {
                 if let Some(root) = self.root {
                     world.entity_mut(entity).insert(ChildOf(root));
                 }
-                self.draws.push((entity, mesh, material));
+                self.draws.push((entity, mesh, material, key));
             }
         }
-        for (entity, _, _) in self.draws.iter().skip(count) {
-            world.entity_mut(*entity).insert(Visibility::Hidden);
+        for (entity, _, _, _) in self.draws.iter().skip(count) {
+            if world.get::<Visibility>(*entity) != Some(&Visibility::Hidden) {
+                world.entity_mut(*entity).insert(Visibility::Hidden);
+            }
         }
     }
 }

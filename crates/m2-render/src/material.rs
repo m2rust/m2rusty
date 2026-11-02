@@ -6,7 +6,7 @@ use bevy::ecs::system::SystemParamItem;
 use bevy::ecs::system::lifetimeless::SRes;
 use bevy::image::Image;
 use bevy::math::{UVec4, Vec4};
-use bevy::mesh::MeshVertexBufferLayoutRef;
+use bevy::mesh::{Mesh, MeshVertexAttribute, MeshVertexBufferLayoutRef, VertexFormat};
 use bevy::material::AlphaMode;
 use bevy::pbr::{Material, MaterialPipeline, MaterialPipelineKey};
 use bevy::shader::ShaderRef;
@@ -28,6 +28,15 @@ use crate::state::{
 
 /// Embedded shader path, registered by [`crate::M2RenderPlugin`].
 pub const SHADER_PATH: &str = "embedded://m2_render/fixed_function.wesl";
+
+/// Corner of a camera-facing card, `Float32x2` at shader location 8. A mesh
+/// with this attribute is drawn by the shader's `billboard_vertex`: `POSITION`
+/// is the card centre and the corner is `right * x + up * y` in the camera
+/// basis of SpeedTree leaves (see the shader), so instances can share the mesh
+/// and nothing is rewritten when the camera moves. Such meshes are unlit and
+/// need `UV_0` and `COLOR`.
+pub const ATTRIBUTE_BILLBOARD: MeshVertexAttribute =
+    MeshVertexAttribute::new("M2_Billboard", 0x6d32_b111, VertexFormat::Float32x2);
 
 /// GPU uniform of [`FixedFunctionMaterial`] (binding 0 of the material bind
 /// group). The layout is mirrored by `struct FixedFunction` in the shader.
@@ -55,7 +64,7 @@ pub struct FixedFunctionUniform {
 /// Two texture stages are modelled (the GL backend applies two). A stage
 /// without a texture is skipped. Colours are gamma-space; textures must be
 /// created as non-sRGB formats (for example `Rgba8Unorm`) so no decode happens.
-#[derive(Asset, TypePath, Clone, Debug)]
+#[derive(Asset, TypePath, Clone, Debug, PartialEq)]
 pub struct FixedFunctionMaterial {
     pub textures: [Option<Handle<Image>>; 2],
     pub stages: [TextureStage; 2],
@@ -340,9 +349,21 @@ impl Material for FixedFunctionMaterial {
     fn specialize(
         _pipeline: &MaterialPipeline,
         descriptor: &mut RenderPipelineDescriptor,
-        _layout: &MeshVertexBufferLayoutRef,
+        layout: &MeshVertexBufferLayoutRef,
         key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
+        if layout.0.contains(ATTRIBUTE_BILLBOARD) {
+            descriptor.vertex.entry_point = Some("billboard_vertex".into());
+            descriptor.vertex.buffers = vec![layout.0.get_layout(&[
+                Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
+                Mesh::ATTRIBUTE_UV_0.at_shader_location(2),
+                Mesh::ATTRIBUTE_COLOR.at_shader_location(5),
+                ATTRIBUTE_BILLBOARD.at_shader_location(8),
+            ])?];
+        } else {
+            // The module has two vertex entry points, so the default must be named.
+            descriptor.vertex.entry_point = Some("vertex".into());
+        }
         let states = key.bind_group_data.states();
         descriptor.primitive.cull_mode = states.cull_mode;
         if let Some(depth_stencil) = descriptor.depth_stencil.as_mut() {

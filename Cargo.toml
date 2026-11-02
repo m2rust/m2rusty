@@ -32,9 +32,20 @@ m2-script = { path = "crates/m2-script" }
 m2-ui = { path = "crates/m2-ui" }
 m2-world = { path = "crates/m2-world" }
 
-# Keep development and test builds quick, including their dependencies.
+# Optimize the game and its dependencies so normal `cargo run` is playable.
 [profile.dev]
-opt-level = 0
+opt-level = 1
 debug = 0
 incremental = true
 codegen-units = 256
+
+[profile.dev.package."*"]
+opt-level = 3
+
+# For compilation-only work: `cargo build --profile fast`.
+[profile.fast]
+inherits = "dev"
+opt-level = 0
+
+[profile.fast.package."*"]
+opt-level = 0

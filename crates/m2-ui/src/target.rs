@@ -168,7 +168,12 @@ fn refresh(
 ) {
     let Ok(mut root) = root.single_mut() else { return };
     if !board.visible {
-        root.display = Display::None;
+        if root.display != Display::None {
+            root.display = Display::None;
+        }
+        return;
+    }
+    if !board.is_changed() && !scale.is_changed() {
         return;
     }
     let width = match board.hp_percent {

@@ -301,23 +301,23 @@ fn quick_overlay(
         };
         let Ok((entity, mut marker, mut node, mut image)) = overlays.get_mut(overlay) else { continue };
         match id {
-            Some(id) if marker.id == id => node.display = Display::Flex,
+            Some(id) if marker.id == id => core::set_display(&mut node, Display::Flex),
             Some(id) => match emotion(id) {
                 Some(entry) => {
                     marker.id = id;
                     let (art, loaded) = load_art(&assets, &subs, entry.icon);
                     *image = loaded;
-                    node.display = Display::Flex;
+                    core::set_display(&mut node, Display::Flex);
                     commands.entity(entity).insert(art);
                 }
                 None => {
                     marker.id = 0;
-                    node.display = Display::None;
+                    core::set_display(&mut node, Display::None);
                 }
             },
             None => {
                 marker.id = 0;
-                node.display = Display::None;
+                core::set_display(&mut node, Display::None);
             }
         }
     }

@@ -775,6 +775,12 @@ fn refresh(
         (With<RidingBody>, Without<SkillBody>, Without<SkillIcon>, Without<SkillCount>, Without<SkillPlus>),
     >,
 ) {
+    if !catalog.is_changed() && !state.is_changed() && !player.is_changed() && !ui.is_changed()
+        && !packs.as_ref().is_some_and(|packs| packs.is_changed())
+        && icons.iter_mut().all(|(_, icon, _)| !icon.is_added())
+    {
+        return;
+    }
     let group = effective_group(&ui, &player);
     // The catalog finishes loading after the page may already have drawn.
     if catalog.is_changed() {
@@ -817,7 +823,7 @@ fn refresh(
                 }
             }
         }
-        node.display = if path.is_some() { Display::Flex } else { Display::None };
+        core::set_display(&mut node, if path.is_some() { Display::Flex } else { Display::None });
     }
 
     for (count, mut text, mut node) in &mut counts {
@@ -830,7 +836,7 @@ fn refresh(
             **text = value;
         }
         // Keep the original bottom-right position; the empty text draws nothing.
-        node.display = if shown { Display::Flex } else { Display::None };
+        core::set_display(&mut node, if shown { Display::Flex } else { Display::None });
     }
 
     for (plus, mut node) in &mut pluses {
@@ -845,12 +851,12 @@ fn refresh(
         };
         let max_level = catalog.get(vnum).map_or(20, |data| data.max_level);
         // `CanShowPlusButton`: points left, first grade, below max level.
-        node.display = if point > 0 && vnum != 0 && level != 0 && state.grade(vnum) == 0 && level < max_level
-        {
+        let display = if point > 0 && vnum != 0 && level != 0 && state.grade(vnum) == 0 && level < max_level {
             Display::Flex
         } else {
             Display::None
         };
+        core::set_display(&mut node, display);
     }
 
     for (point, mut text) in &mut points {
@@ -868,17 +874,17 @@ fn refresh(
     }
 
     for (tab, mut selected) in &mut tabs {
-        selected.0 = tab.0 == ui.riding;
+        selected.set_if_neq(Selected(tab.0 == ui.riding));
     }
     for (button, mut selected) in &mut groups {
-        selected.0 = !ui.riding && button.0 == group;
+        selected.set_if_neq(Selected(!ui.riding && button.0 == group));
     }
 
     for mut node in &mut skill_body {
-        node.display = if ui.riding { Display::None } else { Display::Flex };
+        core::set_display(&mut node, if ui.riding { Display::None } else { Display::Flex });
     }
     for mut node in &mut riding_body {
-        node.display = if ui.riding { Display::Flex } else { Display::None };
+        core::set_display(&mut node, if ui.riding { Display::Flex } else { Display::None });
     }
 }
 
@@ -909,7 +915,7 @@ fn tooltip(
         && last.is_some_and(|(_, at)| time.elapsed_secs() - at > 0.3)
         && hovered.is_some();
     for mut node in &mut tip {
-        node.display = if show { Display::Flex } else { Display::None };
+        core::set_display(&mut node, if show { Display::Flex } else { Display::None });
         if let Some(cursor) = cursor {
             node.left = Val::Px((cursor.x + 16.).min(viewport.x - 250.).max(0.));
             node.top = Val::Px((cursor.y + 18.).max(0.));
@@ -1004,17 +1010,17 @@ fn quick_overlay(
                 let (art, loaded) = load_art(&assets, &subs, &path);
                 *image = loaded;
                 commands.entity(entity).insert(art);
-                node.display = Display::Flex;
+                core::set_display(&mut node, Display::Flex);
             }
             Some((vnum, grade, _)) => {
                 marker.vnum = vnum;
                 marker.grade = grade;
-                node.display = Display::Flex;
+                core::set_display(&mut node, Display::Flex);
             }
             None => {
                 marker.vnum = 0;
                 marker.path = None;
-                node.display = Display::None;
+                core::set_display(&mut node, Display::None);
             }
         }
     }

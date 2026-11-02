@@ -253,8 +253,13 @@ fn sync_windows(
                     ui.selected = None;
                 }
                 if ui.safebox_was_open && !window.open { ui.safebox_dismissed = true; }
-                window.open = state.safebox_open && !ui.safebox_dismissed;
-                ui.safebox_was_open = window.open;
+                let open = state.safebox_open && !ui.safebox_dismissed;
+                if window.open != open {
+                    window.open = open;
+                }
+                if ui.safebox_was_open != open {
+                    ui.safebox_was_open = open;
+                }
             }
             Pane::Mall => {
                 if ui.mall_serial != state.mall_serial {
@@ -264,8 +269,13 @@ fn sync_windows(
                     ui.selected = None;
                 }
                 if ui.mall_was_open && !window.open { ui.mall_dismissed = true; }
-                window.open = state.mall_open && !ui.mall_dismissed;
-                ui.mall_was_open = window.open;
+                let open = state.mall_open && !ui.mall_dismissed;
+                if window.open != open {
+                    window.open = open;
+                }
+                if ui.mall_was_open != open {
+                    ui.mall_was_open = open;
+                }
             }
         }
     }
@@ -285,6 +295,12 @@ fn refresh(
     mut money: Query<&mut Text, (With<MoneyText>, Without<StorageCount>, Without<StoragePageLabel>, Without<StorageNotice>)>,
     mut notices: Query<&mut Text, (With<StorageNotice>, Without<StorageCount>, Without<StoragePageLabel>, Without<MoneyText>)>,
 ) {
+    // The windows are built once and usually closed; only touch their widgets
+    // when their data changed. Writing them every frame dirties the whole UI
+    // layout for two hidden windows.
+    if !state.is_changed() && !ui.is_changed() && !catalog.is_changed() {
+        return;
+    }
     for (icon, mut node, mut image) in &mut icons {
         let Ok(slot) = slots.get(icon.0) else { continue };
         let index = match slot.pane {
@@ -321,7 +337,7 @@ fn refresh(
             Pane::Safebox => ui.safebox_page * PAGE_SIZE + usize::from(slot.cell),
             Pane::Mall => ui.mall_page * PAGE_SIZE + usize::from(slot.cell),
         } as u16;
-        selected.0 = ui.selected == Some((slot.pane, index));
+        selected.set_if_neq(Selected(ui.selected == Some((slot.pane, index))));
         border.set_all(if selected.0 { Color::srgb(0.95, 0.71, 0.25) } else { Color::srgba(0.55, 0.48, 0.36, 0.6) });
     }
     for (label, mut text) in &mut pages {

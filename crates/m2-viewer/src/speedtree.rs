@@ -65,10 +65,6 @@ impl ContentViewer for SpeedTreeViewer {
             fit_camera(world, tree.tree.bounding_box);
             self.fit_camera = false;
         }
-
-        if let Some(tree) = &mut self.tree {
-            tree.orient_leaves(world);
-        }
     }
 
     fn ui(&mut self, _world: &mut World, ui: &mut egui::Ui) {

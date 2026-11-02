@@ -232,10 +232,10 @@ fn visibility(
         CharacterTab::Quest => "Quest",
     };
     for (page, mut node) in &mut pages {
-        node.display = if page.0 == *tab { Display::Flex } else { Display::None };
+        core::set_display(&mut node, if page.0 == *tab { Display::Flex } else { Display::None });
     }
     for (background, mut node) in &mut backgrounds {
-        node.display = if background.0 == *tab { Display::Flex } else { Display::None };
+        core::set_display(&mut node, if background.0 == *tab { Display::Flex } else { Display::None });
     }
     for (owner, mut text) in &mut titles {
         if owner.0 == window.0 && **text != title {

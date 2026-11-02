@@ -86,7 +86,7 @@ pub fn build_app(args: &Args) -> App {
         ..default()
     }))
     .add_plugins(EguiPlugin::default())
-    .add_plugins((M2RenderPlugin, M2GamePlugin))
+    .add_plugins((M2RenderPlugin, M2GamePlugin, m2_game::net::NetPlugin))
     .insert_resource(ClearColor(Color::srgb(0.12, 0.12, 0.14)))
     .insert_resource(ui::Shell::new(
         args.client_dir.clone(),

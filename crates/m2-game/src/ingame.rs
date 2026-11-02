@@ -1115,10 +1115,20 @@ fn sync_actor_entities(world: &mut World) {
             }
         }
     }
-    let (actors, entities, mobs, base, heights, ready) = {
+    if !world.resource::<GameWorld>().is_ready() {
+        return;
+    }
+    // Borrow the catalog rather than copying every race's motion paths on
+    // every frame, including races that are not present in the scene.
+    world.resource_scope(|world, mobs: Mut<MobCatalog>| {
+        sync_actor_visuals(world, &mobs.by_race);
+    });
+}
+
+fn sync_actor_visuals(world: &mut World, mobs: &HashMap<u16, MobAppearance>) {
+    let (base, heights) = {
         let actors = world.resource::<Actors>();
         let game = world.resource::<GameWorld>();
-        let mobs = world.resource::<MobCatalog>().by_race.clone();
         let base = game.base;
         let heights = actors
             .by_vid
@@ -1129,32 +1139,36 @@ fn sync_actor_entities(world: &mut World) {
                 (vid, game.terrain_height(x, y))
             })
             .collect::<HashMap<_, _>>();
-        (actors.by_vid.clone(), actors.entities.clone(), mobs, base, heights, game.is_ready())
+        (base, heights)
     };
-    if !ready {
-        return;
-    }
-    let mut query = world.query::<(&mut ActorEntity, &mut Transform)>();
-    for (mut actor_entity, mut transform) in query.iter_mut(world) {
-        let Some(actor) = actors.get(&actor_entity.vid) else { continue };
-        let local_x = (actor.x - base.0 as i32) as f32;
-        let local_y = (actor.y - base.1 as i32) as f32;
-        let height = heights.get(&actor_entity.vid).copied().unwrap_or_default();
-        transform.translation = local_to_world(local_x, local_y, height);
-        transform.rotation = Quat::from_rotation_y(-actor.rotation.to_radians());
-        actor_entity.name.clone_from(&actor.name);
-        actor_entity.armor = actor.armor;
-        actor_entity.hair = actor.hair;
-    }
+    world.resource_scope(|world, actors: Mut<Actors>| {
+        let mut query = world.query::<(&mut ActorEntity, &mut Transform)>();
+        for (mut actor_entity, mut transform) in query.iter_mut(world) {
+            let Some(actor) = actors.by_vid.get(&actor_entity.vid) else { continue };
+            let local_x = (actor.x - base.0 as i32) as f32;
+            let local_y = (actor.y - base.1 as i32) as f32;
+            let height = heights.get(&actor_entity.vid).copied().unwrap_or_default();
+            let translation = local_to_world(local_x, local_y, height);
+            let rotation = Quat::from_rotation_y(-actor.rotation.to_radians());
+            if transform.translation != translation || transform.rotation != rotation {
+                transform.translation = translation;
+                transform.rotation = rotation;
+            }
+            if actor_entity.name != actor.name || actor_entity.armor != actor.armor || actor_entity.hair != actor.hair {
+                actor_entity.name.clone_from(&actor.name);
+                actor_entity.armor = actor.armor;
+                actor_entity.hair = actor.hair;
+            }
+        }
+    });
 
-    let pending: Vec<(u32, Entity, Actor)> = entities
-        .iter()
-        .filter(|(vid, _)| {
-            let actors = world.resource::<Actors>();
-            !actors.characters.contains_key(*vid) && !actors.failed_visuals.contains(*vid)
-        })
-        .filter_map(|(&vid, &entity)| actors.get(&vid).cloned().map(|actor| (vid, entity, actor)))
-        .collect();
+    let pending: Vec<(u32, Entity, Actor)> = {
+        let actors = world.resource::<Actors>();
+        actors.entities.iter()
+            .filter(|(vid, _)| !actors.characters.contains_key(*vid) && !actors.failed_visuals.contains(*vid))
+            .filter_map(|(&vid, &entity)| actors.by_vid.get(&vid).cloned().map(|actor| (vid, entity, actor)))
+            .collect()
+    };
     for (vid, parent, actor) in pending {
         let character = if actor.kind == m2_net::phase::ACTOR_TYPE_PC {
             let shape = world.resource::<ArmorShapes>().shape(u32::from(actor.armor));
@@ -1203,7 +1217,8 @@ fn sync_actor_entities(world: &mut World) {
         world.resource_scope(|world, mut actors: Mut<Actors>| {
             let Some(character) = actors.characters.get_mut(&vid) else { return };
             let pc = actor.kind == m2_net::phase::ACTOR_TYPE_PC;
-            let motions = mobs.get(&actor.race).map(|mob| mob.motions.clone()).unwrap_or_default();
+            let fallback = ActorMotions::default();
+            let motions = mobs.get(&actor.race).map(|mob| &mob.motions).unwrap_or(&fallback);
             let idle = if pc {
                 character.motion_path(if actor.moving { Motion::Run } else { Motion::Wait })
             } else if actor.moving {
@@ -1436,8 +1451,15 @@ fn drive_world(world: &mut World) {
                     game.base = (warped.base_x, warped.base_y);
                     game.main_vid = vid;
                     let fog = warped.prepared.map.environment.as_ref().and_then(environment_fog).map(soften_fog);
-                    let map = std::sync::Arc::new(warped.prepared);
-                    let scene = MapScene::spawn_with_fog(world, map, fog);
+                    let packs = std::sync::Arc::clone(&world.resource::<M2Packs>().packs);
+                    let mut scene = MapScene::spawn_streamed(world, warped.prepared, fog, packs);
+                    scene.update_streamed(world, Vec2::new(warped.local_x as f32, warped.local_y as f32));
+                    let far = (scene.map.map.view_radius as f32 * m2_world::CELLSCALE as f32).max(1_000.0);
+                    if let Ok(mut projection) = world.query_filtered::<&mut Projection, With<SceneCamera>>().single_mut(world)
+                        && let Projection::Perspective(perspective) = &mut *projection
+                    {
+                        perspective.far = far;
+                    }
                     world.resource_mut::<CombatFx>().set_fog(fog);
                     let height = scene.ground_height(warped.local_x as f32, warped.local_y as f32);
                     let position = local_to_world(warped.local_x as f32, warped.local_y as f32, height);
@@ -1722,7 +1744,7 @@ fn drive_world(world: &mut World) {
                     if (next - local).length() > f32::EPSILON {
                         local = next;
                         moved = true;
-                    } else if control.destination.is_some() {
+                    } else if control.destination.is_some() && scene.contains_position(wanted) {
                         // `BlockMovement`: a click-move into a wall stops.
                         info!("blocked at {:.0},{:.0}", local.x, local.y);
                         control.destination = None;
@@ -2111,7 +2133,8 @@ fn drive_world(world: &mut World) {
         game.last_pointer = last_pointer;
         game.attack_ready = attack_ready;
         game.next_move_packet = next_move_packet;
-        scene.update(world);
+        let position = world.get::<Transform>(character.root).map_or(Vec3::ZERO, |t| t.translation);
+        scene.update_streamed(world, Vec2::new(position.x, -position.z));
         character.update(world);
     });
 }
@@ -2526,6 +2549,12 @@ fn check_advancing(
 ) -> Vec2 {
     if to == from {
         return to;
+    }
+    if !scene.contains_position(to) {
+        // The current sector may still be loading; only block crossing into
+        // another sector until its terrain and collision objects are ready.
+        let size = TERRAIN_WORLD;
+        if (from.x / size).floor() != (to.x / size).floor() || (from.y / size).floor() != (to.y / size).floor() { return from; }
     }
     let height = |p: Vec2| scene.ground_height(p.x, p.y);
     // Body sphere of the main character (`m_BodyPointInstanceList`); it is
@@ -2951,26 +2980,7 @@ fn bow_range(points: &combat::Points) -> f32 {
 
 /// `CMapOutdoor::isAttrOn` on the loaded map, in map-local coordinates.
 fn map_attr(scene: &MapScene, local: Vec2, flag: u8) -> bool {
-    let x = local.x.floor() as i32;
-    let y = local.y.floor() as i32;
-    if x < 0 || y < 0 {
-        return false;
-    }
-    let cell = (x / TERRAIN_WORLD as i32) as u16;
-    let row = (y / TERRAIN_WORLD as i32) as u16;
-    scene
-        .map
-        .map
-        .terrains
-        .iter()
-        .find(|terrain| terrain.x == cell && terrain.y == row)
-        .is_some_and(|terrain| {
-            terrain.is_attr_on(
-                ((x % TERRAIN_WORLD as i32) / 100) as u16,
-                ((y % TERRAIN_WORLD as i32) / 100) as u16,
-                flag,
-            )
-        })
+    scene.is_attr_on(local, flag)
 }
 
 /// The nearest attackable actor within `range` of `local`.
