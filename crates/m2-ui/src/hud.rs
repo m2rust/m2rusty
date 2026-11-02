@@ -57,6 +57,15 @@ enum SystemAction {
     Exit,
     Close,
 }
+/// One of the taskbar's four `EXPGauge_0n` orbs: a clip that shows the
+/// orb's bottom part, filled from below (`SetRenderingRect(0, -fill, 0, 0)`).
+#[derive(Component, Clone, Copy)]
+struct ExpOrb(u8);
+/// `EXP_Gauge_Point.sub` is 19×19.
+const EXP_ORB_SIZE: f32 = 19.0;
+/// `POINT_EXP` / `POINT_NEXT_EXP`.
+const POINT_EXP: usize = 3;
+const POINT_NEXT_EXP: usize = 4;
 
 /// The client's `HPGauge`/`SPGauge`/`STGauge` are 95 px wide.
 const GAUGE_WIDTH: f32 = 95.0;
@@ -115,6 +124,7 @@ fn lifecycle(
     crate::storage::build(&mut commands, &assets);
     crate::shop::build(&mut commands, &assets);
     crate::target::build(&mut commands, &assets);
+    crate::restart::build(&mut commands, &assets);
 }
 
 fn build_fps_counter(commands: &mut Commands) {
@@ -125,7 +135,7 @@ fn build_fps_counter(commands: &mut Commands) {
         TextFont { font_size: bevy::text::FontSize::Px(14.), ..default() },
         TextColor(Color::WHITE),
         TextShadow::default(),
-        Node { position_type: PositionType::Absolute, right: Val::Px(12.), top: Val::Px(10.), ..default() },
+        Node { position_type: PositionType::Absolute, right: Val::Px(146.), top: Val::Px(10.), ..default() },
         GlobalZIndex(1000),
         Pickable::IGNORE,
     ));
@@ -262,13 +272,45 @@ fn build_taskbar(commands: &mut Commands, assets: &AssetServer) {
         "d:/ymir work/ui/game/taskbar/gauge.sub",
         core::rect(0., -10., 158., 47.),
     );
-    core::picture(
+    let exp_board = core::picture(
         commands,
         assets,
         root,
         "d:/ymir work/ui/game/taskbar/exp_gauge.sub",
         core::rect(158., 0., 105., 37.),
     );
+    for index in 0..4u8 {
+        let clip = commands
+            .spawn((
+                ExpOrb(index),
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(5. + 25. * f32::from(index)),
+                    top: Val::Px(9.),
+                    width: Val::Px(EXP_ORB_SIZE),
+                    height: Val::Px(0.),
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
+                Pickable::IGNORE,
+            ))
+            .id();
+        commands.entity(exp_board).add_child(clip);
+        core::picture(
+            commands,
+            assets,
+            clip,
+            "d:/ymir work/ui/game/taskbar/exp_gauge_point.sub",
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(0.),
+                bottom: Val::Px(0.),
+                width: Val::Px(EXP_ORB_SIZE),
+                height: Val::Px(EXP_ORB_SIZE),
+                ..default()
+            },
+        );
+    }
     spawn_gauge(commands, assets, root, Gauge::Hp, 4., 11., "d:/ymir work/ui/pattern/hpgauge/01.tga");
     spawn_gauge(commands, assets, root, Gauge::Sp, 14., 11., "d:/ymir work/ui/pattern/spgauge/01.tga");
     spawn_gauge(commands, assets, root, Gauge::Stamina, 28., 6., "d:/ymir work/ui/pattern/stgauge/01.tga");
@@ -524,7 +566,8 @@ fn refresh(
     screen: Res<LoginScreen>,
     mut gauges: Query<(&Gauge, &mut Node, &mut ImageNode), Without<ChatLine>>,
     mut log: Query<&mut Text, (With<ChatLog>, Without<ChatLine>)>,
-    mut line: Query<(&mut Text, &mut Node), (With<ChatLine>, Without<ChatLog>, Without<Gauge>)>,
+    mut line: Query<(&mut Text, &mut Node), (With<ChatLine>, Without<ChatLog>, Without<Gauge>, Without<ExpOrb>)>,
+    mut orbs: Query<(&ExpOrb, &mut Node), (Without<Gauge>, Without<ChatLine>)>,
 ) {
     if !matches!(screen.status, Status::InGame { .. }) {
         return;
@@ -543,6 +586,23 @@ fn refresh(
         }
         if image.rect.is_some_and(|rect| rect.max.x != width) {
             image.rect.as_mut().unwrap().max.x = width;
+        }
+    }
+    // `SetExperience`: each orb is a quarter of the level's experience.
+    let exp = points[POINT_EXP] as u32;
+    let next = points[POINT_NEXT_EXP] as u32;
+    let quarter = next / 4;
+    for (orb, mut node) in &mut orbs {
+        let fill = if quarter == 0 {
+            0.
+        } else {
+            let start = quarter * u32::from(orb.0);
+            (exp.min(next).saturating_sub(start) as f32 / quarter as f32).clamp(0., 1.)
+        };
+        let height = Val::Px((EXP_ORB_SIZE * fill).round());
+        if node.height != height {
+            node.height = height;
+            node.top = Val::Px(9. + EXP_ORB_SIZE - (EXP_ORB_SIZE * fill).round());
         }
     }
     for mut text in &mut log {

@@ -120,6 +120,10 @@ pub struct Actor {
     move_duration: f32,
     moving: bool,
     rendered_moving: Option<bool>,
+    /// Seconds since the actor reached its move destination while `moving`.
+    arrived_for: f32,
+    /// The current move is a push (`CPhysicsObject` blend), eased out.
+    pushed: bool,
 }
 
 impl Actor {
@@ -174,6 +178,9 @@ struct ActorFight {
     dead: bool,
     /// `Stun()`: the next hit kills it.
     stunned: bool,
+    /// `m_dwOwnerVID`/`m_fOwnerBaseTime` (`GC_OWNERSHIP`): who syncs its position, since when.
+    owner: u32,
+    owner_since: f32,
 }
 
 /// The once motions an actor plays in a fight.
@@ -337,6 +344,10 @@ pub struct PlayerControl {
     pub reserved_attack: Option<u32>,
     /// `MODE_CLICK_ACTOR`: request this NPC's quest script once in reach.
     reserved_talk: Option<u32>,
+    /// `MODE_CLICK_ITEM`: the ground item walked to, picked on arrival.
+    reserved_item: Option<u32>,
+    /// `m_kVctkVictim`: victims pushed this frame, `(vid, global x, global y)`.
+    victims: Vec<(u32, i32, i32)>,
     /// `m_isPreInput`: space was pressed inside the combo's pre-input window.
     pub pre_input: bool,
     /// `m_wcurComboType` (`SetComboType`, the combo skill); 0 is the basic combo.
@@ -351,8 +362,16 @@ pub struct PlayerControl {
     pub motion_skill: u32,
     /// The main character died (`GC_DEAD`); controls are off until revived.
     pub dead: bool,
+    /// The actor under the pointer (`chr.Pick`), for its name tail.
+    pub hover: Option<u32>,
+    /// The main VID and map origin of this frame, for code that runs while
+    /// [`GameWorld`] is out of the world.
+    main_vid: u32,
+    base: (u32, u32),
     /// `m_dwShakeTime` of the main character.
     shake_until: f32,
+    /// The shake added to the drawn position this frame.
+    shake_offset: Vec3,
 }
 
 impl Default for PlayerControl {
@@ -374,6 +393,8 @@ impl Default for PlayerControl {
             reserved_skill: None,
             reserved_attack: None,
             reserved_talk: None,
+            reserved_item: None,
+            victims: Vec::new(),
             pre_input: false,
             combo_type: 0,
             attack_rotation: 0.0,
@@ -381,7 +402,11 @@ impl Default for PlayerControl {
             splash: None,
             motion_skill: 0,
             dead: false,
+            hover: None,
+            main_vid: 0,
+            base: (0, 0),
             shake_until: 0.0,
+            shake_offset: Vec3::ZERO,
         }
     }
 }
@@ -500,7 +525,10 @@ impl Plugin for InGamePlugin {
                     fx::play_sounds.run_if(resource_exists::<m2_audio::SoundState>),
                 )
                     .chain(),
-            );
+            )
+            .init_resource::<NameTags>()
+            .init_resource::<MiniMap>()
+            .add_systems(PostUpdate, (update_name_tags.after(bevy::transform::TransformSystems::Propagate), update_minimap));
     }
 }
 
@@ -744,7 +772,19 @@ fn track_actors(
     mut actors: ResMut<Actors>,
     game: Res<GameWorld>,
     mobs: Res<MobCatalog>,
+    time: Res<Time>,
 ) {
+    // Actors appended before `mob_proto` loaded get its name and level now.
+    if !mobs.by_race.is_empty() {
+        for actor in actors.by_vid.values_mut().filter(|actor| actor.name.is_empty() && actor.kind != m2_net::phase::ACTOR_TYPE_PC) {
+            if let Some(mob) = mobs.by_race.get(&actor.race) {
+                actor.name.clone_from(&mob.name);
+                if actor.level == 0 {
+                    actor.level = u32::from(mob.level);
+                }
+            }
+        }
+    }
     for message in messages.read() {
         let NetMessage::Game(event) = message else { continue };
         match event {
@@ -821,6 +861,8 @@ fn track_actors(
                         move_duration: 0.0,
                         moving: false,
                         rendered_moving: None,
+                        arrived_for: 0.0,
+                        pushed: false,
                     },
                 );
             }
@@ -830,7 +872,13 @@ fn track_actors(
                     actor.move_to = Vec2::new(motion.x as f32, motion.y as f32);
                     actor.move_elapsed = 0.0;
                     actor.move_duration = motion.duration as f32 / 1000.0;
-                    actor.moving = motion.func == FUNC_MOVE;
+                    actor.pushed = false;
+                    // `FUNC_MOVE`, and `FUNC_WAIT` with somewhere to go (the
+                    // server's `Goto` of a chasing monster), `StartWalking`;
+                    // the actor stops once it arrives.
+                    actor.moving = matches!(motion.func, FUNC_MOVE | FUNC_WAIT)
+                        && actor.move_duration > 0.0
+                        && actor.move_from.distance(actor.move_to) > 1.0;
                     if actor.move_duration == 0.0 {
                         actor.x = motion.x;
                         actor.y = motion.y;
@@ -852,6 +900,12 @@ fn track_actors(
                         }
                     }
                 }
+            }
+            NetEvent::ActorOwner { owner_vid, victim_vid } => {
+                // `RecvOwnership` -> `NEW_SetOwner`.
+                let fight = actors.fights.entry(*victim_vid).or_default();
+                fight.owner = *owner_vid;
+                fight.owner_since = time.elapsed_secs();
             }
             NetEvent::ActorSync { vid, x, y } => {
                 if let Some(actor) = actors.by_vid.get_mut(vid) {
@@ -921,6 +975,8 @@ fn track_battle(
     mobs: Res<MobCatalog>,
     grades: Res<GradeNames>,
     mut net: Option<ResMut<Net>>,
+    mut fx: ResMut<CombatFx>,
+    packs: Option<Res<M2Packs>>,
 ) {
     use m2_net::wire::GcPacket;
     if clear.read().last().is_some() {
@@ -968,6 +1024,45 @@ fn track_battle(
                     }
                     None => board.visible = false,
                 }
+            }
+            GcPacket::SepcialEffect(p) => {
+                // `RecvSpecialEffect`: the registered effect at the actor; the
+                // potions also play `USESOUND_POTION` for the main character.
+                let Some((file, potion)) = fx::special_effect(p.r#type) else { continue };
+                let own = p.vid == game.main_vid;
+                let local = if own {
+                    game.local.map(|(x, y)| Vec2::new(x as f32, y as f32))
+                } else {
+                    actors
+                        .by_vid
+                        .get(&p.vid)
+                        .map(|actor| Vec2::new((actor.x - base.0) as f32, (actor.y - base.1) as f32))
+                };
+                let Some(local) = local else { continue };
+                let at = Vec3::new(local.x, -local.y, game.terrain_height(local.x, local.y));
+                fx.spawn(packs.as_deref(), file, at, Vec3::ZERO);
+                if potion && own {
+                    fx.sound(fx::bevy_position(at), fx::USESOUND_POTION, false);
+                }
+            }
+            GcPacket::CreateFly(p) => {
+                // `RecvCreateFlyPacket` -> `CreateIndexedFly`: from the start
+                // actor's feet towards the end actor (the experience orbs of
+                // a kill fly from the monster to the killer).
+                let Some(file) = fx::indexed_fly(p.bType) else { continue };
+                let at = |vid: u32| {
+                    let local = if vid == game.main_vid {
+                        game.local.map(|(x, y)| Vec2::new(x as f32, y as f32))
+                    } else {
+                        actors
+                            .by_vid
+                            .get(&vid)
+                            .map(|actor| Vec2::new((actor.x - base.0) as f32, (actor.y - base.1) as f32))
+                    }?;
+                    Some(Vec3::new(local.x, -local.y, game.terrain_height(local.x, local.y)))
+                };
+                let (Some(start), Some(end)) = (at(p.dwStartVID), at(p.dwEndVID)) else { continue };
+                fx.fly(packs.as_deref(), file, start, p.dwEndVID, end + Vec3::Z * fx::FLY_TARGET_HEIGHT);
             }
             GcPacket::DamageInfo(p) => {
                 if p.damage < 0 {
@@ -1109,9 +1204,22 @@ fn sync_actor_entities(world: &mut World) {
         for actor in actors.by_vid.values_mut() {
             if actor.move_duration > 0.0 {
                 actor.move_elapsed = (actor.move_elapsed + delta).min(actor.move_duration);
-                let position = actor.move_from.lerp(actor.move_to, actor.move_elapsed / actor.move_duration);
+                let t = actor.move_elapsed / actor.move_duration;
+                // `CEaseOutInterpolation` for a push, linear for a move.
+                let t = if actor.pushed { 1.0 - (1.0 - t) * (1.0 - t) } else { t };
+                let position = actor.move_from.lerp(actor.move_to, t);
                 actor.x = position.x.round() as i32;
                 actor.y = position.y.round() as i32;
+            }
+            // Arrived: back to wait, a moment late so that the next move
+            // packet of a running actor does not flicker it to wait.
+            if actor.moving && actor.move_elapsed >= actor.move_duration {
+                actor.arrived_for += delta;
+                if actor.arrived_for >= ARRIVAL_GRACE {
+                    actor.moving = false;
+                }
+            } else {
+                actor.arrived_for = 0.0;
             }
         }
     }
@@ -1512,8 +1620,11 @@ fn drive_world(world: &mut World) {
         let extent = Vec2::new(f32::from(count_x) * TERRAIN_WORLD, f32::from(count_y) * TERRAIN_WORLD);
 
         let mut control = world.remove_resource::<PlayerControl>().unwrap();
+        control.main_vid = main_vid;
+        control.base = base;
         {
-            let position = world.get::<Transform>(character.root).map_or(Vec3::ZERO, |t| t.translation);
+            // Last frame's hit shake is only drawn, never walked from.
+            let position = world.get::<Transform>(character.root).map_or(Vec3::ZERO, |t| t.translation) - control.shake_offset;
             let mut local = Vec2::new(position.x, -position.z);
 
             // Camera: right-drag orbits, the wheel zooms.
@@ -1604,6 +1715,7 @@ fn drive_world(world: &mut World) {
                     control.target_distance = distance_to(vid, local);
                     control.reserved_talk = None;
                     control.reserved_attack = None;
+                    control.reserved_item = None;
                     if let Some(mut net) = world.get_resource_mut::<Net>() {
                         net.send_target(vid);
                     }
@@ -1646,13 +1758,34 @@ fn drive_world(world: &mut World) {
                             info!("walk to actor {vid} at {:.0},{:.0}", destination.x, destination.y);
                         }
                     }
+                } else if let Some(item) = crate::ground::pick_item(world, cursor) {
+                    // `__OnPressItem`: pick it at once within reach, else
+                    // `__ReserveClickItem` and walk there first.
+                    control.reserved_talk = None;
+                    control.reserved_attack = None;
+                    let at = world.resource::<crate::ground::GroundItems>().position(base, item);
+                    if let Some(at) = at {
+                        if (at - local).length() <= crate::ground::CLICKABLE_DISTANCE {
+                            control.destination = None;
+                            control.reserved_item = None;
+                            crate::ground::send_click_item(world, item, now);
+                        } else {
+                            control.destination = Some(at);
+                            control.reserved_item = Some(item);
+                        }
+                    }
                 } else {
                     control.reserved_talk = None;
                     control.reserved_attack = None;
+                    control.reserved_item = None;
                     let height = |x: f32, y: f32| scene.ground_height(x, y);
                     if let Some(point) = pick_terrain(world, cursor, height, extent) {
                         control.destination = Some(point);
                         info!("walk to {:.0},{:.0}", point.x, point.y);
+                        // `__ShowPickedEffect`: `EFFECT_PICK` on the ground point.
+                        let at = Vec3::new(point.x, -point.y, scene.ground_height(point.x, point.y));
+                        let packs = world.get_resource::<M2Packs>().cloned();
+                        world.resource_mut::<CombatFx>().spawn(packs.as_ref(), fx::EFFECT_PICK, at, Vec3::ZERO);
                     }
                 }
             }
@@ -1662,7 +1795,9 @@ fn drive_world(world: &mut World) {
             let hover_vid = (!focus.pointer)
                 .then_some(cursor)
                 .flatten()
-                .and_then(|cursor| pick_actor(world, cursor, base))
+                .and_then(|cursor| pick_actor(world, cursor, base));
+            control.hover = hover_vid;
+            let hover_vid = hover_vid
                 .filter(|vid| Some(*vid) != control.target);
             let marker_position = |vid: u32| {
                 let actor = world.resource::<Actors>().by_vid.get(&vid)?;
@@ -1676,6 +1811,50 @@ fn drive_world(world: &mut World) {
             let mut fx = world.resource_mut::<CombatFx>();
             fx.set_target(packs.as_ref(), target_marker);
             fx.set_hover(packs.as_ref(), hover_marker);
+            let fly_targets = fx.fly_targets();
+
+            // Flying objects home on their targets; affect loops follow their
+            // actors (`__SetAffect` -> `__AttachEffect(EFFECT_AFFECT + n)`).
+            let (targets, affects) = {
+                let actors = world.resource::<Actors>();
+                let actor_local = |actor: &Actor| Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32);
+                let feet = |p: Vec2| Vec3::new(p.x, -p.y, scene.ground_height(p.x, p.y));
+                let targets: HashMap<u32, Vec3> = fly_targets
+                    .into_iter()
+                    .filter_map(|vid| {
+                        let at = if vid == main_vid { feet(local) } else { feet(actor_local(actors.by_vid.get(&vid)?)) };
+                        Some((vid, at + Vec3::Z * fx::FLY_TARGET_HEIGHT))
+                    })
+                    .collect();
+                let main_flags = world.get_resource::<PlayerState>().map_or(0, |player| player.affect_flags);
+                let mut affects = Vec::new();
+                let mut attach = |vid: u32, flags: u64, walking: bool, at: Vec3, chr: Option<&Character>| {
+                    if combat::has_affect(flags, combat::AFFECT_INVISIBILITY) {
+                        return;
+                    }
+                    for affect in 0..64 {
+                        if !combat::has_affect(flags, affect) || (fx::affect_effect_needs_walking(affect) && !walking) {
+                            continue;
+                        }
+                        let Some((bone, file)) = fx::affect_effect(affect) else { continue };
+                        let position = (!bone.is_empty())
+                            .then(|| chr?.bone_transform(world, bone))
+                            .flatten()
+                            .map_or(at, |t| Vec3::from_array(m2_assets::coords::vec3_back(t.translation())));
+                        affects.push(((vid, affect), file, position));
+                    }
+                };
+                attach(main_vid, main_flags, control.state == MoveState::Moving, feet(local), Some(&*character));
+                for (&vid, actor) in &actors.by_vid {
+                    if vid != main_vid && actor.affect_flags != 0 {
+                        attach(vid, actor.affect_flags, actor.moving, feet(actor_local(actor)), actors.characters.get(&vid));
+                    }
+                }
+                (targets, affects)
+            };
+            let mut fx = world.resource_mut::<CombatFx>();
+            fx.update_flies(packs.as_ref(), delta, |vid| targets.get(&vid).copied());
+            fx.sync_attached(packs.as_ref(), &affects);
 
             // The demo run: walk to the nearest actor, then swing at it.
             if *demo {
@@ -1705,16 +1884,8 @@ fn drive_world(world: &mut World) {
             let mut moved = false;
             let mut direction = None;
             if !matches!(control.state, MoveState::Attacking | MoveState::Casting) && !control.dead {
-                let mut wanted = None;
-                if let Some(destination) = control.destination {
-                    let (next, arrived) = advance_towards(local, destination, RUN_SPEED * delta);
-                    wanted = Some(next);
-                    if arrived {
-                        info!("destination reached at {:.0},{:.0}", next.x, next.y);
-                        control.destination = None;
-                    }
-                } else if !focus.keyboard {
-                    let mut input = Vec2::ZERO;
+                let mut input = Vec2::ZERO;
+                if !focus.keyboard {
                     if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp) {
                         input.y += 1.0;
                     }
@@ -1727,12 +1898,29 @@ fn drive_world(world: &mut World) {
                     if keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft) {
                         input.x -= 1.0;
                     }
-                    if input != Vec2::ZERO {
-                        let forward = Vec2::new(-control.yaw.sin(), control.yaw.cos());
-                        let right = Vec2::new(control.yaw.cos(), control.yaw.sin());
-                        let map_direction = (forward * input.y + right * input.x).normalize();
-                        wanted = Some(clamp_to_map(local + map_direction * RUN_SPEED * delta, extent));
+                }
+                // `NEW_SetSingleDirKeyState` -> `__ClearReservedAction`: a
+                // direction key takes over from a click move.
+                if input != Vec2::ZERO && control.destination.is_some() {
+                    control.destination = None;
+                    control.reserved_attack = None;
+                    control.reserved_talk = None;
+                    control.reserved_skill = None;
+                    control.reserved_item = None;
+                }
+                let mut wanted = None;
+                if let Some(destination) = control.destination {
+                    let (next, arrived) = advance_towards(local, destination, RUN_SPEED * delta);
+                    wanted = Some(next);
+                    if arrived {
+                        info!("destination reached at {:.0},{:.0}", next.x, next.y);
+                        control.destination = None;
                     }
+                } else if input != Vec2::ZERO {
+                    let forward = Vec2::new(-control.yaw.sin(), control.yaw.cos());
+                    let right = Vec2::new(control.yaw.cos(), control.yaw.sin());
+                    let map_direction = (forward * input.y + right * input.x).normalize();
+                    wanted = Some(clamp_to_map(local + map_direction * RUN_SPEED * delta, extent));
                 }
                 if let Some(wanted) = wanted
                     && (wanted - local).length() > f32::EPSILON
@@ -1740,7 +1928,7 @@ fn drive_world(world: &mut World) {
                     // The character turns to where it wants to go even when
                     // a wall stops it.
                     direction = Some((wanted - local).normalize());
-                    let next = check_advancing(world, scene, character, local, wanted, base, main_vid, false);
+                    let next = check_advancing(world, scene, character, local, wanted, base, main_vid, false, false);
                     if (next - local).length() > f32::EPSILON {
                         local = next;
                         moved = true;
@@ -1786,6 +1974,30 @@ fn drive_world(world: &mut World) {
                     }
                 } else {
                     control.reserved_talk = None;
+                }
+            }
+
+            // `MODE_CLICK_ITEM`: pick the reserved item on arrival.
+            if let Some(item) = control.reserved_item {
+                match world.resource::<crate::ground::GroundItems>().position(base, item) {
+                    Some(at) if (at - local).length() < crate::ground::RESERVED_PICK_DISTANCE || control.destination.is_none() => {
+                        control.reserved_item = None;
+                        control.destination = None;
+                        if (at - local).length() <= crate::ground::CLICKABLE_DISTANCE {
+                            crate::ground::send_click_item(world, item, now);
+                        }
+                    }
+                    Some(_) => {}
+                    None => control.reserved_item = None,
+                }
+            }
+            // `game.py`'s Z / grave: `PickCloseItem`, the nearest item within
+            // `__GetPickableDistance` (500 mounted, else 300).
+            if !focus.keyboard && (keys.just_pressed(KeyCode::KeyZ) || keys.just_pressed(KeyCode::Backquote)) {
+                let reach = if character.is_mounted() { 500.0 } else { 300.0 };
+                let close = world.resource::<crate::ground::GroundItems>().closest(base, local, reach);
+                if let Some(item) = close {
+                    crate::ground::send_click_item(world, item, now);
                 }
             }
 
@@ -1984,7 +2196,7 @@ fn drive_world(world: &mut World) {
                 let world_delta = battle::rotate_local(accum, control.advancing);
                 let wanted = clamp_to_map(local + Vec2::new(world_delta.x, -world_delta.y), extent);
                 if (wanted - local).length() > f32::EPSILON {
-                    local = check_advancing(world, scene, character, local, wanted, base, main_vid, true);
+                    local = check_advancing(world, scene, character, local, wanted, base, main_vid, true, control.state == MoveState::Casting);
                 }
             }
 
@@ -2042,6 +2254,7 @@ fn drive_world(world: &mut World) {
             if let Some(mut transform) = world.get_mut::<Transform>(character.root) {
                 transform.translation = local_to_world(local.x, local.y, height) + shake;
             }
+            control.shake_offset = shake;
             game.local = Some((local.x.round() as i32, local.y.round() as i32));
 
             // `CInstanceBase::ChangeWeapon`/`MountHorse`: the server's
@@ -2068,7 +2281,8 @@ fn drive_world(world: &mut World) {
             let me_position = Vec3::new(local.x, -local.y, ground);
             let heights = |x: f32, y: f32| scene.ground_height(x, y);
             main_motion_events(world, &mut control, character, me_position, now);
-            main_attack_process(world, &mut control, character, &candidates, &attackable, me_position, now, delta, &heights);
+            let blocked = |p: Vec2| map_attr(scene, p, ATTR_BLOCK);
+            main_attack_process(world, &mut control, character, &candidates, &attackable, me_position, now, delta, &heights, &blocked);
             actor_attacks_on_main(world, &mut control, character, main_vid, base, me_position, now, delta, &heights);
 
             // `GC_DEAD`: the death motion once, then nothing until revived
@@ -2143,6 +2357,8 @@ fn drive_world(world: &mut World) {
 const NAME_COMBO_ATTACK_1: u32 = 14;
 /// `IS_HUGE_RACE`: reached from further away, not pushed.
 const HUGE_RACE: u16 = 2493;
+/// Seconds an arrived actor keeps its run motion, waiting for the next move.
+const ARRIVAL_GRACE: f32 = 0.15;
 /// `gc_fActorSlideMoveSpeed`: the most a collision slide may move per frame.
 const ACTOR_SLIDE_MOVE_SPEED: f32 = 30.0;
 /// The body sphere of an actor whose race has none (players' `.msm` give 40).
@@ -2306,6 +2522,7 @@ fn attack_success(
     victim_position: Vec3,
     skill: u32,
     send_packet: bool,
+    blocked: &dyn Fn(Vec2) -> bool,
     now: f32,
 ) {
     if attack.hitting_type == battle::HIT_TYPE_NONE {
@@ -2364,6 +2581,41 @@ fn attack_success(
             }
         }
     }
+    // `__CanPushDestActor` + `__PushCircle` + `IncreaseExternalForce`: a hit
+    // with an external force (the combo's last steps) pushes a victim the
+    // server made ours to sync (`GC_OWNERSHIP`, under 3 s ago) or a stunned
+    // one away from the attacker.
+    let pushable = {
+        let fight = world.resource::<Actors>().fights.get(&victim.vid);
+        let owned = fight.is_some_and(|fight| {
+            fight.stunned || (fight.owner == control.main_vid && now - fight.owner_since <= 3.0)
+        });
+        !(victim.is_building() || victim.is_door() || victim.is_stone() || victim.is_npc() || huge) && owned
+    };
+    if attack.external_force > 0.0
+        && pushable
+        && let Some(movement) = external_force_movement((victim_position - attacker).truncate(), attack.external_force)
+        && movement.length() > 1.0
+    {
+        let from = Vec2::new(victim_position.x, -victim_position.y);
+        let to = from + Vec2::new(movement.x, -movement.y);
+        let steps = (movement.length() / 10.0).ceil() as i32;
+        let clear = (1..=steps).all(|i| !blocked(from.lerp(to, i as f32 / steps as f32)));
+        if clear {
+            let base = control.base;
+            let mut actors = world.resource_mut::<Actors>();
+            if let Some(actor) = actors.by_vid.get_mut(&victim.vid) {
+                let global = Vec2::new(to.x + base.0 as f32, to.y + base.1 as f32);
+                actor.move_from = Vec2::new(actor.x as f32, actor.y as f32);
+                actor.move_to = global;
+                actor.move_elapsed = 0.0;
+                actor.move_duration = PUSH_SECONDS;
+                actor.moving = false;
+                actor.pushed = true;
+                control.victims.push((victim.vid, global.x as i32, global.y as i32));
+            }
+        }
+    }
     // `OnHit`: the victim becomes the target; the hit goes to the server.
     if control.target != Some(victim.vid) {
         control.target = Some(victim.vid);
@@ -2391,6 +2643,7 @@ fn main_attack_process(
     now: f32,
     frame: f32,
     heights: &dyn Fn(f32, f32) -> f32,
+    blocked: &dyn Fn(Vec2) -> bool,
 ) {
     if !matches!(control.state, MoveState::Attacking | MoveState::Casting) {
         return;
@@ -2428,13 +2681,20 @@ fn main_attack_process(
             && area.hit(*vid, &spheres, now, control.target)
         {
             let (data, enable) = (area.splash.attack, area.splash.enable_hit_process);
-            attack_success(world, control, &data, position, rotation, actor, victim_position, skill, enable, now);
+            attack_success(world, control, &data, position, rotation, actor, victim_position, skill, enable, blocked, now);
             continue;
         }
         if let Some(attack) = &attack
             && battle::normal_attack_hit(attack, &mut control.hits, elapsed, frame, position, rotation, 1.0, *vid, &spheres, now)
         {
-            attack_success(world, control, &attack.attack, position, rotation, actor, victim_position, skill, true, now);
+            attack_success(world, control, &attack.attack, position, rotation, actor, victim_position, skill, true, blocked, now);
+        }
+    }
+    // `FlushVictimList`: where the pushed victims will stand.
+    if !control.victims.is_empty() {
+        let victims = std::mem::take(&mut control.victims);
+        if let Some(mut net) = world.get_resource_mut::<Net>() {
+            net.game.send_sync_positions(&victims);
         }
     }
 }
@@ -2546,6 +2806,7 @@ fn check_advancing(
     base: (u32, u32),
     main_vid: u32,
     attacking: bool,
+    using_skill: bool,
 ) -> Vec2 {
     if to == from {
         return to;
@@ -2572,12 +2833,15 @@ fn check_advancing(
         body.position = me + offset + step;
     }
 
-    // Other actors: `TestActorCollision` on body spheres; two collisions or one
-    // that sliding does not resolve stop the move.
+    // Other actors: `TestActorCollision` on body spheres (defending ones while
+    // attacking); two collisions or one that sliding does not resolve stop
+    // the move.
     let others: Vec<(u32, Vec3)> = world
         .resource::<Actors>()
         .by_vid
         .iter()
+        // `IsUsingSkill`: a skill motion goes through every actor.
+        .filter(|_| !using_skill)
         .filter(|(vid, actor)| **vid != main_vid && actor.state_flags & combat::STATE_DEAD == 0)
         .map(|(vid, actor)| {
             let local = Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32);
@@ -3285,7 +3549,7 @@ mod tests {
                 name: String::new(), race: 0, kind, level: 0, armor: 0, hair: 0,
                 empire: 0, pk_mode: 0, guild_id: 0, alignment: 0, state_flags: 0, affect_flags: 0, mount_vnum: 0,
                 x: 0, y: 0, rotation: 0.0, move_from: Vec2::ZERO, move_to: Vec2::ZERO,
-                move_elapsed: 0.0, move_duration: 0.0, moving: false, rendered_moving: Some(false),
+                move_elapsed: 0.0, move_duration: 0.0, moving: false, rendered_moving: Some(false), arrived_for: 0.0, pushed: false,
             };
             let character = Character::spawn(app.world_mut(), Look { race: 0, shape: 0, hair: 0 }, Transform::IDENTITY, None);
             let mut actors = app.world_mut().resource_mut::<Actors>();
@@ -3396,6 +3660,8 @@ mod tests {
                     move_duration: 0.0,
                     moving: false,
                     rendered_moving: None,
+                    arrived_for: 0.0,
+                    pushed: false,
                 },
             );
         }
@@ -3404,5 +3670,289 @@ mod tests {
         // The main actor is never its own target.
         let target = nearest_actor(&actors, (0, 0), Vec2::ZERO, 10, 500.0);
         assert_eq!(target.map(|(vid, _)| vid), Some(11));
+    }
+}
+
+/// `CPhysicsObject`'s blend of a push: `100 · c_fFrameTime`.
+const PUSH_SECONDS: f32 = 2.0;
+
+/// `CPhysicsObject::IncreaseExternalForce` (mass 1, friction 0.3): the push
+/// `force` gives along `direction` (Metin2 x/y), stepped like `Accumulate`
+/// for at most 100 frames. `None` without a direction.
+fn external_force_movement(direction: Vec2, force: f32) -> Option<Vec2> {
+    const FRICTION: f32 = 0.3;
+    const EPSILON: f32 = 0.001;
+    let mut direction = direction.try_normalize()?;
+    let mut velocity = direction * force;
+    let mut movement = Vec2::ZERO;
+    for _ in 0..100 {
+        // `Accumulate`: the z velocity is always 0, so friction always acts.
+        velocity -= direction * FRICTION;
+        if velocity.x * direction.x < EPSILON {
+            velocity.x = 0.0;
+            direction.x = 0.0;
+        }
+        if velocity.y * direction.y < EPSILON {
+            velocity.y = 0.0;
+            direction.y = 0.0;
+        }
+        movement += velocity;
+        if velocity.x.abs() < EPSILON && velocity.y.abs() < EPSILON {
+            break;
+        }
+    }
+    Some(movement)
+}
+
+/// One character's `CPythonTextTail` tail: the name (in its name colour), the
+/// level and alignment title left of it and the guild name above, at the
+/// projected point `GetHeight() + 10` above the feet.
+#[derive(Clone, Debug)]
+pub struct NameTag {
+    pub vid: u32,
+    /// Viewport position (logical pixels) of the bottom centre of the name.
+    pub position: Vec2,
+    pub name: String,
+    pub color: [u8; 3],
+    /// `UpdateTextTailLevel` ("Lv %d"), for players.
+    pub level: Option<u32>,
+    /// `RefreshTextTail`'s alignment title and its colour.
+    pub title: Option<(&'static str, [u8; 3])>,
+    pub guild: Option<String>,
+}
+
+/// The tails to draw this frame (`ShowAllTextTail` within 35 m while names
+/// are always shown, the C++ default; else the hovered and targeted ones).
+#[derive(Resource, Default)]
+pub struct NameTags {
+    pub tags: Vec<NameTag>,
+    /// `systemSetting.IsAlwaysShowName()` (`DEFAULT_VALUE_ALWAYS_SHOW_NAME`).
+    pub always_show: bool,
+    initialised: bool,
+}
+
+/// `colorInfo.CHR_NAME_RGB_*`.
+const NAME_RGB_PC: [u8; 3] = [255, 215, 76];
+const NAME_RGB_NPC: [u8; 3] = [122, 231, 93];
+const NAME_RGB_MOB: [u8; 3] = [235, 22, 9];
+/// `CPythonTextTail::ShowAllTextTail`'s range.
+const NAME_TAG_RANGE: f32 = 3500.0;
+
+/// `GetAlignmentGrade` -> `g_TitleNameMap` (`PVP_LEVEL0..8`) and
+/// `colorInfo.TITLE_RGB_*`; grade 4 (`TITLE_NONE`, neutral) has no title.
+fn alignment_title(alignment: i32) -> Option<(&'static str, [u8; 3])> {
+    let grade = match alignment {
+        12000.. => 0,
+        8000.. => 1,
+        4000.. => 2,
+        1000.. => 3,
+        0.. => 4,
+        -3999.. => 5,
+        -7999.. => 6,
+        -11999.. => 7,
+        _ => 8,
+    };
+    const TITLES: [(&str, [u8; 3]); 9] = [
+        ("Chivalric", [0, 204, 255]),
+        ("Noble", [0, 144, 255]),
+        ("Good", [92, 110, 255]),
+        ("Friendly", [155, 155, 255]),
+        ("Neutral", [255, 255, 255]),
+        ("Aggressive", [207, 117, 0]),
+        ("Fraudulent", [235, 83, 0]),
+        ("Malicious", [227, 0, 0]),
+        ("Cruel", [255, 0, 0]),
+    ];
+    (grade != 4).then(|| TITLES[grade])
+}
+
+/// `CPythonTextTail::UpdateAllTextTail` + `UpdateShowingTextTail`: which tails
+/// show and where, for the UI to draw.
+fn update_name_tags(world: &mut World) {
+    if !world.resource::<NameTags>().initialised {
+        let mut tags = world.resource_mut::<NameTags>();
+        tags.always_show = true;
+        tags.initialised = true;
+    }
+    let camera = {
+        let mut query = world.query_filtered::<(&Camera, &GlobalTransform), With<SceneCamera>>();
+        query.single(world).ok().map(|(camera, transform)| (camera.clone(), *transform))
+    };
+    let game = world.resource::<GameWorld>();
+    let (Some((camera, eye)), Some(State::Ready { character, .. })) = (camera, game.state.as_ref()) else {
+        world.resource_mut::<NameTags>().tags.clear();
+        return;
+    };
+    let main_vid = game.main_vid;
+    let control = world.resource::<PlayerControl>();
+    let (hover, target) = (control.hover, control.target);
+    let show_all = world.resource::<NameTags>().always_show
+        || world.resource::<ButtonInput<KeyCode>>().pressed(KeyCode::AltLeft);
+    let head = |chr: &Character| {
+        let root = world.get::<GlobalTransform>(chr.root)?.translation();
+        // `GetHeight() + 10`: the head bone stands in for the bounding box top.
+        let top = chr.bone_transform(world, "Bip01 Head").map_or(root.y + 180.0, |bone| bone.translation().y + 30.0);
+        Some(Vec3::new(root.x, top + 10.0, root.z))
+    };
+    let main_at = world.get::<GlobalTransform>(character.root).map(|t| t.translation());
+    let mut tags = Vec::new();
+    let mut add = |vid: u32, at: Option<Vec3>, tag: NameTag| {
+        let Some(at) = at else { return };
+        let near = main_at.is_some_and(|me| (me - at).xz().length() < NAME_TAG_RANGE);
+        if !((show_all && near) || Some(vid) == hover || Some(vid) == target || vid == main_vid && show_all) {
+            return;
+        }
+        if let Ok(position) = camera.world_to_viewport(&eye, at) {
+            tags.push(NameTag { position, ..tag });
+        }
+    };
+    // The main character.
+    if let Some(player) = world.get_resource::<PlayerState>() {
+        let level = player.points.get(1).copied().filter(|level| *level > 0).map(|level| level as u32);
+        let guild = world
+            .get_resource::<Net>()
+            .and_then(|net| net.game.guild_names().iter().find(|name| !name.is_empty()).cloned())
+            .filter(|_| player.guild_id != 0);
+        add(
+            main_vid,
+            head(character),
+            NameTag {
+                vid: main_vid,
+                position: Vec2::ZERO,
+                name: player.name.clone(),
+                color: NAME_RGB_PC,
+                level,
+                title: alignment_title(i32::from(player.alignment)),
+                guild,
+            },
+        );
+    }
+    let actors = world.resource::<Actors>();
+    let mobs = world.resource::<MobCatalog>();
+    for (&vid, actor) in &actors.by_vid {
+        // Monsters appended before `mob_proto` loaded have no name yet.
+        let name = if actor.name.is_empty() {
+            mobs.by_race.get(&actor.race).map(|mob| mob.name.clone()).unwrap_or_default()
+        } else {
+            actor.name.clone()
+        };
+        if vid == main_vid || name.is_empty() {
+            continue;
+        }
+        let Some(chr) = actors.characters.get(&vid) else { continue };
+        let combat = actor.combat(vid, game.base);
+        if !combat.can_pick() || actors.fights.get(&vid).is_some_and(|fight| fight.dead) {
+            continue;
+        }
+        let pc = combat.is_pc();
+        let color = if pc {
+            NAME_RGB_PC
+        } else if combat.is_npc() {
+            NAME_RGB_NPC
+        } else {
+            NAME_RGB_MOB
+        };
+        add(
+            vid,
+            head(chr),
+            NameTag {
+                vid,
+                position: Vec2::ZERO,
+                name,
+                color,
+                level: (pc && actor.level > 0).then_some(actor.level),
+                title: if pc { alignment_title(i32::from(actor.alignment)) } else { None },
+                guild: None,
+            },
+        );
+    }
+    world.resource_mut::<NameTags>().tags = tags;
+}
+
+/// `CActorInstance::TYPE_WARP`.
+const ACTOR_TYPE_WARP: u8 = 3;
+
+/// What a `CPythonMiniMap` mark stands for (its `whitemark.sub` colour).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MiniMapMark {
+    Pc,
+    Npc,
+    Monster,
+    Warp,
+}
+
+/// The minimap's input (`CPythonMiniMap::Update`): the map, where the main
+/// character stands and faces, the camera's heading and the characters near.
+#[derive(Resource, Default)]
+pub struct MiniMap {
+    /// The map's folder (`metin2_map_b1`), whose terrains hold `minimap.dds`.
+    pub map: Option<String>,
+    /// Map-local position of the main character, Metin2 units.
+    pub center: Vec2,
+    /// Global position, for the coordinates line.
+    pub global: (i32, i32),
+    /// The main character's heading and the camera's yaw, degrees clockwise
+    /// from north as the map draws it.
+    pub facing: f32,
+    pub camera: f32,
+    /// Map-local positions of the other characters.
+    pub marks: Vec<(Vec2, MiniMapMark)>,
+}
+
+fn update_minimap(world: &mut World) {
+    let game = world.resource::<GameWorld>();
+    let (Some(State::Ready { .. }), Some(map), Some(local)) = (game.state.as_ref(), game.map.clone(), game.local) else {
+        world.resource_mut::<MiniMap>().map = None;
+        return;
+    };
+    let base = game.base;
+    let main_vid = game.main_vid;
+    let center = Vec2::new(local.0 as f32, local.1 as f32);
+    let control = world.resource::<PlayerControl>();
+    let (facing, camera) = (control.facing, -control.yaw.to_degrees());
+    let actors = world.resource::<Actors>();
+    let marks = actors
+        .by_vid
+        .iter()
+        .filter(|(vid, actor)| **vid != main_vid && actor.state_flags & combat::STATE_DEAD == 0)
+        .filter_map(|(&vid, actor)| {
+            let combat = actor.combat(vid, base);
+            if !combat.can_pick() || actors.fights.get(&vid).is_some_and(|fight| fight.dead) {
+                return None;
+            }
+            let kind = if combat.is_pc() {
+                MiniMapMark::Pc
+            } else if actor.kind == ACTOR_TYPE_WARP {
+                MiniMapMark::Warp
+            } else if combat.is_npc() {
+                MiniMapMark::Npc
+            } else if combat.is_building() || combat.is_door() {
+                return None;
+            } else {
+                MiniMapMark::Monster
+            };
+            Some((Vec2::new((actor.x - base.0 as i32) as f32, (actor.y - base.1 as i32) as f32), kind))
+        })
+        .collect();
+    let mut minimap = world.resource_mut::<MiniMap>();
+    minimap.map = Some(map);
+    minimap.center = center;
+    minimap.global = (local.0 + base.0 as i32, local.1 + base.1 as i32);
+    minimap.facing = facing;
+    minimap.camera = camera;
+    minimap.marks = marks;
+}
+
+#[cfg(test)]
+mod push_tests {
+    use super::*;
+
+    #[test]
+    fn external_force_slows_by_the_friction_each_frame() {
+        // Force 3: velocities 2.7, 2.4, ... 0.3 then 0 (≈ 13.5 units).
+        let movement = external_force_movement(Vec2::new(1.0, 0.0), 3.0).unwrap();
+        assert!((movement.x - 13.5).abs() < 0.01, "{movement}");
+        assert_eq!(movement.y, 0.0);
+        assert!(external_force_movement(Vec2::ZERO, 3.0).is_none());
     }
 }

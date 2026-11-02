@@ -1024,6 +1024,23 @@ impl NetMachine {
         self.stream.send_packet(&wire::TPacketCGTarget { header: cg::TARGET, dwVID: vid })
     }
 
+    /// `FlushVictimList`: where the main character's hits pushed its victims
+    /// (`HEADER_CG_SYNC_POSITION` and one element per victim, global coordinates).
+    pub fn send_sync_positions(&mut self, victims: &[(u32, i32, i32)]) -> bool {
+        let size = wire::TPacketCGSyncPosition::SIZE + wire::TPacketCGSyncPositionElement::SIZE * victims.len();
+        let head = wire::TPacketCGSyncPosition { bHeader: cg::SYNC_POSITION, wSize: size as u16 };
+        let mut ok = self.stream.send(&head.encode());
+        for &(vid, x, y) in victims {
+            ok &= self.stream.send(&wire::TPacketCGSyncPositionElement { dwVID: vid, lX: x, lY: y }.encode());
+        }
+        ok && self.stream.send_sequence()
+    }
+
+    /// `SendItemPickUpPacket`.
+    pub fn send_item_pickup(&mut self, vid: u32) -> bool {
+        self.stream.send_packet(&wire::TPacketCGItemPickUp { header: cg::ITEM_PICKUP, vid })
+    }
+
     /// `SendOnClickPacket`, used to request an NPC's quest script.
     pub fn send_on_click(&mut self, vid: u32) -> bool {
         self.stream.send_packet(&wire::TPacketCGOnClick { header: cg::ON_CLICK, vid })

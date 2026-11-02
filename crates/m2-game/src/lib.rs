@@ -21,6 +21,7 @@ pub mod audio;
 pub mod battle;
 pub mod combat;
 pub mod fx;
+pub mod ground;
 pub mod ingame;
 pub mod net;
 pub mod player;
@@ -43,6 +44,8 @@ impl Plugin for M2GamePlugin {
             render::cloud::CloudPlugin,
             render::lighting::LightingPlugin,
             render::model::ModelCullPlugin,
+            render::character::MotionBlendPlugin,
+            ground::GroundItemPlugin,
             render::shadow::CharacterShadowPlugin,
             render::sun::SunPlugin,
             ingame::InGamePlugin,

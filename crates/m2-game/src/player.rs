@@ -263,15 +263,10 @@ impl PlayerState {
                 GcPacket::PlayerPoints(p) => self.points=p.points,
                 GcPacket::PlayerPointChange(p) if p.dwVID==self.vid => self.points[p.Type as usize]=p.value,
                 GcPacket::Mount(p) if p.vid==self.vid => self.mount_vnum=p.mount_vid,
-                GcPacket::AffectAdd(p) => {
-                    // `BINARY_NEW_AddAffect`: the packet is about the main actor.
-                    let bit=1u64<<(p.elem.dwType%64);
-                    self.affect_flags|=bit;
-                }
-                GcPacket::AffectRemove(p) => {
-                    let bit=1u64<<(p.dwType%64);
-                    self.affect_flags&=!bit;
-                }
+                // `GC_AFFECT_ADD`/`_REMOVE` name the affect's type (a skill
+                // or item buff id), not an `AFFECT_*` flag bit; the visible
+                // flags come only with `GC_CHARACTER_ADD`/`_UPDATE`
+                // (`SetAffectFlagContainer`).
                 GcPacket::DuelStart { tail, .. } => {
                     self.duel_keys.clear();
                     let target=self.vid;
@@ -589,10 +584,9 @@ fn dispatch(
         assert_eq!((state.pk_mode,state.empire,state.guild_id,state.alignment),(2,1,12,-5000));
         state.apply(&NetEvent::Packet(GcPacket::Mount(wire::TPacketGCMount{vid:7,mount_vid:20104,..default()})));
         assert_eq!(state.mount_vnum,20104);
-        state.apply(&NetEvent::Packet(GcPacket::AffectAdd(wire::TPacketGCAffectAdd{elem:wire::TPacketAffectElement{dwType:combat::AFFECT_INVISIBILITY,..default()},..default()})));
-        assert!(combat::has_affect(state.affect_flags,combat::AFFECT_INVISIBILITY));
-        state.apply(&NetEvent::Packet(GcPacket::AffectRemove(wire::TPacketGCAffectRemove{dwType:combat::AFFECT_INVISIBILITY,..default()})));
-        assert!(!combat::has_affect(state.affect_flags,combat::AFFECT_INVISIBILITY));
+        // A buff's type is not a flag bit: type 23 must not turn on bit 23.
+        state.apply(&NetEvent::Packet(GcPacket::AffectAdd(wire::TPacketGCAffectAdd{elem:wire::TPacketAffectElement{dwType:23,..default()},..default()})));
+        assert_eq!(state.affect_flags,0);
     }
     #[test] fn weapon_cell_is_the_cpp_equipment_weapon_slot() {
         // GameType.h: `c_Equipment_Start = c_ItemSlot_Count` (90),

@@ -29,8 +29,11 @@ pub mod frontend;
 pub mod hud;
 pub mod inventory;
 pub mod login;
+pub mod minimap;
+pub mod nametags;
 pub mod quickslots;
 pub mod quest_dialog;
+pub mod restart;
 pub mod select;
 pub mod skills;
 pub mod sound;
@@ -60,6 +63,10 @@ impl Plugin for M2UiPlugin {
             storage::StoragePlugin,
             target::TargetBoardPlugin,
             quest_dialog::QuestDialogPlugin,
+        )).add_plugins((
+            restart::RestartDialogPlugin,
+            nametags::NameTagPlugin,
+            minimap::MiniMapPlugin,
         ));
     }
 }

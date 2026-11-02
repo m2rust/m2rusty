@@ -1057,6 +1057,18 @@ impl Character {
             return;
         }
         let (graph, node) = clip_graph(world, &clip);
+        // The pose the previous motion left, to blend the new one in from.
+        let was_playing = world
+            .get::<AnimationPlayer>(spawned.root)
+            .is_some_and(|player| player.playing_animations().next().is_some());
+        if was_playing {
+            let from = spawned
+                .bone_by_name
+                .values()
+                .filter_map(|&bone| world.get::<Transform>(bone).map(|transform| (bone, *transform)))
+                .collect();
+            world.entity_mut(spawned.root).insert(MotionBlend { from, started: now });
+        }
         let mut root = world.entity_mut(spawned.root);
         root.insert(AnimationGraphHandle(graph));
         if let Some(mut player) = root.get_mut::<AnimationPlayer>() {
@@ -1192,5 +1204,51 @@ mod tests {
         assert_eq!(skill_motion_file(5, 2).unwrap(), "d:/ymir work/pc2/assassin/skill/gungsin.msa");
         assert_eq!(skill_motion_file(3, 17).unwrap(), "d:/ymir work/pc/shaman/skill/byeorak.msa");
         assert_eq!(skill_motion_file(0, 99), None);
+    }
+}
+
+/// `fBlendTime` of `InterceptOnceMotion`/`SetLoopMotion`/`PushLoopMotion`
+/// (their 0.1 s default): a new motion eases in from the pose the old one left.
+const MOTION_BLEND_SECONDS: f32 = 0.1;
+
+/// The bone pose a motion change started from (`CGraphicThingInstance::SetMotion`
+/// with a blend time): for [`MOTION_BLEND_SECONDS`] the animated pose is mixed
+/// with it, so the change does not snap.
+#[derive(Component)]
+struct MotionBlend {
+    from: Vec<(Entity, Transform)>,
+    started: f32,
+}
+
+/// Mixes the pose a motion change left with the new motion's pose.
+fn blend_motions(mut commands: Commands, time: Res<Time>, blends: Query<(Entity, &MotionBlend)>, mut bones: Query<&mut Transform>) {
+    let now = time.elapsed_secs();
+    for (root, blend) in &blends {
+        let t = (now - blend.started) / MOTION_BLEND_SECONDS;
+        if t >= 1.0 {
+            commands.entity(root).remove::<MotionBlend>();
+            continue;
+        }
+        // Ease in, as granny's control ease curves do.
+        let t = t.clamp(0.0, 1.0);
+        let t = t * t * (3.0 - 2.0 * t);
+        for (bone, from) in &blend.from {
+            let Ok(mut transform) = bones.get_mut(*bone) else { continue };
+            transform.translation = from.translation.lerp(transform.translation, t);
+            transform.rotation = from.rotation.slerp(transform.rotation, t);
+            transform.scale = from.scale.lerp(transform.scale, t);
+        }
+    }
+}
+
+/// Registers [`blend_motions`] after the animation systems wrote the pose.
+pub struct MotionBlendPlugin;
+
+impl Plugin for MotionBlendPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            PostUpdate,
+            blend_motions.after(bevy::app::AnimationSystems).before(bevy::transform::TransformSystems::Propagate),
+        );
     }
 }
