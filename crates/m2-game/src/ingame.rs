@@ -455,7 +455,7 @@ impl GameWorld {
 
     /// Terrain height at a map-local position.
     pub fn terrain_height(&self, x: f32, y: f32) -> f32 {
-        self.scene().map_or(0.0, |scene| scene.map.map.terrain_height(x, y))
+        self.scene().map_or(0.0, |scene| scene.ground_height(x, y))
     }
 
     /// The map's local extent in world units.
@@ -1436,7 +1436,7 @@ fn drive_world(world: &mut World) {
                     let map = std::sync::Arc::new(warped.prepared);
                     let scene = MapScene::spawn_with_fog(world, map, fog);
                     world.resource_mut::<CombatFx>().set_fog(fog);
-                    let height = scene.map.map.terrain_height(warped.local_x as f32, warped.local_y as f32);
+                    let height = scene.ground_height(warped.local_x as f32, warped.local_y as f32);
                     let position = local_to_world(warped.local_x as f32, warped.local_y as f32, height);
                     info!(
                         "map {}: local position {},{} at height {}",
@@ -1592,7 +1592,7 @@ fn drive_world(world: &mut World) {
                         info!("walk to actor {vid} at {:.0},{:.0}", destination.x, destination.y);
                     }
                 } else {
-                    let height = |x: f32, y: f32| scene.map.map.terrain_height(x, y);
+                    let height = |x: f32, y: f32| scene.ground_height(x, y);
                     if let Some(point) = pick_terrain(world, cursor, height, extent) {
                         control.destination = Some(point);
                         info!("walk to {:.0},{:.0}", point.x, point.y);
@@ -1932,7 +1932,7 @@ fn drive_world(world: &mut World) {
                     transform.rotation = Quat::from_rotation_y(-control.facing.to_radians());
                 }
             }
-            let mut height = scene.map.map.terrain_height(local.x, local.y);
+            let mut height = scene.ground_height(local.x, local.y);
             if character.is_mounted() {
                 height += MOUNT_HEIGHT;
             }
@@ -1967,9 +1967,9 @@ fn drive_world(world: &mut World) {
 
             // The fight this frame: the main character's motion events and
             // hits, then the other actors' swings at it.
-            let ground = scene.map.map.terrain_height(local.x, local.y);
+            let ground = scene.ground_height(local.x, local.y);
             let me_position = Vec3::new(local.x, -local.y, ground);
-            let heights = |x: f32, y: f32| scene.map.map.terrain_height(x, y);
+            let heights = |x: f32, y: f32| scene.ground_height(x, y);
             main_motion_events(world, &mut control, character, me_position, now);
             main_attack_process(world, &mut control, character, &candidates, &attackable, me_position, now, delta, &heights);
             actor_attacks_on_main(world, &mut control, character, main_vid, base, me_position, now, delta, &heights);
@@ -2452,7 +2452,7 @@ fn check_advancing(
     if to == from {
         return to;
     }
-    let height = |p: Vec2| scene.map.map.terrain_height(p.x, p.y);
+    let height = |p: Vec2| scene.ground_height(p.x, p.y);
     // Body sphere of the main character (`m_BodyPointInstanceList`); it is
     // re-placed for the move, as `UpdateAdvancingPointInstance` does.
     let body_type = if attacking { m2_formats::race::COLLISION_TYPE_DEFENDING } else { m2_formats::race::COLLISION_TYPE_BODY };

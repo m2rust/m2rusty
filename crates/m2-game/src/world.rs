@@ -46,6 +46,9 @@ pub struct PreparedMap {
     pub errors: Vec<String>,
     /// The buildings' collision shapes (`.mdatr`), Metin2 world space.
     pub collisions: Vec<StaticCollision>,
+    /// Triangles from `.mdatr` height meshes, in the collision coordinate
+    /// system (x, y on the ground plane; z up).
+    pub walkable: Vec<[Vec3; 3]>,
 }
 
 /// Loads and prepares map `name`. Blocking and slow (seconds): run it on
@@ -64,15 +67,20 @@ pub fn prepare_map(packs: &PackManager, name: &str) -> Result<PreparedMap, Strin
     }
     let (ground_image, texture_errors) = ground(packs, &map.textures);
     errors.extend(texture_errors);
-    let collisions = building_collisions(packs, &map.objects, &mut errors);
-    Ok(PreparedMap { map, ground_image, effects, errors, collisions })
+    let (collisions, walkable) = building_collisions(packs, &map.objects, &mut errors);
+    Ok(PreparedMap { map, ground_image, effects, errors, collisions, walkable })
 }
 
 /// `CArea::__UpdateAniThingList`'s `UpdateCollisionData` for buildings and
 /// dungeon blocks: each `.mdatr` shape placed by the object's matrix.
-fn building_collisions(packs: &PackManager, objects: &[PlacedObject], errors: &mut Vec<String>) -> Vec<StaticCollision> {
+fn building_collisions(
+    packs: &PackManager,
+    objects: &[PlacedObject],
+    errors: &mut Vec<String>,
+) -> (Vec<StaticCollision>, Vec<[Vec3; 3]>) {
     let mut files: HashMap<Vec<u8>, Option<m2_formats::attribute::AttributeData>> = HashMap::new();
     let mut out = Vec::new();
+    let mut walkable = Vec::new();
     for object in objects {
         let (PlacedKind::Building { attribute_file, attribute_exists: true, .. }
         | PlacedKind::DungeonBlock { attribute_file, attribute_exists: true, .. }) = &object.kind
@@ -105,8 +113,36 @@ fn building_collisions(packs: &PackManager, objects: &[PlacedObject], errors: &m
                 &transform,
             ));
         }
+        for height in &data.heights {
+            // Height meshes are triangle lists (`THeightData` stores the
+            // already tessellated vertices). Ignore malformed trailing
+            // vertices and vertical/underside faces.
+            for vertices in height.vertices.chunks_exact(3) {
+                let triangle = std::array::from_fn(|i| transform.apply(Vec3::from_array(vertices[i])));
+                if (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]).z > 0.001 {
+                    walkable.push(triangle);
+                }
+            }
+        }
     }
-    out
+    (out, walkable)
+}
+
+/// Interpolates a triangle's Z at a point in its XY projection. The caller
+/// only stores upward-facing walkable faces.
+fn triangle_height(triangle: [Vec3; 3], point: Vec2) -> Option<f32> {
+    let [a, b, c] = triangle;
+    let ab = b.truncate() - a.truncate();
+    let ac = c.truncate() - a.truncate();
+    let ap = point - a.truncate();
+    let denominator = ab.perp_dot(ac);
+    if denominator.abs() < 1e-5 {
+        return None;
+    }
+    let u = ap.perp_dot(ac) / denominator;
+    let v = ab.perp_dot(ap) / denominator;
+    (u >= -1e-4 && v >= -1e-4 && u + v <= 1.0001)
+        .then_some(a.z + u * (b.z - a.z) + v * (c.z - a.z))
 }
 
 /// A map chosen by a global position: the client's `net.Warp`.
@@ -282,6 +318,19 @@ impl MapScene {
                 (centre.truncate() - point.truncate()).length() <= extent + radius
             })
             .collect()
+    }
+
+    /// Terrain height plus the highest walkable object surface at map-local
+    /// `(x, y)`. `.mdatr` height vertices use collision coordinates, where
+    /// the ground-plane Y coordinate is `-y`.
+    pub fn ground_height(&self, x: f32, y: f32) -> f32 {
+        let terrain = self.map.map.terrain_height(x, y);
+        let point = Vec2::new(x, -y);
+        self.map
+            .walkable
+            .iter()
+            .filter_map(|triangle| triangle_height(*triangle, point))
+            .fold(terrain, f32::max)
     }
 
     /// Per frame: spawns objects whose assets arrived, steps the effects,
