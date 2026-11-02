@@ -1039,6 +1039,58 @@ impl NetMachine {
         self.stream.send_packet(&wire::TPacketCGScriptButton { header: cg::SCRIPT_BUTTON, idx: index })
     }
 
+    /// `SendSafeBoxCheckinPacket`: move an inventory item into a safe box cell.
+    pub fn send_safebox_checkin(&mut self, inventory: wire::TItemPos, safe_cell: u8) -> bool {
+        self.stream.send_packet(&wire::TPacketCGSafeboxCheckin {
+            bHeader: cg::SAFEBOX_CHECKIN,
+            bSafePos: safe_cell,
+            ItemPos: inventory,
+        })
+    }
+
+    /// `SendSafeBoxCheckoutPacket`: move a safe box item into an inventory cell.
+    pub fn send_safebox_checkout(&mut self, safe_cell: u8, inventory: wire::TItemPos) -> bool {
+        self.stream.send_packet(&wire::TPacketCGSafeboxCheckout {
+            bHeader: cg::SAFEBOX_CHECKOUT,
+            bSafePos: safe_cell,
+            ItemPos: inventory,
+        })
+    }
+
+    /// `SendSafeBoxItemMovePacket`: reorder or stack items inside the safe box.
+    pub fn send_safebox_item_move(&mut self, source: u8, destination: u8, count: u8) -> bool {
+        self.stream.send_packet(&wire::TPacketCGItemMove {
+            header: cg::SAFEBOX_ITEM_MOVE,
+            pos: wire::TItemPos { window_type: 1, cell: u16::from(source) },
+            change_pos: wire::TItemPos { window_type: 1, cell: u16::from(destination) },
+            num: count,
+        })
+    }
+
+    /// `SendMallCheckoutPacket`: claim an item from the item mall.
+    pub fn send_mall_checkout(&mut self, mall_cell: u8, inventory: wire::TItemPos) -> bool {
+        self.stream.send_packet(&wire::TPacketCGMallCheckout {
+            bHeader: cg::MALL_CHECKOUT,
+            bMallPos: mall_cell,
+            ItemPos: inventory,
+        })
+    }
+
+    /// `SendShopBuyPacket` sends a one item purchase after the fixed header.
+    pub fn send_shop_buy(&mut self, position: u8) -> bool {
+        self.stream.send(&[cg::SHOP, 1, 1, position]) && self.stream.send_sequence()
+    }
+
+    /// `SendShopSellPacketNew`: sell `count` units from the selected inventory cell.
+    pub fn send_shop_sell(&mut self, position: u8, count: u8) -> bool {
+        self.stream.send(&[cg::SHOP, 3, position, count]) && self.stream.send_sequence()
+    }
+
+    /// `SendShopEndPacket` closes the server-side NPC shop session.
+    pub fn send_shop_end(&mut self) -> bool {
+        self.stream.send_packet(&wire::TPacketCGShop { header: cg::SHOP, subheader: 0 })
+    }
+
     /// `SendFlyTargetingPacket`; `(x, y)` are already map-global coordinates, as
     /// the C++ converts them with `__LocalPositionToGlobalPosition` first.
     pub fn send_fly_targeting(&mut self, vid: u32, x: i32, y: i32) -> bool {

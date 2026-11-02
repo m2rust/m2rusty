@@ -79,6 +79,8 @@ fn lifecycle(
     roots: Query<Entity, With<GameUiRoot>>,
     mut chat: ResMut<ChatState>,
     mut inventory: ResMut<inventory::InventoryUi>,
+    mut storage_ui: ResMut<crate::storage::StorageUi>,
+    mut shop_ui: ResMut<crate::shop::ShopUi>,
     mut character_tab: ResMut<crate::character::CharacterTab>,
     mut manager: ResMut<crate::core::WindowManager>,
 ) {
@@ -89,6 +91,8 @@ fn lifecycle(
         if !roots.is_empty() {
             *chat = ChatState::default();
             inventory.reset();
+            storage_ui.reset();
+            shop_ui.reset();
             *character_tab = crate::character::CharacterTab::default();
             manager.modal = None;
         }
@@ -101,6 +105,8 @@ fn lifecycle(
     build_chat(&mut commands);
     build_windows(&mut commands, &assets);
     inventory::build(&mut commands, &assets);
+    crate::storage::build(&mut commands, &assets);
+    crate::shop::build(&mut commands, &assets);
     crate::target::build(&mut commands, &assets);
 }
 

@@ -92,7 +92,7 @@ pub fn board(commands:&mut Commands,assets:&AssetServer,parent:Entity,w:f32,h:f3
 /// is the margin from the bottom-right corner of the screen (the original
 /// `x = SCREEN_WIDTH - width - right`, `y = SCREEN_HEIGHT - height - bottom`).
 pub fn window(commands:&mut Commands,assets:&AssetServer,id:&'static str,title:&str,size:Vec2,position:Vec2,anchor:Anchor,open:bool)->Entity {
-    let start=if anchor==Anchor::TopLeft{position}else{Vec2::ZERO};
+    let start=match anchor{Anchor::TopLeft|Anchor::LeftCenter(_)=>position,Anchor::BottomRight(_)=>Vec2::ZERO};
     let root=commands.spawn((FloatingWindow{id,open,size,position:start,moved:false,anchor},Surface,Hovered::default(),GlobalZIndex(200),Node{display:if open{Display::Flex}else{Display::None},..rect(position.x,position.y,size.x,size.y)})).id();
     board(commands,assets,root,size.x,size.y);
     let titlebar=commands.spawn((Surface,Hovered::default(),DragWindow(root),rect(8.,7.,size.x-15.,23.))).id();commands.entity(root).add_child(titlebar);
@@ -170,8 +170,8 @@ fn spawn_tooltip(mut commands:Commands){
 }
 fn tooltip(primary:Query<&Window,With<PrimaryWindow>>,scale:Res<UiScale>,time:Res<Time>,hovered:Query<(&Tooltip,&Hovered)>,mut tip:Query<&mut Node,With<CoreTooltip>>,mut labels:Query<&mut Text,With<CoreTooltipText>>,mut last:Local<Option<(usize,f32)>>){
     let Ok(window)=primary.single()else{return;};
-    let current=hovered.iter().find_map(|(tip,h)|h.0.then_some(tip));
-    let entity=hovered.iter().enumerate().find(|(_,(_,h))|h.0).map(|(i,_)|i);
+    let current=hovered.iter().find_map(|(tip,h)|(h.0&&!tip.0.is_empty()).then_some(tip));
+    let entity=hovered.iter().enumerate().find(|(_, (tip,h))|h.0&&!tip.0.is_empty()).map(|(i,_)|i);
     if entity!=last.as_ref().map(|(e,_)|*e){*last=entity.map(|e|(e,time.elapsed_secs()));}
     let Some(tooltip)=current else{
         for mut node in &mut tip{node.display=Display::None;}

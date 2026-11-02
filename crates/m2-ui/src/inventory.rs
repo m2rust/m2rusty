@@ -104,13 +104,26 @@ impl InventoryUi {
     pub fn reset(&mut self) {
         *self = Self::default();
     }
+
+    /// The item currently carried by the inventory cursor.
+    pub fn held_item(&self) -> Option<(ItemPosition, u32)> {
+        self.held.map(|held| (held.pos, held.vnum))
+    }
+
+    /// Clears the carried item after another window accepts it.
+    pub fn clear_held(&mut self) {
+        self.held = None;
+    }
 }
+
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InventoryActions;
 
 pub struct InventoryPlugin;
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InventoryUi>()
-            .add_systems(Update, actions.in_set(UiSet::Actions))
+            .add_systems(Update, actions.in_set(UiSet::Actions).in_set(InventoryActions))
             .add_systems(Update, (refresh, tooltip).chain().in_set(UiSet::Draw))
             .add_observer(drag_start)
             .add_observer(drag_drop);
@@ -372,7 +385,7 @@ pub fn page_button(commands: &mut Commands, assets: &AssetServer, parent: Entity
 
 /// `CPythonPlayer` maps both INVENTORY and EQUIPMENT onto the same item array;
 /// [`PlayerState`] stores them in window 1.
-fn position(slot: Slot, ui: &InventoryUi, player: &PlayerState, catalog: &ItemCatalog) -> Option<ItemPosition> {
+pub fn position(slot: Slot, ui: &InventoryUi, player: &PlayerState, catalog: &ItemCatalog) -> Option<ItemPosition> {
     match slot {
         Slot::Equipment(cell) => Some(ItemPosition::inventory(cell)),
         Slot::Quick(index) => {
@@ -492,6 +505,7 @@ fn actions(
     mut ui: ResMut<InventoryUi>,
     player: Res<PlayerState>,
     catalog: Res<ItemCatalog>,
+    shop: (Res<m2_game::player::ShopState>, Res<crate::shop::ShopUi>),
     mut requests: MessageWriter<PlayerAction>,
     mut quick: MessageWriter<QuickSlotUse>,
     mut windows: Query<(Entity, &mut FloatingWindow)>,
@@ -559,6 +573,18 @@ fn actions(
         }
         if let Ok(slot) = slots.get(click.entity) {
             if manager.modal.is_none() {
+                if shop.0.open && (click.button == PointerButton::Secondary
+                    || (shop.1.sell_mode && click.button == PointerButton::Primary)) {
+                    if let Some(pos) = position(*slot, &ui, &player, &catalog)
+                        && pos.window == 1
+                        && pos.cell < 90
+                        && player.items.contains_key(&pos)
+                    {
+                        requests.write(PlayerAction::ShopSell { position: pos.cell as u8, count: 1 });
+                    }
+                    ui.held = None;
+                    continue;
+                }
                 apply_slot(
                     *slot,
                     click.button == PointerButton::Secondary,

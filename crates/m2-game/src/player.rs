@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 use bevy::{prelude::*, tasks::{IoTaskPool, Task, futures::check_ready}};
 use m2_assets::{M2Packs, paths};
 use m2_formats::proto::{ItemData, ItemTables, parse_item_proto};
-use m2_net::{phase::{NetEvent, Phase}, wire::{self, GcPacket, TItemPos, TPlayerItemAttribute, TQuickSlot, cg}};
+use m2_net::{phase::{NetEvent, Phase}, wire::{self, GcPacket, TItemPos, TPlayerItemAttribute, TQuickSlot, Wire, cg}};
 use crate::combat::{self, ActorCombat, CombatWorld};
 use crate::{ingame::LOCALE_PATH, net::{Net, NetMessage}};
 
@@ -56,6 +56,170 @@ pub struct PlayerState {
     /// Party members by player id (`CPythonPlayer::m_PartyMemberMap`).
     pub party: BTreeMap<u32, PartyMember>,
     pub observer: bool,
+}
+
+/// Contents and open state of `CPythonSafeBox` (bank safe box and item mall).
+#[derive(Resource, Default)]
+pub struct StorageState {
+    pub safebox: Vec<Option<ItemStack>>,
+    pub mall: Vec<Option<ItemStack>>,
+    pub money: u32,
+    pub safebox_open: bool,
+    pub mall_open: bool,
+    pub password_error: bool,
+    pub safebox_serial: u64,
+    pub mall_serial: u64,
+}
+
+/// One server-provided NPC shop tab (`CPythonShop::ShopTab`).
+#[derive(Clone, Debug)]
+pub struct ShopTab {
+    pub name: String,
+    pub coin_type: u8,
+    pub items: Vec<wire::TShopItemData>,
+}
+
+/// Server-owned contents of the current `CPythonShop` window.
+#[derive(Resource, Default)]
+pub struct ShopState {
+    pub open: bool,
+    pub generation: u64,
+    pub owner_vid: u32,
+    pub tabs: Vec<ShopTab>,
+    pub selling_price: i32,
+    pub message: Option<String>,
+}
+
+impl ShopState {
+    fn clear(&mut self) {
+        let generation = self.generation.wrapping_add(1);
+        *self = Self { generation, ..Self::default() };
+    }
+
+    fn set_item(&mut self, index: usize, item: wire::TShopItemData) {
+        let tab = index / wire::consts::SHOP_HOST_ITEM_MAX_NUM;
+        let cell = index % wire::consts::SHOP_HOST_ITEM_MAX_NUM;
+        if let Some(tab) = self.tabs.get_mut(tab)
+            && let Some(slot) = tab.items.get_mut(cell)
+        {
+            *slot = item;
+        }
+    }
+
+    fn apply_packet(&mut self, head: &wire::TPacketGCShop, tail: &[u8]) {
+        const START: u8 = 0;
+        const END: u8 = 1;
+        const UPDATE_ITEM: u8 = 2;
+        const UPDATE_PRICE: u8 = 3;
+        const NOT_ENOUGH_MONEY: u8 = 5;
+        const SOLD_OUT: u8 = 6;
+        const INVENTORY_FULL: u8 = 7;
+        const INVALID_POS: u8 = 8;
+        const START_EX: u8 = 10;
+        const NOT_ENOUGH_MONEY_EX: u8 = 11;
+
+        match head.subheader {
+            START if tail.len() >= 4 + wire::TPacketGCShopStart::SIZE => {
+                self.clear();
+                self.owner_vid = u32::from_le_bytes(tail[..4].try_into().unwrap_or_default());
+                let start = wire::TPacketGCShopStart::decode(&tail[4..]).unwrap_or_default();
+                self.tabs.push(ShopTab { name: "Shop".into(), coin_type: 0, items: start.items.to_vec() });
+                self.open = true;
+            }
+            START_EX if tail.len() >= wire::TPacketGCShopStartEx::SIZE => {
+                self.clear();
+                let start = wire::TPacketGCShopStartEx::decode(tail).unwrap_or_default();
+                self.owner_vid = start.owner_vid;
+                let mut offset = wire::TPacketGCShopStartEx::SIZE;
+                for _ in 0..usize::from(start.shop_tab_count.min(3)) {
+                    let Some(bytes) = tail.get(offset..offset + wire::TSubPacketShopTab::SIZE) else { break };
+                    let Ok(tab) = wire::TSubPacketShopTab::decode(bytes) else { break };
+                    self.tabs.push(ShopTab { name: tab.name_str(), coin_type: tab.coin_type, items: tab.items.to_vec() });
+                    offset += wire::TSubPacketShopTab::SIZE;
+                }
+                self.open = !self.tabs.is_empty();
+            }
+            END => self.clear(),
+            UPDATE_ITEM if tail.len() >= wire::TPacketGCShopUpdateItem::SIZE => {
+                if let Ok(update) = wire::TPacketGCShopUpdateItem::decode(tail) {
+                    self.set_item(usize::from(update.pos), update.item);
+                }
+            }
+            UPDATE_PRICE if tail.len() >= 4 => {
+                self.selling_price = i32::from_le_bytes(tail[..4].try_into().unwrap_or_default());
+            }
+            NOT_ENOUGH_MONEY => self.message = Some("Not enough yang.".into()),
+            NOT_ENOUGH_MONEY_EX => self.message = Some("Not enough currency.".into()),
+            SOLD_OUT => self.message = Some("This item is sold out.".into()),
+            INVENTORY_FULL => self.message = Some("Your inventory is full.".into()),
+            INVALID_POS => self.message = Some("This shop item is unavailable.".into()),
+            _ => {}
+        }
+    }
+}
+
+impl StorageState {
+    fn apply(&mut self, event: &NetEvent) {
+        match event {
+            NetEvent::SafeboxSet(packet) => set_storage_item(&mut self.safebox, packet.Cell.cell, item_stack(packet)),
+            NetEvent::MallSet(packet) => set_storage_item(&mut self.mall, packet.Cell.cell, item_stack(packet)),
+            NetEvent::Packet(GcPacket::SafeboxSize(packet)) => {
+                self.safebox = vec![None; usize::from(packet.bSize).saturating_mul(5)];
+                self.safebox_open = true;
+                self.safebox_serial = self.safebox_serial.wrapping_add(1);
+                self.password_error = false;
+            }
+            NetEvent::Packet(GcPacket::SafeboxDel(packet)) => {
+                if let Some(slot) = self.safebox.get_mut(usize::from(packet.pos)) { *slot = None; }
+            }
+            NetEvent::Packet(GcPacket::SafeboxMoneyChange(packet)) => self.money = packet.dwMoney,
+            NetEvent::Packet(GcPacket::SafeboxWrongPassword(_)) => self.password_error = true,
+            NetEvent::Packet(GcPacket::MallOpen(packet)) => {
+                self.mall = vec![None; usize::from(packet.bSize).saturating_mul(5)];
+                self.mall_open = true;
+                self.mall_serial = self.mall_serial.wrapping_add(1);
+            }
+            NetEvent::Packet(GcPacket::MallDel(packet)) => {
+                if let Some(slot) = self.mall.get_mut(usize::from(packet.pos)) { *slot = None; }
+            }
+            NetEvent::PhaseChanged { to: Phase::Login | Phase::Select | Phase::Loading, .. } => {
+                self.safebox.clear();
+                self.mall.clear();
+                self.money = 0;
+                self.safebox_open = false;
+                self.mall_open = false;
+                self.password_error = false;
+            }
+            _ => {}
+        }
+    }
+}
+
+impl ShopState {
+    fn apply(&mut self, event: &NetEvent) {
+        match event {
+            NetEvent::Packet(GcPacket::Shop { head, tail }) => self.apply_packet(head, tail),
+            NetEvent::PhaseChanged { to: Phase::Login | Phase::Select | Phase::Loading, .. } => self.clear(),
+            _ => {}
+        }
+    }
+}
+
+fn item_stack(packet: &wire::TPacketGCItemSet2) -> ItemStack {
+    ItemStack {
+        vnum: packet.vnum,
+        count: packet.count,
+        flags: packet.flags,
+        anti_flags: packet.anti_flags,
+        sockets: packet.alSockets,
+        attributes: packet.aAttr,
+    }
+}
+
+fn set_storage_item(items: &mut [Option<ItemStack>], index: u16, item: ItemStack) {
+    if let Some(slot) = items.get_mut(usize::from(index)) {
+        *slot = (item.vnum != 0).then_some(item);
+    }
 }
 impl Default for PlayerState {
     fn default() -> Self { Self { vid:0, name:String::new(), points:[0;255], items:BTreeMap::new(), quickslots:[TQuickSlot::default();32], chat:VecDeque::new(), race:0, skill_group:0, kind:0, empire:0, alignment:0, pk_mode:0, guild_id:0, level:0, state_flags:0, affect_flags:0, mount_vnum:0, duel_mode:0, duel_keys:HashSet::new(), party:BTreeMap::new(), observer:false } }
@@ -258,6 +422,13 @@ pub enum PlayerAction {
     QuestButton(u32),
     UseItem(ItemPosition),
     MoveItem {source:ItemPosition,destination:ItemPosition,count:u8},
+    SafeboxCheckin {inventory:ItemPosition,safe_cell:u8},
+    SafeboxCheckout {safe_cell:u8,inventory:ItemPosition},
+    SafeboxMove {source:u8,destination:u8,count:u8},
+    MallCheckout {mall_cell:u8,inventory:ItemPosition},
+    ShopBuy(u8),
+    ShopSell {position:u8,count:u8},
+    ShopEnd,
     BindItem {slot:u8,position:ItemPosition},
     ClearQuickslot(u8),
     SwapQuickslot {source:u8,destination:u8},
@@ -266,7 +437,11 @@ pub enum PlayerAction {
 pub struct PlayerStatePlugin;
 impl Plugin for PlayerStatePlugin {
     fn build(&self,app:&mut App) {
-        app.init_resource::<PlayerState>().init_resource::<ItemCatalog>().add_message::<PlayerAction>()
+        app.init_resource::<PlayerState>()
+            .init_resource::<ItemCatalog>()
+            .init_resource::<StorageState>()
+            .init_resource::<ShopState>()
+            .add_message::<PlayerAction>()
             .add_systems(Startup,load_catalog)
             .add_systems(Update,(poll_catalog,receive,dispatch).chain());
     }
@@ -287,10 +462,35 @@ fn poll_catalog(mut commands:Commands,task:Option<ResMut<CatalogTask>>,mut catal
     let Some(mut task)=task else{return;};
     if let Some(result)=check_ready(&mut task.0){match result{Ok(items)=>catalog.0=items,Err(e)=>warn!("{e}")};commands.remove_resource::<CatalogTask>();}
 }
-fn receive(mut events:MessageReader<NetMessage>,mut player:ResMut<PlayerState>) {
-    for event in events.read(){match event{NetMessage::Game(e)=>player.apply(e),NetMessage::Disconnected{..}=>*player=PlayerState::default(),_=>{}}}
+fn receive(
+    mut events:MessageReader<NetMessage>,
+    mut player:ResMut<PlayerState>,
+    mut storage:ResMut<StorageState>,
+    mut shop:ResMut<ShopState>,
+) {
+    for event in events.read() {
+        match event {
+            NetMessage::Game(event) => {
+                player.apply(event);
+                storage.apply(event);
+                shop.apply(event);
+            }
+            NetMessage::Disconnected { .. } => {
+                *player = PlayerState::default();
+                *storage = StorageState::default();
+                shop.clear();
+            }
+            _ => {}
+        }
+    }
 }
-fn dispatch(mut actions:MessageReader<PlayerAction>,mut net:ResMut<Net>,mut player:ResMut<PlayerState>) {
+fn dispatch(
+    mut actions:MessageReader<PlayerAction>,
+    mut net:ResMut<Net>,
+    mut player:ResMut<PlayerState>,
+    storage:Res<StorageState>,
+    shop:Res<ShopState>,
+) {
     for action in actions.read() {
         if net.game.phase()!=Phase::Game { continue; }
         let ok=match action {
@@ -301,6 +501,50 @@ fn dispatch(mut actions:MessageReader<PlayerAction>,mut net:ResMut<Net>,mut play
             PlayerAction::MoveItem{source,destination,count} => {
                 source!=destination && source.valid() && destination.valid() && player.items.get(source).is_some_and(|i|*count<=i.count) && net.game.stream.send_packet(&wire::TPacketCGItemMove{header:cg::ITEM_MOVE,pos:source.wire(),change_pos:destination.wire(),num:*count})
             }
+            PlayerAction::SafeboxCheckin { inventory, safe_cell } => {
+                storage.safebox_open
+                    && usize::from(*safe_cell) < storage.safebox.len()
+                    && inventory.window == 1
+                    && inventory.cell < 90
+                    && player.items.contains_key(inventory)
+                    && net.game.send_safebox_checkin(inventory.wire(), *safe_cell)
+            }
+            PlayerAction::SafeboxCheckout { safe_cell, inventory } => {
+                storage.safebox_open
+                    && storage.safebox.get(usize::from(*safe_cell)).is_some_and(Option::is_some)
+                    && inventory.window == 1
+                    && inventory.cell < 90
+                    && !player.items.contains_key(inventory)
+                    && net.game.send_safebox_checkout(*safe_cell, inventory.wire())
+            }
+            PlayerAction::SafeboxMove { source, destination, count } => {
+                storage.safebox_open
+                    && usize::from(*source) < storage.safebox.len()
+                    && usize::from(*destination) < storage.safebox.len()
+                    && *source != *destination
+                    && *count > 0
+                    && storage.safebox[usize::from(*source)].is_some()
+                    && net.game.send_safebox_item_move(*source, *destination, *count)
+            }
+            PlayerAction::MallCheckout { mall_cell, inventory } => {
+                storage.mall_open
+                    && storage.mall.get(usize::from(*mall_cell)).is_some_and(Option::is_some)
+                    && inventory.window == 1
+                    && inventory.cell < 90
+                    && !player.items.contains_key(inventory)
+                    && net.game.send_mall_checkout(*mall_cell, inventory.wire())
+            }
+            PlayerAction::ShopBuy(position) => {
+                shop.open && usize::from(*position) < shop.tabs.len().saturating_mul(40) && net.game.send_shop_buy(*position)
+            }
+            PlayerAction::ShopSell { position, count } => {
+                shop.open
+                    && *count > 0
+                    && *position < 90
+                    && player.items.get(&ItemPosition::inventory(u16::from(*position))).is_some_and(|item| *count <= item.count)
+                    && net.game.send_shop_sell(*position, *count)
+            }
+            PlayerAction::ShopEnd => shop.open && net.game.send_shop_end(),
             PlayerAction::BindItem{slot,position}=>*slot<32 && position.window==1 && position.cell<90 && player.items.contains_key(position) && net.game.stream.send_packet(&wire::TPacketCGQuickSlotAdd{header:cg::QUICKSLOT_ADD,pos:*slot,slot:TQuickSlot{Type:1,Position:position.cell as u8}}),
             PlayerAction::ClearQuickslot(slot)=>*slot<32 && net.game.stream.send_packet(&wire::TPacketCGQuickSlotDel{header:cg::QUICKSLOT_DEL,pos:*slot}),
             PlayerAction::SwapQuickslot{source,destination}=>*source<32 && *destination<32 && source!=destination && net.game.stream.send_packet(&wire::TPacketCGQuickSlotSwap{header:cg::QUICKSLOT_SWAP,pos:*source,change_pos:*destination}),

@@ -34,6 +34,8 @@ pub mod quest_dialog;
 pub mod select;
 pub mod skills;
 pub mod sound;
+pub mod shop;
+pub mod storage;
 pub mod target;
 
 use bevy::prelude::*;
@@ -54,6 +56,8 @@ impl Plugin for M2UiPlugin {
             skills::SkillsPlugin,
             emotes::EmotesPlugin,
             sound::UiSoundPlugin,
+            shop::ShopPlugin,
+            storage::StoragePlugin,
             target::TargetBoardPlugin,
             quest_dialog::QuestDialogPlugin,
         ));

@@ -32,9 +32,9 @@ m2-script = { path = "crates/m2-script" }
 m2-ui = { path = "crates/m2-ui" }
 m2-world = { path = "crates/m2-world" }
 
-# Bevy is slow unoptimised; optimise dependencies even in dev builds.
-[profile.dev.package."*"]
-opt-level = 3
-
+# Keep development and test builds quick, including their dependencies.
 [profile.dev]
-opt-level = 1
+opt-level = 0
+debug = 0
+incremental = true
+codegen-units = 256
