@@ -14,7 +14,6 @@
 use bevy::asset::{AssetServer, RenderAssetUsages, embedded_asset};
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::hierarchy::ChildOf;
-use bevy::image::{ImageAddressMode, ImageLoaderSettings, ImageSampler, ImageSamplerDescriptor};
 use bevy::mesh::{Indices, Mesh, PrimitiveTopology};
 use bevy::pbr::{Material, MaterialPlugin};
 use bevy::prelude::*;
@@ -139,19 +138,11 @@ pub fn spawn_cloud(world: &mut World, environment: &EnvironmentData, parent: Opt
         return None;
     }
     // The texture is tiled `CloudTextureScale` times over the quad; the client's
-    // D3D sampler wraps (the default address mode), so a clamped sampler would
-    // smear the edge texels across most of the sky.
-    let image: Handle<Image> = world
-        .resource::<AssetServer>()
-        .load_builder()
-        .with_settings(|settings: &mut ImageLoaderSettings| {
-            settings.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
-                address_mode_u: ImageAddressMode::Repeat,
-                address_mode_v: ImageAddressMode::Repeat,
-                ..ImageSamplerDescriptor::linear()
-            });
-        })
-        .load(paths::asset_source_uri(&sky.cloud_texture_file_name));
+    // D3D sampler wraps (the default address mode), which is also the `m2://`
+    // loader's default (`M2ImageSettings::repeat`). Bevy's own
+    // `ImageLoaderSettings` would not reach that loader: the load fails.
+    let image: Handle<Image> =
+        world.resource::<AssetServer>().load(paths::asset_source_uri(&sky.cloud_texture_file_name));
     let params = CloudUniform {
         color: Vec4::from_array(sky.cloud_color.first),
         offset: Vec2::ZERO,

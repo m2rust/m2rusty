@@ -2,14 +2,21 @@
 //! between coplanar meshes in the scene's transparent queue.
 use bevy::asset::{RenderAssetUsages, embedded_asset};
 use bevy::image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor};
-use bevy::pbr::{Material, MaterialPlugin};
+use bevy::mesh::{MeshVertexAttribute, MeshVertexBufferLayoutRef, VertexFormat};
+use bevy::pbr::{Material, MaterialPipeline, MaterialPipelineKey, MaterialPlugin};
 use bevy::prelude::*;
-use bevy::render::render_resource::{AsBindGroup, Extent3d, ShaderType, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension};
+use bevy::render::render_resource::{AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError, Extent3d, ShaderType, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension};
+use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
 use m2_formats::{map::{Terrain, TerrainTexture}, pack::PackManager};
 use m2_render::{Fog, FogMode};
 
 const MAX_LAYERS: usize = 256;
+
+/// The static shadow map coordinate of a terrain vertex (`kTexStaticShadow`,
+/// `m_matStaticShadow`): its position within its terrain, `0..1`.
+pub const ATTRIBUTE_SHADOW_UV: MeshVertexAttribute =
+    MeshVertexAttribute::new("M2_TerrainShadowUv", 0x6d32_7e01, VertexFormat::Float32x2);
 
 #[derive(Clone, ShaderType, Debug)]
 pub struct TerrainUniform {
@@ -39,6 +46,18 @@ pub struct TerrainMaterial {
     #[texture(3, dimension = "2d_array")]
     #[sampler(4)]
     pub masks: Handle<Image>,
+    /// The terrain's static shadow map ([`shadow_image`]), sampled with
+    /// [`ATTRIBUTE_SHADOW_UV`].
+    #[texture(5)]
+    #[sampler(6)]
+    pub shadow: Handle<Image>,
+    /// The character shadow's light view ([`super::shadow::CharacterShadow::view`]).
+    #[storage(7, read_only)]
+    pub character_shadow_view: Handle<ShaderBuffer>,
+    /// The character shadow texture ([`super::shadow::CharacterShadow::texture`]).
+    #[texture(8)]
+    #[sampler(9)]
+    pub character_shadow: Handle<Image>,
 }
 
 impl Material for TerrainMaterial {
@@ -46,6 +65,21 @@ impl Material for TerrainMaterial {
     fn fragment_shader() -> ShaderRef { "embedded://m2_game/render/terrain.wesl".into() }
     fn enable_prepass() -> bool { false }
     fn enable_shadows() -> bool { false }
+    fn specialize(
+        _pipeline: &MaterialPipeline,
+        descriptor: &mut RenderPipelineDescriptor,
+        layout: &MeshVertexBufferLayoutRef,
+        _key: MaterialPipelineKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        descriptor.vertex.buffers = vec![layout.0.get_layout(&[
+            Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
+            Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
+            Mesh::ATTRIBUTE_UV_0.at_shader_location(2),
+            Mesh::ATTRIBUTE_UV_1.at_shader_location(3),
+            ATTRIBUTE_SHADOW_UV.at_shader_location(8),
+        ])?];
+        Ok(())
+    }
 }
 
 /// The terrain material and its shader.
@@ -111,17 +145,42 @@ pub fn set_fog(params: &mut TerrainUniform, fog: Option<Fog>) {
     };
 }
 
-/// The map environment's directional light, as
-/// `CTerrainPatch::SoftwareTransformPatch_UpdateTerrainLighting`
-/// (`client/src/game/TerrainPatch.cpp`) bakes it into the terrain's vertex
-/// colours: `light.diffuse * material.diffuse` and
-/// `light.ambient * material.ambient + material.emissive`, evaluated against
-/// `abs(dot(normal, direction))` in the shader.
+/// The map environment's directional light for the terrain's lit pass. On
+/// hardware T&L (`__HardwareTransformPatch_RenderPatchSplat`, the path the
+/// client takes on any current GPU) the splats are drawn unlit and a last pass
+/// multiplies them by D3D9 vertex lighting times the static shadow map:
+/// `light.ambient * material.ambient + material.emissive` plus
+/// `light.diffuse * material.diffuse * max(0, dot(normal, -direction))`.
+/// (The software-tiling path's `abs(dot)` would light the slopes facing away
+/// from the sun as brightly as the sunny ones.)
 pub fn set_light(params: &mut TerrainUniform, light: &crate::render::lighting::SceneLight) {
     let (direction, diffuse, ambient) = light.terrain_colours();
     params.light_direction = direction;
     params.light_diffuse = diffuse;
     params.light_ambient = ambient;
+}
+
+/// One terrain's static shadow texture (`shadowmap.dds`), clamped and
+/// linearly filtered as the shadow pass samples it. A terrain without one (or
+/// with an undecodable one) is white: no shadow. `shadowmap.raw` is not this
+/// image; the client only reads it for actor brightness.
+pub fn shadow_image(terrain: &Terrain) -> Image {
+    let decoded = terrain.shadow_texture.as_deref().and_then(|bytes| {
+        m2_assets::texture::decode(bytes, &Default::default())
+            .inspect_err(|error| warn!("terrain shadow map: {error}"))
+            .ok()
+    });
+    let mut image = decoded.unwrap_or_else(|| {
+        Image::new(
+            Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
+            TextureDimension::D2,
+            vec![255; 4],
+            TextureFormat::Rgba8Unorm,
+            RenderAssetUsages::RENDER_WORLD,
+        )
+    });
+    image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor::linear());
+    image
 }
 
 /// One terrain's splat alpha masks, one 256×256 array slice per texture-set entry.
@@ -253,7 +312,7 @@ mod tests {
     #[test]
     fn terrain_is_opaque_and_writes_depth_without_custom_sorting() {
         use bevy::material::AlphaMode;
-        let material = TerrainMaterial { params: patch_uniform(&[], &[0;256]), ground: Handle::default(), masks: Handle::default() };
+        let material = TerrainMaterial { params: patch_uniform(&[], &[0;256]), ground: Handle::default(), masks: Handle::default(), shadow: Handle::default(), character_shadow_view: Handle::default(), character_shadow: Handle::default() };
         assert_eq!(material.alpha_mode(), AlphaMode::Opaque);
         assert_eq!(material.depth_bias(), 0.0);
     }

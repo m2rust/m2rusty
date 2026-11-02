@@ -16,6 +16,7 @@ use bevy::animation::AnimatedBy;
 use bevy::app::{AnimationSystems, App, Plugin, PostUpdate};
 use bevy::asset::{AssetId, AssetServer, Assets, RenderAssetUsages};
 use bevy::camera::primitives::{Aabb, Frustum, MeshAabb, Sphere};
+use bevy::camera::visibility::RenderLayers;
 use bevy::ecs::hierarchy::ChildOf;
 use bevy::ecs::world::CommandQueue;
 use bevy::image::Image;
@@ -97,15 +98,22 @@ pub fn part_material(textures: &Textures, mesh: &Gr2Mesh, part: &Gr2MeshPart, fo
     material
 }
 
-/// One material handle per mesh part, in `(mesh, part)` order.
-fn materials(world: &mut World, model: &Gr2Model, skins: &[RaceSkin], fog: Option<Fog>) -> Vec<Handle<FixedFunctionMaterial>> {
-    // `CPythonBackground::SetCharacterDirLight` puts the environment's
-    // character light on actor passes. Every `.gr2` model goes through this
-    // path (placed buildings too); a map's two lights share their direction
-    // and differ only in ambient, so the character light is the close enough
-    // and more important one. The environment material replaces the primary
-    // colour of textured parts, as `STATEMANAGER.SetMaterial` does.
-    let lighting = world.get_resource::<MapLighting>().map(|lighting| lighting.character);
+/// One material handle per mesh part, in `(mesh, part)` order. Actors are lit
+/// by the environment's character light (`CPythonBackground::SetCharacterDirLight`
+/// around the actor pass), map objects by the background light the map pass
+/// keeps (`SetBackgroundDirLight`); the two share their direction and differ
+/// in ambient. The environment material replaces the primary colour of
+/// textured parts, as `STATEMANAGER.SetMaterial` does.
+fn materials(
+    world: &mut World,
+    model: &Gr2Model,
+    skins: &[RaceSkin],
+    fog: Option<Fog>,
+    background: bool,
+) -> Vec<Handle<FixedFunctionMaterial>> {
+    let lighting = world
+        .get_resource::<MapLighting>()
+        .map(|lighting| if background { lighting.background } else { lighting.character });
     let built: Vec<FixedFunctionMaterial> = {
         let textures = Textures::new(world, skins);
         model
@@ -194,6 +202,8 @@ fn rest_skin_matrix(
 struct StaticPart {
     name: Name,
     material: Handle<FixedFunctionMaterial>,
+    /// Alpha blended: never a shadow receiver (the overlay would tint its gaps).
+    blended: bool,
     mesh: Handle<Mesh>,
     aabb: Aabb,
 }
@@ -217,7 +227,7 @@ pub fn clear_static_model_cache(world: &mut World) {
 /// Bakes `model`'s rest pose into plain meshes, one per material, and stores
 /// them in the cache. See [`spawn_static_model`].
 fn bake_static_model(world: &mut World, model: &Gr2Model, skins: &[RaceSkin], fog: Option<Fog>) -> Vec<StaticPart> {
-    let materials = materials(world, model, skins, fog);
+    let materials = materials(world, model, skins, fog, true);
     let bone_world = model.skeleton.as_ref().map(bone_world_matrices).unwrap_or_default();
     let inverse_bind: Vec<Mat4> =
         model.skeleton.as_ref().map(|skeleton| skeleton.bones.iter().map(|bone| bone.inverse_world).collect()).unwrap_or_default();
@@ -293,8 +303,10 @@ fn bake_static_model(world: &mut World, model: &Gr2Model, skins: &[RaceSkin], fo
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, bucket.uvs);
         mesh.insert_indices(Indices::U32(bucket.indices));
         let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
+        let blended = world.resource::<Assets<FixedFunctionMaterial>>().get(&material).is_some_and(|m| m.blend.is_some());
         parts.push(StaticPart {
             name: Name::new(format!("{} static #{index}", model.name)),
+            blended,
             material,
             mesh,
             aabb: Aabb::from_min_max(min, max),
@@ -318,31 +330,36 @@ pub fn spawn_static_model(
     model: &Gr2Model,
     transform: Transform,
     parent: Option<Entity>,
+    receiver: bool,
     skins: &[RaceSkin],
     fog: Option<Fog>,
 ) -> Vec<Entity> {
-    if let Some(entities) = spawn_cached_static_model(world, model_id, transform, parent) {
+    if let Some(entities) = spawn_cached_static_model(world, model_id, transform, parent, receiver) {
         return entities;
     }
     let parts = bake_static_model(world, model, skins, fog);
     world.get_resource_or_init::<StaticModelCache>().models.insert(model_id, parts);
-    spawn_cached_static_model(world, model_id, transform, parent).unwrap_or_default()
+    spawn_cached_static_model(world, model_id, transform, parent, receiver).unwrap_or_default()
 }
 
 /// Spawns another instance of a model [`spawn_static_model`] already baked,
-/// without needing the model itself. `None` when it was not baked yet.
+/// without needing the model itself. `None` when it was not baked yet. A
+/// `receiver` (a walkable object: bridge, platform) also gets the character
+/// shadow drawn over its opaque parts ([`super::shadow::ShadowReceiverMaterial`]).
 pub fn spawn_cached_static_model(
     world: &mut World,
     model_id: AssetId<Gr2Model>,
     transform: Transform,
     parent: Option<Entity>,
+    receiver: bool,
 ) -> Option<Vec<Entity>> {
     let parts = world.get_resource::<StaticModelCache>()?.models.get(&model_id)?.clone();
+    let receiver_material = receiver.then(|| super::shadow::character_shadow(world).receiver);
     let mut entities = Vec::with_capacity(parts.len());
     for part in parts {
         let mut entity = world.spawn((
             part.name,
-            Mesh3d(part.mesh),
+            Mesh3d(part.mesh.clone()),
             MeshMaterial3d(part.material),
             transform,
             Visibility::Visible,
@@ -352,6 +369,20 @@ pub fn spawn_cached_static_model(
             entity.insert(ChildOf(parent));
         }
         entities.push(entity.id());
+        if let (Some(material), false) = (&receiver_material, part.blended) {
+            let mut overlay = world.spawn((
+                Name::new("shadow receiver"),
+                Mesh3d(part.mesh),
+                MeshMaterial3d(material.clone()),
+                transform,
+                Visibility::Visible,
+                part.aabb,
+            ));
+            if let Some(parent) = parent {
+                overlay.insert(ChildOf(parent));
+            }
+            entities.push(overlay.id());
+        }
     }
     Some(entities)
 }
@@ -444,16 +475,22 @@ impl Plugin for ModelCullPlugin {
     }
 }
 
+/// Actors draw on the main layer and cast the character shadow
+/// ([`super::shadow`]).
+fn actor_layers() -> RenderLayers {
+    RenderLayers::from_layers(&[0, super::shadow::SHADOW_LAYER])
+}
+
 /// Spawns `model` (root with an `AnimationPlayer`, bones, skinned meshes with
 /// [`part_material`]s), under `parent` when given, with `skins` applied.
 pub fn spawn_model(world: &mut World, model: &Gr2Model, parent: Option<Entity>, skins: &[RaceSkin], fog: Option<Fog>) -> Gr2Spawn {
-    let materials = materials(world, model, skins, fog);
+    let materials = materials(world, model, skins, fog, false);
     let mut queue = CommandQueue::default();
     let mut commands = Commands::new(&mut queue, world);
     let mut next = materials.into_iter();
     let spawned = spawn_gr2_model(&mut commands, model, |entity, _, _| {
         if let Some(material) = next.next() {
-            entity.insert(MeshMaterial3d(material));
+            entity.insert((MeshMaterial3d(material), actor_layers()));
         }
     });
     if let Some(parent) = parent {
@@ -470,13 +507,13 @@ pub fn spawn_model(world: &mut World, model: &Gr2Model, parent: Option<Entity>, 
 /// already spawned `body` (`CGraphicThingInstance::SetModelInstance` onto the main
 /// part), with `skins` applied.
 pub fn attach_model(world: &mut World, model: &Gr2Model, body: &Gr2Spawn, skins: &[RaceSkin], fog: Option<Fog>) -> Vec<Entity> {
-    let materials = materials(world, model, skins, fog);
+    let materials = materials(world, model, skins, fog, false);
     let mut queue = CommandQueue::default();
     let mut commands = Commands::new(&mut queue, world);
     let mut next = materials.into_iter();
     let parts = spawn_gr2_meshes(&mut commands, model, body.root, &body.bone_by_name, body.root, |entity, _, _| {
         if let Some(material) = next.next() {
-            entity.insert(MeshMaterial3d(material));
+            entity.insert((MeshMaterial3d(material), actor_layers()));
         }
     });
     queue.apply(world);
@@ -506,13 +543,13 @@ pub fn attach_model_to_bone(
         warn!("model {}: body has no attachment bone {bone}", model.name);
         return Vec::new();
     };
-    let materials = materials(world, model, skins, fog);
+    let materials = materials(world, model, skins, fog, false);
     let mut queue = CommandQueue::default();
     let mut commands = Commands::new(&mut queue, world);
     let mut next = materials.into_iter();
     let parts = spawn_gr2_meshes(&mut commands, model, body.root, &body.bone_by_name, target, |entity, _, _| {
         if let Some(material) = next.next() {
-            entity.insert(MeshMaterial3d(material));
+            entity.insert((MeshMaterial3d(material), actor_layers()));
         }
     });
     queue.apply(world);

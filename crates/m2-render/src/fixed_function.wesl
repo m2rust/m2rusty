@@ -286,5 +286,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
         }
     }
 
+    // A view with zero exposure is the character shadow pass (m2-game's
+    // `render::shadow` marks its camera so; colours here never use exposure):
+    // `CMapOutdoor::BeginRenderCharacterShadowToTexture` turns lighting off and
+    // draws stage 0 `SELECTARG1(TFACTOR)` with `TFACTOR = 0xFF808080`, on white.
+    if view.exposure == 0.0 {
+        return vec4<f32>(vec3<f32>(128.0 / 255.0), 1.0);
+    }
+
     return color;
 }

@@ -3188,6 +3188,9 @@ fn place_camera(world: &mut World, position: Vec3, control: &PlayerControl) {
     let offset = Vec3::new(sin_yaw * cos_pitch, sin_pitch, cos_yaw * cos_pitch) * control.distance;
     let target = position + Vec3::Y * CAMERA_TARGET_UP;
     let eye = target + offset;
+    if let Some(mut shadow_target) = world.get_resource_mut::<crate::render::shadow::SceneCameraTarget>() {
+        shadow_target.0 = Some(target);
+    }
     let mut camera = world.query_filtered::<&mut Transform, With<SceneCamera>>();
     if let Ok(mut transform) = camera.single_mut(world) {
         *transform = Transform::from_translation(eye).looking_at(target, Vec3::Y);

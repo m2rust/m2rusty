@@ -28,9 +28,9 @@ use m2_world::mesh::{DEFAULT_OPAQUE_WATER_DEPTH, build_index_buffers, build_terr
 use crate::battle::{self, D3dTransform, StaticCollision};
 use crate::render::effect::{EffectRenderer, load_instance};
 use crate::render::lighting::{self, MapLighting};
-use crate::render::terrain::{TerrainMaterial, ground, masks, patch_uniform, set_fog, set_light};
+use crate::render::terrain::{ATTRIBUTE_SHADOW_UV, TerrainMaterial, ground, masks, patch_uniform, set_fog, set_light, shadow_image};
 use crate::render::tree::Tree;
-use crate::render::{cloud, environment_fog, model, sky};
+use crate::render::{cloud, environment_fog, model, sky, sun};
 
 /// The water texture animation: 30 frames, one every 70 ms.
 const WATER_FRAMES: usize = 30;
@@ -101,6 +101,9 @@ pub struct PreparedMap {
     /// Triangles from `.mdatr` height meshes, in the collision coordinate
     /// system (x, y on the ground plane; z up).
     pub walkable: Vec<[Vec3; 3]>,
+    /// The `.mdatr` files with height data: their objects are walkable and
+    /// receive the character shadow (`m_ShadowReceiverVector`).
+    pub shadow_receivers: HashSet<Vec<u8>>,
     walkable_grid: SpatialGrid,
     collision_grid: SpatialGrid,
 }
@@ -133,7 +136,7 @@ fn prepare_loaded_map(packs: &PackManager, map: LoadedMap, ground_image: Option<
         errors.extend(texture_errors);
         Arc::new(image)
     });
-    let (collisions, walkable) = building_collisions(packs, &map.objects, &mut errors);
+    let (collisions, walkable, shadow_receivers) = building_collisions(packs, &map.objects, &mut errors);
     let mut collision_grid = SpatialGrid::default();
     for shape in &collisions { index_collision(&mut collision_grid, shape); }
     let mut walkable_grid = SpatialGrid::default();
@@ -143,7 +146,7 @@ fn prepare_loaded_map(packs: &PackManager, map: LoadedMap, ground_image: Option<
         let pad = (b - a).abs().max((c - a).abs()) * 0.0002 + Vec2::splat(0.001);
         walkable_grid.insert(a.min(b).min(c) - pad, a.max(b).max(c) + pad);
     }
-    Ok(PreparedMap { map, ground_image, effects, errors, collisions, walkable, walkable_grid, collision_grid })
+    Ok(PreparedMap { map, ground_image, effects, errors, collisions, walkable, shadow_receivers, walkable_grid, collision_grid })
 }
 
 /// `CArea::__UpdateAniThingList`'s `UpdateCollisionData` for buildings and
@@ -152,10 +155,11 @@ fn building_collisions(
     packs: &PackManager,
     objects: &[PlacedObject],
     errors: &mut Vec<String>,
-) -> (Vec<StaticCollision>, Vec<[Vec3; 3]>) {
+) -> (Vec<StaticCollision>, Vec<[Vec3; 3]>, HashSet<Vec<u8>>) {
     let mut files: HashMap<Vec<u8>, Option<m2_formats::attribute::AttributeData>> = HashMap::new();
     let mut out = Vec::new();
     let mut walkable = Vec::new();
+    let mut receivers = HashSet::new();
     for object in objects {
         let (PlacedKind::Building { attribute_file, attribute_exists: true, .. }
         | PlacedKind::DungeonBlock { attribute_file, attribute_exists: true, .. }) = &object.kind
@@ -188,6 +192,9 @@ fn building_collisions(
                 &transform,
             ));
         }
+        if !data.heights.is_empty() {
+            receivers.insert(attribute_file.clone());
+        }
         for height in &data.heights {
             // Height meshes are triangle lists (`THeightData` stores the
             // already tessellated vertices). Ignore malformed trailing
@@ -200,7 +207,7 @@ fn building_collisions(
             }
         }
     }
-    (out, walkable)
+    (out, walkable, receivers)
 }
 
 /// Interpolates a triangle's Z at a point in its XY projection. The caller
@@ -355,6 +362,7 @@ impl MapScene {
             if let Some(environment) = &loaded.environment {
                 sky::install_sky(world, environment);
                 cloud::spawn_cloud(world, environment, Some(root));
+                sun::spawn_sun(world, environment, root);
             }
         }
 
@@ -443,7 +451,8 @@ impl MapScene {
         prepared.map.objects = objects;
         let metadata = PreparedMap {
             map: metadata, ground_image: Arc::clone(&prepared.ground_image), effects: Vec::new(), errors: Vec::new(),
-            collisions: Vec::new(), walkable: Vec::new(), walkable_grid: SpatialGrid::default(), collision_grid: SpatialGrid::default(),
+            collisions: Vec::new(), walkable: Vec::new(), shadow_receivers: HashSet::new(),
+            walkable_grid: SpatialGrid::default(), collision_grid: SpatialGrid::default(),
         };
         let mut scene = Self::spawn_inner(world, Arc::new(metadata), fog, None, None);
         let child = Self::spawn_inner(world, Arc::new(prepared), fog, Some(scene.root), Some(scene.ground.clone()));
@@ -600,10 +609,15 @@ impl MapScene {
         let mut pending = Vec::new();
         for (object, asset) in self.pending_objects.drain(..) {
             let transform = object_transform(&object);
+            let receiver = matches!(
+                &object.kind,
+                PlacedKind::Building { attribute_file, .. } | PlacedKind::DungeonBlock { attribute_file, .. }
+                    if self.map.shadow_receivers.contains(attribute_file)
+            );
             let (ready, id): (bool, UntypedAssetId) = match &asset {
                 // Repeated buildings reuse the baked meshes without cloning the model.
                 ObjectAsset::Model(handle)
-                    if model::spawn_cached_static_model(world, handle.id(), transform, Some(self.root)).is_some() =>
+                    if model::spawn_cached_static_model(world, handle.id(), transform, Some(self.root), receiver).is_some() =>
                 {
                     (true, handle.id().untyped())
                 }
@@ -611,7 +625,7 @@ impl MapScene {
                     let model = world.resource::<Assets<Gr2Model>>().get(handle).cloned();
                     let ready = model.as_ref().is_some_and(|model| model::static_model_ready(world, model));
                     if ready && let Some(model) = &model {
-                        model::spawn_static_model(world, handle.id(), model, transform, Some(self.root), &[], self.fog);
+                        model::spawn_static_model(world, handle.id(), model, transform, Some(self.root), receiver, &[], self.fog);
                     }
                     (ready, handle.id().untyped())
                 }
@@ -673,10 +687,12 @@ fn spawn_terrain(
     // `CMapManager::BeginEnvironment` sets the background light for the map
     // pass; the terrain bakes it into its vertex lighting.
     let map_lighting = *world.resource::<MapLighting>();
+    let character_shadow = crate::render::shadow::character_shadow(world);
     let mut stats = SpawnStats::default();
     let mut cells = Vec::new();
     for cell in &map.terrains {
         let masks = world.resource_mut::<Assets<Image>>().add(masks(&cell.terrain, map.textures.len()));
+        let shadow = world.resource_mut::<Assets<Image>>().add(shadow_image(&cell.terrain));
         let patches = build_terrain_patches(&cell.terrain, cell.x, cell.y, DEFAULT_OPAQUE_WATER_DEPTH);
         // Patches that sample the same layers can share a material.
         struct Builder {
@@ -685,6 +701,7 @@ fn spawn_terrain(
             normals: Vec<[f32; 3]>,
             tile: Vec<[f32; 2]>,
             alpha: Vec<[f32; 2]>,
+            shadow: Vec<[f32; 2]>,
             patches: Vec<TerrainPatchLod>,
         }
         let mut builders: Vec<Builder> = Vec::new();
@@ -720,6 +737,7 @@ fn spawn_terrain(
                         normals: Vec::new(),
                         tile: Vec::new(),
                         alpha: Vec::new(),
+                        shadow: Vec::new(),
                         patches: Vec::new(),
                     });
                     builders.last_mut().unwrap()
@@ -737,6 +755,7 @@ fn spawn_terrain(
             );
             builder.tile.extend(uvs.iter().map(|uv| uv.tile));
             builder.alpha.extend(uvs.iter().map(|uv| uv.alpha));
+            builder.shadow.extend(uvs.iter().map(|uv| uv.static_shadow));
             builder.patches.push(TerrainPatchLod {
                 center: Vec2::new((patch.min_x + patch.max_x) * 0.5, (patch.min_y + patch.max_y) * 0.5),
                 base,
@@ -776,6 +795,9 @@ fn spawn_terrain(
                 params,
                 ground: ground.clone(),
                 masks: masks.clone(),
+                shadow: shadow.clone(),
+                character_shadow_view: character_shadow.view.clone(),
+                character_shadow: character_shadow.texture.clone(),
             });
             let mut merged = Vec::new();
             for patch in &builder.patches {
@@ -786,6 +808,7 @@ fn spawn_terrain(
             mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, builder.normals);
             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, builder.tile);
             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, builder.alpha);
+            mesh.insert_attribute(ATTRIBUTE_SHADOW_UV, builder.shadow);
             mesh.insert_indices(Indices::U32(merged));
             let mesh = world.resource_mut::<Assets<Mesh>>().add(mesh);
 
@@ -1062,6 +1085,8 @@ mod tests {
             .add_plugins(AssetPlugin::default())
             .init_asset::<FixedFunctionMaterial>()
             .init_asset::<TerrainMaterial>()
+            .init_asset::<bevy::render::storage::ShaderBuffer>()
+            .init_asset::<crate::render::shadow::ShadowReceiverMaterial>()
             .init_asset::<crate::render::cloud::CloudMaterial>()
             .init_resource::<MapLighting>();
         app.finish();
@@ -1115,3 +1140,4 @@ mod tests {
         }
     }
 }
+

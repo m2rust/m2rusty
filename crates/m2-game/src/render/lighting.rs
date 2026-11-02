@@ -7,9 +7,9 @@
 //! (`client/src/game/MapManager.cpp`) then sets that material and light 0
 //! before drawing the map, and `CPythonBackground::SetCharacterDirLight`
 //! (`client/src/ui/PythonBackground.cpp`) swaps in the character light before
-//! drawing actors. The terrain pins the same lighting into its vertex colours
-//! in `CTerrainPatch::SoftwareTransformPatch_UpdateTerrainLighting`
-//! (`client/src/game/TerrainPatch.cpp`).
+//! drawing actors. The terrain applies the same lighting, times its static
+//! shadow map, in the last pass of `__HardwareTransformPatch_RenderPatchSplat`
+//! (`client/src/game/MapOutdoorRenderHTP.cpp`).
 //!
 //! # D3D9 → Bevy
 //!
@@ -131,8 +131,8 @@ impl SceneLight {
     /// ambient D3D9 combines with the material before evaluating the vertex.
     /// `diffuse` is `material.diffuse * light.diffuse`; `ambient` is
     /// `material.ambient * (global + light).ambient + material.emissive`.
-    /// `CTerrainPatch::SoftwareTransformPatch_UpdateTerrainLighting` also
-    /// limits each diffuse channel to `1 - ambient`; the shader does that.
+    /// D3D9 clamps their sum per channel (hardware T&L, see
+    /// `terrain::set_light`).
     pub fn terrain_colours(&self) -> (Vec4, Vec4, Vec4) {
         let ambient = (self.material_ambient * (self.global_ambient + self.ambient) + self.material_emissive)
             .clamp(Vec4::ZERO, Vec4::ONE);

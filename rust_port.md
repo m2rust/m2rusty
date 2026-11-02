@@ -153,6 +153,19 @@ accepted.
   Bevy lights. Terrain LOD has hysteresis. The b1 village now runs at
   ~370-390 fps uncapped (~2.6 ms/frame) and at the display's frame rate when
   composited; it started at ~40 fps with one draw per patch/object.
+  Lighting follows the client's hardware T&L path: terrain splats are
+  multiplied by D3D vertex lighting (`max(0, N·L)`, not the software path's
+  `abs`) times the terrain's `shadowmap.dds` (baked building/tree shadows),
+  with that multiplier fading to white in the fog; map objects use the
+  background light and actors the character light. `SHADOW_LEVEL` 3's
+  character shadow is a second orthographic camera (`render::shadow`) that
+  renders actors grey into a 512² texture the terrain multiplies by; walkable
+  objects (`.mdatr` height data: bridges, platforms) get a multiply-blended
+  receiver copy that applies the same texture. The
+  environment's sun disc (`MainFlare`) is drawn even though the stock maps
+  disable the `LensFlare` group (the client shows none there); ghost flares
+  are not ported. Cloud textures load again (they were requested with Bevy's
+  `ImageLoaderSettings`, which the `m2://` loader rejects).
 - **Phase 2 crates:** `m2-assets` registers an `m2://` source and loads textures,
   `.gr2` models/motions, `.spt` trees and race data; `m2-render` provides a
   D3D9-style fixed-function material; `m2-viewer` has the pack browser, camera,

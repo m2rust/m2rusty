@@ -43,6 +43,8 @@ impl Plugin for M2GamePlugin {
             render::cloud::CloudPlugin,
             render::lighting::LightingPlugin,
             render::model::ModelCullPlugin,
+            render::shadow::CharacterShadowPlugin,
+            render::sun::SunPlugin,
             ingame::InGamePlugin,
             audio::GameAudioPlugin,
         ));

@@ -118,6 +118,9 @@ pub struct Terrain {
     pub water_heights: Vec<i32>,
     /// `m_awShadowMap`, `SHADOWMAP_SIZE²` (0xFFFF when not loaded).
     pub shadow_map: Vec<u16>,
+    /// `shadowmap.dds` as stored (`CTerrain::LoadShadowTexture`): the static
+    /// shadow texture the terrain's shadow pass draws, `None` when missing.
+    pub shadow_texture: Option<Vec<u8>>,
     /// `m_TerrainSplatPatch.TileCount`: tiles per texture index.
     pub tile_count: Vec<u32>,
     /// `m_TerrainSplatPatch.PatchTileCount`: per patch (row-major,
@@ -138,6 +141,7 @@ impl Default for Terrain {
             num_water: 0,
             water_heights: vec![-1; MAX_WATER_NUM + 1],
             shadow_map: vec![0xFFFF; SHADOWMAP_SIZE * SHADOWMAP_SIZE],
+            shadow_texture: None,
             tile_count: vec![0; MAX_TEXTURES],
             patch_tile_count: vec![[0; MAX_TEXTURES]; PATCH_COUNT * PATCH_COUNT],
         }
@@ -377,6 +381,7 @@ impl Terrain {
         load.attr = get("attr.atr").is_some_and(|d| terrain.load_attr_map(&d));
         load.tile = get("tile.raw").is_some_and(|d| terrain.load_tile_map(&d));
         terrain.count_tiles();
+        terrain.shadow_texture = get("shadowmap.dds");
         load.shadow = get("shadowmap.raw").is_some_and(|d| terrain.load_shadow_map(&d));
         terrain.name = property.area_name;
         Ok((terrain, load))

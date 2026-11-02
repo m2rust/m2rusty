@@ -7,6 +7,8 @@ pub mod lighting;
 pub mod model;
 pub mod sky;
 pub mod terrain;
+pub mod shadow;
+pub mod sun;
 pub mod tree;
 
 use bevy::math::Vec4;
